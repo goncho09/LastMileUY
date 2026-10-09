@@ -1,0 +1,6 @@
+@LastMileUY.API_HostAddress = http://localhost:5077
+
+GET {{LastMileUY.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

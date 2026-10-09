@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LastMileUY.API/LastMileUY.API.csproj" />
+    <Project Path="src/LastMileUY.Backoffice/LastMileUY.Backoffice.csproj" />
+    <Project Path="src/LastMileUY.CommercePortal/LastMileUY.CommercePortal.csproj" />
+    <Project Path="src/LastMileUY.Contracts/LastMileUY.Contracts.csproj" />
+    <Project Path="src/LastMileUY.DriverPWA/LastMileUY.DriverPWA.csproj" />
+    <Project Path="src/LastMileUY.PublicTracking/LastMileUY.PublicTracking.csproj" />
+    <Project Path="src/LastMileUY.Worker/LastMileUY.Worker.csproj" />
+  </Folder>
+</Solution>
