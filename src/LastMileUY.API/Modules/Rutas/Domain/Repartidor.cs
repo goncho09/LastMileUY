@@ -1,6 +1,8 @@
 ﻿namespace LastMileUY.API.Modules.Rutas.Domain;
 
-public class Repartidor
+using LastMileUY.API.Modules.Operadores.Domain;
+
+public class Repartidor : IPerteneceAOperador
 {
     public int Id { get; set; }
 

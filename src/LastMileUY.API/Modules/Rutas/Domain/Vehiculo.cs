@@ -1,6 +1,8 @@
 ﻿namespace LastMileUY.API.Modules.Rutas.Domain;
 
-public class Vehiculo
+using LastMileUY.API.Modules.Operadores.Domain;
+
+public class Vehiculo : IPerteneceAOperador
 {
     public int Id { get; set; }
 

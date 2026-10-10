@@ -1,6 +1,8 @@
 ﻿namespace LastMileUY.API.Modules.Entregas.Domain;
 
-public class MotivoNoEntrega
+using LastMileUY.API.Modules.Operadores.Domain;
+
+public class MotivoNoEntrega : IPerteneceAOperador
 {
     public int Id { get; set; }
 

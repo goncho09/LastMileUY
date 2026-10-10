@@ -9,6 +9,8 @@ using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.API.Modules.Notificaciones.Domain;
 
+using System.Reflection;
+using LastMileUY.API.Infrastructure.Multitenancy;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,12 +18,19 @@ namespace LastMileUY.API.Infrastructure.Persistence;
 
 public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 {
+    private readonly IContextoOperador contextoOperador;
+
     public ApplicationDbContext(
-        DbContextOptions<ApplicationDbContext> options
+        DbContextOptions<ApplicationDbContext> options,
+        IContextoOperador contextoOperador
     ) : base(options)
     {
+        this.contextoOperador = contextoOperador;
     }
-    
+
+    // Operador del pedido actual. Los filtros globales lo leen en cada consulta.
+    public int? OperadorActual => contextoOperador.OperadorId;
+
     
     // Operadores
     public DbSet<Operador> Operadores => Set<Operador>();
@@ -80,6 +89,18 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             typeof(ApplicationDbContext).Assembly
         );
 
+        // Primera barrera del multitenancy: toda entidad de un operador
+        // se filtra sola por el operador actual.
+        var entidadesDeOperador = modelBuilder.Model.GetEntityTypes()
+            .Select(t => t.ClrType)
+            .Where(t => typeof(IPerteneceAOperador).IsAssignableFrom(t))
+            .ToList();
+
+        foreach (var tipo in entidadesDeOperador)
+        {
+            MetodoFiltroOperador.MakeGenericMethod(tipo).Invoke(this, [modelBuilder]);
+        }
+
         modelBuilder.Entity<Operador>()
             .HasMany(o => o.Comercios)
             .WithMany(c => c.Operadores)
@@ -107,5 +128,62 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
                     });
                 }
             );
+    }
+
+    private static readonly MethodInfo MetodoFiltroOperador =
+        typeof(ApplicationDbContext).GetMethod(
+            nameof(AplicarFiltroOperador),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    // Sin operador (OperadorActual null) la comparación da falso y no se ve nada.
+    private void AplicarFiltroOperador<T>(ModelBuilder modelBuilder)
+        where T : class, IPerteneceAOperador
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.OperadorId == OperadorActual);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        AsignarYValidarOperador();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        AsignarYValidarOperador();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // Lo nuevo queda a nombre del operador actual, y nada se puede pasar a otro operador.
+    private void AsignarYValidarOperador()
+    {
+        foreach (var entrada in ChangeTracker.Entries<IPerteneceAOperador>())
+        {
+            if (entrada.State == EntityState.Added)
+            {
+                if (OperadorActual is null)
+                {
+                    throw new InvalidOperationException(
+                        $"No se puede crear {entrada.Entity.GetType().Name} sin un operador en el contexto.");
+                }
+
+                if (entrada.Entity.OperadorId == 0)
+                {
+                    entrada.Entity.OperadorId = OperadorActual.Value;
+                }
+                else if (entrada.Entity.OperadorId != OperadorActual)
+                {
+                    throw new InvalidOperationException(
+                        $"No se puede crear {entrada.Entity.GetType().Name} para otro operador.");
+                }
+            }
+            else if (entrada.State == EntityState.Modified
+                     && entrada.Property(e => e.OperadorId).IsModified)
+            {
+                throw new InvalidOperationException(
+                    $"No se puede cambiar el operador de {entrada.Entity.GetType().Name}.");
+            }
+        }
     }
 }
