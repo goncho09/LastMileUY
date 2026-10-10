@@ -1,5 +1,6 @@
 ﻿namespace LastMileUY.API.Modules.Envios.Domain;
 
+using System.Security.Cryptography;
 using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Rutas.Domain;
@@ -8,6 +9,10 @@ using LastMileUY.API.Modules.Tarifas.Domain;
 
 public class Envio
 {
+    // Sin caracteres que se confundan entre sí (0/O, 1/I/L)
+    private const string CaracteresCodigo = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private const int LargoCodigo = 12;
+
     public int Id { get; set; }
 
     public int OperadorId { get; set; }
@@ -20,9 +25,11 @@ public class Envio
     
     public DireccionEntrega DireccionEntrega { get; private set; } = null!;
 
-    public string CodigoSeguimiento { get; set; } = string.Empty;
+    // Código aleatorio para el enlace de seguimiento público; el Id nunca se expone
+    public string CodigoSeguimiento { get; set; } = GenerarCodigoSeguimiento();
 
-    public string ReferenciaExterna { get; set; } = string.Empty;
+    // Identificador del envío en el sistema del comercio; evita duplicados al reimportar
+    public string? ReferenciaExterna { get; set; }
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
@@ -30,7 +37,8 @@ public class Envio
 
     public decimal? CostoEnvio { get; set; }
     
-    public EstadoEnvio Estado { get; set; } = EstadoEnvio.Admitido;
+    // Solo cambia mediante CambiarEstado, que valida la transición
+    public EstadoEnvio Estado { get; private set; } = EstadoEnvio.Admitido;
     
     public ModalidadEnvio Modalidad { get; set; } = ModalidadEnvio.Estandar;
 
@@ -59,4 +67,21 @@ public class Envio
     
     public ICollection<DetalleLiquidacion> DetallesLiquidacion { get; set; }
         = new List<DetalleLiquidacion>();
+
+    // Control de concurrencia optimista (columna xmin de PostgreSQL)
+    public uint Version { get; private set; }
+
+    public void CambiarEstado(EstadoEnvio nuevoEstado)
+    {
+        if (!TransicionesEnvio.EsValida(Estado, nuevoEstado))
+        {
+            throw new InvalidOperationException(
+                $"No se puede pasar el envío de {Estado} a {nuevoEstado}.");
+        }
+
+        Estado = nuevoEstado;
+    }
+
+    public static string GenerarCodigoSeguimiento() =>
+        RandomNumberGenerator.GetString(CaracteresCodigo, LargoCodigo);
 }
