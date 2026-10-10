@@ -6,6 +6,9 @@ public class Destinatario
 {
     public int Id { get; set; }
 
+    // El destinatario pertenece al comercio que lo cargó
+    public int ComercioId { get; set; }
+
     public string Nombre { get; set; } = string.Empty;
 
     public string Apellido { get; set; } = string.Empty;

@@ -15,8 +15,30 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
 
         builder.HasKey(e => e.Id);
 
+        builder.Property(e => e.CodigoSeguimiento)
+            .HasMaxLength(20)
+            .IsRequired();
+
         builder.HasIndex(e => e.CodigoSeguimiento)
             .IsUnique();
+
+        // La misma referencia del comercio no puede cargarse dos veces
+        // con el mismo operador (reimportar no duplica).
+        builder.Property(e => e.ReferenciaExterna)
+            .HasMaxLength(100);
+
+        builder.HasIndex(e => new
+        {
+            e.OperadorId,
+            e.ComercioId,
+            e.ReferenciaExterna
+        })
+            .IsUnique()
+            .HasFilter("\"ReferenciaExterna\" IS NOT NULL");
+
+        // Concurrencia optimista con la columna xmin de PostgreSQL.
+        builder.Property(e => e.Version)
+            .IsRowVersion();
 
         builder.ComplexProperty(e => e.DireccionEntrega, direccion =>
         {

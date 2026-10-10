@@ -8,4 +8,7 @@
     <Project Path="src/LastMileUY.PublicTracking/LastMileUY.PublicTracking.csproj" />
     <Project Path="src/LastMileUY.Worker/LastMileUY.Worker.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LastMileUY.API.Tests/LastMileUY.API.Tests.csproj" />
+  </Folder>
 </Solution>
