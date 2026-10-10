@@ -1,0 +1,120 @@
+@page "{id:int}"
+@model LastMileUY.Backoffice.Pages.Envios.DetalleModel
+@{
+    ViewData["Title"] = Model.Envio is null ? "Envío" : $"Envío {Model.Envio.CodigoSeguimiento}";
+    var envio = Model.Envio;
+}
+
+<a asp-page="/Envios/Index" class="btn btn-link px-0 mb-2">&larr; Volver al listado</a>
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+else if (envio is null)
+{
+    <div class="alert alert-warning">No existe un envío con ese número.</div>
+}
+else
+{
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0 font-monospace">@envio.CodigoSeguimiento</h1>
+        <span class="badge fs-6 @EstadosEnvio.ClaseCss(envio.Estado)">@EstadosEnvio.Texto(envio.Estado)</span>
+        @if (envio.Modalidad == "Urgente")
+        {
+            <span class="badge fs-6 text-bg-danger">Urgente</span>
+        }
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">Envío</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-5">Comercio</dt>
+                        <dd class="col-7">@envio.Comercio</dd>
+                        <dt class="col-5">Referencia</dt>
+                        <dd class="col-7">@(envio.ReferenciaExterna ?? "—")</dd>
+                        <dt class="col-5">Modalidad</dt>
+                        <dd class="col-7">@(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")</dd>
+                        <dt class="col-5">Creado</dt>
+                        <dd class="col-7">@Formato.Fecha(envio.FechaCreacion)</dd>
+                        <dt class="col-5">Entregado</dt>
+                        <dd class="col-7">@Formato.Fecha(envio.FechaEntrega)</dd>
+                        <dt class="col-5">Costo</dt>
+                        <dd class="col-7 mb-0">@Formato.Pesos(envio.CostoEnvio)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">Destinatario</div>
+                <div class="card-body">
+                    <p class="fw-semibold mb-1">@envio.Destinatario.Nombre @envio.Destinatario.Apellido</p>
+                    <p class="mb-1">Teléfono: @(envio.Destinatario.Telefono ?? "—")</p>
+                    <p class="mb-0">Correo: @(envio.Destinatario.Email ?? "—")</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">Dirección de entrega</div>
+                <div class="card-body">
+                    <p class="mb-1">@envio.Direccion.Calle @envio.Direccion.Numero@(envio.Direccion.Apartamento is null ? "" : ", " + envio.Direccion.Apartamento)</p>
+                    <p class="mb-1">@envio.Direccion.Ciudad, @envio.Direccion.Departamento @envio.Direccion.CodigoPostal</p>
+                    @if (envio.Direccion.Referencia is not null)
+                    {
+                        <p class="text-muted mb-0">Referencia: @envio.Direccion.Referencia</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Bultos (@envio.Bultos.Count)</div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Peso (kg)</th>
+                        <th class="text-end">Medidas (cm)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var bulto in envio.Bultos)
+                    {
+                        <tr>
+                            <td class="font-monospace">@bulto.Codigo</td>
+                            <td>@(bulto.Descripcion ?? "—")</td>
+                            <td class="text-end">@Formato.Numero(bulto.PesoKg)</td>
+                            <td class="text-end">@Formato.Numero(bulto.LargoCm) × @Formato.Numero(bulto.AnchoCm) × @Formato.Numero(bulto.AltoCm)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Historial</div>
+        <ul class="list-group list-group-flush">
+            @foreach (var evento in envio.Eventos.OrderByDescending(e => e.FechaHora))
+            {
+                <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
+                    <span>
+                        <span class="badge @EstadosEnvio.ClaseCss(evento.Tipo)">@EstadosEnvio.Texto(evento.Tipo)</span>
+                        @evento.Descripcion
+                    </span>
+                    <span class="text-muted small">@Formato.Fecha(evento.FechaHora) · @evento.Origen</span>
+                </li>
+            }
+        </ul>
+    </div>
+}
