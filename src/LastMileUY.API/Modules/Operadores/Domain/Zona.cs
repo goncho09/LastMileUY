@@ -1,6 +1,6 @@
 ﻿namespace LastMileUY.API.Modules.Operadores.Domain;
 
-public class Zona
+public class Zona : IPerteneceAOperador
 {
     public int Id { get; set; }
 

@@ -1,8 +1,9 @@
 ﻿namespace LastMileUY.API.Modules.Tarifas.Domain;
 
+using LastMileUY.API.Modules.Operadores.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 
-public class CuadroTarifario
+public class CuadroTarifario : IPerteneceAOperador
 {
     public int Id { get; set; }
 

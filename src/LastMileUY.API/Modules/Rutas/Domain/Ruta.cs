@@ -1,6 +1,8 @@
 ﻿namespace LastMileUY.API.Modules.Rutas.Domain;
 
-public class Ruta
+using LastMileUY.API.Modules.Operadores.Domain;
+
+public class Ruta : IPerteneceAOperador
 {
     public int Id { get; set; }
 

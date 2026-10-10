@@ -2,7 +2,7 @@
 
 using LastMileUY.API.Modules.Envios.Domain;
 
-public class ReglaOperativa
+public class ReglaOperativa : IPerteneceAOperador
 {
     public int Id { get; set; }
 
