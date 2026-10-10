@@ -10,5 +10,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/LastMileUY.Backoffice.Tests/LastMileUY.Backoffice.Tests.csproj" />
+    <Project Path="tests/LastMileUY.API.Tests/LastMileUY.API.Tests.csproj" />
   </Folder>
 </Solution>

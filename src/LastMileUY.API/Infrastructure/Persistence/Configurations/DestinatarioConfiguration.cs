@@ -1,4 +1,5 @@
-﻿using LastMileUY.API.Modules.Destinatarios.Domain;
+﻿using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Destinatarios.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,6 +13,14 @@ public class DestinatarioConfiguration
         builder.ToTable("Destinatarios");
 
         builder.HasKey(d => d.Id);
+
+        // Cada destinatario pertenece a un comercio.
+        builder.HasOne<Comercio>()
+            .WithMany()
+            .HasForeignKey(d => d.ComercioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(d => d.ComercioId);
 
         builder.Property(d => d.Nombre)
             .HasMaxLength(100)
