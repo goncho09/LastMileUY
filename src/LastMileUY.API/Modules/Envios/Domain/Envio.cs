@@ -24,6 +24,8 @@ public class Envio : IPerteneceAOperador
 
     public int DireccionId { get; set; }
     
+    // Copia de la dirección al crear el envío: si el destinatario después cambia
+    // su dirección, el envío conserva la original. Se carga con AsignarDireccionEntrega.
     public DireccionEntrega DireccionEntrega { get; private set; } = null!;
 
     // Código aleatorio para el enlace de seguimiento público; el Id nunca se expone
@@ -81,6 +83,13 @@ public class Envio : IPerteneceAOperador
         }
 
         Estado = nuevoEstado;
+    }
+
+    public void AsignarDireccionEntrega(DireccionEntrega direccion)
+    {
+        ArgumentNullException.ThrowIfNull(direccion);
+
+        DireccionEntrega = direccion;
     }
 
     public static string GenerarCodigoSeguimiento() =>
