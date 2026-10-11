@@ -1,5 +1,8 @@
-﻿using LastMileUY.API.Modules.Identidad.Domain;
+﻿using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Identidad.Domain;
+using LastMileUY.API.Modules.Operadores.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Identidad.Infrastructure;
 
@@ -115,8 +118,36 @@ public class IdentitySeeder
         
     }
     
+    // Crea operadores en la DB
+    public static async Task SeedOperadoresPruebaAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+
+        var db = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        for (var operadorId = 1; operadorId <= 2; operadorId++)
+        {
+            var existe = await db.Set<Operador>()
+                .AnyAsync(o => o.Id == operadorId);
+
+            if (existe)
+                continue;
+
+            db.Set<Operador>().Add(new Operador
+            {
+                Id = operadorId,
+                Nombre = $"Operador Prueba {operadorId}",
+                Activo = true
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+    
     public static async Task SeedOperadorPruebaAsync(IServiceProvider services)
     {
+        await SeedOperadoresPruebaAsync(services);
         using var scope = services.CreateScope();
 
         var userManager = scope.ServiceProvider

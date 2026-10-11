@@ -6,16 +6,65 @@
     environment:
       POSTGRES_DB: lastmileuy
       POSTGRES_USER: lastmileuy
-      POSTGRES_PASSWORD: lastmileuy_dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configurar POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U lastmileuy -d lastmileuy" ]
+      test: ["CMD-SHELL", "pg_isready -U lastmileuy -d lastmileuy"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  lastmileuy.api:
+    image: lastmileuy.api
+    build:
+      context: .
+      dockerfile: src/LastMileUY.API/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=lastmileuy;Username=lastmileuy;Password=${POSTGRES_PASSWORD:?Configurar POSTGRES_PASSWORD}"
+      SeedAdmin__Email: ${SeedAdmin__Email:?Configurar SeedAdmin__Email}
+      SeedAdmin__Password: ${SeedAdmin__Password:?Configurar SeedAdmin__Password}
+      SeedOperadorPrueba__Email: ${SeedOperadorPrueba__Email:?Configurar SeedOperadorPrueba__Email}
+      SeedOperadorPrueba__Password: ${SeedOperadorPrueba__Password:?Configurar SeedOperadorPrueba__Password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  lastmileuy.backoffice:
+    image: lastmileuy.backoffice
+    build:
+      context: .
+      dockerfile: src/LastMileUY.Backoffice/Dockerfile
+
+  lastmileuy.commerceportal:
+    image: lastmileuy.commerceportal
+    build:
+      context: .
+      dockerfile: src/LastMileUY.CommercePortal/Dockerfile
+
+  lastmileuy.driverpwa:
+    image: lastmileuy.driverpwa
+    build:
+      context: .
+      dockerfile: src/LastMileUY.DriverPWA/Dockerfile
+
+  lastmileuy.publictracking:
+    image: lastmileuy.publictracking
+    build:
+      context: .
+      dockerfile: src/LastMileUY.PublicTracking/Dockerfile
+
+  lastmileuy.worker:
+    image: lastmileuy.worker
+    build:
+      context: .
+      dockerfile: src/LastMileUY.Worker/Dockerfile
 
 volumes:
   postgres_data:
