@@ -75,16 +75,16 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 await IdentitySeeder.SeedRolesAsync(app.Services);
-await IdentitySeeder.SeedAdminAsync(app.Services);
-await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
 
-await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 
 // Configure the HTTP request pipeline y Scalar 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
+    await IdentitySeeder.SeedAdminAsync(app.Services);
+    await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
+    await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 }
 
 app.UseHttpsRedirection();
