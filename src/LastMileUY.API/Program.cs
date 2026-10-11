@@ -1,5 +1,9 @@
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Identidad.Domain;
+using LastMileUY.API.Modules.Identidad.Endpoints;
+using LastMileUY.API.Modules.Identidad.Infrastructure;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +21,46 @@ builder.Services.AddDbContext<ApplicationDbContext>((servicios, options) =>
             servicios.GetRequiredService<IContextoOperador>()))
 );
 
+
+// Configurar ASPT.NET AUTH
+builder.Services
+    .AddIdentity<Usuario, Rol>(options =>
+    {
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredLength = 8;
+
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// Configurar COOKIES
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "LastMileUY.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
+});
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -25,18 +69,22 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+await IdentitySeeder.SeedRolesAsync(app.Services);
+await IdentitySeeder.SeedAdminAsync(app.Services);
+app.Logger.LogInformation("Roles y usuario admin inicializados correctamente.");
+
 await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapAuthEndpoints();
 
 app.Run();
