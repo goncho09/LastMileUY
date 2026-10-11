@@ -21,8 +21,6 @@ public class Envio : IPerteneceAOperador
     public int ComercioId { get; set; }
 
     public int DestinatarioId { get; set; }
-
-    public int DireccionId { get; set; }
     
     // Copia de la dirección al crear el envío: si el destinatario después cambia
     // su dirección, el envío conserva la original. Se carga con AsignarDireccionEntrega.
