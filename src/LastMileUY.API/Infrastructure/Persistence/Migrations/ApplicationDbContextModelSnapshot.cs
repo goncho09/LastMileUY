@@ -413,9 +413,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<int>("DestinatarioId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("DireccionId")
-                        .HasColumnType("integer");
-
                     b.Property<int>("Estado")
                         .HasColumnType("integer");
 
@@ -491,8 +488,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.HasIndex("CuadroTarifarioId");
 
                     b.HasIndex("DestinatarioId");
-
-                    b.HasIndex("DireccionId");
 
                     b.HasIndex("FranjaHorariaId");
 
@@ -1637,12 +1632,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("LastMileUY.API.Modules.Destinatarios.Domain.Direccion", null)
-                        .WithMany("Envios")
-                        .HasForeignKey("DireccionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("LastMileUY.API.Modules.Operadores.Domain.FranjaHoraria", null)
                         .WithMany("Envios")
                         .HasForeignKey("FranjaHorariaId");
@@ -1952,11 +1941,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Direcciones");
 
-                    b.Navigation("Envios");
-                });
-
-            modelBuilder.Entity("LastMileUY.API.Modules.Destinatarios.Domain.Direccion", b =>
-                {
                     b.Navigation("Envios");
                 });
 

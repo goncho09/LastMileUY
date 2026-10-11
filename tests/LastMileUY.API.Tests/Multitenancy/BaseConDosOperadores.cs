@@ -46,12 +46,12 @@ public class BaseConDosOperadores : IAsyncLifetime
                     VALUES (1, 1, 'Ana', 'Silva', now());
                 INSERT INTO "Direcciones"("Id", "DestinatarioId", "Calle", "Numero", "Ciudad", "Departamento", "Activa")
                     VALUES (1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo', true);
-                INSERT INTO "Envios"("Id", "OperadorId", "ComercioId", "DestinatarioId", "DireccionId",
+                INSERT INTO "Envios"("Id", "OperadorId", "ComercioId", "DestinatarioId",
                         "CodigoSeguimiento", "FechaCreacion", "Estado", "Modalidad",
                         "DireccionEntrega_Calle", "DireccionEntrega_Numero",
                         "DireccionEntrega_Ciudad", "DireccionEntrega_Departamento")
-                    VALUES ({EnvioDeA}, {OperadorA}, 1, 1, 1, 'CODIGOA', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo'),
-                           ({EnvioDeB}, {OperadorB}, 1, 1, 1, 'CODIGOB', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo');
+                    VALUES ({EnvioDeA}, {OperadorA}, 1, 1,  'CODIGOA', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo'),
+                           ({EnvioDeB}, {OperadorB}, 1, 1,  'CODIGOB', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo');
                 INSERT INTO "Bultos"("EnvioId", "Codigo", "PesoKg", "LargoCm", "AnchoCm", "AltoCm")
                     VALUES ({EnvioDeA}, 'BA1', 1, 10, 10, 10), ({EnvioDeB}, 'BB1', 1, 10, 10, 10);
                 """);

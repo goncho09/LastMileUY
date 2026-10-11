@@ -1,10 +1,13 @@
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Envios.Application;
+using LastMileUY.API.Modules.Envios.Endpoints;
 using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Identidad.Endpoints;
 using LastMileUY.API.Modules.Identidad.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,10 +34,10 @@ builder.Services
         options.Password.RequireUppercase = true;
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequiredLength = 8;
-
         options.User.RequireUniqueEmail = true;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddClaimsPrincipalFactory<UsuarioClaimsPrincipalFactory>()
     .AddDefaultTokenProviders();
 
 // Configurar COOKIES
@@ -62,8 +65,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // Add services to the container.
-
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<CrearEnvioService>();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -71,20 +76,26 @@ var app = builder.Build();
 
 await IdentitySeeder.SeedRolesAsync(app.Services);
 await IdentitySeeder.SeedAdminAsync(app.Services);
-app.Logger.LogInformation("Roles y usuario admin inicializados correctamente.");
+await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
 
 await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) app.MapOpenApi();
+// Configure the HTTP request pipeline y Scalar 
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers(); 
 
+// ENDPOINTS
 app.MapAuthEndpoints();
+app.MapEnviosEndpoints();
 
 app.Run();

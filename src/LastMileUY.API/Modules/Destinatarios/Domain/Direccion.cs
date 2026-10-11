@@ -1,7 +1,5 @@
 ﻿namespace LastMileUY.API.Modules.Destinatarios.Domain;
 
-using LastMileUY.API.Modules.Envios.Domain;
-
 public class Direccion
 {
     public int Id { get; set; }
@@ -24,5 +22,4 @@ public class Direccion
 
     public bool Activa { get; set; } = true;
     
-    public ICollection<Envio> Envios { get; set; } = new List<Envio>();
 }

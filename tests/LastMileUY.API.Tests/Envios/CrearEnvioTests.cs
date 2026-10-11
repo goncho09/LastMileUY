@@ -16,7 +16,6 @@ public class CrearEnvioTests(BaseConDosOperadores baseDeDatos)
         {
             ComercioId = 1,
             DestinatarioId = 1,
-            DireccionId = 1,
             ReferenciaExterna = "PED-PRUEBA-1"
         };
         envio.AsignarDireccionEntrega(new DireccionEntrega(
