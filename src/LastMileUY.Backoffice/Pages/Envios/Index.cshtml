@@ -1,7 +1,7 @@
 @page
 @model LastMileUY.Backoffice.Pages.Envios.IndexModel
 @{
-    ViewData["Title"] = "Envíos";
+ViewData["Title"] = "Envíos";
 }
 
 <h1 class="h3 mb-3">Envíos</h1>
@@ -10,7 +10,7 @@
     <div class="col-12 col-md-5">
         <label for="buscar" class="form-label">Buscar</label>
         <input id="buscar" name="buscar" value="@Model.Buscar" class="form-control"
-               placeholder="Código, referencia o destinatario" />
+               placeholder="Código, referencia o destinatario"/>
     </div>
     <div class="col-12 col-md-4">
         <label for="estado" class="form-label">Estado</label>
@@ -18,7 +18,7 @@
             <option value="">Todos</option>
             @foreach (var estado in EstadosEnvio.Todos)
             {
-                <option value="@estado.Valor" selected="@(estado.Valor == Model.Estado)">@estado.Texto</option>
+            <option value="@estado.Valor" selected="@(estado.Valor == Model.Estado)">@estado.Texto</option>
             }
         </select>
     </div>
@@ -30,70 +30,71 @@
 
 @if (Model.Error is not null)
 {
-    <div class="alert alert-danger">@Model.Error</div>
+<div class="alert alert-danger">@Model.Error</div>
 }
 else if (Model.Resultado.Items.Count == 0)
 {
-    <div class="alert alert-light border">No hay envíos que coincidan con el filtro.</div>
+<div class="alert alert-light border">No hay envíos que coincidan con el filtro.</div>
 }
 else
 {
-    <p class="text-muted small mb-2">@Model.Resultado.Total envíos</p>
+<p class="text-muted small mb-2">@Model.Resultado.Total envíos</p>
 
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Referencia</th>
-                    <th>Comercio</th>
-                    <th>Destinatario</th>
-                    <th>Destino</th>
-                    <th class="text-center">Bultos</th>
-                    <th>Estado</th>
-                    <th>Creado</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var envio in Model.Resultado.Items)
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Código</th>
+            <th>Referencia</th>
+            <th>Comercio</th>
+            <th>Destinatario</th>
+            <th>Destino</th>
+            <th class="text-center">Bultos</th>
+            <th>Estado</th>
+            <th>Creado</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var envio in Model.Resultado.Items)
+        {
+        <tr>
+            <td class="font-monospace">@envio.CodigoSeguimiento</td>
+            <td>@(envio.ReferenciaExterna ?? "—")</td>
+            <td>@envio.Comercio</td>
+            <td>@envio.Destinatario</td>
+            <td>@envio.Ciudad, @envio.Departamento</td>
+            <td class="text-center">@envio.CantidadBultos</td>
+            <td>
+                <span class="badge @EstadosEnvio.ClaseCss(envio.Estado)">@EstadosEnvio.Texto(envio.Estado)</span>
+                @if (envio.Modalidad == "Urgente")
                 {
-                    <tr>
-                        <td class="font-monospace">@envio.CodigoSeguimiento</td>
-                        <td>@(envio.ReferenciaExterna ?? "—")</td>
-                        <td>@envio.Comercio</td>
-                        <td>@envio.Destinatario</td>
-                        <td>@envio.Ciudad, @envio.Departamento</td>
-                        <td class="text-center">@envio.CantidadBultos</td>
-                        <td>
-                            <span class="badge @EstadosEnvio.ClaseCss(envio.Estado)">@EstadosEnvio.Texto(envio.Estado)</span>
-                            @if (envio.Modalidad == "Urgente")
-                            {
-                                <span class="badge text-bg-danger">Urgente</span>
-                            }
-                        </td>
-                        <td class="text-nowrap">@Formato.Fecha(envio.FechaCreacion)</td>
-                        <td><a asp-page="/Envios/Detalle" asp-route-id="@envio.Id" class="btn btn-sm btn-outline-primary">Ver</a></td>
-                    </tr>
+                <span class="badge text-bg-danger">Urgente</span>
                 }
-            </tbody>
-        </table>
-    </div>
+            </td>
+            <td class="text-nowrap">@Formato.Fecha(envio.FechaCreacion)</td>
+            <td><a asp-page="/Envios/Detalle" asp-route-id="@envio.Id" class="btn btn-sm btn-outline-primary">Ver</a>
+            </td>
+        </tr>
+        }
+        </tbody>
+    </table>
+</div>
 
-    @if (Model.Resultado.TotalPaginas > 1)
-    {
-        <nav aria-label="Páginas">
-            <ul class="pagination">
-                <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
-                    <a class="page-link" asp-page="/Envios/Index" asp-all-route-data="Model.RutaPagina(Model.Pagina - 1)">Anterior</a>
-                </li>
-                <li class="page-item disabled">
-                    <span class="page-link">Página @Model.Pagina de @Model.Resultado.TotalPaginas</span>
-                </li>
-                <li class="page-item @(Model.Pagina >= Model.Resultado.TotalPaginas ? "disabled" : "")">
-                    <a class="page-link" asp-page="/Envios/Index" asp-all-route-data="Model.RutaPagina(Model.Pagina + 1)">Siguiente</a>
-                </li>
-            </ul>
-        </nav>
-    }
+@if (Model.Resultado.TotalPaginas > 1)
+{
+<nav aria-label="Páginas">
+    <ul class="pagination">
+        <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
+            <a class="page-link" asp-page="/Envios/Index" asp-all-route-data="Model.RutaPagina(Model.Pagina - 1)">Anterior</a>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Página @Model.Pagina de @Model.Resultado.TotalPaginas</span>
+        </li>
+        <li class="page-item @(Model.Pagina >= Model.Resultado.TotalPaginas ? "disabled" : "")">
+            <a class="page-link" asp-page="/Envios/Index" asp-all-route-data="Model.RutaPagina(Model.Pagina + 1)">Siguiente</a>
+        </li>
+    </ul>
+</nav>
+}
 }
