@@ -41,6 +41,14 @@
     build:
       context: .
       dockerfile: src/LastMileUY.Backoffice/Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      # Usa la API real (no los datos de prueba); el login es contra la API
+      Api__UsarDatosDePrueba: "false"
+      Api__UrlBase: "http://lastmileuy.api:8080/"
+    depends_on:
+      - lastmileuy.api
 
   lastmileuy.commerceportal:
     image: lastmileuy.commerceportal

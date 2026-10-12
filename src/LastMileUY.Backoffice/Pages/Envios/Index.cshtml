@@ -34,7 +34,7 @@ ViewData["Title"] = "Envíos";
 }
 else if (Model.Resultado.Items.Count == 0)
 {
-<div class="alert alert-light border">No hay envíos que coincidan con el filtro.</div>
+<div class="alert alert-light border">@(string.IsNullOrWhiteSpace(Model.Estado) && string.IsNullOrWhiteSpace(Model.Buscar) ? "Todavía no hay envíos." : "No hay envíos que coincidan con el filtro.")</div>
 }
 else
 {
