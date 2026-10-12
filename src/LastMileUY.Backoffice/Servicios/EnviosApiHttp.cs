@@ -29,6 +29,51 @@ public class EnviosApiHttp(HttpClient http) : IEnviosApi
         return await respuesta.Content.ReadFromJsonAsync<EnvioDetalleDto>(ct);
     }
 
+    public async Task<EnvioDetalleDto?> CambiarEstadoAsync(
+        int id, string estado, string? descripcion, CancellationToken ct = default)
+    {
+        using var respuesta = await http.PatchAsJsonAsync(
+            $"api/envios/{id}/estado",
+            new CambiarEstadoRequest { Estado = estado, Descripcion = descripcion },
+            ct);
+
+        switch (respuesta.StatusCode)
+        {
+            case HttpStatusCode.NotFound:
+                return null;
+            case HttpStatusCode.Forbidden:
+                throw new OperacionRechazadaException("Tu usuario no tiene permiso para cambiar el estado de los envíos.");
+            case HttpStatusCode.BadRequest or HttpStatusCode.Conflict:
+                throw new OperacionRechazadaException(await LeerMensajeAsync(respuesta, ct));
+        }
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return await respuesta.Content.ReadFromJsonAsync<EnvioDetalleDto>(ct);
+    }
+
+    // La API responde los errores como { "mensaje": "..." }
+    private static async Task<string> LeerMensajeAsync(HttpResponseMessage respuesta, CancellationToken ct)
+    {
+        try
+        {
+            var error = await respuesta.Content.ReadFromJsonAsync<MensajeDeError>(ct);
+
+            if (!string.IsNullOrWhiteSpace(error?.Mensaje))
+            {
+                return error.Mensaje;
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Sin cuerpo o con otro formato: se usa el mensaje genérico
+        }
+
+        return "La API rechazó el cambio.";
+    }
+
+    private record MensajeDeError(string? Mensaje);
+
     public static string ArmarUrlListado(FiltroEnvios filtro)
     {
         var parametros = new List<string>

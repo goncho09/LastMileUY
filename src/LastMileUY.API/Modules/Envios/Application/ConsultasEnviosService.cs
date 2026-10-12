@@ -128,7 +128,10 @@ public class ConsultasEnviosService(ApplicationDbContext db)
                 direccion.CodigoPostal,
                 direccion.Referencia),
             fila.Bultos,
-            fila.Eventos);
+            fila.Eventos)
+        {
+            EstadosSiguientes = TransicionesEnvio.DestinosDesde(envio.Estado).Select(e => e.ToString()).ToList()
+        };
     }
 
     // Que un % o _ escrito por el usuario se busque como texto y no como comodín

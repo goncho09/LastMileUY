@@ -4,6 +4,7 @@ using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace LastMileUY.API.Modules.Envios.Application;
 
@@ -13,6 +14,7 @@ public class CrearEnvioService(
 {
     public async Task<EnvioResponse> EjecutarAsync(
         CrearEnvioRequest request,
+        string? responsableId = null,
         CancellationToken cancellationToken = default)
     {
         var operadorId = contextoOperador.OperadorId
@@ -26,6 +28,8 @@ public class CrearEnvioService(
             throw new ArgumentException(
                 "Los identificadores deben ser mayores a cero.");
         }
+
+        ValidarBultos(request.Bultos);
 
         var comercioValido = await db.Set<OperadorComercio>()
             .AnyAsync(oc =>
@@ -79,8 +83,36 @@ public class CrearEnvioService(
             direccion.Referencia
         ));
 
+        // Cada bulto lleva el código del envío y su número: ABC123DEF456-1, -2...
+        var numero = 1;
+        foreach (var bulto in request.Bultos ?? [])
+        {
+            envio.Bultos.Add(new Bulto
+            {
+                Codigo = $"{envio.CodigoSeguimiento}-{numero++}",
+                PesoKg = bulto.PesoKg,
+                LargoCm = bulto.LargoCm,
+                AnchoCm = bulto.AnchoCm,
+                AltoCm = bulto.AltoCm,
+                Descripcion = bulto.Descripcion
+            });
+        }
+
+        // Primer evento del historial
+        envio.RegistrarAdmision("API", responsableId);
+
         db.Envios.Add(envio);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Índice único operador + comercio + referencia: el pedido ya se había cargado
+            throw new EnvioDuplicadoException(
+                $"Ya existe un envío con la referencia '{request.ReferenciaExterna}' para ese comercio.");
+        }
 
         return new EnvioResponse
         {
@@ -92,4 +124,38 @@ public class CrearEnvioService(
             FechaCreacion = envio.FechaCreacion
         };
     }
+
+    // Mismos límites que los atributos de CrearBultoRequest (las minimal APIs no los validan solas)
+    private static void ValidarBultos(List<CrearBultoRequest>? bultos)
+    {
+        if (bultos is null)
+        {
+            return;
+        }
+
+        if (bultos.Count > 50)
+        {
+            throw new ArgumentException("Un envío no puede tener más de 50 bultos.");
+        }
+
+        foreach (var bulto in bultos)
+        {
+            if (bulto.PesoKg is <= 0 or > 1000 ||
+                bulto.LargoCm is <= 0 or > 1000 ||
+                bulto.AnchoCm is <= 0 or > 1000 ||
+                bulto.AltoCm is <= 0 or > 1000)
+            {
+                throw new ArgumentException(
+                    "El peso y las medidas de cada bulto deben ser mayores a cero y como máximo 1000.");
+            }
+
+            if (bulto.Descripcion?.Length > 500)
+            {
+                throw new ArgumentException("La descripción de un bulto no puede superar los 500 caracteres.");
+            }
+        }
+    }
 }
+
+// El envío ya existía (misma referencia del comercio con el mismo operador)
+public class EnvioDuplicadoException(string mensaje) : Exception(mensaje);

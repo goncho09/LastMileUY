@@ -7,11 +7,32 @@ namespace LastMileUY.Backoffice.Servicios;
 // Se activa con "Api:UsarDatosDePrueba": true en la configuración.
 public class EnviosApiDePrueba : IEnviosApi
 {
+    // Copia, solo para los datos de prueba, de la tabla de transiciones de la API (TransicionesEnvio)
+    private static readonly Dictionary<string, string[]> Transiciones = new()
+    {
+        ["Admitido"] = ["EnDeposito"],
+        ["EnDeposito"] = ["AsignadoARuta", "Extraviado"],
+        ["AsignadoARuta"] = ["EnDeposito", "EnTransito", "Extraviado"],
+        ["EnTransito"] = ["Entregado", "NoEntregado", "EnDeposito", "Extraviado"],
+        ["NoEntregado"] = ["Reprogramado", "EnDevolucion"],
+        ["Reprogramado"] = ["AsignadoARuta"],
+        ["Entregado"] = ["EnDevolucion"],
+        ["EnDevolucion"] = ["Devuelto", "Extraviado"],
+    };
+
     private readonly List<EnvioDetalleDto> envios = GenerarEnvios();
+
+    // Se puede cambiar el estado, así que la lista se toca con lock (el servicio es único para todos los pedidos)
+    private readonly Lock bloqueo = new();
 
     public Task<PaginaDto<EnvioResumenDto>> ListarAsync(FiltroEnvios filtro, CancellationToken ct = default)
     {
-        IEnumerable<EnvioDetalleDto> consulta = envios;
+        IEnumerable<EnvioDetalleDto> consulta;
+
+        lock (bloqueo)
+        {
+            consulta = envios.ToList();
+        }
 
         if (!string.IsNullOrWhiteSpace(filtro.Estado))
         {
@@ -39,8 +60,54 @@ public class EnviosApiDePrueba : IEnviosApi
         return Task.FromResult(new PaginaDto<EnvioResumenDto>(items, filtrados.Count, pagina, filtro.TamanioPagina));
     }
 
-    public Task<EnvioDetalleDto?> ObtenerAsync(int id, CancellationToken ct = default) =>
-        Task.FromResult(envios.FirstOrDefault(e => e.Id == id));
+    public Task<EnvioDetalleDto?> ObtenerAsync(int id, CancellationToken ct = default)
+    {
+        lock (bloqueo)
+        {
+            return Task.FromResult(envios.FirstOrDefault(e => e.Id == id));
+        }
+    }
+
+    public Task<EnvioDetalleDto?> CambiarEstadoAsync(int id, string estado, string? descripcion, CancellationToken ct = default)
+    {
+        lock (bloqueo)
+        {
+            var indice = envios.FindIndex(e => e.Id == id);
+
+            if (indice < 0)
+            {
+                return Task.FromResult<EnvioDetalleDto?>(null);
+            }
+
+            var actual = envios[indice];
+
+            if (!actual.EstadosSiguientes.Contains(estado))
+            {
+                throw new OperacionRechazadaException($"No se puede pasar el envío de {actual.Estado} a {estado}.");
+            }
+
+            var evento = new EventoEnvioDto(
+                DateTime.UtcNow,
+                estado,
+                string.IsNullOrWhiteSpace(descripcion) ? null : descripcion.Trim(),
+                "Backoffice");
+
+            var nuevo = actual with
+            {
+                Estado = estado,
+                FechaEntrega = estado == "Entregado" ? DateTime.UtcNow : actual.FechaEntrega,
+                Eventos = [.. actual.Eventos, evento],
+                EstadosSiguientes = Siguientes(estado)
+            };
+
+            envios[indice] = nuevo;
+
+            return Task.FromResult<EnvioDetalleDto?>(nuevo);
+        }
+    }
+
+    private static string[] Siguientes(string estado) =>
+        Transiciones.TryGetValue(estado, out var destinos) ? destinos : [];
 
     private static bool Contiene(string? valor, string texto) =>
         valor is not null && valor.Contains(texto, StringComparison.OrdinalIgnoreCase);
@@ -116,7 +183,10 @@ public class EnviosApiDePrueba : IEnviosApi
                     null,
                     id % 3 == 0 ? "Portón verde" : null),
                 Bultos: bultos,
-                Eventos: GenerarEventos(estado, creado)));
+                Eventos: GenerarEventos(estado, creado))
+            {
+                EstadosSiguientes = Siguientes(estado)
+            });
         }
 
         return lista;

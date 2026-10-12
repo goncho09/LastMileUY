@@ -15,4 +15,8 @@ public class CrearEnvioRequest
 
     [MaxLength(100)]
     public string? ReferenciaExterna { get; set; }
+
+    // Paquetes del envío (opcional). El código de cada bulto lo genera la API.
+    [MaxLength(50)]
+    public List<CrearBultoRequest> Bultos { get; set; } = [];
 }
