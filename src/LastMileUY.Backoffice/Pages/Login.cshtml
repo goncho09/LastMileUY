@@ -1,0 +1,38 @@
+@page
+@model LoginModel
+@{
+ViewData["Title"] = "Iniciar sesión";
+}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+        <h1 class="h3 mb-3">Iniciar sesión</h1>
+
+        @if (Model.Error is not null)
+        {
+        <div class="alert alert-danger">@Model.Error</div>
+        }
+
+        <form method="post">
+            <input type="hidden" asp-for="ReturnUrl"/>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" autocomplete="username" autofocus/>
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Contraseña</label>
+                <input asp-for="Password" class="form-control" autocomplete="current-password"/>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial"/>
+}

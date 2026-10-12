@@ -20,11 +20,18 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
                 <ul class="navbar-nav flex-grow-1">
                     <li class="nav-item">
                         <a class="nav-link text-dark" asp-area="" asp-page="/Envios/Index">Envíos</a>
                     </li>
                 </ul>
+                <form method="post" asp-page="/Logout" class="d-flex align-items-center gap-2">
+                    <span class="navbar-text small">@User.Identity.Name</span>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Salir</button>
+                </form>
+                }
             </div>
         </div>
     </nav>
