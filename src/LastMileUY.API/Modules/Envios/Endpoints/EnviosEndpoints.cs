@@ -1,8 +1,6 @@
 ﻿using LastMileUY.API.Infrastructure.Multitenancy;
-using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.Contracts.Envios;
-using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Envios.Endpoints;
 
@@ -15,50 +13,46 @@ public static class EnviosEndpoints
             .WithTags("Envíos")
             .RequireAuthorization();
         
+        // Listado paginado: ?pagina=1&tamanioPagina=20&estado=EnTransito&buscar=texto
         group.MapGet("/", async (
-                ApplicationDbContext db,
-                CancellationToken cancellationToken) =>
+                ConsultasEnviosService consultas,
+                IContextoOperador contextoOperador,
+                CancellationToken cancellationToken,
+                int pagina = 1,
+                int tamanioPagina = 20,
+                string? estado = null,
+                string? buscar = null) =>
             {
-                var envios = await db.Envios
-                    .AsNoTracking()
-                    .OrderByDescending(e => e.FechaCreacion)
-                    .Select(e => new EnvioResponse
-                    {
-                        Id = e.Id,
-                        CodigoSeguimiento = e.CodigoSeguimiento,
-                        ComercioId = e.ComercioId,
-                        DestinatarioId = e.DestinatarioId,
-                        Estado = e.Estado.ToString(),
-                        FechaCreacion = e.FechaCreacion
-                    })
-                    .ToListAsync(cancellationToken);
+                if (contextoOperador.OperadorId is null)
+                    return Results.Unauthorized();
 
-                return Results.Ok(envios);
+                try
+                {
+                    var envios = await consultas.ListarAsync(
+                        pagina, tamanioPagina, estado, buscar, cancellationToken);
+
+                    return Results.Ok(envios);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new
+                    {
+                        mensaje = ex.Message
+                    });
+                }
             })
             .WithName("ListarEnvios");
-        
+
         group.MapGet("/{id:int}", async (
                 int id,
-                ApplicationDbContext db,
+                ConsultasEnviosService consultas,
                 IContextoOperador contextoOperador,
                 CancellationToken cancellationToken) =>
             {
                 if (contextoOperador.OperadorId is null)
                     return Results.Unauthorized();
 
-                var envio = await db.Envios
-                    .AsNoTracking()
-                    .Where(e => e.Id == id)
-                    .Select(e => new EnvioResponse
-                    {
-                        Id = e.Id,
-                        CodigoSeguimiento = e.CodigoSeguimiento,
-                        ComercioId = e.ComercioId,
-                        DestinatarioId = e.DestinatarioId,
-                        Estado = e.Estado.ToString(),
-                        FechaCreacion = e.FechaCreacion
-                    })
-                    .FirstOrDefaultAsync(cancellationToken);
+                var envio = await consultas.ObtenerDetalleAsync(id, cancellationToken);
 
                 if (envio is null)
                     return Results.NotFound(new

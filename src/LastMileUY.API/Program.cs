@@ -68,6 +68,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<CrearEnvioService>();
+builder.Services.AddScoped<ConsultasEnviosService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
