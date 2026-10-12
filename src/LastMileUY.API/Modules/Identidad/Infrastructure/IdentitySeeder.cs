@@ -75,7 +75,7 @@ public class IdentitySeeder
 
         if (usuarioExistente is not null)
         {
-            Console.WriteLine($"Usuario {usuarioExistente.UserName} invalido");
+            Console.WriteLine($"El administrador {usuarioExistente.UserName} ya existe");
             return;
         }
 
@@ -118,36 +118,47 @@ public class IdentitySeeder
         
     }
     
-    // Crea operadores en la DB
-    public static async Task SeedOperadoresPruebaAsync(IServiceProvider services)
+    // Crea dos operadores de prueba (si no existen) y devuelve sus Id.
+    // Se buscan por nombre y el Id lo pone la base: si se fijara a mano,
+    // la secuencia no avanza y el próximo operador creado chocaría con ese Id.
+    public static async Task<int[]> SeedOperadoresPruebaAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
 
         var db = scope.ServiceProvider
             .GetRequiredService<ApplicationDbContext>();
 
-        for (var operadorId = 1; operadorId <= 2; operadorId++)
+        var operadores = new List<Operador>();
+
+        for (var numero = 1; numero <= 2; numero++)
         {
-            var existe = await db.Set<Operador>()
-                .AnyAsync(o => o.Id == operadorId);
+            var nombre = $"Operador Prueba {numero}";
 
-            if (existe)
-                continue;
+            var operador = await db.Set<Operador>()
+                .FirstOrDefaultAsync(o => o.Nombre == nombre);
 
-            db.Set<Operador>().Add(new Operador
+            if (operador is null)
             {
-                Id = operadorId,
-                Nombre = $"Operador Prueba {operadorId}",
-                Activo = true
-            });
+                operador = new Operador
+                {
+                    Nombre = nombre,
+                    Activo = true
+                };
+
+                db.Set<Operador>().Add(operador);
+            }
+
+            operadores.Add(operador);
         }
 
         await db.SaveChangesAsync();
+
+        return operadores.Select(o => o.Id).ToArray();
     }
-    
+
     public static async Task SeedOperadorPruebaAsync(IServiceProvider services)
     {
-        await SeedOperadoresPruebaAsync(services);
+        var operadoresId = await SeedOperadoresPruebaAsync(services);
         using var scope = services.CreateScope();
 
         var userManager = scope.ServiceProvider
@@ -166,9 +177,10 @@ public class IdentitySeeder
             return;
         }
 
-        for (int operadorId = 1; operadorId <= 2; operadorId++)
+        for (var i = 0; i < operadoresId.Length; i++)
         {
-            var emailOperador = operadorId == 1
+            var operadorId = operadoresId[i];
+            var emailOperador = i == 0
                 ? email
                 : email.Replace("@", "2@");
 
@@ -182,7 +194,7 @@ public class IdentitySeeder
                 UserName = emailOperador,
                 Email = emailOperador,
                 Nombre = "Operador",
-                Apellido = $"Prueba {operadorId}",
+                Apellido = $"Prueba {i + 1}",
                 OperadorId = operadorId,
                 EmailConfirmed = true,
                 Activo = true
