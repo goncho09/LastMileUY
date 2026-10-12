@@ -73,7 +73,13 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
     // Control de concurrencia optimista (columna xmin de PostgreSQL)
     public uint Version { get; private set; }
 
-    public void CambiarEstado(EstadoEnvio nuevoEstado)
+    // Cambia el estado si la transición es válida y lo deja registrado en el historial.
+    // origen: desde dónde se hizo (Backoffice, Repartidor, Sistema...); responsableId: el usuario.
+    public void CambiarEstado(
+        EstadoEnvio nuevoEstado,
+        string origen = "Sistema",
+        string? descripcion = null,
+        string? responsableId = null)
     {
         if (!TransicionesEnvio.EsValida(Estado, nuevoEstado))
         {
@@ -82,7 +88,28 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
         }
 
         Estado = nuevoEstado;
+
+        if (nuevoEstado == EstadoEnvio.Entregado)
+        {
+            FechaEntrega = DateTime.UtcNow;
+        }
+
+        RegistrarEvento(origen, descripcion, responsableId);
     }
+
+    // Primer evento del historial: el envío quedó admitido
+    public void RegistrarAdmision(string origen, string? responsableId = null) =>
+        RegistrarEvento(origen, "Envío admitido", responsableId);
+
+    private void RegistrarEvento(string origen, string? descripcion, string? responsableId) =>
+        Eventos.Add(new EventoEnvio
+        {
+            Tipo = Estado.ToString(),
+            Descripcion = descripcion,
+            Origen = origen,
+            ResponsableId = responsableId,
+            FechaHora = DateTime.UtcNow
+        });
 
     public void AsignarDireccionEntrega(DireccionEntrega direccion)
     {

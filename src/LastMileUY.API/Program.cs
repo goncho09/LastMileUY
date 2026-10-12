@@ -69,6 +69,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
+builder.Services.AddScoped<CambiarEstadoEnvioService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

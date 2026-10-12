@@ -61,6 +61,32 @@ public class EnviosApiHttpTests
         await Assert.ThrowsAsync<HttpRequestException>(() => api.ObtenerAsync(1));
     }
 
+    [Fact]
+    public async Task Cambiar_estado_muestra_el_mensaje_de_la_api_si_lo_rechaza()
+    {
+        var api = CrearApi(HttpStatusCode.BadRequest, """{ "mensaje": "No se puede pasar el envío de Admitido a Entregado." }""");
+
+        var error = await Assert.ThrowsAsync<OperacionRechazadaException>(() => api.CambiarEstadoAsync(1, "Entregado", null));
+
+        Assert.Equal("No se puede pasar el envío de Admitido a Entregado.", error.Message);
+    }
+
+    [Fact]
+    public async Task Cambiar_estado_sin_permiso_se_rechaza()
+    {
+        var api = CrearApi(HttpStatusCode.Forbidden, "");
+
+        await Assert.ThrowsAsync<OperacionRechazadaException>(() => api.CambiarEstadoAsync(1, "EnDeposito", null));
+    }
+
+    [Fact]
+    public async Task Cambiar_estado_de_un_envio_que_no_existe_devuelve_null()
+    {
+        var api = CrearApi(HttpStatusCode.NotFound, "");
+
+        Assert.Null(await api.CambiarEstadoAsync(1, "EnDeposito", null));
+    }
+
     private static EnviosApiHttp CrearApi(HttpStatusCode codigo, string cuerpo)
     {
         var http = new HttpClient(new RespuestaFija(codigo, cuerpo))

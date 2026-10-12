@@ -14,7 +14,11 @@ public record EnvioDetalleDto(
     DestinatarioDto Destinatario,
     DireccionDto Direccion,
     IReadOnlyList<BultoDto> Bultos,
-    IReadOnlyList<EventoEnvioDto> Eventos);
+    IReadOnlyList<EventoEnvioDto> Eventos)
+{
+    // Estados a los que se puede pasar desde el actual (para el formulario de cambio de estado)
+    public IReadOnlyList<string> EstadosSiguientes { get; init; } = [];
+}
 
 public record DestinatarioDto(
     string Nombre,

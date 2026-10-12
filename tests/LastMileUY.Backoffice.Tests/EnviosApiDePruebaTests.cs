@@ -67,4 +67,27 @@ public class EnviosApiDePruebaTests
     {
         Assert.Null(await api.ObtenerAsync(9999));
     }
+
+    [Fact]
+    public async Task Cambiar_a_un_estado_permitido_actualiza_el_envio_y_el_historial()
+    {
+        var antes = (await api.ListarAsync(new FiltroEnvios(Estado: "Admitido"))).Items[0];
+        var eventosAntes = (await api.ObtenerAsync(antes.Id))!.Eventos.Count;
+
+        var despues = await api.CambiarEstadoAsync(antes.Id, "EnDeposito", "Llegó");
+
+        Assert.NotNull(despues);
+        Assert.Equal("EnDeposito", despues.Estado);
+        Assert.Equal(eventosAntes + 1, despues.Eventos.Count);
+        Assert.Equal(["AsignadoARuta", "Extraviado"], despues.EstadosSiguientes);
+    }
+
+    [Fact]
+    public async Task Cambiar_a_un_estado_no_permitido_se_rechaza()
+    {
+        var admitido = (await api.ListarAsync(new FiltroEnvios(Estado: "Admitido"))).Items[0];
+
+        await Assert.ThrowsAsync<OperacionRechazadaException>(() =>
+            api.CambiarEstadoAsync(admitido.Id, "Entregado", null));
+    }
 }
