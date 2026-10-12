@@ -5,6 +5,7 @@ using LastMileUY.API.Modules.Envios.Endpoints;
 using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Identidad.Endpoints;
 using LastMileUY.API.Modules.Identidad.Infrastructure;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -39,6 +40,17 @@ builder.Services
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddClaimsPrincipalFactory<UsuarioClaimsPrincipalFactory>()
     .AddDefaultTokenProviders();
+
+// Claves con las que ASP.NET cifra la cookie de sesión. Si se guardan en una carpeta
+// (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
+var directorioClaves = builder.Configuration["DataProtection:Directorio"];
+
+if (!string.IsNullOrWhiteSpace(directorioClaves))
+{
+    builder.Services.AddDataProtection()
+        .SetApplicationName("LastMileUY.API")
+        .PersistKeysToFileSystem(new DirectoryInfo(directorioClaves));
+}
 
 // Configurar COOKIES
 builder.Services.ConfigureApplicationCookie(options =>
