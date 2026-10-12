@@ -15,6 +15,17 @@ public class BaseConDosOperadores : IAsyncLifetime
     public const int EnvioDeA = 101;
     public const int EnvioDeB = 102;
 
+    // Segundo nivel (comercios):
+    // - el comercio 1 trabaja con A y con B (los envíos 101 y 102 son suyos);
+    // - el comercio 2 trabaja solo con A (envío 103 de A);
+    // - el comercio 3 trabaja solo con B (no tiene envíos; su destinatario no lo puede ver A).
+    public const int ComercioCompartido = 1;
+    public const int ComercioSoloDeA = 2;
+    public const int ComercioSoloDeB = 3;
+    public const int EnvioDeAComercio2 = 103;
+    public const int DestinatarioComercio2 = 2;
+    public const int DestinatarioComercio3 = 3;
+
     private readonly PostgreSqlContainer contenedor = new PostgreSqlBuilder("postgres:17")
         .Build();
 
@@ -41,19 +52,33 @@ public class BaseConDosOperadores : IAsyncLifetime
                 INSERT INTO "Operadores"("Id", "Nombre", "Activo", "FechaCreacion")
                     VALUES ({OperadorA}, 'Operador A', true, now()), ({OperadorB}, 'Operador B', true, now());
                 INSERT INTO "Comercios"("Id", "Nombre", "Activo", "FechaCreacion")
-                    VALUES (1, 'Comercio', true, now());
+                    VALUES ({ComercioCompartido}, 'Comercio', true, now()),
+                           ({ComercioSoloDeA}, 'Otro comercio', true, now()),
+                           ({ComercioSoloDeB}, 'Comercio de B', true, now());
+                INSERT INTO "OperadoresComercios"("OperadorId", "ComercioId", "FechaVinculacion", "Activo")
+                    VALUES ({OperadorA}, {ComercioCompartido}, now(), true),
+                           ({OperadorB}, {ComercioCompartido}, now(), true),
+                           ({OperadorA}, {ComercioSoloDeA}, now(), true),
+                           ({OperadorB}, {ComercioSoloDeB}, now(), true);
                 INSERT INTO "Destinatarios"("Id", "ComercioId", "Nombre", "Apellido", "FechaCreacion")
-                    VALUES (1, 1, 'Ana', 'Silva', now());
+                    VALUES (1, {ComercioCompartido}, 'Ana', 'Silva', now()),
+                           ({DestinatarioComercio2}, {ComercioSoloDeA}, 'Bruno', 'Pereira', now()),
+                           ({DestinatarioComercio3}, {ComercioSoloDeB}, 'Carla', 'Rodríguez', now());
                 INSERT INTO "Direcciones"("Id", "DestinatarioId", "Calle", "Numero", "Ciudad", "Departamento", "Activa")
-                    VALUES (1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo', true);
+                    VALUES (1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo', true),
+                           (3, {DestinatarioComercio3}, 'Colonia', '900', 'Montevideo', 'Montevideo', true);
                 INSERT INTO "Envios"("Id", "OperadorId", "ComercioId", "DestinatarioId",
                         "CodigoSeguimiento", "FechaCreacion", "Estado", "Modalidad",
                         "DireccionEntrega_Calle", "DireccionEntrega_Numero",
                         "DireccionEntrega_Ciudad", "DireccionEntrega_Departamento")
                     VALUES ({EnvioDeA}, {OperadorA}, 1, 1,  'CODIGOA', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo'),
-                           ({EnvioDeB}, {OperadorB}, 1, 1,  'CODIGOB', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo');
+                           ({EnvioDeB}, {OperadorB}, 1, 1,  'CODIGOB', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo'),
+                           ({EnvioDeAComercio2}, {OperadorA}, {ComercioSoloDeA}, {DestinatarioComercio2}, 'CODIGOC', now(), 1, 1,
+                            'Ejido', '55', 'Montevideo', 'Montevideo');
                 INSERT INTO "Bultos"("EnvioId", "Codigo", "PesoKg", "LargoCm", "AnchoCm", "AltoCm")
                     VALUES ({EnvioDeA}, 'BA1', 1, 10, 10, 10), ({EnvioDeB}, 'BB1', 1, 10, 10, 10);
+                INSERT INTO "IntentosEntrega"("EnvioId", "NumeroIntento", "FechaHora", "FechaRecepcion", "Exitoso")
+                    VALUES ({EnvioDeA}, 1, now(), now(), false), ({EnvioDeB}, 1, now(), now(), false);
                 """);
         }
 
@@ -65,9 +90,10 @@ public class BaseConDosOperadores : IAsyncLifetime
     }
 
     // Un DbContext como el de la aplicación: usuario sin privilegios + interceptor del operador
-    public ApplicationDbContext CrearContexto(int? operadorId)
+    // (y del comercio, para simular a un usuario de comercio)
+    public ApplicationDbContext CrearContexto(int? operadorId, int? comercioId = null)
     {
-        var contexto = new ContextoOperadorFijo(operadorId);
+        var contexto = new ContextoOperadorFijo(operadorId, comercioId);
 
         var opciones = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(CadenaAplicacion)

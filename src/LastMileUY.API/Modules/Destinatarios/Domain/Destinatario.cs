@@ -1,8 +1,9 @@
 ﻿namespace LastMileUY.API.Modules.Destinatarios.Domain;
 
+using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 
-public class Destinatario
+public class Destinatario : IPerteneceAComercio
 {
     public int Id { get; set; }
 

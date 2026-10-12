@@ -1,6 +1,7 @@
 ﻿namespace LastMileUY.API.Modules.Envios.Domain;
 
 using System.Security.Cryptography;
+using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.API.Modules.Entregas.Domain;
@@ -8,7 +9,7 @@ using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Modules.Notificaciones.Domain;
 using LastMileUY.API.Modules.Tarifas.Domain;
 
-public class Envio : IPerteneceAOperador
+public class Envio : IPerteneceAOperador, IPerteneceAComercio
 {
     // Sin caracteres que se confundan entre sí (0/O, 1/I/L)
     private const string CaracteresCodigo = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";

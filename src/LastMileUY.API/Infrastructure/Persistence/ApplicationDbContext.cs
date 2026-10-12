@@ -28,8 +28,10 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         this.contextoOperador = contextoOperador;
     }
 
-    // Operador del pedido actual. Los filtros globales lo leen en cada consulta.
+    // Operador y comercio del pedido actual. Los filtros globales los leen en cada consulta.
     public int? OperadorActual => contextoOperador.OperadorId;
+
+    public int? ComercioActual => contextoOperador.ComercioId;
 
     
     // Operadores
@@ -90,7 +92,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         );
 
         // Primera barrera del multitenancy: toda entidad de un operador
-        // se filtra sola por el operador actual.
+        // se filtra sola por el operador actual (y por el comercio, si es de un comercio).
         var entidadesDeOperador = modelBuilder.Model.GetEntityTypes()
             .Select(t => t.ClrType)
             .Where(t => typeof(IPerteneceAOperador).IsAssignableFrom(t))
@@ -98,8 +100,14 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
         foreach (var tipo in entidadesDeOperador)
         {
-            MetodoFiltroOperador.MakeGenericMethod(tipo).Invoke(this, [modelBuilder]);
+            var metodo = typeof(IPerteneceAComercio).IsAssignableFrom(tipo)
+                ? MetodoFiltroOperadorYComercio
+                : MetodoFiltroOperador;
+
+            metodo.MakeGenericMethod(tipo).Invoke(this, [modelBuilder]);
         }
+
+        AplicarFiltrosDeTablasHijas(modelBuilder);
 
         modelBuilder.Entity<Operador>()
             .HasMany(o => o.Comercios)
@@ -135,11 +143,70 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             nameof(AplicarFiltroOperador),
             BindingFlags.NonPublic | BindingFlags.Instance)!;
 
+    private static readonly MethodInfo MetodoFiltroOperadorYComercio =
+        typeof(ApplicationDbContext).GetMethod(
+            nameof(AplicarFiltroOperadorYComercio),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
     // Sin operador (OperadorActual null) la comparación da falso y no se ve nada.
     private void AplicarFiltroOperador<T>(ModelBuilder modelBuilder)
         where T : class, IPerteneceAOperador
     {
         modelBuilder.Entity<T>().HasQueryFilter(e => e.OperadorId == OperadorActual);
+    }
+
+    // Segundo nivel: un usuario de comercio solo ve lo de su comercio.
+    // Un usuario del operador (sin comercio) ve lo de todos los comercios del operador.
+    private void AplicarFiltroOperadorYComercio<T>(ModelBuilder modelBuilder)
+        where T : class, IPerteneceAOperador, IPerteneceAComercio
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e =>
+            e.OperadorId == OperadorActual
+            && (ComercioActual == null || e.ComercioId == ComercioActual));
+    }
+
+    // Tablas que no tienen OperadorId: se ven solo si se ve su "padre", que ya está filtrado.
+    // Es el mismo criterio que las políticas RLS de la migración AislamientoCompleto.
+    private void AplicarFiltrosDeTablasHijas(ModelBuilder modelBuilder)
+    {
+        // Hijas del envío
+        modelBuilder.Entity<Bulto>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<EventoEnvio>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<IntentoEntrega>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<Parada>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<Devolucion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<Notificacion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<EntregaAviso>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<PruebaEntrega>().HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));
+
+        // Hijas de la ruta
+        modelBuilder.Entity<Incidencia>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
+        modelBuilder.Entity<Posicion>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
+        modelBuilder.Entity<Rendicion>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
+
+        // Tarifas y liquidaciones
+        modelBuilder.Entity<Tarifa>().HasQueryFilter(x => CuadrosTarifarios.Any(c => c.Id == x.CuadroTarifarioId));
+        modelBuilder.Entity<AjusteTarifa>().HasQueryFilter(x => Tarifas.Any(t => t.Id == x.TarifaId));
+        modelBuilder.Entity<DetalleLiquidacion>().HasQueryFilter(x => Liquidaciones.Any(l => l.Id == x.LiquidacionId));
+
+        // Hijas de la zona
+        modelBuilder.Entity<FranjaHoraria>().HasQueryFilter(x => Zonas.Any(z => z.Id == x.ZonaId));
+
+        // Destinatarios: son del comercio. El usuario de un comercio ve los suyos;
+        // el operador ve los de los comercios con los que trabaja.
+        modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
+            ComercioActual != null
+                ? d.ComercioId == ComercioActual
+                : OperadoresComercios.Any(oc => oc.ComercioId == d.ComercioId && oc.OperadorId == OperadorActual));
+        modelBuilder.Entity<Direccion>().HasQueryFilter(x => Destinatarios.Any(d => d.Id == x.DestinatarioId));
+
+        // Comercios: el usuario de un comercio ve el suyo; el operador, los comercios con los que trabaja.
+        // Solo filtro de EF, sin RLS: al dar de alta un comercio todavía no está vinculado a ningún
+        // operador, y RLS no dejaría devolver su Id recién creado.
+        modelBuilder.Entity<Comercio>().HasQueryFilter(c =>
+            ComercioActual != null
+                ? c.Id == ComercioActual
+                : OperadoresComercios.Any(oc => oc.ComercioId == c.Id && oc.OperadorId == OperadorActual));
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -183,6 +250,30 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             {
                 throw new InvalidOperationException(
                     $"No se puede cambiar el operador de {entrada.Entity.GetType().Name}.");
+            }
+        }
+
+        // Segundo nivel: un usuario de comercio solo crea cosas de su comercio.
+        // Un usuario del operador (sin comercio) elige el comercio, y RLS verifica que trabajen juntos.
+        foreach (var entrada in ChangeTracker.Entries<IPerteneceAComercio>())
+        {
+            if (entrada.State == EntityState.Added && ComercioActual is not null)
+            {
+                if (entrada.Entity.ComercioId == 0)
+                {
+                    entrada.Entity.ComercioId = ComercioActual.Value;
+                }
+                else if (entrada.Entity.ComercioId != ComercioActual)
+                {
+                    throw new InvalidOperationException(
+                        $"No se puede crear {entrada.Entity.GetType().Name} para otro comercio.");
+                }
+            }
+            else if (entrada.State == EntityState.Modified
+                     && entrada.Property(e => e.ComercioId).IsModified)
+            {
+                throw new InvalidOperationException(
+                    $"No se puede cambiar el comercio de {entrada.Entity.GetType().Name}.");
             }
         }
     }

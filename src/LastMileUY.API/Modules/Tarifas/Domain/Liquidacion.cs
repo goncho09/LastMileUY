@@ -1,8 +1,9 @@
 ﻿namespace LastMileUY.API.Modules.Tarifas.Domain;
 
+using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 
-public class Liquidacion : IPerteneceAOperador
+public class Liquidacion : IPerteneceAOperador, IPerteneceAComercio
 {
     public int Id { get; set; }
 

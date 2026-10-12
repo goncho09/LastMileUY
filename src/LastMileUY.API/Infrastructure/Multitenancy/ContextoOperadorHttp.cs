@@ -2,19 +2,21 @@ using System.Security.Claims;
 
 namespace LastMileUY.API.Infrastructure.Multitenancy;
 
-// Toma el operador del usuario que inició sesión (claim "operador_id").
+// Toma el operador y el comercio del usuario que inició sesión (claims "operador_id" y "comercio_id").
 // Nunca de un parámetro del pedido: eso lo podría cambiar cualquiera.
 public class ContextoOperadorHttp(IHttpContextAccessor httpContextAccessor) : IContextoOperador
 {
     public const string ClaimOperadorId = "operador_id";
+    public const string ClaimComercioId = "comercio_id";
 
-    public int? OperadorId
+    public int? OperadorId => LeerClaim(ClaimOperadorId);
+
+    public int? ComercioId => LeerClaim(ClaimComercioId);
+
+    private int? LeerClaim(string tipo)
     {
-        get
-        {
-            var valor = httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimOperadorId);
+        var valor = httpContextAccessor.HttpContext?.User.FindFirstValue(tipo);
 
-            return int.TryParse(valor, out var operadorId) ? operadorId : null;
-        }
+        return int.TryParse(valor, out var id) ? id : null;
     }
 }
