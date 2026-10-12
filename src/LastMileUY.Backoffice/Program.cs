@@ -1,6 +1,7 @@
 using LastMileUY.Backoffice.Servicios;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddHttpContextAccessor();
+
+// Claves con las que se cifra la cookie de sesión. Si se guardan en una carpeta
+// (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
+var directorioClaves = builder.Configuration["DataProtection:Directorio"];
+
+if (!string.IsNullOrWhiteSpace(directorioClaves))
+{
+    builder.Services.AddDataProtection()
+        .SetApplicationName("LastMileUY.Backoffice")
+        .PersistKeysToFileSystem(new DirectoryInfo(directorioClaves));
+}
 
 // De dónde salen los envíos: datos de prueba en memoria o la API real por HTTP.
 var api = builder.Configuration.GetSection("Api");

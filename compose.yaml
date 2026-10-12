@@ -37,6 +37,10 @@
       SeedAdmin__Password: ${SeedAdmin__Password:?Configurar SeedAdmin__Password}
       SeedOperadorPrueba__Email: ${SeedOperadorPrueba__Email:?Configurar SeedOperadorPrueba__Email}
       SeedOperadorPrueba__Password: ${SeedOperadorPrueba__Password:?Configurar SeedOperadorPrueba__Password}
+      # Claves de las cookies de sesión en un volumen: las sesiones sobreviven a recrear el contenedor
+      DataProtection__Directorio: /claves
+    volumes:
+      - claves_api:/claves
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +56,9 @@
       # Usa la API real (no los datos de prueba); el login es contra la API
       Api__UsarDatosDePrueba: "false"
       Api__UrlBase: "http://lastmileuy.api:8080/"
+      DataProtection__Directorio: /claves
+    volumes:
+      - claves_backoffice:/claves
     depends_on:
       - lastmileuy.api
 
@@ -81,3 +88,5 @@
 
 volumes:
   postgres_data:
+  claves_api:
+  claves_backoffice:

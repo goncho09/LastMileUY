@@ -21,4 +21,9 @@ RUN dotnet publish "./LastMileUY.Backoffice.csproj" -c $BUILD_CONFIGURATION -o /
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Carpeta para las claves de las cookies (compose monta ahí un volumen).
+# La app corre sin root, así que la carpeta tiene que ser de su usuario.
+USER root
+RUN mkdir -p /claves && chown $APP_UID /claves
+USER $APP_UID
 ENTRYPOINT ["dotnet", "LastMileUY.Backoffice.dll"]

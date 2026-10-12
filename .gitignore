@@ -481,3 +481,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Reporte de cobertura (dotnet test --collect)
+cobertura/

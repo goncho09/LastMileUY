@@ -17,10 +17,34 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restaurar
-        run: dotnet restore LastMileUY.slnx
+        run: |
+          dotnet restore LastMileUY.slnx
+          dotnet tool restore
 
       - name: Compilar
         run: dotnet build LastMileUY.slnx --no-restore --configuration Release
 
-      - name: Pruebas
-        run: dotnet test LastMileUY.slnx --no-build --configuration Release --verbosity normal
+      # Las pruebas de aislamiento levantan PostgreSQL con Testcontainers (Docker ya viene en el runner)
+      - name: Pruebas (con cobertura)
+        run: >
+          dotnet test LastMileUY.slnx --no-build --configuration Release --verbosity normal
+          --collect:"XPlat Code Coverage" --results-directory cobertura
+
+      # Resumen de cobertura en la página de la ejecución (sin contar pruebas ni migraciones generadas)
+      - name: Reporte de cobertura
+        if: always()
+        run: |
+          dotnet reportgenerator \
+            -reports:"cobertura/**/coverage.cobertura.xml" \
+            -targetdir:cobertura/reporte \
+            -reporttypes:"MarkdownSummaryGithub;Html" \
+            -assemblyfilters:"-*.Tests" \
+            -classfilters:"-LastMileUY.API.Infrastructure.Persistence.Migrations.*"
+          cat cobertura/reporte/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar el reporte completo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: cobertura/reporte
