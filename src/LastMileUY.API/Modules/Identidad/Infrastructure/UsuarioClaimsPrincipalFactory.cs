@@ -28,6 +28,14 @@ public class UsuarioClaimsPrincipalFactory(
                 usuario.OperadorId.Value.ToString()));
         }
 
+        // Segundo nivel del multitenancy: el usuario de un comercio solo ve lo de su comercio
+        if (usuario.ComercioId.HasValue)
+        {
+            identity.AddClaim(new Claim(
+                ContextoOperadorHttp.ClaimComercioId,
+                usuario.ComercioId.Value.ToString()));
+        }
+
         return identity;
     }
 }

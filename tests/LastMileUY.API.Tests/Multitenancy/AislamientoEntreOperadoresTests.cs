@@ -1,5 +1,7 @@
 namespace LastMileUY.API.Tests.Multitenancy;
 
+using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -150,23 +152,36 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
 
     // --- Que nadie se olvide de RLS ---
 
+    // Tablas sin RLS a propósito. Si alguien agrega una tabla nueva sin política, la prueba falla
+    // y obliga a decidir: o se le pone RLS, o se agrega acá con su motivo.
+    private static readonly string[] TablasSinRls =
+    [
+        // Identity: el login necesita leer el usuario antes de saber de qué operador es
+        "AspNetUsers", "AspNetRoles", "AspNetUserRoles", "AspNetUserClaims",
+        "AspNetRoleClaims", "AspNetUserLogins", "AspNetUserTokens",
+        // Historial de migraciones de EF
+        "__EFMigrationsHistory",
+        // Operadores: el comercio necesita verlos para elegir con cuál trabajar
+        "Operadores",
+        // OperadoresComercios: la usan las propias políticas para saber quién trabaja con quién
+        "OperadoresComercios",
+        // Comercios: al darlo de alta todavía no tiene operador; se protege con el filtro de EF
+        "Comercios"
+    ];
+
     [Fact]
-    public async Task Toda_tabla_con_OperadorId_tiene_RLS_forzado()
+    public async Task Toda_tabla_tiene_RLS_forzado_salvo_las_justificadas()
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);
         await conexion.OpenAsync();
 
-        // Usuarios: el login necesita leerlos antes de saber el operador.
-        // OperadoresComercios: el comercio la usa para elegir con qué operador trabajar.
         const string sql = """
             SELECT c.relname
             FROM pg_class c
-            JOIN information_schema.columns col
-              ON col.table_name = c.relname AND col.column_name = 'OperadorId'
-            WHERE col.table_schema = 'public'
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
               AND c.relkind = 'r'
               AND NOT (c.relrowsecurity AND c.relforcerowsecurity)
-              AND c.relname NOT IN ('AspNetUsers', 'OperadoresComercios')
             """;
 
         await using var comando = new NpgsqlCommand(sql, conexion);
@@ -178,7 +193,25 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
             sinRls.Add(lector.GetString(0));
         }
 
-        Assert.Empty(sinRls);
+        Assert.Empty(sinRls.Except(TablasSinRls));
+    }
+
+    [Fact]
+    public async Task Toda_entidad_tiene_filtro_de_EF_salvo_las_justificadas()
+    {
+        await using var db = baseDeDatos.CrearContexto(OperadorA);
+
+        // Identity (el login busca usuarios sin operador), Operador y OperadorComercio (ver TablasSinRls)
+        var sinFiltro = db.Model.GetEntityTypes()
+            .Where(t => !t.GetDeclaredQueryFilters().Any())
+            .Select(t => t.ClrType)
+            .Where(t => t.Namespace?.StartsWith("Microsoft.AspNetCore.Identity") != true)
+            .Where(t => t != typeof(Usuario) && t != typeof(Rol))
+            .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
+            .Select(t => t.Name)
+            .ToList();
+
+        Assert.Empty(sinFiltro);
     }
 
     [Fact]

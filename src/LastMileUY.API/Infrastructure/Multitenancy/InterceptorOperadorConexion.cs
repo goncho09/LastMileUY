@@ -3,11 +3,13 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace LastMileUY.API.Infrastructure.Multitenancy;
 
-// Cada vez que EF abre una conexión, carga en PostgreSQL la variable app.operador_id.
-// Las políticas RLS comparan contra esa variable (segunda barrera del ADR-01).
+// Cada vez que EF abre una conexión, carga en PostgreSQL las variables app.operador_id y app.comercio_id.
+// Las políticas RLS comparan contra esas variables (segunda barrera del ADR-01).
+// Se cargan las dos siempre: la conexión vuelve al pool y la usa otro pedido.
 public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : DbConnectionInterceptor
 {
-    private const string Sql = "SELECT set_config('app.operador_id', @operador, false)";
+    private const string Sql =
+        "SELECT set_config('app.operador_id', @operador, false), set_config('app.comercio_id', @comercio, false)";
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {
@@ -27,12 +29,18 @@ public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : D
         var comando = connection.CreateCommand();
         comando.CommandText = Sql;
 
-        // Sin operador se carga vacío: la política lo toma como "ninguno" y no devuelve filas
-        var parametro = comando.CreateParameter();
-        parametro.ParameterName = "operador";
-        parametro.Value = contextoOperador.OperadorId?.ToString() ?? string.Empty;
-        comando.Parameters.Add(parametro);
+        // Vacío = ninguno. Sin operador la política no devuelve filas; sin comercio no filtra por comercio.
+        AgregarParametro(comando, "operador", contextoOperador.OperadorId);
+        AgregarParametro(comando, "comercio", contextoOperador.ComercioId);
 
         return comando;
+    }
+
+    private static void AgregarParametro(DbCommand comando, string nombre, int? valor)
+    {
+        var parametro = comando.CreateParameter();
+        parametro.ParameterName = nombre;
+        parametro.Value = valor?.ToString() ?? string.Empty;
+        comando.Parameters.Add(parametro);
     }
 }

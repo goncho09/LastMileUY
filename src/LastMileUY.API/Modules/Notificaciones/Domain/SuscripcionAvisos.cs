@@ -1,8 +1,9 @@
 ﻿namespace LastMileUY.API.Modules.Notificaciones.Domain;
 
+using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 
-public class SuscripcionAvisos : IPerteneceAOperador
+public class SuscripcionAvisos : IPerteneceAOperador, IPerteneceAComercio
 {
     public int Id { get; set; }
 
