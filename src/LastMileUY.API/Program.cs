@@ -74,6 +74,10 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Primero las tablas (si corresponde), después los datos iniciales
+await MigracionesAlIniciar.AplicarSiCorrespondeAsync(app);
+await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
+
 await IdentitySeeder.SeedRolesAsync(app.Services);
 
 
@@ -84,7 +88,6 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
     await IdentitySeeder.SeedAdminAsync(app.Services);
     await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
-    await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 }
 
 app.UseHttpsRedirection();

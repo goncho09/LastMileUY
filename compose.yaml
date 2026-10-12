@@ -27,7 +27,12 @@
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=lastmileuy;Username=lastmileuy;Password=${POSTGRES_PASSWORD:?Configurar POSTGRES_PASSWORD}"
+      # La app usa lastmileuy_app (sin privilegios) para que le aplique el RLS (ADR-01).
+      # Ese rol y su contraseña de desarrollo los crea la migración AislamientoPorOperadorRls.
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=lastmileuy;Username=lastmileuy_app;Password=lastmileuy_app_dev"
+      # El dueño de las tablas solo se usa para aplicar las migraciones al arrancar
+      ConnectionStrings__Migraciones: "Host=postgres;Port=5432;Database=lastmileuy;Username=lastmileuy;Password=${POSTGRES_PASSWORD:?Configurar POSTGRES_PASSWORD}"
+      BaseDeDatos__AplicarMigraciones: "true"
       SeedAdmin__Email: ${SeedAdmin__Email:?Configurar SeedAdmin__Email}
       SeedAdmin__Password: ${SeedAdmin__Password:?Configurar SeedAdmin__Password}
       SeedOperadorPrueba__Email: ${SeedOperadorPrueba__Email:?Configurar SeedOperadorPrueba__Email}
