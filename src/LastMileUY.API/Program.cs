@@ -153,3 +153,6 @@ app.MapOperadorEndpoints();
 app.MapDestinatariosEndpoints();
 
 app.Run();
+
+// Visible para las pruebas de punta a punta (WebApplicationFactory<Program>)
+public partial class Program;
