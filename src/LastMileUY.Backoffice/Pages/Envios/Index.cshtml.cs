@@ -9,7 +9,7 @@ namespace LastMileUY.Backoffice.Pages.Envios;
 // Listado de envíos del operador, con filtro por estado, búsqueda y paginación
 public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : PageModel
 {
-    // Los filtros vienen en la URL (?estado=...&buscar=...&pagina=...)
+    // Los filtros vienen en la URL (?estado=...&buscar=...&canal=...&pagina=...)
     [BindProperty(SupportsGet = true)]
     public string? Estado { get; set; }
 
@@ -18,6 +18,10 @@ public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : Page
 
     [BindProperty(SupportsGet = true)]
     public int Pagina { get; set; } = 1;
+
+    // Portal o Api: para ver, por ejemplo, solo lo que cargaron los comercios desde su portal
+    [BindProperty(SupportsGet = true)]
+    public string? Canal { get; set; }
 
     public PaginaDto<EnvioResumenDto> Resultado { get; private set; } = new([], 0, 1, 20);
 
@@ -32,7 +36,7 @@ public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : Page
 
         try
         {
-            Resultado = await enviosApi.ListarAsync(new FiltroEnvios(Estado, Buscar, Pagina), ct);
+            Resultado = await enviosApi.ListarAsync(new FiltroEnvios(Estado, Buscar, Pagina, Canal: Canal), ct);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -46,6 +50,7 @@ public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : Page
     {
         ["estado"] = Estado,
         ["buscar"] = Buscar,
+        ["canal"] = Canal,
         ["pagina"] = pagina.ToString()
     };
 }

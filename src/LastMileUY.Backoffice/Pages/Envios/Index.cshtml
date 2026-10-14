@@ -7,18 +7,28 @@ ViewData["Title"] = "Envíos";
 <h1 class="h3 mb-3">Envíos</h1>
 
 <form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-12 col-md-5">
+    <div class="col-12 col-md-4">
         <label for="buscar" class="form-label">Buscar</label>
         <input id="buscar" name="buscar" value="@Model.Buscar" class="form-control"
                placeholder="Código, referencia o destinatario"/>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-3">
         <label for="estado" class="form-label">Estado</label>
         <select id="estado" name="estado" class="form-select">
             <option value="">Todos</option>
             @foreach (var estado in EstadosEnvio.Todos)
             {
             <option value="@estado.Valor" selected="@(estado.Valor == Model.Estado)">@estado.Texto</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-md-2">
+        <label for="canal" class="form-label">Origen</label>
+        <select id="canal" name="canal" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var canal in CanalesIngreso.Todos)
+            {
+            <option value="@canal.Valor" selected="@(canal.Valor == Model.Canal)">@canal.Texto</option>
             }
         </select>
     </div>
@@ -34,7 +44,7 @@ ViewData["Title"] = "Envíos";
 }
 else if (Model.Resultado.Items.Count == 0)
 {
-<div class="alert alert-light border">@(string.IsNullOrWhiteSpace(Model.Estado) && string.IsNullOrWhiteSpace(Model.Buscar) ? "Todavía no hay envíos." : "No hay envíos que coincidan con el filtro.")</div>
+<div class="alert alert-light border">@(string.IsNullOrWhiteSpace(Model.Estado) && string.IsNullOrWhiteSpace(Model.Buscar) && string.IsNullOrWhiteSpace(Model.Canal) ?"Todavía no hay envíos." : "No hay envíos que coincidan con el filtro.")</div>
 }
 else
 {
@@ -50,6 +60,7 @@ else
             <th>Destinatario</th>
             <th>Destino</th>
             <th class="text-center">Bultos</th>
+            <th>Origen</th>
             <th>Estado</th>
             <th>Creado</th>
             <th></th>
@@ -65,6 +76,7 @@ else
             <td>@envio.Destinatario</td>
             <td>@envio.Ciudad, @envio.Departamento</td>
             <td class="text-center">@envio.CantidadBultos</td>
+            <td><span class="badge @CanalesIngreso.ClaseCss(envio.Canal)">@CanalesIngreso.Texto(envio.Canal)</span></td>
             <td>
                 <span class="badge @EstadosEnvio.ClaseCss(envio.Estado)">@EstadosEnvio.Texto(envio.Estado)</span>
                 @if (envio.Modalidad == "Urgente")

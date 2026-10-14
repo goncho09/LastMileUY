@@ -396,6 +396,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("Canal")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CodigoSeguimiento")
                         .IsRequired()
                         .HasMaxLength(20)

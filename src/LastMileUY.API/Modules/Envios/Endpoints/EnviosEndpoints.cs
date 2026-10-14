@@ -15,7 +15,7 @@ public static class EnviosEndpoints
             .WithTags("Envíos")
             .RequireAuthorization();
         
-        // Listado paginado: ?pagina=1&tamanioPagina=20&estado=EnTransito&buscar=texto
+        // Listado paginado: ?pagina=1&tamanioPagina=20&estado=EnTransito&buscar=texto&canal=Portal
         group.MapGet("/", async (
                 ConsultasEnviosService consultas,
                 IContextoOperador contextoOperador,
@@ -23,7 +23,8 @@ public static class EnviosEndpoints
                 int pagina = 1,
                 int tamanioPagina = 20,
                 string? estado = null,
-                string? buscar = null) =>
+                string? buscar = null,
+                string? canal = null) =>
             {
                 if (contextoOperador.OperadorId is null)
                     return Results.Unauthorized();
@@ -31,7 +32,7 @@ public static class EnviosEndpoints
                 try
                 {
                     var envios = await consultas.ListarAsync(
-                        pagina, tamanioPagina, estado, buscar, cancellationToken);
+                        pagina, tamanioPagina, estado, buscar, canal, cancellationToken);
 
                     return Results.Ok(envios);
                 }
@@ -77,6 +78,7 @@ public static class EnviosEndpoints
                     var envio = await service.EjecutarAsync(
                         request,
                         usuario.FindFirstValue(ClaimTypes.NameIdentifier),
+                        CrearEnvioService.CanalDe(usuario),
                         cancellationToken);
 
                     return Results.Created(

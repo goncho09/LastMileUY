@@ -18,6 +18,7 @@ public class ConsultasEnviosService(ApplicationDbContext db)
         int tamanioPagina,
         string? estado,
         string? buscar,
+        string? canal = null,
         CancellationToken cancellationToken = default)
     {
         pagina = Math.Max(1, pagina);
@@ -38,6 +39,17 @@ public class ConsultasEnviosService(ApplicationDbContext db)
             }
 
             consulta = consulta.Where(x => x.Envio.Estado == estadoBuscado);
+        }
+
+        if (!string.IsNullOrWhiteSpace(canal))
+        {
+            if (!Enum.TryParse<CanalIngreso>(canal, ignoreCase: true, out var canalBuscado)
+                || !Enum.IsDefined(canalBuscado))
+            {
+                throw new ArgumentException($"El canal '{canal}' no existe.");
+            }
+
+            consulta = consulta.Where(x => x.Envio.Canal == canalBuscado);
         }
 
         if (!string.IsNullOrWhiteSpace(buscar))
@@ -68,7 +80,10 @@ public class ConsultasEnviosService(ApplicationDbContext db)
                 x.Envio.Estado.ToString(),
                 x.Envio.Modalidad.ToString(),
                 x.Envio.Bultos.Count,
-                x.Envio.FechaCreacion))
+                x.Envio.FechaCreacion)
+            {
+                Canal = x.Envio.Canal.ToString()
+            })
             .ToListAsync(cancellationToken);
 
         return new PaginaDto<EnvioResumenDto>(items, total, pagina, tamanioPagina);
@@ -142,6 +157,7 @@ public class ConsultasEnviosService(ApplicationDbContext db)
         {
             EstadosSiguientes = envio.EstadosSiguientes(regla).Select(e => e.ToString()).ToList(),
             IntentosFallidos = envio.IntentosFallidos,
+            Canal = envio.Canal.ToString(),
             Regla = regla is null
                 ? null
                 : new ReglaAplicadaDto(
