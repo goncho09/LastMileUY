@@ -1,0 +1,305 @@
+@page "/envios/nuevo"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.Contracts.Envios
+@* Contracts.Envios también tiene DestinatarioDto y DireccionDto (los del detalle del envío): se usan los de Destinatarios *@
+@using DestinatarioDto = LastMileUY.Contracts.Destinatarios.DestinatarioDto
+@using DireccionDto = LastMileUY.Contracts.Destinatarios.DireccionDto
+@inject IDestinatariosApi DestinatariosApi
+@inject IEnviosApi EnviosApi
+@inject NavigationManager Navegacion
+@inject ILogger<Nuevo> Logger
+
+@* Página interactiva (Blazor Server): elegir destinatario cambia las direcciones y
+   agregar/quitar bultos actualiza la lista al instante, sin recargar. *@
+
+<PageTitle>Nuevo envío</PageTitle>
+
+<h1>Nuevo envío</h1>
+
+
+@if (creado is not null)
+{
+    <div class="alert alert-success">
+        <h4 class="alert-heading">Envío creado</h4>
+        <p class="mb-1">Código de seguimiento: <strong class="fs-5">@creado.CodigoSeguimiento</strong></p>
+        <p class="mb-1">Estado: @creado.Estado</p>
+        <p class="mb-0">Fecha: @creado.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+
+    <button class="btn btn-primary" @onclick="NuevoEnvio">Crear otro envío</button>
+}
+else if (destinatarios is null)
+{
+    <p>@(errorCarga ?? "Cargando destinatarios…")</p>
+}
+else if (destinatarios.Count == 0)
+{
+    <div class="alert alert-warning">
+        Tu comercio todavía no tiene destinatarios cargados.
+    </div>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="card-header">1. Destinatario y dirección de entrega</div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <label class="form-label" for="destinatario">Destinatario</label>
+                <select id="destinatario" class="form-select" @bind="destinatarioId" @bind:after="AlCambiarDestinatario">
+                    <option value="">Elegí un destinatario…</option>
+                    @foreach (var d in destinatarios)
+                    {
+                        <option value="@d.Id">@d.Apellido, @d.Nombre</option>
+                    }
+                </select>
+                @if (destinatarioElegido is not null)
+                {
+                    <div class="form-text">
+                        @destinatarioElegido.Email @(destinatarioElegido.Telefono is null ? "" : $"· {destinatarioElegido.Telefono}")
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label" for="direccion">Dirección</label>
+                <select id="direccion" class="form-select" @bind="direccionId"
+                        disabled="@(destinatarioElegido is null || destinatarioElegido.Direcciones.Count == 0)">
+                    <option value="">Elegí una dirección…</option>
+                    @if (destinatarioElegido is not null)
+                    {
+                        foreach (var dir in destinatarioElegido.Direcciones)
+                        {
+                            <option value="@dir.Id">@TextoDireccion(dir)</option>
+                        }
+                    }
+                </select>
+                @if (destinatarioElegido is not null && destinatarioElegido.Direcciones.Count == 0)
+                {
+                    <div class="form-text text-danger">Este destinatario no tiene direcciones activas.</div>
+                }
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label" for="referencia">Referencia externa (opcional)</label>
+                <input id="referencia" class="form-control" maxlength="100" @bind="referenciaExterna"
+                       placeholder="Ej.: ENV-001"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>2. Bultos (@bultos.Count)</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AgregarBulto"
+                    disabled="@(bultos.Count >= MaximoBultos)">
+                + Agregar bulto
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <table class="table mb-0 align-middle">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Peso (kg)</th>
+                    <th>Largo (cm)</th>
+                    <th>Ancho (cm)</th>
+                    <th>Alto (cm)</th>
+                    <th>Descripción</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < bultos.Count; i++)
+                {
+                    var numero = i + 1;
+                    var bulto = bultos[i];
+                    <tr @key="bulto">
+                        <td>@numero</td>
+                        <td><input type="number" step="0.01" min="0.01" max="1000" class="form-control form-control-sm" @bind="bulto.PesoKg"/></td>
+                        <td><input type="number" step="0.1" min="0.1" max="1000" class="form-control form-control-sm" @bind="bulto.LargoCm"/></td>
+                        <td><input type="number" step="0.1" min="0.1" max="1000" class="form-control form-control-sm" @bind="bulto.AnchoCm"/></td>
+                        <td><input type="number" step="0.1" min="0.1" max="1000" class="form-control form-control-sm" @bind="bulto.AltoCm"/></td>
+                        <td><input class="form-control form-control-sm" maxlength="500" @bind="bulto.Descripcion"/></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Quitar bulto"
+                                    @onclick="() => QuitarBulto(bulto)" disabled="@(bultos.Count == 1)">
+                                Quitar
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (errores.Count > 0)
+    {
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach (var e in errores)
+                {
+                    <li>@e</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <button class="btn btn-primary" @onclick="CrearAsync" disabled="@enviando">
+        @(enviando ? "Creando…" : "Crear envío")
+    </button>
+}
+
+@code {
+    // Mismo límite que la API (CrearEnvioRequest)
+    private const int MaximoBultos = 50;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> EstadoAutenticacion { get; set; } = default!;
+
+    private int comercioId;
+    private string? operadorNombre;
+
+    private List<DestinatarioDto>? destinatarios;
+    private string? errorCarga;
+
+    private int? destinatarioId;
+    private int? direccionId;
+    private string? referenciaExterna;
+    private List<CrearBultoRequest> bultos = [new()];
+
+    private readonly List<string> errores = [];
+    private bool enviando;
+    private EnvioResponse? creado;
+
+    private DestinatarioDto? destinatarioElegido =>
+        destinatarios?.FirstOrDefault(d => d.Id == destinatarioId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var usuario = (await EstadoAutenticacion).User;
+        comercioId = usuario.LeerEntero(ClaimsPortal.ComercioId) ?? 0;
+        operadorNombre = usuario.FindFirst(ClaimsPortal.OperadorNombre)?.Value;
+
+        try
+        {
+            destinatarios = await DestinatariosApi.ListarAsync();
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudieron cargar los destinatarios");
+            errorCarga = "No se pudieron cargar los destinatarios. Probá recargar la página.";
+        }
+    }
+
+    // Al cambiar de destinatario se propone su primera dirección
+    private void AlCambiarDestinatario() =>
+        direccionId = destinatarioElegido?.Direcciones.FirstOrDefault()?.Id;
+
+    private void AgregarBulto()
+    {
+        if (bultos.Count < MaximoBultos)
+            bultos.Add(new CrearBultoRequest());
+    }
+
+    private void QuitarBulto(CrearBultoRequest bulto)
+    {
+        if (bultos.Count > 1)
+            bultos.Remove(bulto);
+    }
+
+    private async Task CrearAsync()
+    {
+        errores.Clear();
+        Validar();
+
+        if (errores.Count > 0)
+            return;
+
+        enviando = true;
+
+        try
+        {
+            var request = new CrearEnvioRequest
+            {
+                ComercioId = comercioId,
+                DestinatarioId = destinatarioId!.Value,
+                DireccionId = direccionId!.Value,
+                ReferenciaExterna = string.IsNullOrWhiteSpace(referenciaExterna) ? null : referenciaExterna.Trim(),
+                Bultos = bultos
+                    .Select(b => new CrearBultoRequest
+                    {
+                        PesoKg = b.PesoKg,
+                        LargoCm = b.LargoCm,
+                        AnchoCm = b.AnchoCm,
+                        AltoCm = b.AltoCm,
+                        Descripcion = string.IsNullOrWhiteSpace(b.Descripcion) ? null : b.Descripcion.Trim()
+                    })
+                    .ToList()
+            };
+
+            var resultado = await EnviosApi.CrearAsync(request);
+
+            if (resultado.Exito)
+                creado = resultado.Envio;
+            else
+                errores.Add(resultado.Error ?? "No se pudo crear el envío.");
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            Logger.LogError(ex, "No se pudo crear el envío");
+            errores.Add("No se pudo conectar con el servidor. Probá de nuevo.");
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+
+    // Las mismas reglas que valida la API, para avisar antes de mandar
+    private void Validar()
+    {
+        if (destinatarioId is null)
+            errores.Add("Elegí un destinatario.");
+
+        if (direccionId is null)
+            errores.Add("Elegí una dirección de entrega.");
+
+        if (bultos.Count == 0)
+            errores.Add("El envío tiene que tener al menos un bulto.");
+
+        for (var i = 0; i < bultos.Count; i++)
+        {
+            var b = bultos[i];
+
+            if (b.PesoKg is <= 0 or > 1000)
+                errores.Add($"Bulto {i + 1}: el peso tiene que ser mayor a 0 y como máximo 1000 kg.");
+
+            if (b.LargoCm is <= 0 or > 1000 || b.AnchoCm is <= 0 or > 1000 || b.AltoCm is <= 0 or > 1000)
+                errores.Add($"Bulto {i + 1}: largo, ancho y alto tienen que ser mayores a 0 y como máximo 1000 cm.");
+        }
+    }
+
+    // Deja la pantalla lista para cargar otro envío (mantiene el destinatario por comodidad)
+    private void NuevoEnvio()
+    {
+        creado = null;
+        referenciaExterna = null;
+        bultos = [new()];
+        errores.Clear();
+    }
+
+    private void IrAlLogin() => Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+
+    private static string TextoDireccion(DireccionDto d) =>
+        $"{d.Calle} {d.Numero}{(d.Apartamento is null ? "" : $" apto {d.Apartamento}")}, {d.Ciudad} ({d.Departamento})";
+}

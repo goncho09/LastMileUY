@@ -8,6 +8,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/LastMileUY.CommercePortal/LastMileUY.CommercePortal.csproj", "src/LastMileUY.CommercePortal/"]
+COPY ["src/LastMileUY.Contracts/LastMileUY.Contracts.csproj", "src/LastMileUY.Contracts/"]
 RUN dotnet restore "src/LastMileUY.CommercePortal/LastMileUY.CommercePortal.csproj"
 COPY . .
 WORKDIR "/src/src/LastMileUY.CommercePortal"
@@ -20,4 +21,9 @@ RUN dotnet publish "./LastMileUY.CommercePortal.csproj" -c $BUILD_CONFIGURATION 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Carpeta para las claves de las cookies (compose monta ahí un volumen).
+# La app corre sin root, así que la carpeta tiene que ser de su usuario.
+USER root
+RUN mkdir -p /claves && chown $APP_UID /claves
+USER $APP_UID
 ENTRYPOINT ["dotnet", "LastMileUY.CommercePortal.dll"]
