@@ -15,6 +15,10 @@ public class AutenticacionApiTests
         }
         """;
 
+    private const string OperadorJson = """
+        { "id": 3, "nombre": "Envíos Rápidos", "colorPrimario": "#0B5CAD", "logoUrl": null, "reglas": [] }
+        """;
+
     [Fact]
     public async Task Login_correcto_devuelve_el_usuario_y_la_cookie_de_la_api()
     {
@@ -23,6 +27,7 @@ public class AutenticacionApiTests
             "/api/auth/login" => ConCookie(Respuesta(HttpStatusCode.OK, "{}"),
                 "LastMileUY.Auth=valor123; path=/; secure; samesite=lax; httponly"),
             "/api/auth/me" => Respuesta(HttpStatusCode.OK, UsuarioJson),
+            "/api/operador" => Respuesta(HttpStatusCode.OK, OperadorJson),
             _ => Respuesta(HttpStatusCode.NotFound, "")
         });
 
@@ -32,10 +37,29 @@ public class AutenticacionApiTests
         Assert.Equal("Operador Uno", sesion.Nombre);
         Assert.Equal(3, sesion.OperadorId);
         Assert.Equal("LastMileUY.Auth=valor123", sesion.CookieApi);
+        Assert.Equal("Envíos Rápidos", sesion.Operador?.Nombre);
+        Assert.Equal("#0B5CAD", sesion.Operador?.ColorPrimario);
 
-        // El pedido a /me se hace con la cookie que devolvió el login
-        var pedidoMe = api.Pedidos.Single(p => p.Ruta == "/api/auth/me");
-        Assert.Equal("LastMileUY.Auth=valor123", pedidoMe.Cookie);
+        // Los pedidos a /me y a /operador se hacen con la cookie que devolvió el login
+        Assert.Equal("LastMileUY.Auth=valor123", api.Pedidos.Single(p => p.Ruta == "/api/auth/me").Cookie);
+        Assert.Equal("LastMileUY.Auth=valor123", api.Pedidos.Single(p => p.Ruta == "/api/operador").Cookie);
+    }
+
+    [Fact]
+    public async Task Un_usuario_sin_operador_no_pide_la_identidad_del_operador()
+    {
+        var api = new ApiFalsa(pedido => pedido.RequestUri!.AbsolutePath switch
+        {
+            "/api/auth/login" => ConCookie(Respuesta(HttpStatusCode.OK, "{}"), "LastMileUY.Auth=x; path=/"),
+            "/api/auth/me" => Respuesta(HttpStatusCode.OK, UsuarioJson.Replace("\"operadorId\": 3", "\"operadorId\": null")),
+            _ => Respuesta(HttpStatusCode.NotFound, "")
+        });
+
+        var sesion = await new AutenticacionApiHttp(Cliente(api)).IniciarSesionAsync("comercio@prueba.test", "clave");
+
+        Assert.NotNull(sesion);
+        Assert.Null(sesion.Operador);
+        Assert.DoesNotContain(api.Pedidos, p => p.Ruta == "/api/operador");
     }
 
     [Fact]

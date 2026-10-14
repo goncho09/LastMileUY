@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Auth;
+using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Login contra la API real: POST api/auth/login y después GET api/auth/me para saber quién es.
+// Login contra la API real: POST api/auth/login, GET api/auth/me para saber quién es
+// y GET api/operador para la identidad visual de su operador.
 // La API responde con una cookie de sesión (Set-Cookie); se guarda para reenviarla en cada llamada.
 public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
 {
@@ -32,22 +34,36 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
         var cookieApi = LeerCookies(login)
             ?? throw new InvalidOperationException("La API no devolvió la cookie de sesión.");
 
-        using var pedido = new HttpRequestMessage(HttpMethod.Get, "api/auth/me");
+        var usuario = await ObtenerAsync<UsuarioAutenticadoResponse>("api/auth/me", cookieApi, ct)
+            ?? throw new InvalidOperationException("La API no devolvió los datos del usuario.");
+
+        // Un usuario de comercio ahora también trae el operador que eligió al entrar,
+        // pero no es personal del operador: no debe entrar al Backoffice.
+        var operadorId = usuario.ComercioId is null ? usuario.OperadorId : null;
+
+        // Nombre, color y logo del operador, para mostrarlos en todas las páginas
+        var operador = operadorId is null
+            ? null
+            : await ObtenerAsync<OperadorActualDto>("api/operador", cookieApi, ct);
+
+        return new SesionIniciada(
+            $"{usuario.Nombre} {usuario.Apellido}".Trim(),
+            usuario.Email,
+            operadorId,
+            cookieApi,
+            operador);
+    }
+
+    // GET con la cookie de la sesión recién iniciada (todavía no está en la sesión del Backoffice)
+    private async Task<T?> ObtenerAsync<T>(string url, string cookieApi, CancellationToken ct)
+    {
+        using var pedido = new HttpRequestMessage(HttpMethod.Get, url);
         pedido.Headers.Add("Cookie", cookieApi);
 
         using var respuesta = await http.SendAsync(pedido, ct);
         respuesta.EnsureSuccessStatusCode();
 
-        var usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioAutenticadoResponse>(ct)
-            ?? throw new InvalidOperationException("La API no devolvió los datos del usuario.");
-
-        return new SesionIniciada(
-            $"{usuario.Nombre} {usuario.Apellido}".Trim(),
-            usuario.Email,
-            // Un usuario de comercio ahora también trae el operador que eligió al entrar,
-            // pero no es personal del operador: no debe entrar al Backoffice.
-            usuario.ComercioId is null ? usuario.OperadorId : null,
-            cookieApi);
+        return await respuesta.Content.ReadFromJsonAsync<T>(ct);
     }
 
     // Arma el encabezado Cookie con todo lo que vino en Set-Cookie ("nombre=valor; nombre2=valor2").

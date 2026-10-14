@@ -151,6 +151,9 @@ public class IdentitySeeder
                 db.Set<Operador>().Add(operador);
             }
 
+            // Colores distintos para que se note en el Backoffice con qué operador se entró
+            operador.ColorPrimario ??= numero == 1 ? "#0B5CAD" : "#1E7F4F";
+
             operadores.Add(operador);
         }
 

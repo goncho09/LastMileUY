@@ -29,3 +29,70 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* Identidad del operador: --color-operador y --color-operador-texto los pone _Layout */
+.navbar-operador {
+    background-color: var(--color-operador);
+}
+
+.navbar-operador .navbar-brand,
+.navbar-operador .nav-link,
+.navbar-operador .navbar-text {
+    color: var(--color-operador-texto);
+}
+
+.navbar-operador .nav-link:hover,
+.navbar-operador .nav-link:focus {
+    color: var(--color-operador-texto);
+    opacity: 0.8;
+}
+
+.operador-inicial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: var(--color-operador-texto);
+    color: var(--color-operador);
+    font-weight: 700;
+}
+
+.operador-logo {
+    height: 2rem;
+    max-width: 8rem;
+    object-fit: contain;
+}
+
+.con-operador .btn-primary {
+    --bs-btn-bg: var(--color-operador);
+    --bs-btn-border-color: var(--color-operador);
+    --bs-btn-color: var(--color-operador-texto);
+    --bs-btn-hover-bg: var(--color-operador);
+    --bs-btn-hover-border-color: var(--color-operador);
+    --bs-btn-hover-color: var(--color-operador-texto);
+    --bs-btn-active-bg: var(--color-operador);
+    --bs-btn-active-border-color: var(--color-operador);
+    --bs-btn-active-color: var(--color-operador-texto);
+}
+
+.con-operador .btn-primary:hover {
+    filter: brightness(0.9);
+}
+
+.con-operador .page-item.active .page-link {
+    background-color: var(--color-operador);
+    border-color: var(--color-operador);
+    color: var(--color-operador-texto);
+}
+
+.muestra-color {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--bs-border-color);
+    vertical-align: text-bottom;
+    background-color: var(--color-operador);
+}
