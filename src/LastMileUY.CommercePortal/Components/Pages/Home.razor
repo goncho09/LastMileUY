@@ -1,7 +1,10 @@
-﻿@page "/"
+@page "/"
+@attribute [Authorize]
+@inject NavigationManager Navegacion
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Portal del comercio</PageTitle>
 
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
+@code {
+    // Por ahora la única pantalla del portal es el alta de envíos
+    protected override void OnInitialized() => Navegacion.NavigateTo("envios/nuevo");
+}

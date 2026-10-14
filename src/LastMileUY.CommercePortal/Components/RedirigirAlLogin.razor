@@ -1,0 +1,10 @@
+@inject NavigationManager Navegacion
+
+@code {
+    // Sin sesión: al login, recordando a qué página quería ir
+    protected override void OnInitialized()
+    {
+        var volverA = Uri.EscapeDataString("/" + Navegacion.ToBaseRelativePath(Navegacion.Uri));
+        Navegacion.NavigateTo($"login?ReturnUrl={volverA}", forceLoad: true);
+    }
+}
