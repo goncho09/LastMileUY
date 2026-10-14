@@ -1,4 +1,5 @@
-﻿using LastMileUY.API.Infrastructure.Multitenancy;
+﻿using System.Security.Claims;
+using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
@@ -14,21 +15,36 @@ public class CrearEnvioService(
 {
     public async Task<EnvioResponse> EjecutarAsync(
         CrearEnvioRequest request,
-        string? responsableId = null,
+        ClaimsPrincipal usuario,
         CancellationToken cancellationToken = default)
     {
         var operadorId = contextoOperador.OperadorId
             ?? throw new UnauthorizedAccessException(
                 "No se pudo identificar el operador autenticado.");
+        
+        var comercioIdUsuario = contextoOperador.ComercioId;
 
-        if (request.ComercioId <= 0 ||
-            request.DestinatarioId <= 0 ||
-            request.DireccionId <= 0)
+        if (usuario.IsInRole("Comercio"))
+        {
+            if (!comercioIdUsuario.HasValue)
+            {
+                throw new UnauthorizedAccessException(
+                    "El usuario de comercio no tiene un comercio asignado.");
+            }
+
+            if (comercioIdUsuario.Value != request.ComercioId)
+            {
+                throw new UnauthorizedAccessException(
+                    "No tenés permisos para crear envíos de otro comercio.");
+            }
+        }
+
+        if (request.DestinatarioId <= 0 || request.DireccionId <= 0)
         {
             throw new ArgumentException(
                 "Los identificadores deben ser mayores a cero.");
         }
-
+        
         ValidarBultos(request.Bultos);
 
         var comercioValido = await db.Set<OperadorComercio>()
@@ -99,7 +115,7 @@ public class CrearEnvioService(
         }
 
         // Primer evento del historial
-        envio.RegistrarAdmision("API", responsableId);
+        envio.RegistrarAdmision("API", usuario.FindFirstValue(ClaimTypes.NameIdentifier));
 
         db.Envios.Add(envio);
 

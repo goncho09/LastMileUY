@@ -26,7 +26,7 @@ public static class EnviosEndpoints
                 string? buscar = null) =>
             {
                 if (contextoOperador.OperadorId is null)
-                    return Results.Unauthorized();
+                    return Results.Forbid();
 
                 try
                 {
@@ -35,14 +35,22 @@ public static class EnviosEndpoints
 
                     return Results.Ok(envios);
                 }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
                 catch (ArgumentException ex)
                 {
-                    return Results.BadRequest(new
-                    {
-                        mensaje = ex.Message
-                    });
+                    return Results.BadRequest(new { mensaje = ex.Message });
                 }
             })
+            .RequireAuthorization(politica =>
+                politica.RequireRole(
+                    "Administrador",
+                    "Operador",
+                    "Comercio",
+                    "Despachador",
+                    "OperarioDeposito"))
             .WithName("ListarEnvios");
 
         group.MapGet("/{id:int}", async (
@@ -52,18 +60,28 @@ public static class EnviosEndpoints
                 CancellationToken cancellationToken) =>
             {
                 if (contextoOperador.OperadorId is null)
-                    return Results.Unauthorized();
+                    return Results.Forbid();
 
-                var envio = await consultas.ObtenerDetalleAsync(id, cancellationToken);
+                try
+                {
+                    var envio = await consultas.ObtenerDetalleAsync(id, cancellationToken);
 
-                if (envio is null)
-                    return Results.NotFound(new
-                    {
-                        mensaje = "El envío no existe."
-                    });
-
-                return Results.Ok(envio);
+                    return envio is null
+                        ? Results.NotFound()
+                        : Results.Ok(envio);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
             })
+            .RequireAuthorization(politica =>
+                politica.RequireRole(
+                    "Administrador",
+                    "Operador",
+                    "Comercio",
+                    "Despachador",
+                    "OperarioDeposito"))
             .WithName("ObtenerEnvioPorId");
 
         group.MapPost("/", async (
@@ -76,7 +94,7 @@ public static class EnviosEndpoints
                 {
                     var envio = await service.EjecutarAsync(
                         request,
-                        usuario.FindFirstValue(ClaimTypes.NameIdentifier),
+                        usuario,
                         cancellationToken);
 
                     return Results.Created(
@@ -85,7 +103,7 @@ public static class EnviosEndpoints
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    return Results.Unauthorized();
+                    return Results.Forbid();
                 }
                 catch (ArgumentException ex)
                 {
@@ -102,6 +120,8 @@ public static class EnviosEndpoints
                     });
                 }
             })
+            .RequireAuthorization(politica =>
+                politica.RequireRole("Comercio", "Operador"))
             .WithName("CrearEnvio");
 
         // Cambio de estado desde el Backoffice. Solo el personal del operador.
@@ -115,7 +135,7 @@ public static class EnviosEndpoints
                 CancellationToken cancellationToken) =>
             {
                 if (contextoOperador.OperadorId is null)
-                    return Results.Unauthorized();
+                    return Results.Forbid();
 
                 try
                 {
@@ -123,7 +143,7 @@ public static class EnviosEndpoints
                         id,
                         request,
                         origen: "Backoffice",
-                        usuario.FindFirstValue(ClaimTypes.NameIdentifier),
+                        usuario,
                         cancellationToken);
 
                     if (!existe)
@@ -131,6 +151,12 @@ public static class EnviosEndpoints
                         {
                             mensaje = "El envío no existe."
                         });
+                    
+                    return Results.Ok(await consultas.ObtenerDetalleAsync(id, cancellationToken));
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
                 }
                 catch (Exception ex) when (ex is ArgumentException or TransicionInvalidaException)
                 {
@@ -146,8 +172,6 @@ public static class EnviosEndpoints
                         mensaje = "Otro usuario modificó el envío al mismo tiempo. Volvé a cargarlo."
                     });
                 }
-
-                return Results.Ok(await consultas.ObtenerDetalleAsync(id, cancellationToken));
             })
             .RequireAuthorization(politica => politica.RequireRole("Operador", "Despachador"))
             .WithName("CambiarEstadoEnvio");

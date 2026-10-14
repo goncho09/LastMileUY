@@ -22,7 +22,8 @@ public class IdentitySeeder
             "Operador",
             "Comercio",
             "Repartidor",
-            "Despachador"
+            "Despachador",
+            "OperarioDeposito"
         ];
 
         foreach (var nombre in roles)

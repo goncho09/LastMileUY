@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.Contracts.Envios;
@@ -16,9 +17,17 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
         int id,
         CambiarEstadoRequest request,
         string origen,
-        string? responsableId,
+        ClaimsPrincipal usuario,
         CancellationToken cancellationToken = default)
     {
+        if (usuario.Identity?.IsAuthenticated != true ||
+            !(usuario.IsInRole("Operador") ||
+              usuario.IsInRole("Despachador")))
+        {
+            throw new UnauthorizedAccessException(
+                "No tenés permisos para cambiar el estado de un envío.");
+        }
+        
         if (!Enum.TryParse<EstadoEnvio>(request.Estado, ignoreCase: true, out var nuevoEstado)
             || !Enum.IsDefined(nuevoEstado))
         {
@@ -41,7 +50,11 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
 
         try
         {
-            envio.CambiarEstado(nuevoEstado, origen, descripcion, responsableId);
+            envio.CambiarEstado(
+                nuevoEstado,
+                origen,
+                descripcion,
+                usuario.FindFirstValue(ClaimTypes.NameIdentifier));
         }
         catch (InvalidOperationException ex)
         {

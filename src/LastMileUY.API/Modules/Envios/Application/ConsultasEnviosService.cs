@@ -1,3 +1,4 @@
+using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.Contracts.Comun;
@@ -8,7 +9,10 @@ namespace LastMileUY.API.Modules.Envios.Application;
 
 // Listado y detalle de envíos para el Backoffice. No filtra por operador a mano:
 // de eso se encargan el filtro global de EF y el RLS de PostgreSQL.
-public class ConsultasEnviosService(ApplicationDbContext db)
+public class ConsultasEnviosService(
+    ApplicationDbContext db,
+    IContextoOperador contextoOperador,
+    IHttpContextAccessor httpContextAccessor)
 {
     public const int TamanioPaginaMaximo = 100;
 
@@ -27,6 +31,14 @@ public class ConsultasEnviosService(ApplicationDbContext db)
             join c in db.Comercios on e.ComercioId equals c.Id
             join d in db.Destinatarios on e.DestinatarioId equals d.Id
             select new { Envio = e, Comercio = c.Nombre, Destinatario = d.Nombre + " " + d.Apellido };
+        
+        var comercioId = ObtenerComercioAutorizado();
+
+        if (comercioId.HasValue)
+        {
+            consulta = consulta.Where(x =>
+                x.Envio.ComercioId == comercioId.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(estado))
         {
@@ -78,11 +90,15 @@ public class ConsultasEnviosService(ApplicationDbContext db)
         int id,
         CancellationToken cancellationToken = default)
     {
+        var comercioId = ObtenerComercioAutorizado();
+        
         var fila = await (
                 from e in db.Envios.AsNoTracking()
                 join c in db.Comercios on e.ComercioId equals c.Id
                 join d in db.Destinatarios on e.DestinatarioId equals d.Id
-                where e.Id == id
+                where e.Id == id &&
+                      (!comercioId.HasValue ||
+                       e.ComercioId == comercioId.Value)
                 select new
                 {
                     Envio = e,
@@ -132,6 +148,19 @@ public class ConsultasEnviosService(ApplicationDbContext db)
         {
             EstadosSiguientes = TransicionesEnvio.DestinosDesde(envio.Estado).Select(e => e.ToString()).ToList()
         };
+    }
+    
+    
+    private int? ObtenerComercioAutorizado()
+    {
+        var usuario = httpContextAccessor.HttpContext?.User;
+
+        if (usuario?.IsInRole("Comercio") != true)
+            return null;
+
+        return contextoOperador.ComercioId
+               ?? throw new UnauthorizedAccessException(
+                   "El usuario de comercio no tiene un comercio asignado.");
     }
 
     // Que un % o _ escrito por el usuario se busque como texto y no como comodín

@@ -41,6 +41,15 @@ builder.Services
     .AddClaimsPrincipalFactory<UsuarioClaimsPrincipalFactory>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddScoped<
+    ISecurityStampValidator,
+    UsuarioSecurityStampValidator>();
+
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(1);
+});
+
 // Claves con las que ASP.NET cifra la cookie de sesión. Si se guardan en una carpeta
 // (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
 var directorioClaves = builder.Configuration["DataProtection:Directorio"];
