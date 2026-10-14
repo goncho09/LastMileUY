@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using LastMileUY.API.Infrastructure.Multitenancy;
+using Microsoft.AspNetCore.Http;
+
 namespace LastMileUY.API.Tests.Envios;
 
 using LastMileUY.API.Modules.Envios.Application;
@@ -12,6 +16,13 @@ using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
 {
+    private static ClaimsPrincipal CrearUsuarioOperador() =>
+        new(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, "usuario-operador-1"),
+            new Claim(ClaimTypes.Role, "Operador")
+        ], "Test"));
+    
     [Fact]
     public async Task Con_los_intentos_agotados_no_se_puede_reprogramar()
     {
@@ -20,7 +31,11 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
 
         await using var db = baseDeDatos.CrearContexto(OperadorA);
         var error = await Assert.ThrowsAsync<TransicionInvalidaException>(() => new CambiarEstadoEnvioService(db)
-            .EjecutarAsync(id, new CambiarEstadoRequest { Estado = "Reprogramado" }, "Backoffice", null));
+            .EjecutarAsync(
+                id,
+                new CambiarEstadoRequest { Estado = "Reprogramado" },
+                "Backoffice",
+                CrearUsuarioOperador()));
 
         Assert.Contains(ReglaDeA, error.Message);
     }
@@ -135,14 +150,31 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
         {
             await using var db = baseDeDatos.CrearContexto(operadorId);
             await new CambiarEstadoEnvioService(db).EjecutarAsync(
-                id, new CambiarEstadoRequest { Estado = estado }, "Backoffice", null);
+                id,
+                new CambiarEstadoRequest { Estado = estado },
+                "Backoffice",
+                CrearUsuarioOperador());
         }
     }
 
     private async Task<EnvioDetalleDto> DetalleAsync(int operadorId, int id)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
-        var detalle = await new ConsultasEnviosService(db).ObtenerDetalleAsync(id);
+
+        var httpContextAccessor = new HttpContextAccessor()
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = CrearUsuarioOperador()
+            }
+        };
+
+        var consultas = new ConsultasEnviosService(
+            db,
+            new ContextoOperadorFijo(operadorId),
+            httpContextAccessor);
+
+        var detalle = await consultas.ObtenerDetalleAsync(id);
 
         Assert.NotNull(detalle);
         return detalle;

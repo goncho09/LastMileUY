@@ -1,3 +1,7 @@
+using System.Security.Claims;
+using LastMileUY.API.Infrastructure.Multitenancy;
+using Microsoft.AspNetCore.Http;
+
 namespace LastMileUY.API.Tests.Envios;
 
 using LastMileUY.API.Modules.Envios.Application;
@@ -8,12 +12,28 @@ using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
 {
+    private static IHttpContextAccessor CrearHttpContextAccessor()
+    {
+        return new HttpContextAccessor
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, "usuario-test"),
+                        new Claim(ClaimTypes.Role, "Operador")
+                    ], "Test"))
+            }
+        };
+    }
+    
     [Fact]
     public async Task El_listado_solo_trae_envios_del_operador()
     {
         await using var db = baseDeDatos.CrearContexto(OperadorB);
 
-        var pagina = await new ConsultasEnviosService(db).ListarAsync(1, 100, null, null);
+        var pagina = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ListarAsync(1, 100, null, null);
 
         Assert.Contains(pagina.Items, e => e.Id == EnvioDeB);
         Assert.DoesNotContain(pagina.Items, e => e.Id == EnvioDeA);
@@ -25,7 +45,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        var pagina = await new ConsultasEnviosService(db).ListarAsync(1, 20, null, "CODIGOA");
+        var pagina = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ListarAsync(1, 20, null, "CODIGOA");
 
         var fila = Assert.Single(pagina.Items);
         Assert.Equal(EnvioDeA, fila.Id);
@@ -44,7 +64,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        var pagina = await new ConsultasEnviosService(db).ListarAsync(1, 100, null, texto);
+        var pagina = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ListarAsync(1, 100, null, texto);
 
         Assert.Contains(pagina.Items, e => e.Id == EnvioDeA);
     }
@@ -54,7 +74,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        var pagina = await new ConsultasEnviosService(db).ListarAsync(1, 20, null, "%");
+        var pagina = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ListarAsync(1, 20, null, "%");
 
         Assert.Empty(pagina.Items);
     }
@@ -63,7 +83,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     public async Task Se_filtra_por_estado()
     {
         await using var db = baseDeDatos.CrearContexto(OperadorB);
-        var consultas = new ConsultasEnviosService(db);
+        var consultas = new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor());
 
         var admitidos = await consultas.ListarAsync(1, 100, "admitido", null);
         var entregados = await consultas.ListarAsync(1, 100, "Entregado", null);
@@ -78,7 +98,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            new ConsultasEnviosService(db).ListarAsync(1, 20, "Volando", null));
+            new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ListarAsync(1, 20, "Volando", null));
     }
 
     [Fact]
@@ -86,7 +106,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        var pagina = await new ConsultasEnviosService(db).ListarAsync(0, 5000, null, null);
+        var pagina = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ListarAsync(0, 5000, null, null);
 
         Assert.Equal(1, pagina.Pagina);
         Assert.Equal(ConsultasEnviosService.TamanioPaginaMaximo, pagina.TamanioPagina);
@@ -97,7 +117,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        var envio = await new ConsultasEnviosService(db).ObtenerDetalleAsync(EnvioDeA);
+        var envio = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ObtenerDetalleAsync(EnvioDeA);
 
         Assert.NotNull(envio);
         Assert.Equal("CODIGOA", envio.CodigoSeguimiento);
@@ -111,7 +131,7 @@ public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        var envio = await new ConsultasEnviosService(db).ObtenerDetalleAsync(EnvioDeB);
+        var envio = await new ConsultasEnviosService(db,new ContextoOperadorFijo(OperadorB),  CrearHttpContextAccessor()).ObtenerDetalleAsync(EnvioDeB);
 
         Assert.Null(envio);
     }
