@@ -1,0 +1,158 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using LastMileUY.Contracts.Auth
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject IAutenticacionApi Autenticacion
+@inject NavigationManager Navegacion
+@inject ILogger<Login> Logger
+
+@* Página SIN interactividad (renderizado estático, formulario POST común): así hay HttpContext
+   y se puede escribir la cookie del portal, igual que el Login de Razor Pages del Backoffice. *@
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+@* Mismo diseño que el Login del Backoffice: formulario centrado *@
+<div class="row justify-content-center">
+    <div class="col-12 col-sm-8 col-md-6 col-lg-4">
+        <h1 class="h3 mb-1">Iniciar sesión</h1>
+        <p class="text-muted mb-3">Portal del comercio</p>
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger">@error</div>
+        }
+
+        @if (aviso is not null)
+        {
+            <div class="alert alert-info">@aviso</div>
+        }
+
+        <EditForm Model="Formulario" FormName="login" OnValidSubmit="IniciarSesionAsync">
+            <DataAnnotationsValidator/>
+
+            <div class="mb-3">
+                <label class="form-label" for="email">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="Formulario.Email" autocomplete="username" autofocus/>
+                <ValidationMessage For="() => Formulario.Email" class="text-danger small"/>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="password">Contraseña</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="Formulario.Password"
+                           autocomplete="current-password"/>
+                <ValidationMessage For="() => Formulario.Password" class="text-danger small"/>
+            </div>
+
+            @if (operadores is not null)
+            {
+                <div class="mb-3">
+                    <label class="form-label" for="operador">Operador logístico</label>
+                    <InputSelect id="operador" class="form-select" @bind-Value="Formulario.OperadorId">
+                        <option value="">Elegí un operador…</option>
+                        @foreach (var operador in operadores)
+                        {
+                            <option value="@operador.Id">@operador.Nombre</option>
+                        }
+                    </InputSelect>
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private FormularioLogin Formulario { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    // ?vencida=true: la API cortó la sesión; se borra la del portal para que vuelva a entrar
+    [SupplyParameterFromQuery]
+    private bool Vencida { get; set; }
+
+    private string? error;
+    private string? aviso;
+    private List<OperadorDisponibleDto>? operadores;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // En el GET no llega formulario: se arranca uno vacío
+        Formulario ??= new();
+
+        if (Vencida && HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            aviso = "Tu sesión venció. Volvé a ingresar.";
+        }
+    }
+
+    private async Task IniciarSesionAsync()
+    {
+        ResultadoLogin resultado;
+
+        try
+        {
+            resultado = await Autenticacion.IniciarSesionAsync(
+                Formulario.Email.Trim(), Formulario.Password, Formulario.OperadorId);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            Logger.LogError(ex, "No se pudo iniciar sesión contra la API");
+            error = "No se pudo conectar con el servidor. Probá de nuevo en unos minutos.";
+            return;
+        }
+
+        switch (resultado.Estado)
+        {
+            case EstadoLogin.CredencialesInvalidas:
+                error = "Email o contraseña incorrectos.";
+                Formulario.Password = string.Empty;
+                return;
+
+            case EstadoLogin.ElegirOperador:
+                // La contraseña no se vuelve a escribir en la página: hay que ingresarla de nuevo
+                operadores = resultado.Operadores;
+                Formulario.Password = string.Empty;
+                aviso = (resultado.Mensaje ?? "Elegí con qué operador vas a trabajar.")
+                        + " Volvé a ingresar tu contraseña.";
+                return;
+
+            case EstadoLogin.Rechazado:
+                error = resultado.Mensaje;
+                return;
+        }
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            ClaimsPortal.CrearPrincipal(resultado.Sesion!, CookieAuthenticationDefaults.AuthenticationScheme));
+
+        Navegacion.NavigateTo(DestinoSeguro(), forceLoad: true);
+    }
+
+    // Solo vuelve a direcciones del propio portal (evita redirigir a otro sitio)
+    private string DestinoSeguro() =>
+        !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
+            && !ReturnUrl.StartsWith("/\\")
+            ? ReturnUrl
+            : "/envios/nuevo";
+
+    private sealed class FormularioLogin
+    {
+        [Required(ErrorMessage = "Ingresá tu email.")]
+        [EmailAddress(ErrorMessage = "El email no es válido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Ingresá tu contraseña.")]
+        public string Password { get; set; } = string.Empty;
+
+        public int? OperadorId { get; set; }
+    }
+}
