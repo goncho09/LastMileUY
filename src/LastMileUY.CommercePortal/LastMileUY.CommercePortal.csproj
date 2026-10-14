@@ -9,6 +9,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\LastMileUY.Contracts\LastMileUY.Contracts.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Include="..\..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>

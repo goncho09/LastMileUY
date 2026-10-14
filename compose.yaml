@@ -37,6 +37,8 @@
       SeedAdmin__Password: ${SeedAdmin__Password:?Configurar SeedAdmin__Password}
       SeedOperadorPrueba__Email: ${SeedOperadorPrueba__Email:?Configurar SeedOperadorPrueba__Email}
       SeedOperadorPrueba__Password: ${SeedOperadorPrueba__Password:?Configurar SeedOperadorPrueba__Password}
+      SeedComercioPrueba__Email: ${SeedComercioPrueba__Email:?Configurar SeedComercioPrueba__Email}
+      SeedComercioPrueba__Password: ${SeedComercioPrueba__Password:?Configurar SeedComercioPrueba__Password}
       # Claves de las cookies de sesión en un volumen: las sesiones sobreviven a recrear el contenedor
       DataProtection__Directorio: /claves
     volumes:
@@ -67,6 +69,16 @@
     build:
       context: .
       dockerfile: src/LastMileUY.CommercePortal/Dockerfile
+    ports:
+      - "8082:8080"
+    environment:
+      # El portal del comercio habla con la API real; el login es contra la API
+      Api__UrlBase: "http://lastmileuy.api:8080/"
+      DataProtection__Directorio: /claves
+    volumes:
+      - claves_portal:/claves
+    depends_on:
+      - lastmileuy.api
 
   lastmileuy.driverpwa:
     image: lastmileuy.driverpwa
@@ -90,3 +102,4 @@ volumes:
   postgres_data:
   claves_api:
   claves_backoffice:
+  claves_portal:

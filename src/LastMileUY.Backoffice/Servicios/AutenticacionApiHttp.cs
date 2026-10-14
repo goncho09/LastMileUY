@@ -20,6 +20,13 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
             return null;
         }
 
+        // Usuario de comercio al que la API le pide elegir operador (409) o que no puede entrar (400/403):
+        // el Backoffice es solo del operador, así que se trata como "sin operador" y el login lo rechaza.
+        if (login.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.Forbidden or HttpStatusCode.BadRequest)
+        {
+            return new SesionIniciada(email, email, OperadorId: null, CookieApi: null);
+        }
+
         login.EnsureSuccessStatusCode();
 
         var cookieApi = LeerCookies(login)
@@ -37,7 +44,9 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
         return new SesionIniciada(
             $"{usuario.Nombre} {usuario.Apellido}".Trim(),
             usuario.Email,
-            usuario.OperadorId,
+            // Un usuario de comercio ahora también trae el operador que eligió al entrar,
+            // pero no es personal del operador: no debe entrar al Backoffice.
+            usuario.ComercioId is null ? usuario.OperadorId : null,
             cookieApi);
     }
 
