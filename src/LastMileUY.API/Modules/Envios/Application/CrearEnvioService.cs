@@ -1,4 +1,5 @@
-﻿using LastMileUY.API.Infrastructure.Multitenancy;
+﻿using System.Security.Claims;
+using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
@@ -12,9 +13,16 @@ public class CrearEnvioService(
     ApplicationDbContext db,
     IContextoOperador contextoOperador)
 {
+    // El canal sale del perfil de quien crea el envío, nunca de lo que diga el pedido:
+    // un usuario de comercio solo puede estar usando el portal.
+    public static CanalIngreso CanalDe(ClaimsPrincipal usuario) =>
+        usuario.IsInRole("Comercio") ? CanalIngreso.Portal : CanalIngreso.Api;
+
+    // canal: por dónde entró el envío (ver CanalDe)
     public async Task<EnvioResponse> EjecutarAsync(
         CrearEnvioRequest request,
         string? responsableId = null,
+        CanalIngreso canal = CanalIngreso.Api,
         CancellationToken cancellationToken = default)
     {
         var operadorId = contextoOperador.OperadorId
@@ -70,7 +78,8 @@ public class CrearEnvioService(
         {
             ComercioId = request.ComercioId,
             DestinatarioId = request.DestinatarioId,
-            ReferenciaExterna = request.ReferenciaExterna
+            ReferenciaExterna = request.ReferenciaExterna,
+            Canal = canal
         };
 
         envio.AsignarDireccionEntrega(new DireccionEntrega(
@@ -99,7 +108,7 @@ public class CrearEnvioService(
         }
 
         // Primer evento del historial
-        envio.RegistrarAdmision("API", responsableId);
+        envio.RegistrarAdmision(canal == CanalIngreso.Portal ? "Portal" : "API", responsableId);
 
         db.Envios.Add(envio);
 

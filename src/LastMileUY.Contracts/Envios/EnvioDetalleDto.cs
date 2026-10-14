@@ -25,6 +25,9 @@ public record EnvioDetalleDto(
 
     public int IntentosFallidos { get; init; }
 
+    // Por dónde entró: "Portal" (portal del comercio) o "Api"
+    public string Canal { get; init; } = "Api";
+
     // Fecha de creación + plazo de la regla (null sin regla)
     public DateTime? FechaLimiteEntrega { get; init; }
 }

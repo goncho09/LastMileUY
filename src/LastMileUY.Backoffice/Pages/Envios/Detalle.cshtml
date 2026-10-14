@@ -47,6 +47,8 @@ else
                     <dd class="col-7">@(envio.ReferenciaExterna ?? "—")</dd>
                     <dt class="col-5">Modalidad</dt>
                     <dd class="col-7">@(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")</dd>
+                    <dt class="col-5">Origen</dt>
+                    <dd class="col-7">@CanalesIngreso.Texto(envio.Canal)</dd>
                     <dt class="col-5">Creado</dt>
                     <dd class="col-7">@Formato.Fecha(envio.FechaCreacion)</dd>
                     <dt class="col-5">Entregar antes de</dt>

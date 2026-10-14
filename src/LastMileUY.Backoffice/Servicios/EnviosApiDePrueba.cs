@@ -43,6 +43,11 @@ public class EnviosApiDePrueba : IEnviosApi
             consulta = consulta.Where(e => e.Estado == filtro.Estado);
         }
 
+        if (!string.IsNullOrWhiteSpace(filtro.Canal))
+        {
+            consulta = consulta.Where(e => e.Canal == filtro.Canal);
+        }
+
         if (!string.IsNullOrWhiteSpace(filtro.Buscar))
         {
             var texto = filtro.Buscar.Trim();
@@ -127,7 +132,10 @@ public class EnviosApiDePrueba : IEnviosApi
         e.Estado,
         e.Modalidad,
         e.Bultos.Count,
-        e.FechaCreacion);
+        e.FechaCreacion)
+    {
+        Canal = e.Canal
+    };
 
     // Siempre genera los mismos datos (semilla fija), así las pruebas y las capturas no cambian
     private static List<EnvioDetalleDto> GenerarEnvios()
@@ -192,7 +200,9 @@ public class EnviosApiDePrueba : IEnviosApi
             {
                 EstadosSiguientes = Siguientes(estado),
                 Regla = regla,
-                FechaLimiteEntrega = creado.AddHours(regla.PlazoEntregaHoras)
+                FechaLimiteEntrega = creado.AddHours(regla.PlazoEntregaHoras),
+                // Uno de cada tres entró por el portal del comercio
+                Canal = id % 3 == 0 ? "Portal" : "Api"
             });
         }
 

@@ -34,6 +34,15 @@ public class EnviosApiDePruebaTests
     }
 
     [Fact]
+    public async Task Filtrar_por_origen_solo_trae_los_del_portal()
+    {
+        var resultado = await api.ListarAsync(new FiltroEnvios(TamanioPagina: 100, Canal: "Portal"));
+
+        Assert.NotEmpty(resultado.Items);
+        Assert.All(resultado.Items, e => Assert.Equal("Portal", e.Canal));
+    }
+
+    [Fact]
     public async Task Buscar_por_referencia_encuentra_el_envio()
     {
         var resultado = await api.ListarAsync(new FiltroEnvios(Buscar: "ped-1001"));

@@ -44,6 +44,9 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
     
     public ModalidadEnvio Modalidad { get; set; } = ModalidadEnvio.Estandar;
 
+    // Por dónde entró (portal del comercio o API): el Backoffice lo muestra y permite filtrarlo
+    public CanalIngreso Canal { get; set; } = CanalIngreso.Api;
+
     public int? FranjaHorariaId { get; set; }
     
     public Devolucion? Devolucion { get; set; }
