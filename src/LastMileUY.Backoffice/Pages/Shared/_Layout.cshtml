@@ -51,12 +51,15 @@
                     <li class="nav-item">
                         <a class="nav-link" asp-area="" asp-page="/Envios/Index">Envíos</a>
                     </li>
+                    @if (Permisos.PuedeVerConfiguracion(User))
+                    {
                     <li class="nav-item">
                         <a class="nav-link" asp-area="" asp-page="/Operador/Index">Mi operador</a>
                     </li>
+                    }
                 </ul>
                 <form method="post" asp-page="/Logout" class="d-flex align-items-center gap-2">
-                    <span class="navbar-text small">@User.Identity.Name</span>
+                    <span class="navbar-text small">@User.Identity.Name · @Permisos.Perfil(User)</span>
                     <button type="submit" class="btn btn-sm @(textoClaro ? "btn-outline-light" : "btn-outline-secondary")">Salir</button>
                 </form>
                 }
