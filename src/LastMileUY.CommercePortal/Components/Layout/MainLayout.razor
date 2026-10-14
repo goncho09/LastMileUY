@@ -1,23 +1,53 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
-    </div>
+@* Mismo diseño que el Backoffice (_Layout.cshtml): barra blanca arriba, contenido centrado y pie *@
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+<header>
+    <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <div class="container">
+            <a class="navbar-brand" href="">LastMileUY Comercios</a>
+
+            <AuthorizeView>
+                <Authorized>
+                    <div class="d-flex flex-grow-1 justify-content-between align-items-center">
+                        <ul class="navbar-nav flex-grow-1">
+                            <li class="nav-item">
+                                <NavLink class="nav-link text-dark" href="envios/nuevo">Nuevo envío</NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link text-dark" href="operador">Cambiar operador</NavLink>
+                            </li>
+                        </ul>
+
+                        <form method="post" action="salir" class="d-flex align-items-center gap-2">
+                            <AntiforgeryToken/>
+                            <span class="navbar-text small">
+                                @context.User.Identity?.Name ·
+                                @context.User.FindFirst(ClaimsPortal.OperadorNombre)?.Value
+                            </span>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Salir</button>
+                        </form>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
         </div>
+    </nav>
+</header>
 
-        <article class="content px-4">
-            @Body
-        </article>
+<div class="container">
+    <main role="main" class="pb-3">
+        @Body
     </main>
 </div>
 
+<footer class="border-top footer text-muted">
+    <div class="container">
+        &copy; 2026 - LastMileUY
+    </div>
+</footer>
+
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    Ocurrió un error inesperado.
+    <a href="." class="reload">Recargar</a>
     <span class="dismiss">🗙</span>
 </div>
