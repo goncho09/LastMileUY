@@ -73,18 +73,44 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
     // Control de concurrencia optimista (columna xmin de PostgreSQL)
     public uint Version { get; private set; }
 
+    // Intentos de entrega que fallaron (necesita IntentosEntrega cargados)
+    public int IntentosFallidos => IntentosEntrega.Count(i => !i.Exitoso);
+
+    // Estados a los que se puede pasar desde el actual: la tabla de transiciones,
+    // recortada por la regla operativa del operador (si tiene una para la modalidad del envío).
+    public IReadOnlyList<EstadoEnvio> EstadosSiguientes(ReglaOperativa? regla = null) =>
+        TransicionesEnvio.DestinosDesde(Estado)
+            .Where(destino => MotivoDeRechazo(destino, regla) is null)
+            .ToList();
+
     // Cambia el estado si la transición es válida y lo deja registrado en el historial.
     // origen: desde dónde se hizo (Backoffice, Repartidor, Sistema...); responsableId: el usuario.
+    // regla: la regla operativa vigente del operador; sin regla solo aplica la tabla de transiciones.
+    // Para pasar a Entregado o NoEntregado hay que tener cargados los IntentosEntrega.
     public void CambiarEstado(
         EstadoEnvio nuevoEstado,
         string origen = "Sistema",
         string? descripcion = null,
-        string? responsableId = null)
+        string? responsableId = null,
+        ReglaOperativa? regla = null)
     {
-        if (!TransicionesEnvio.EsValida(Estado, nuevoEstado))
+        var motivo = MotivoDeRechazo(nuevoEstado, regla);
+
+        if (motivo is not null)
         {
-            throw new InvalidOperationException(
-                $"No se puede pasar el envío de {Estado} a {nuevoEstado}.");
+            throw new InvalidOperationException(motivo);
+        }
+
+        // Llegar a Entregado o NoEntregado es el resultado de un intento de entrega
+        if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
+        {
+            IntentosEntrega.Add(new IntentoEntrega
+            {
+                NumeroIntento = IntentosEntrega.Count + 1,
+                FechaHora = DateTime.UtcNow,
+                Exitoso = nuevoEstado == EstadoEnvio.Entregado,
+                Observaciones = descripcion
+            });
         }
 
         Estado = nuevoEstado;
@@ -95,6 +121,26 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
         }
 
         RegistrarEvento(origen, descripcion, responsableId);
+    }
+
+    // null si se puede pasar a ese estado; si no, el motivo para mostrarle al usuario
+    private string? MotivoDeRechazo(EstadoEnvio nuevoEstado, ReglaOperativa? regla)
+    {
+        if (!TransicionesEnvio.EsValida(Estado, nuevoEstado))
+        {
+            return $"No se puede pasar el envío de {Estado} a {nuevoEstado}.";
+        }
+
+        // Agotados los intentos que permite el operador, el envío ya no se reprograma: va a devolución
+        if (nuevoEstado == EstadoEnvio.Reprogramado
+            && regla is not null
+            && IntentosFallidos >= regla.MaximoIntentosEntrega)
+        {
+            return $"El envío ya tuvo {IntentosFallidos} intentos fallidos y la regla \"{regla.Nombre}\" "
+                + $"permite {regla.MaximoIntentosEntrega}: tiene que pasar a devolución.";
+        }
+
+        return null;
     }
 
     // Primer evento del historial: el envío quedó admitido

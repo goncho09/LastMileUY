@@ -1,5 +1,6 @@
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
@@ -95,7 +96,8 @@ public class ConsultasEnviosService(ApplicationDbContext db)
                     Eventos = e.Eventos
                         .OrderBy(ev => ev.FechaHora)
                         .Select(ev => new EventoEnvioDto(ev.FechaHora, ev.Tipo, ev.Descripcion, ev.Origen))
-                        .ToList()
+                        .ToList(),
+                    Intentos = e.IntentosEntrega.ToList()
                 })
             .AsSplitQuery()
             .FirstOrDefaultAsync(cancellationToken);
@@ -107,6 +109,14 @@ public class ConsultasEnviosService(ApplicationDbContext db)
 
         var envio = fila.Envio;
         var direccion = envio.DireccionEntrega;
+
+        // Para que EstadosSiguientes e IntentosFallidos cuenten los intentos reales
+        foreach (var intento in fila.Intentos)
+        {
+            envio.IntentosEntrega.Add(intento);
+        }
+
+        var regla = await db.ObtenerVigenteAsync(envio.Modalidad, cancellationToken);
 
         return new EnvioDetalleDto(
             envio.Id,
@@ -130,7 +140,19 @@ public class ConsultasEnviosService(ApplicationDbContext db)
             fila.Bultos,
             fila.Eventos)
         {
-            EstadosSiguientes = TransicionesEnvio.DestinosDesde(envio.Estado).Select(e => e.ToString()).ToList()
+            EstadosSiguientes = envio.EstadosSiguientes(regla).Select(e => e.ToString()).ToList(),
+            IntentosFallidos = envio.IntentosFallidos,
+            Regla = regla is null
+                ? null
+                : new ReglaAplicadaDto(
+                    regla.Nombre,
+                    regla.MaximoIntentosEntrega,
+                    regla.HorasEntreIntentos,
+                    regla.PlazoEntregaHoras,
+                    regla.RequiereFirma,
+                    regla.RequiereFotografia,
+                    regla.RequiereDocumentoReceptor),
+            FechaLimiteEntrega = regla is null ? null : envio.FechaCreacion.AddHours(regla.PlazoEntregaHoras)
         };
     }
 

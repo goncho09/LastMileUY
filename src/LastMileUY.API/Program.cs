@@ -5,6 +5,7 @@ using LastMileUY.API.Modules.Envios.Endpoints;
 using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Identidad.Endpoints;
 using LastMileUY.API.Modules.Identidad.Infrastructure;
+using LastMileUY.API.Modules.Operadores.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -102,6 +103,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
     await IdentitySeeder.SeedAdminAsync(app.Services);
     await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
+    await ReglasOperativasSeeder.SeedPruebaAsync(
+        app.Services, await IdentitySeeder.SeedOperadoresPruebaAsync(app.Services));
 }
 
 app.UseHttpsRedirection();
