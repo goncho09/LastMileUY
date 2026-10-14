@@ -1,0 +1,92 @@
+@page
+@model LastMileUY.Backoffice.Pages.Operador.IndexModel
+@{
+ViewData["Title"] = "Mi operador";
+var operador = Model.Operador;
+}
+
+<h1 class="h3 mb-3">Mi operador</h1>
+
+@if (Model.Error is not null)
+{
+<div class="alert alert-danger">@Model.Error</div>
+}
+else if (operador is not null)
+{
+var color = IdentidadOperador.ColorSeguro(operador.ColorPrimario);
+var logo = IdentidadOperador.LogoSeguro(operador.LogoUrl);
+
+<div class="card mb-3">
+    <div class="card-header">Identidad</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4 col-lg-3">Nombre</dt>
+            <dd class="col-sm-8 col-lg-9">@operador.Nombre</dd>
+            <dt class="col-sm-4 col-lg-3">Color</dt>
+            <dd class="col-sm-8 col-lg-9">
+                <span class="muestra-color" style="--color-operador: @color"></span>
+                @(operador.ColorPrimario ?? "Sin definir (se usa el gris del sistema)")
+            </dd>
+            <dt class="col-sm-4 col-lg-3">Logo</dt>
+            <dd class="col-sm-8 col-lg-9 mb-0">
+                @if (logo is null)
+                {
+                <span class="text-muted">Sin logo (se muestra la inicial del nombre)</span>
+                }
+                else
+                {
+                <img src="@logo" alt="Logo de @operador.Nombre" class="operador-logo"/>
+                }
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Reglas operativas</div>
+    @if (operador.Reglas.Count == 0)
+    {
+    <div class="card-body">
+        <p class="text-muted mb-0">No hay reglas definidas: los envíos solo siguen la tabla de estados, sin límite de intentos ni plazo.</p>
+    </div>
+    }
+    else
+    {
+    <div class="table-responsive">
+        <table class="table mb-0 align-middle">
+            <thead>
+            <tr>
+                <th>Modalidad</th>
+                <th>Regla</th>
+                <th class="text-end">Intentos</th>
+                <th class="text-end">Entre intentos</th>
+                <th class="text-end">Plazo de entrega</th>
+                <th class="text-end">Inicio de devolución</th>
+                <th>Al entregar pide</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var regla in operador.Reglas)
+            {
+            <tr>
+                <td>@(regla.Modalidad == "Urgente" ? "Urgente" : "Estándar")</td>
+                <td>
+                    @regla.Nombre
+                    @if (regla.Descripcion is not null)
+                    {
+                    <div class="small text-muted">@regla.Descripcion</div>
+                    }
+                </td>
+                <td class="text-end">@regla.MaximoIntentosEntrega</td>
+                <td class="text-end">@regla.HorasEntreIntentos h</td>
+                <td class="text-end">@regla.PlazoEntregaHoras h</td>
+                <td class="text-end">@regla.HorasParaIniciarDevolucion h</td>
+                <td>@Formato.Requisitos(regla.RequiereFirma, regla.RequiereFotografia, regla.RequiereDocumentoReceptor)</td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    }
+</div>
+}

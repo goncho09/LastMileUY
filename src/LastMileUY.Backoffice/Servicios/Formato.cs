@@ -23,13 +23,16 @@ public static class Formato
     public static string Numero(decimal valor) => valor.ToString("0.##", Cultura);
 
     // "Firma, foto y documento del receptor" / "Nada" según lo que pida la regla al entregar
-    public static string Requisitos(ReglaAplicadaDto regla)
+    public static string Requisitos(ReglaAplicadaDto regla) =>
+        Requisitos(regla.RequiereFirma, regla.RequiereFotografia, regla.RequiereDocumentoReceptor);
+
+    public static string Requisitos(bool firma, bool foto, bool documento)
     {
         var requisitos = new List<string>();
 
-        if (regla.RequiereFirma) requisitos.Add("firma");
-        if (regla.RequiereFotografia) requisitos.Add("foto");
-        if (regla.RequiereDocumentoReceptor) requisitos.Add("documento del receptor");
+        if (firma) requisitos.Add("firma");
+        if (foto) requisitos.Add("foto");
+        if (documento) requisitos.Add("documento del receptor");
 
         if (requisitos.Count == 0)
         {

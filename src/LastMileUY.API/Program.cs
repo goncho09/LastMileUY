@@ -5,6 +5,8 @@ using LastMileUY.API.Modules.Envios.Endpoints;
 using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Identidad.Endpoints;
 using LastMileUY.API.Modules.Identidad.Infrastructure;
+using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.API.Modules.Operadores.Endpoints;
 using LastMileUY.API.Modules.Operadores.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -83,6 +85,7 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
+builder.Services.AddScoped<OperadorActualService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -117,5 +120,6 @@ app.MapControllers();
 // ENDPOINTS
 app.MapAuthEndpoints();
 app.MapEnviosEndpoints();
+app.MapOperadorEndpoints();
 
 app.Run();

@@ -12,6 +12,6 @@ public class AutenticacionApiDePrueba : IAutenticacionApi
         }
 
         return Task.FromResult<SesionIniciada?>(
-            new SesionIniciada("Operador de prueba", email.Trim(), 1, null));
+            new SesionIniciada("Operador de prueba", email.Trim(), 1, null, OperadorApiDePrueba.Operador));
     }
 }

@@ -17,7 +17,13 @@ public class Operador
     public bool Activo { get; set; } = true;
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
-    
+
+    // Identidad visual: el Backoffice se pinta con el color del operador y muestra su logo.
+    // Color en formato #RRGGBB; logo como dirección http(s) de una imagen. Los dos son opcionales.
+    public string? ColorPrimario { get; set; }
+
+    public string? LogoUrl { get; set; }
+
     public ICollection<ReglaOperativa> ReglasOperativas { get; set; }
         = new List<ReglaOperativa>();
     
