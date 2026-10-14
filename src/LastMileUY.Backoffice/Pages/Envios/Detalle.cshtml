@@ -49,6 +49,8 @@ else
                     <dd class="col-7">@(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")</dd>
                     <dt class="col-5">Creado</dt>
                     <dd class="col-7">@Formato.Fecha(envio.FechaCreacion)</dd>
+                    <dt class="col-5">Entregar antes de</dt>
+                    <dd class="col-7">@Formato.Fecha(envio.FechaLimiteEntrega)</dd>
                     <dt class="col-5">Entregado</dt>
                     <dd class="col-7">@Formato.Fecha(envio.FechaEntrega)</dd>
                     <dt class="col-5">Costo</dt>
@@ -113,6 +115,30 @@ else
 </div>
 
 <div class="card mb-3">
+    <div class="card-header">Regla operativa</div>
+    <div class="card-body">
+        @if (envio.Regla is null)
+        {
+        <p class="text-muted mb-0">El operador no tiene una regla para esta modalidad: solo se aplica la tabla de estados.</p>
+        }
+        else
+        {
+        <p class="fw-semibold mb-2">@envio.Regla.Nombre</p>
+        <dl class="row mb-0">
+            <dt class="col-sm-5 col-lg-3">Intentos de entrega</dt>
+            <dd class="col-sm-7 col-lg-9">@envio.IntentosFallidos fallidos de @envio.Regla.MaximoIntentosEntrega permitidos</dd>
+            <dt class="col-sm-5 col-lg-3">Entre intentos</dt>
+            <dd class="col-sm-7 col-lg-9">@envio.Regla.HorasEntreIntentos horas</dd>
+            <dt class="col-sm-5 col-lg-3">Plazo de entrega</dt>
+            <dd class="col-sm-7 col-lg-9">@envio.Regla.PlazoEntregaHoras horas</dd>
+            <dt class="col-sm-5 col-lg-3">Al entregar pide</dt>
+            <dd class="col-sm-7 col-lg-9 mb-0">@Formato.Requisitos(envio.Regla)</dd>
+        </dl>
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
     <div class="card-header">Cambiar estado</div>
     <div class="card-body">
         @if (envio.EstadosSiguientes.Count == 0)
@@ -121,6 +147,10 @@ else
         }
         else
         {
+        @if (envio.Estado == "NoEntregado" && !envio.EstadosSiguientes.Contains("Reprogramado"))
+        {
+        <div class="alert alert-warning">Se agotaron los intentos de entrega que permite la regla: el envío tiene que pasar a devolución.</div>
+        }
         <form method="post" asp-page-handler="CambiarEstado" asp-route-id="@envio.Id" class="row g-2 align-items-end">
             <div class="col-12 col-md-4">
                 <label for="nuevoEstado" class="form-label">Pasar a</label>

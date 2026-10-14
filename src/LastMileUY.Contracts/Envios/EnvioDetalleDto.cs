@@ -16,9 +16,27 @@ public record EnvioDetalleDto(
     IReadOnlyList<BultoDto> Bultos,
     IReadOnlyList<EventoEnvioDto> Eventos)
 {
-    // Estados a los que se puede pasar desde el actual (para el formulario de cambio de estado)
+    // Estados a los que se puede pasar desde el actual (para el formulario de cambio de estado).
+    // Ya tiene en cuenta la regla operativa: agotados los intentos, no ofrece Reprogramado.
     public IReadOnlyList<string> EstadosSiguientes { get; init; } = [];
+
+    // Regla operativa del operador para la modalidad del envío (null si no definió ninguna)
+    public ReglaAplicadaDto? Regla { get; init; }
+
+    public int IntentosFallidos { get; init; }
+
+    // Fecha de creación + plazo de la regla (null sin regla)
+    public DateTime? FechaLimiteEntrega { get; init; }
 }
+
+public record ReglaAplicadaDto(
+    string Nombre,
+    int MaximoIntentosEntrega,
+    int HorasEntreIntentos,
+    int PlazoEntregaHoras,
+    bool RequiereFirma,
+    bool RequiereFotografia,
+    bool RequiereDocumentoReceptor);
 
 public record DestinatarioDto(
     string Nombre,

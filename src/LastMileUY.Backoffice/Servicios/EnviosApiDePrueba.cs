@@ -20,6 +20,10 @@ public class EnviosApiDePrueba : IEnviosApi
         ["EnDevolucion"] = ["Devuelto", "Extraviado"],
     };
 
+    // Reglas de ejemplo para que se vea el recuadro de la regla operativa (el límite de intentos lo aplica la API)
+    private static readonly ReglaAplicadaDto ReglaEstandar = new("Estándar", 2, 24, 48, true, false, false);
+    private static readonly ReglaAplicadaDto ReglaUrgente = new("Urgente", 1, 4, 12, true, false, false);
+
     private readonly List<EnvioDetalleDto> envios = GenerarEnvios();
 
     // Se puede cambiar el estado, así que la lista se toca con lock (el servicio es único para todos los pedidos)
@@ -148,6 +152,7 @@ public class EnviosApiDePrueba : IEnviosApi
             var lugar = lugares[azar.Next(lugares.Length)];
             var estado = estados[azar.Next(estados.Length)];
             var creado = inicio.AddHours(id * 5);
+            var regla = id % 5 == 0 ? ReglaUrgente : ReglaEstandar;
 
             var bultos = Enumerable.Range(1, azar.Next(1, 4))
                 .Select(n => new BultoDto(
@@ -185,7 +190,9 @@ public class EnviosApiDePrueba : IEnviosApi
                 Bultos: bultos,
                 Eventos: GenerarEventos(estado, creado))
             {
-                EstadosSiguientes = Siguientes(estado)
+                EstadosSiguientes = Siguientes(estado),
+                Regla = regla,
+                FechaLimiteEntrega = creado.AddHours(regla.PlazoEntregaHoras)
             });
         }
 

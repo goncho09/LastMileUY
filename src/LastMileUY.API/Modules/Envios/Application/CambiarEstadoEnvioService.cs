@@ -1,12 +1,14 @@
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Envios.Application;
 
 // Cambia el estado de un envío del operador actual. La regla de qué transición vale está en
-// el dominio (Envio.CambiarEstado + TransicionesEnvio); acá solo se busca, se aplica y se guarda.
+// el dominio (Envio.CambiarEstado + TransicionesEnvio + la regla operativa del operador);
+// acá solo se busca, se aplica y se guarda.
 public class CambiarEstadoEnvioService(ApplicationDbContext db)
 {
     // Devuelve false si el envío no existe o es de otro operador.
@@ -32,16 +34,21 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new ArgumentException("El comentario no puede superar los 1000 caracteres.");
         }
 
-        var envio = await db.Envios.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        // Los intentos hacen falta para numerar el próximo y para contar los fallidos
+        var envio = await db.Envios
+            .Include(e => e.IntentosEntrega)
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
         if (envio is null)
         {
             return false;
         }
 
+        var regla = await db.ObtenerVigenteAsync(envio.Modalidad, cancellationToken);
+
         try
         {
-            envio.CambiarEstado(nuevoEstado, origen, descripcion, responsableId);
+            envio.CambiarEstado(nuevoEstado, origen, descripcion, responsableId, regla);
         }
         catch (InvalidOperationException ex)
         {
