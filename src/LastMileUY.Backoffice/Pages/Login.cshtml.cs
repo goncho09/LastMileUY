@@ -73,12 +73,23 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             return Page();
         }
 
+        // Un repartidor o un comercio tienen su propia aplicación
+        var roles = sesion.Roles ?? [];
+
+        if (!Permisos.PuedeEntrar(roles))
+        {
+            Error = "Tu perfil no tiene acceso al Backoffice.";
+            return Page();
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, sesion.Nombre),
             new(ClaimTypes.Email, sesion.Email),
             new(ClaimOperadorId, sesion.OperadorId.Value.ToString())
         };
+
+        claims.AddRange(roles.Select(rol => new Claim(ClaimTypes.Role, rol)));
 
         if (sesion.CookieApi is not null)
         {

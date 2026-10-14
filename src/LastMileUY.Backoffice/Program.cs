@@ -6,13 +6,21 @@ using Microsoft.AspNetCore.DataProtection;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Todo el Backoffice pide sesión, salvo el login y la página de error
+// Todo el Backoffice pide sesión con un perfil del Backoffice, salvo el login, la salida y las páginas de error.
+// La configuración del operador además pide el perfil Operador (ver Permisos).
 builder.Services.AddRazorPages(opciones =>
 {
-    opciones.Conventions.AuthorizeFolder("/");
+    opciones.Conventions.AuthorizeFolder("/", Permisos.PoliticaBackoffice);
+    opciones.Conventions.AuthorizeFolder("/Operador", Permisos.PoliticaConfiguracion);
     opciones.Conventions.AllowAnonymousToPage("/Login");
+    opciones.Conventions.AllowAnonymousToPage("/Logout");
+    opciones.Conventions.AllowAnonymousToPage("/AccesoDenegado");
     opciones.Conventions.AllowAnonymousToPage("/Error");
 });
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(Permisos.PoliticaBackoffice, politica => politica.RequireRole(Permisos.RolesBackoffice))
+    .AddPolicy(Permisos.PoliticaConfiguracion, politica => politica.RequireRole(Permisos.RolesConfiguracion));
 
 // Sesión propia del Backoffice (cookie cifrada). Adentro va la cookie de la API,
 // que se reenvía en cada llamada (ver ReenviarCookieApi).
@@ -23,6 +31,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         opciones.Cookie.HttpOnly = true;
         opciones.Cookie.SameSite = SameSiteMode.Lax;
         opciones.LoginPath = "/Login";
+        opciones.AccessDeniedPath = "/AccesoDenegado";
         // Igual que la sesión de la API: 8 horas. Si la API la corta antes, se vuelve al login.
         opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
         opciones.SlidingExpiration = false;

@@ -40,7 +40,8 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
             usuario.Email,
             usuario.OperadorId,
             cookieApi,
-            operador);
+            operador,
+            usuario.Roles.ToList());
     }
 
     // GET con la cookie de la sesión recién iniciada (todavía no está en la sesión del Backoffice)

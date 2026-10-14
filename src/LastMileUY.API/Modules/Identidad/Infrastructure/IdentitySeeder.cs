@@ -180,46 +180,62 @@ public class IdentitySeeder
             return;
         }
 
+        // Dominio del email configurado (operador@prueba.test -> @prueba.test), para el despachador
+        var dominio = email[email.IndexOf('@')..];
+
         for (var i = 0; i < operadoresId.Length; i++)
         {
             var operadorId = operadoresId[i];
-            var emailOperador = i == 0
-                ? email
-                : email.Replace("@", "2@");
+            var sufijo = i == 0 ? "" : "2";
 
-            var usuario = await userManager.FindByEmailAsync(emailOperador);
+            await CrearUsuarioPruebaAsync(userManager, email.Replace("@", $"{sufijo}@"), password,
+                "Operador", $"Prueba {i + 1}", operadorId, "Operador");
 
-            if (usuario is not null)
-                continue;
-
-            usuario = new Usuario
-            {
-                UserName = emailOperador,
-                Email = emailOperador,
-                Nombre = "Operador",
-                Apellido = $"Prueba {i + 1}",
-                OperadorId = operadorId,
-                EmailConfirmed = true,
-                Activo = true
-            };
-
-            var resultado = await userManager.CreateAsync(usuario, password);
-
-            if (!resultado.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    string.Join(", ", resultado.Errors.Select(e => e.Description)));
-            }
-
-            var resultadoRol = await userManager.AddToRoleAsync(usuario, "Operador");
-
-            if (!resultadoRol.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    string.Join(", ", resultadoRol.Errors.Select(e => e.Description)));
-            }
-
-            Console.WriteLine($"Operador {operadorId} inicializado correctamente");
+            // Un despachador por operador: trabaja con los envíos pero no ve la configuración del operador
+            await CrearUsuarioPruebaAsync(userManager, $"despachador{sufijo}{dominio}", password,
+                "Despachador", $"Prueba {i + 1}", operadorId, "Despachador");
         }
+    }
+
+    private static async Task CrearUsuarioPruebaAsync(
+        UserManager<Usuario> userManager,
+        string email,
+        string password,
+        string nombre,
+        string apellido,
+        int operadorId,
+        string rol)
+    {
+        if (await userManager.FindByEmailAsync(email) is not null)
+            return;
+
+        var usuario = new Usuario
+        {
+            UserName = email,
+            Email = email,
+            Nombre = nombre,
+            Apellido = apellido,
+            OperadorId = operadorId,
+            EmailConfirmed = true,
+            Activo = true
+        };
+
+        var resultado = await userManager.CreateAsync(usuario, password);
+
+        if (!resultado.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join(", ", resultado.Errors.Select(e => e.Description)));
+        }
+
+        var resultadoRol = await userManager.AddToRoleAsync(usuario, rol);
+
+        if (!resultadoRol.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join(", ", resultadoRol.Errors.Select(e => e.Description)));
+        }
+
+        Console.WriteLine($"{rol} del operador {operadorId} inicializado correctamente");
     }
 }

@@ -145,6 +145,10 @@ else
         {
         <p class="text-muted mb-0">El envío está en un estado final: ya no puede cambiar.</p>
         }
+        else if (!Permisos.PuedeCambiarEstado(User))
+        {
+        <p class="text-muted mb-0">Tu perfil (@Permisos.Perfil(User)) puede ver el envío pero no cambiar su estado.</p>
+        }
         else
         {
         @if (envio.Estado == "NoEntregado" && !envio.EstadosSiguientes.Contains("Reprogramado"))
