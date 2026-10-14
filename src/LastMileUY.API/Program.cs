@@ -1,10 +1,17 @@
+using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Destinatarios.Application;
+using LastMileUY.API.Modules.Destinatarios.Endpoints;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Endpoints;
+using LastMileUY.API.Modules.Identidad.Application;
 using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Identidad.Endpoints;
 using LastMileUY.API.Modules.Identidad.Infrastructure;
+using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.API.Modules.Operadores.Endpoints;
+using LastMileUY.API.Modules.Operadores.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +68,27 @@ if (!string.IsNullOrWhiteSpace(directorioClaves))
         .PersistKeysToFileSystem(new DirectoryInfo(directorioClaves));
 }
 
+// El operador que elige un usuario de comercio al entrar vive solo en la cookie (no en la base).
+// Identity rearma los claims desde la base cada tanto (validación del security stamp):
+// sin esto, el claim operador_id se perdería y el usuario de comercio empezaría a recibir 401.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.OnRefreshingPrincipal = context =>
+    {
+        var operador = context.CurrentPrincipal?.FindFirst(ContextoOperadorHttp.ClaimOperadorId);
+        var identidad = context.NewPrincipal?.Identities.FirstOrDefault();
+
+        if (operador is not null &&
+            identidad is not null &&
+            !identidad.HasClaim(c => c.Type == ContextoOperadorHttp.ClaimOperadorId))
+        {
+            identidad.AddClaim(new Claim(operador.Type, operador.Value));
+        }
+
+        return Task.CompletedTask;
+    };
+});
+
 // Configurar COOKIES
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -91,6 +119,9 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
+builder.Services.AddScoped<OperadorActualService>();
+builder.Services.AddScoped<ConsultasDestinatariosService>();
+builder.Services.AddScoped<OperadoresDeComercioService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -111,6 +142,10 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
     await IdentitySeeder.SeedAdminAsync(app.Services);
     await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
+    await IdentitySeeder.SeedComercioPruebaAsync(app.Services);
+    await IdentitySeeder.SeedDestinatariosPruebaAsync(app.Services);
+    await ReglasOperativasSeeder.SeedPruebaAsync(
+        app.Services, await IdentitySeeder.SeedOperadoresPruebaAsync(app.Services));
 }
 
 app.UseHttpsRedirection();
@@ -123,5 +158,10 @@ app.MapControllers();
 // ENDPOINTS
 app.MapAuthEndpoints();
 app.MapEnviosEndpoints();
+app.MapOperadorEndpoints();
+app.MapDestinatariosEndpoints();
 
 app.Run();
+
+// Visible para las pruebas de punta a punta (WebApplicationFactory<Program>)
+public partial class Program;

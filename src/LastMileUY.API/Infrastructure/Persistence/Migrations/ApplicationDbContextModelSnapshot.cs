@@ -396,6 +396,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("Canal")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CodigoSeguimiento")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -810,8 +813,16 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ColorPrimario")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -822,7 +833,10 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Nombre");
 
-                    b.ToTable("Operadores", (string)null);
+                    b.ToTable("Operadores", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Operadores_ColorPrimario", "\"ColorPrimario\" IS NULL OR \"ColorPrimario\" ~ '^#[0-9A-Fa-f]{6}$'");
+                        });
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.ReglaOperativa", b =>

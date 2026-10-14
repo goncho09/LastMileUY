@@ -23,6 +23,14 @@ public class EnviosApiHttpTests
     }
 
     [Fact]
+    public void El_filtro_de_origen_va_en_la_url()
+    {
+        var url = EnviosApiHttp.ArmarUrlListado(new FiltroEnvios(Canal: "Portal"));
+
+        Assert.Equal("api/envios?pagina=1&tamanioPagina=20&canal=Portal", url);
+    }
+
+    [Fact]
     public async Task Listar_lee_la_respuesta_de_la_api()
     {
         const string json = """

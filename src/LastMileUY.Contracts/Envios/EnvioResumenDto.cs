@@ -12,4 +12,8 @@ public record EnvioResumenDto(
     string Estado,
     string Modalidad,
     int CantidadBultos,
-    DateTime FechaCreacion);
+    DateTime FechaCreacion)
+{
+    // Por dónde entró: "Portal" (portal del comercio) o "Api"
+    public string Canal { get; init; } = "Api";
+}

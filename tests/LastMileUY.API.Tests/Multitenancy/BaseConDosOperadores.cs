@@ -26,6 +26,13 @@ public class BaseConDosOperadores : IAsyncLifetime
     public const int DestinatarioComercio2 = 2;
     public const int DestinatarioComercio3 = 3;
 
+    // Reglas operativas (modalidad Estándar) distintas para cada operador. Para Urgente no hay regla.
+    public const string ReglaDeA = "Estándar A";
+    public const string ReglaDeB = "Estándar B";
+    public const int MaximoIntentosDeA = 1;
+    public const int MaximoIntentosDeB = 2;
+    public const int PlazoHorasDeA = 48;
+
     private readonly PostgreSqlContainer contenedor = new PostgreSqlBuilder("postgres:17")
         .Build();
 
@@ -79,6 +86,11 @@ public class BaseConDosOperadores : IAsyncLifetime
                     VALUES ({EnvioDeA}, 'BA1', 1, 10, 10, 10), ({EnvioDeB}, 'BB1', 1, 10, 10, 10);
                 INSERT INTO "IntentosEntrega"("EnvioId", "NumeroIntento", "FechaHora", "FechaRecepcion", "Exitoso")
                     VALUES ({EnvioDeA}, 1, now(), now(), false), ({EnvioDeB}, 1, now(), now(), false);
+                INSERT INTO "ReglasOperativas"("OperadorId", "Nombre", "Modalidad", "MaximoIntentosEntrega",
+                        "HorasEntreIntentos", "PlazoEntregaHoras", "HorasParaIniciarDevolucion",
+                        "RequiereFirma", "RequiereFotografia", "RequiereDocumentoReceptor", "Activa", "FechaCreacion")
+                    VALUES ({OperadorA}, '{ReglaDeA}', 1, {MaximoIntentosDeA}, 24, {PlazoHorasDeA}, 72, true, false, false, true, now()),
+                           ({OperadorB}, '{ReglaDeB}', 1, {MaximoIntentosDeB}, 48, 96, 168, false, true, true, true, now());
                 """);
         }
 

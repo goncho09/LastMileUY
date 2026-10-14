@@ -73,6 +73,15 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             return Page();
         }
 
+        // Un repartidor o un comercio tienen su propia aplicación
+        var roles = sesion.Roles ?? [];
+
+        if (!Permisos.PuedeEntrar(roles))
+        {
+            Error = "Tu perfil no tiene acceso al Backoffice.";
+            return Page();
+        }
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, sesion.Nombre),
@@ -80,9 +89,27 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             new(ClaimOperadorId, sesion.OperadorId.Value.ToString())
         };
 
+        claims.AddRange(roles.Select(rol => new Claim(ClaimTypes.Role, rol)));
+
         if (sesion.CookieApi is not null)
         {
             claims.Add(new Claim(ReenviarCookieApi.ClaimCookieApi, sesion.CookieApi));
+        }
+
+        // Identidad visual del operador (ver IdentidadOperador y _Layout)
+        if (sesion.Operador is not null)
+        {
+            claims.Add(new Claim(IdentidadOperador.ClaimNombre, sesion.Operador.Nombre));
+
+            if (sesion.Operador.ColorPrimario is not null)
+            {
+                claims.Add(new Claim(IdentidadOperador.ClaimColor, sesion.Operador.ColorPrimario));
+            }
+
+            if (sesion.Operador.LogoUrl is not null)
+            {
+                claims.Add(new Claim(IdentidadOperador.ClaimLogo, sesion.Operador.LogoUrl));
+            }
         }
 
         var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

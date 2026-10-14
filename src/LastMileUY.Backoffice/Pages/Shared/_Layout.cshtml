@@ -9,11 +9,36 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
     <link rel="stylesheet" href="~/LastMileUY.Backoffice.styles.css" asp-append-version="true"/>
 </head>
-<body>
+@{
+    // Con sesión, el Backoffice toma el color y el logo del operador (ver IdentidadOperador)
+    var operador = IdentidadOperador.Desde(User);
+    var textoClaro = operador?.ColorTexto == "#ffffff";
+}
+<body class="@(operador is null ? null : "con-operador")"
+      style="@(operador is null ? null : $"--color-operador: {operador.Color}; --color-operador-texto: {operador.ColorTexto};")">
 <header>
-    <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+    <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3 @(operador is null ? "navbar-light bg-white" : "navbar-operador")"
+         data-bs-theme="@(textoClaro ? "dark" : "light")">
         <div class="container">
+            @if (operador is null)
+            {
             <a class="navbar-brand" asp-area="" asp-page="/Index">LastMileUY Backoffice</a>
+            }
+            else
+            {
+            <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
+                @if (operador.LogoUrl is not null)
+                {
+                <img src="@operador.LogoUrl" alt="" class="operador-logo"/>
+                }
+                else
+                {
+                <span class="operador-inicial" aria-hidden="true">@operador.Inicial</span>
+                }
+                <span>@operador.Nombre</span>
+                <span class="small opacity-75 d-none d-md-inline">Backoffice</span>
+            </a>
+            }
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
                     aria-controls="navbarSupportedContent"
                     aria-expanded="false" aria-label="Toggle navigation">
@@ -24,12 +49,18 @@
                 {
                 <ul class="navbar-nav flex-grow-1">
                     <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-page="/Envios/Index">Envíos</a>
+                        <a class="nav-link" asp-area="" asp-page="/Envios/Index">Envíos</a>
                     </li>
+                    @if (Permisos.PuedeVerConfiguracion(User))
+                    {
+                    <li class="nav-item">
+                        <a class="nav-link" asp-area="" asp-page="/Operador/Index">Mi operador</a>
+                    </li>
+                    }
                 </ul>
                 <form method="post" asp-page="/Logout" class="d-flex align-items-center gap-2">
-                    <span class="navbar-text small">@User.Identity.Name</span>
-                    <button type="submit" class="btn btn-sm btn-outline-secondary">Salir</button>
+                    <span class="navbar-text small">@User.Identity.Name · @Permisos.Perfil(User)</span>
+                    <button type="submit" class="btn btn-sm @(textoClaro ? "btn-outline-light" : "btn-outline-secondary")">Salir</button>
                 </form>
                 }
             </div>

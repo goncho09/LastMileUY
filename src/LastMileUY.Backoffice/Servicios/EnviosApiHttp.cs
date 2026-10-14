@@ -92,6 +92,11 @@ public class EnviosApiHttp(HttpClient http) : IEnviosApi
             parametros.Add($"buscar={Uri.EscapeDataString(filtro.Buscar.Trim())}");
         }
 
+        if (!string.IsNullOrWhiteSpace(filtro.Canal))
+        {
+            parametros.Add($"canal={Uri.EscapeDataString(filtro.Canal)}");
+        }
+
         return "api/envios?" + string.Join('&', parametros);
     }
 }

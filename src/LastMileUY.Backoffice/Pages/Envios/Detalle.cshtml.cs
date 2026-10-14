@@ -23,6 +23,13 @@ public class DetalleModel(IEnviosApi enviosApi, ILogger<DetalleModel> logger) : 
     public async Task<IActionResult> OnPostCambiarEstadoAsync(
         int id, string? nuevoEstado, string? comentario, CancellationToken ct)
     {
+        // El formulario no se muestra sin permiso, pero el POST se puede armar a mano
+        if (!Permisos.PuedeCambiarEstado(User))
+        {
+            ErrorCambio = "Tu perfil no puede cambiar el estado de los envíos.";
+            return RedirectToPage(new { id });
+        }
+
         if (string.IsNullOrWhiteSpace(nuevoEstado))
         {
             ErrorCambio = "Elegí el estado nuevo.";

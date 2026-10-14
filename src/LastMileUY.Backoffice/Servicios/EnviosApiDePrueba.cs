@@ -20,6 +20,10 @@ public class EnviosApiDePrueba : IEnviosApi
         ["EnDevolucion"] = ["Devuelto", "Extraviado"],
     };
 
+    // Reglas de ejemplo para que se vea el recuadro de la regla operativa (el límite de intentos lo aplica la API)
+    private static readonly ReglaAplicadaDto ReglaEstandar = new("Estándar", 2, 24, 48, true, false, false);
+    private static readonly ReglaAplicadaDto ReglaUrgente = new("Urgente", 1, 4, 12, true, false, false);
+
     private readonly List<EnvioDetalleDto> envios = GenerarEnvios();
 
     // Se puede cambiar el estado, así que la lista se toca con lock (el servicio es único para todos los pedidos)
@@ -37,6 +41,11 @@ public class EnviosApiDePrueba : IEnviosApi
         if (!string.IsNullOrWhiteSpace(filtro.Estado))
         {
             consulta = consulta.Where(e => e.Estado == filtro.Estado);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Canal))
+        {
+            consulta = consulta.Where(e => e.Canal == filtro.Canal);
         }
 
         if (!string.IsNullOrWhiteSpace(filtro.Buscar))
@@ -123,7 +132,10 @@ public class EnviosApiDePrueba : IEnviosApi
         e.Estado,
         e.Modalidad,
         e.Bultos.Count,
-        e.FechaCreacion);
+        e.FechaCreacion)
+    {
+        Canal = e.Canal
+    };
 
     // Siempre genera los mismos datos (semilla fija), así las pruebas y las capturas no cambian
     private static List<EnvioDetalleDto> GenerarEnvios()
@@ -148,6 +160,7 @@ public class EnviosApiDePrueba : IEnviosApi
             var lugar = lugares[azar.Next(lugares.Length)];
             var estado = estados[azar.Next(estados.Length)];
             var creado = inicio.AddHours(id * 5);
+            var regla = id % 5 == 0 ? ReglaUrgente : ReglaEstandar;
 
             var bultos = Enumerable.Range(1, azar.Next(1, 4))
                 .Select(n => new BultoDto(
@@ -185,7 +198,11 @@ public class EnviosApiDePrueba : IEnviosApi
                 Bultos: bultos,
                 Eventos: GenerarEventos(estado, creado))
             {
-                EstadosSiguientes = Siguientes(estado)
+                EstadosSiguientes = Siguientes(estado),
+                Regla = regla,
+                FechaLimiteEntrega = creado.AddHours(regla.PlazoEntregaHoras),
+                // Uno de cada tres entró por el portal del comercio
+                Canal = id % 3 == 0 ? "Portal" : "Api"
             });
         }
 
