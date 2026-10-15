@@ -1,112 +1,305 @@
+
 @page
 @model LastMileUY.Backoffice.Pages.Envios.IndexModel
+
 @{
-ViewData["Title"] = "Envíos";
+    ViewData["Title"] = "Envíos";
 }
 
-<h1 class="h3 mb-3">Envíos</h1>
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
-<form method="get" class="row g-2 align-items-end mb-3">
-    <div class="col-12 col-md-4">
-        <label for="buscar" class="form-label">Buscar</label>
-        <input id="buscar" name="buscar" value="@Model.Buscar" class="form-control"
-               placeholder="Código, referencia o destinatario"/>
+    <!-- Encabezado -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <p class="mb-2 text-sm font-medium text-violet-400">
+                Gestión de operaciones
+            </p>
+            <h1 class="text-3xl font-bold tracking-tight text-white">
+                Envíos
+            </h1>
+            <p class="mt-2 text-sm text-slate-400">
+                Consultá y supervisá los envíos de tu operador.
+            </p>
+        </div>
+
+        <div class="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-[#171923] px-4 py-2.5 text-sm text-slate-300">
+            <svg class="h-4 w-4 text-violet-400" fill="none" stroke="currentColor"
+                 stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3 10h18M8 15h3" />
+            </svg>
+            <span>Listado de envíos</span>
+        </div>
     </div>
-    <div class="col-12 col-md-3">
-        <label for="estado" class="form-label">Estado</label>
-        <select id="estado" name="estado" class="form-select">
-            <option value="">Todos</option>
-            @foreach (var estado in EstadosEnvio.Todos)
+
+    <!-- Filtros -->
+    <section class="rounded-2xl border border-white/10 bg-[#171923] p-5 sm:p-6">
+        <div class="mb-5 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-base font-semibold text-white">Filtros</h2>
+                <p class="mt-1 text-xs text-slate-400">
+                    Encontrá rápidamente el envío que necesitás.
+                </p>
+            </div>
+            <svg class="h-5 w-5 text-slate-500" fill="none" stroke="currentColor"
+                 stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M4 7h16M7 12h10M10 17h4" />
+            </svg>
+        </div>
+
+        <form method="get" class="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-12">
+
+            <div class="xl:col-span-5">
+                <label for="buscar" class="mb-2 block text-sm font-medium text-slate-300">
+                    Buscar
+                </label>
+                <input id="buscar"
+                       name="buscar"
+                       value="@Model.Buscar"
+                       placeholder="Código, referencia o destinatario"
+                       class="block w-full rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white placeholder:text-slate-500 outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15" />
+            </div>
+
+            <div class="xl:col-span-3">
+                <label for="estado" class="mb-2 block text-sm font-medium text-slate-300">
+                    Estado
+                </label>
+                <select id="estado"
+                        name="estado"
+                        class="block w-full rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15">
+                    <option value="">Todos los estados</option>
+                    @foreach (var estado in EstadosEnvio.Todos)
+                    {
+                        <option value="@estado.Valor" selected="@(estado.Valor == Model.Estado)">
+                            @estado.Texto
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="xl:col-span-2">
+                <label for="canal" class="mb-2 block text-sm font-medium text-slate-300">
+                    Origen
+                </label>
+                <select id="canal"
+                        name="canal"
+                        class="block w-full rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15">
+                    <option value="">Todos</option>
+                    @foreach (var canal in CanalesIngreso.Todos)
+                    {
+                        <option value="@canal.Valor" selected="@(canal.Valor == Model.Canal)">
+                            @canal.Texto
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex gap-2 md:col-span-2 xl:col-span-2">
+                <button type="submit"
+                        class="flex-1 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400">
+                    Filtrar
+                </button>
+
+                <a asp-page="/Envios/Index"
+                   class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-300 no-underline transition-colors hover:bg-white/10 hover:text-white">
+                    Limpiar
+                </a>
+            </div>
+        </form>
+    </section>
+
+    <!-- Resultados -->
+    <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-5 sm:px-6">
+            <div>
+                <h2 class="text-base font-semibold text-white">Listado de envíos</h2>
+                <p class="mt-1 text-xs text-slate-400">
+                    Resultados de la consulta actual
+                </p>
+            </div>
+
+            @if (Model.Error is null)
             {
-            <option value="@estado.Valor" selected="@(estado.Valor == Model.Estado)">@estado.Texto</option>
+                <span class="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300">
+                    @Model.Resultado.Total envíos
+                </span>
             }
-        </select>
-    </div>
-    <div class="col-12 col-md-2">
-        <label for="canal" class="form-label">Origen</label>
-        <select id="canal" name="canal" class="form-select">
-            <option value="">Todos</option>
-            @foreach (var canal in CanalesIngreso.Todos)
-            {
-            <option value="@canal.Valor" selected="@(canal.Valor == Model.Canal)">@canal.Texto</option>
-            }
-        </select>
-    </div>
-    <div class="col-12 col-md-3 d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-        <a asp-page="/Envios/Index" class="btn btn-outline-secondary">Limpiar</a>
-    </div>
-</form>
+        </div>
 
-@if (Model.Error is not null)
-{
-<div class="alert alert-danger">@Model.Error</div>
-}
-else if (Model.Resultado.Items.Count == 0)
-{
-<div class="alert alert-light border">@(string.IsNullOrWhiteSpace(Model.Estado) && string.IsNullOrWhiteSpace(Model.Buscar) && string.IsNullOrWhiteSpace(Model.Canal) ?"Todavía no hay envíos." : "No hay envíos que coincidan con el filtro.")</div>
-}
-else
-{
-<p class="text-muted small mb-2">@Model.Resultado.Total envíos</p>
-
-<div class="table-responsive">
-    <table class="table table-hover align-middle">
-        <thead>
-        <tr>
-            <th>Código</th>
-            <th>Referencia</th>
-            <th>Comercio</th>
-            <th>Destinatario</th>
-            <th>Destino</th>
-            <th class="text-center">Bultos</th>
-            <th>Origen</th>
-            <th>Estado</th>
-            <th>Creado</th>
-            <th></th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var envio in Model.Resultado.Items)
+        @if (Model.Error is not null)
         {
-        <tr>
-            <td class="font-monospace">@envio.CodigoSeguimiento</td>
-            <td>@(envio.ReferenciaExterna ?? "—")</td>
-            <td>@envio.Comercio</td>
-            <td>@envio.Destinatario</td>
-            <td>@envio.Ciudad, @envio.Departamento</td>
-            <td class="text-center">@envio.CantidadBultos</td>
-            <td><span class="badge @CanalesIngreso.ClaseCss(envio.Canal)">@CanalesIngreso.Texto(envio.Canal)</span></td>
-            <td>
-                <span class="badge @EstadosEnvio.ClaseCss(envio.Estado)">@EstadosEnvio.Texto(envio.Estado)</span>
-                @if (envio.Modalidad == "Urgente")
-                {
-                <span class="badge text-bg-danger">Urgente</span>
-                }
-            </td>
-            <td class="text-nowrap">@Formato.Fecha(envio.FechaCreacion)</td>
-            <td><a asp-page="/Envios/Detalle" asp-route-id="@envio.Id" class="btn btn-sm btn-outline-primary">Ver</a>
-            </td>
-        </tr>
+            <div class="p-6">
+                <div role="alert"
+                     class="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-4 text-sm text-red-300">
+                    @Model.Error
+                </div>
+            </div>
         }
-        </tbody>
-    </table>
-</div>
+        else if (Model.Resultado.Items.Count == 0)
+        {
+            <div class="flex min-h-64 flex-col items-center justify-center px-6 py-12 text-center">
+                <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400">
+                    <svg class="h-7 w-7" fill="none" stroke="currentColor"
+                         stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M3 7h18v13H3zM3 7l4-4h10l4 4M9 12h6M9 16h4" />
+                    </svg>
+                </div>
+                <h3 class="text-base font-semibold text-white">
+                    Sin resultados
+                </h3>
+                <p class="mt-2 max-w-sm text-sm text-slate-400">
+                    @(string.IsNullOrWhiteSpace(Model.Estado) &&
+                      string.IsNullOrWhiteSpace(Model.Buscar) &&
+                      string.IsNullOrWhiteSpace(Model.Canal)
+                        ? "Todavía no hay envíos registrados."
+                        : "No hay envíos que coincidan con los filtros seleccionados.")
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="w-full overflow-x-auto">
+                <table class="w-full min-w-[1150px] border-collapse text-left text-sm">
+                    <thead class="bg-[#11131b] text-xs text-center font-semibold uppercase tracking-wider text-slate-400">
+                        <tr>
+                            <th scope="col" class="px-5 py-4">Código</th>
+                            <th scope="col" class="px-4 py-4">Referencia</th>
+                            <th scope="col" class="px-4 py-4">Comercio</th>
+                            <th scope="col" class="px-4 py-4">Destinatario</th>
+                            <th scope="col" class="px-4 py-4">Destino</th>
+                            <th scope="col" class="px-4 py-4">Bultos</th>
+                            <th scope="col" class="px-4 py-4">Origen</th>
+                            <th scope="col" class="px-4 py-4">Estado</th>
+                            <th scope="col" class="px-4 py-4">Creado</th>
+                            <th scope="col" class="px-5 py-4">Acción</th>
+                        </tr>
+                    </thead>
 
-@if (Model.Resultado.TotalPaginas > 1)
-{
-<nav aria-label="Páginas">
-    <ul class="pagination">
-        <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
-            <a class="page-link" asp-page="/Envios/Index" asp-all-route-data="Model.RutaPagina(Model.Pagina - 1)">Anterior</a>
-        </li>
-        <li class="page-item disabled">
-            <span class="page-link">Página @Model.Pagina de @Model.Resultado.TotalPaginas</span>
-        </li>
-        <li class="page-item @(Model.Pagina >= Model.Resultado.TotalPaginas ? "disabled" : "")">
-            <a class="page-link" asp-page="/Envios/Index" asp-all-route-data="Model.RutaPagina(Model.Pagina + 1)">Siguiente</a>
-        </li>
-    </ul>
-</nav>
-}
-}
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var envio in Model.Resultado.Items)
+                        {
+                            <tr class="transition-colors text-center hover:bg-white/[0.035]">
+
+                                <td class="whitespace-nowrap px-5 py-4 font-mono text-xs font-semibold text-violet-300">
+                                    @envio.CodigoSeguimiento
+                                </td>
+
+                                <td class="max-w-40 truncate px-4 py-4 text-slate-300">
+                                    @(envio.ReferenciaExterna ?? "—")
+                                </td>
+
+                                <td class="px-4 py-4 font-medium text-slate-200">
+                                    @envio.Comercio
+                                </td>
+
+                                <td class="px-4 py-4 text-slate-300">
+                                    @envio.Destinatario
+                                </td>
+
+                                <td class="px-4 py-4 text-slate-400">
+                                    @envio.Ciudad, @envio.Departamento
+                                </td>
+
+                                <td class="px-4 py-4 text-center text-slate-300">
+                                    @envio.CantidadBultos
+                                </td>
+
+                                <td class="px-4 py-4">
+                                    <span class="inline-flex items-center rounded-full border border-slate-500/20 bg-slate-500/10 px-2.5 py-1 text-xs font-medium text-slate-300">
+                                        @CanalesIngreso.Texto(envio.Canal)
+                                    </span>
+                                </td>
+
+                                <td class="px-4 py-4">
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        @{
+                                            var estado = envio.Estado?.ToString() ?? "";
+                                            var claseEstado = estado switch
+                                            {
+                                                "Entregado" => "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+                                                "EnTransito" or "EnDistribucion" => "border-blue-500/20 bg-blue-500/10 text-blue-300",
+                                                "Pendiente" or "Creado" => "border-amber-500/20 bg-amber-500/10 text-amber-300",
+                                                "Fallido" or "Cancelado" => "border-red-500/20 bg-red-500/10 text-red-300",
+                                                _ => "border-slate-500/20 bg-slate-500/10 text-slate-300"
+                                            };
+                                        }
+
+                                        <span class="inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium @claseEstado">
+                                            @EstadosEnvio.Texto(envio.Estado)
+                                        </span>
+
+                                        @if (envio.Modalidad == "Urgente")
+                                        {
+                                            <span class="inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-300">
+                                                Urgente
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+
+                                <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">
+                                    @Formato.Fecha(envio.FechaCreacion)
+                                </td>
+
+                                <td class="px-5 py-4 text-right">
+                                    <a asp-page="/Envios/Detalle"
+                                       asp-route-id="@envio.Id"
+                                       class="inline-flex items-center justify-center rounded-lg border border-violet-500/25 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-300 no-underline transition-colors hover:border-violet-400/50 hover:bg-violet-500/20 hover:text-violet-200">
+                                        Ver detalle
+                                        <span class="ml-1.5" aria-hidden="true">→</span>
+                                    </a>
+                                </td>
+
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.Resultado.TotalPaginas > 1)
+            {
+                <nav aria-label="Páginas"
+                     class="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-5 py-4 sm:px-6">
+
+                    @if (Model.Pagina > 1)
+                    {
+                        <a asp-page="/Envios/Index"
+                           asp-all-route-data="Model.RutaPagina(Model.Pagina - 1)"
+                           class="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 no-underline transition-colors hover:bg-white/10 hover:text-white">
+                            ← Anterior
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="inline-flex cursor-not-allowed items-center rounded-lg border border-white/5 px-4 py-2 text-sm text-slate-600">
+                            ← Anterior
+                        </span>
+                    }
+
+                    <span class="text-sm text-slate-400">
+                        Página <strong class="font-semibold text-white">@Model.Pagina</strong>
+                        de <strong class="font-semibold text-white">@Model.Resultado.TotalPaginas</strong>
+                    </span>
+
+                    @if (Model.Pagina < Model.Resultado.TotalPaginas)
+                    {
+                        <a asp-page="/Envios/Index"
+                           asp-all-route-data="Model.RutaPagina(Model.Pagina + 1)"
+                           class="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 no-underline transition-colors hover:bg-white/10 hover:text-white">
+                            Siguiente →
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="inline-flex cursor-not-allowed items-center rounded-lg border border-white/5 px-4 py-2 text-sm text-slate-600">
+                            Siguiente →
+                        </span>
+                    }
+                </nav>
+            }
+        }
+    </section>
+</div>

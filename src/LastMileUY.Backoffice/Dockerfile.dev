@@ -1,0 +1,23 @@
+﻿FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /workspace
+
+# Copiar los archivos necesarios para restaurar dependencias
+COPY src/LastMileUY.Backoffice/LastMileUY.Backoffice.csproj src/LastMileUY.Backoffice/
+COPY src/LastMileUY.Contracts/LastMileUY.Contracts.csproj src/LastMileUY.Contracts/
+
+RUN dotnet restore src/LastMileUY.Backoffice/LastMileUY.Backoffice.csproj
+
+# Copiar el código inicial
+COPY src/LastMileUY.Backoffice/ src/LastMileUY.Backoffice/
+COPY src/LastMileUY.Contracts/ src/LastMileUY.Contracts/
+
+WORKDIR /workspace/src/LastMileUY.Backoffice
+
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:8080
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "watch", "run", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]

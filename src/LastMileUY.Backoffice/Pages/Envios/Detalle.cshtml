@@ -1,198 +1,437 @@
+
 @page "{id:int}"
 @model LastMileUY.Backoffice.Pages.Envios.DetalleModel
+
 @{
-ViewData["Title"] = Model.Envio is null ? "Envío" : $"Envío {Model.Envio.CodigoSeguimiento}";
-var envio = Model.Envio;
+    ViewData["Title"] = Model.Envio is null
+        ? "Envío"
+        : $"Envío {Model.Envio.CodigoSeguimiento}";
+
+    var envio = Model.Envio;
+
+    var campo = "block w-full rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15";
 }
 
-<a asp-page="/Envios/Index" class="btn btn-link px-0 mb-2">&larr; Volver al listado</a>
+<div class="mx-auto max-w-[1600px] space-y-6 motion-safe:animate-lm-form-in">
 
-@if (Model.Aviso is not null)
-{
-<div class="alert alert-success">@Model.Aviso</div>
-}
-@if (Model.ErrorCambio is not null)
-{
-<div class="alert alert-danger">@Model.ErrorCambio</div>
-}
+    <!-- Volver -->
+    <a asp-page="/Envios/Index"
+       class="inline-flex items-center gap-2 text-sm font-medium text-slate-400 no-underline transition-colors hover:text-violet-300">
+        <span aria-hidden="true">←</span>
+        Volver al listado
+    </a>
 
-@if (Model.Error is not null)
-{
-<div class="alert alert-danger">@Model.Error</div>
-}
-else if (envio is null)
-{
-<div class="alert alert-warning">No existe un envío con ese número.</div>
-}
-else
-{
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <h1 class="h3 mb-0 font-monospace">@envio.CodigoSeguimiento</h1>
-    <span class="badge fs-6 @EstadosEnvio.ClaseCss(envio.Estado)">@EstadosEnvio.Texto(envio.Estado)</span>
-    @if (envio.Modalidad == "Urgente")
+    <!-- Mensajes -->
+    @if (Model.Aviso is not null)
     {
-    <span class="badge fs-6 text-bg-danger">Urgente</span>
+        <div role="status"
+             class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
+            @Model.Aviso
+        </div>
+    }
+
+    @if (Model.ErrorCambio is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+            @Model.ErrorCambio
+        </div>
+    }
+
+    @if (Model.Error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+    else if (envio is null)
+    {
+        <div class="rounded-xl border border-amber-500/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-300">
+            No existe un envío con ese número.
+        </div>
+    }
+    else
+    {
+        <!-- Encabezado del envío -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+
+            <div>
+                <p class="mb-2 text-sm font-medium text-violet-400">
+                    Detalle de operación
+                </p>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <h1 class="font-mono text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                        @envio.CodigoSeguimiento
+                    </h1>
+
+                    @{
+                        var estadoActual = envio.Estado?.ToString() ?? "";
+
+                        var colorEstado = estadoActual switch
+                        {
+                            "Entregado" => "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+                            "EnTransito" or "EnDistribucion" => "border-blue-500/25 bg-blue-500/10 text-blue-300",
+                            "Admitido" or "Pendiente" or "Creado" => "border-amber-500/25 bg-amber-500/10 text-amber-300",
+                            "NoEntregado" or "Cancelado" => "border-red-500/25 bg-red-500/10 text-red-300",
+                            _ => "border-slate-500/25 bg-slate-500/10 text-slate-300"
+                        };
+                    }
+
+                    <span class="inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold @colorEstado">
+                        @EstadosEnvio.Texto(envio.Estado)
+                    </span>
+
+                    @if (envio.Modalidad == "Urgente")
+                    {
+                        <span class="inline-flex items-center rounded-full border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300">
+                            Urgente
+                        </span>
+                    }
+                </div>
+
+                <p class="mt-3 text-sm text-slate-400">
+                    Información completa y seguimiento del envío.
+                </p>
+            </div>
+
+            <span class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#171923] px-4 py-2.5 text-xs text-slate-400">
+                Creado: @Formato.Fecha(envio.FechaCreacion)
+            </span>
+        </div>
+
+        <!-- Información principal -->
+        <div class="grid gap-5 xl:grid-cols-3">
+
+            <!-- Envío -->
+            <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+                <div class="mb-6 flex items-center gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                             stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M3 7h18v14H3zM3 7l4-4h10l4 4M3 12h18"/>
+                        </svg>
+                    </span>
+                    <h2 class="text-base font-semibold text-white">Envío</h2>
+                </div>
+
+                <dl class="space-y-4 text-sm">
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Comercio</dt>
+                        <dd class="text-right font-medium text-slate-200">@envio.Comercio</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Referencia</dt>
+                        <dd class="text-right text-slate-200">@(envio.ReferenciaExterna ?? "—")</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Modalidad</dt>
+                        <dd class="text-right text-slate-200">@(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Origen</dt>
+                        <dd class="text-right text-slate-200">@CanalesIngreso.Texto(envio.Canal)</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Creado</dt>
+                        <dd class="text-right text-slate-200">@Formato.Fecha(envio.FechaCreacion)</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Entregar antes de</dt>
+                        <dd class="text-right text-slate-200">@Formato.Fecha(envio.FechaLimiteEntrega)</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Entregado</dt>
+                        <dd class="text-right text-slate-200">@Formato.Fecha(envio.FechaEntrega)</dd>
+                    </div>
+                    <div class="flex justify-between gap-4 border-t border-white/10 pt-4">
+                        <dt class="font-medium text-slate-300">Costo</dt>
+                        <dd class="text-right font-semibold text-violet-300">@Formato.Pesos(envio.CostoEnvio)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <!-- Destinatario -->
+            <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+                <div class="mb-6 flex items-center gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                             stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="8" r="4"/>
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 21a8 8 0 0 1 16 0"/>
+                        </svg>
+                    </span>
+                    <h2 class="text-base font-semibold text-white">Destinatario</h2>
+                </div>
+
+                <div class="space-y-5 text-sm">
+                    <div>
+                        <p class="mb-1 text-xs text-slate-500">Nombre completo</p>
+                        <p class="font-semibold text-slate-200">
+                            @envio.Destinatario.Nombre @envio.Destinatario.Apellido
+                        </p>
+                    </div>
+                    <div>
+                        <p class="mb-1 text-xs text-slate-500">Teléfono</p>
+                        <p class="text-slate-300">@(envio.Destinatario.Telefono ?? "—")</p>
+                    </div>
+                    <div>
+                        <p class="mb-1 text-xs text-slate-500">Correo electrónico</p>
+                        <p class="break-all text-slate-300">@(envio.Destinatario.Email ?? "—")</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dirección -->
+            <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+                <div class="mb-6 flex items-center gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                             stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z"/>
+                            <circle cx="12" cy="10" r="2.5"/>
+                        </svg>
+                    </span>
+                    <h2 class="text-base font-semibold text-white">Dirección de entrega</h2>
+                </div>
+
+                <div class="space-y-5 text-sm">
+                    <div>
+                        <p class="mb-1 text-xs text-slate-500">Dirección</p>
+                        <p class="font-semibold text-slate-200">
+                            @envio.Direccion.Calle @envio.Direccion.Numero@(envio.Direccion.Apartamento is null ? "" : ", " + envio.Direccion.Apartamento)
+                        </p>
+                    </div>
+                    <div>
+                        <p class="mb-1 text-xs text-slate-500">Ubicación</p>
+                        <p class="text-slate-300">
+                            @envio.Direccion.Ciudad, @envio.Direccion.Departamento
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            CP: @envio.Direccion.CodigoPostal
+                        </p>
+                    </div>
+                    @if (envio.Direccion.Referencia is not null)
+                    {
+                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <p class="mb-1 text-xs text-slate-500">Referencia</p>
+                            <p class="text-slate-300">@envio.Direccion.Referencia</p>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <!-- Bultos -->
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+            <div class="flex items-center justify-between border-b border-white/10 px-6 py-5">
+                <h2 class="text-base font-semibold text-white">Bultos</h2>
+                <span class="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+                    @envio.Bultos.Count
+                </span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[650px] text-left text-sm">
+                    <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <tr>
+                            <th scope="col" class="px-6 py-4">Código</th>
+                            <th scope="col" class="px-6 py-4">Descripción</th>
+                            <th scope="col" class="px-6 py-4 text-right">Peso (kg)</th>
+                            <th scope="col" class="px-6 py-4 text-right">Medidas (cm)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var bulto in envio.Bultos)
+                        {
+                            <tr class="transition-colors hover:bg-white/[0.035]">
+                                <td class="px-6 py-4 font-mono text-xs font-semibold text-violet-300">
+                                    @bulto.Codigo
+                                </td>
+                                <td class="px-6 py-4 text-slate-300">
+                                    @(bulto.Descripcion ?? "—")
+                                </td>
+                                <td class="px-6 py-4 text-right text-slate-300">
+                                    @Formato.Numero(bulto.PesoKg)
+                                </td>
+                                <td class="px-6 py-4 text-right text-slate-300">
+                                    @Formato.Numero(bulto.LargoCm) ×
+                                    @Formato.Numero(bulto.AnchoCm) ×
+                                    @Formato.Numero(bulto.AltoCm)
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Regla y cambio de estado -->
+        <div class="grid gap-5 xl:grid-cols-2">
+
+            <!-- Regla operativa -->
+            <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+                <div class="mb-5 flex items-center gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                             stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/>
+                            <circle cx="12" cy="12" r="4"/>
+                        </svg>
+                    </span>
+                    <h2 class="text-base font-semibold text-white">Regla operativa</h2>
+                </div>
+
+                @if (envio.Regla is null)
+                {
+                    <p class="text-sm leading-relaxed text-slate-400">
+                        El operador no tiene una regla para esta modalidad:
+                        solo se aplica la tabla de estados.
+                    </p>
+                }
+                else
+                {
+                    <p class="mb-5 font-semibold text-violet-300">@envio.Regla.Nombre</p>
+
+                    <dl class="space-y-4 text-sm">
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-slate-400">Intentos de entrega</dt>
+                            <dd class="text-right text-slate-200">
+                                @envio.IntentosFallidos fallidos de @envio.Regla.MaximoIntentosEntrega permitidos
+                            </dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-slate-400">Entre intentos</dt>
+                            <dd class="text-right text-slate-200">@envio.Regla.HorasEntreIntentos horas</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-slate-400">Plazo de entrega</dt>
+                            <dd class="text-right text-slate-200">@envio.Regla.PlazoEntregaHoras horas</dd>
+                        </div>
+                        <div class="flex justify-between gap-4 border-t border-white/10 pt-4">
+                            <dt class="text-slate-400">Al entregar pide</dt>
+                            <dd class="text-right text-slate-200">@Formato.Requisitos(envio.Regla)</dd>
+                        </div>
+                    </dl>
+                }
+            </section>
+
+            <!-- Cambio de estado -->
+            <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+                <div class="mb-5 flex items-center gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                             stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 7h16M4 12h10M4 17h7m9-4v8m-4-4h8"/>
+                        </svg>
+                    </span>
+                    <h2 class="text-base font-semibold text-white">Cambiar estado</h2>
+                </div>
+
+                @if (envio.EstadosSiguientes.Count == 0)
+                {
+                    <p class="text-sm text-slate-400">
+                        El envío está en un estado final: ya no puede cambiar.
+                    </p>
+                }
+                else if (!Permisos.PuedeCambiarEstado(User))
+                {
+                    <p class="text-sm text-slate-400">
+                        Tu perfil (@Permisos.Perfil(User)) puede ver el envío,
+                        pero no cambiar su estado.
+                    </p>
+                }
+                else
+                {
+                    @if (envio.Estado == "NoEntregado" &&
+                         !envio.EstadosSiguientes.Contains("Reprogramado"))
+                    {
+                        <div role="alert"
+                             class="mb-5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+                            Se agotaron los intentos de entrega que permite la regla:
+                            el envío tiene que pasar a devolución.
+                        </div>
+                    }
+
+                    <form method="post"
+                          asp-page-handler="CambiarEstado"
+                          asp-route-id="@envio.Id"
+                          class="space-y-4">
+
+                        <div>
+                            <label for="nuevoEstado" class="mb-2 block text-sm font-medium text-slate-300">
+                                Pasar a
+                            </label>
+                            <select id="nuevoEstado"
+                                    name="nuevoEstado"
+                                    class="@campo"
+                                    required>
+                                <option value="">Elegí un estado</option>
+                                @foreach (var estado in envio.EstadosSiguientes)
+                                {
+                                    <option value="@estado">@EstadosEnvio.Texto(estado)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="comentario" class="mb-2 block text-sm font-medium text-slate-300">
+                                Comentario (opcional)
+                            </label>
+                            <input id="comentario"
+                                   name="comentario"
+                                   maxlength="1000"
+                                   placeholder="Agregá una observación..."
+                                   class="@campo" />
+                        </div>
+
+                        <button type="submit"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400">
+                            Guardar cambio
+                            <span aria-hidden="true">→</span>
+                        </button>
+                    </form>
+                }
+            </section>
+        </div>
+
+        <!-- Historial -->
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+            <div class="border-b border-white/10 px-6 py-5">
+                <h2 class="text-base font-semibold text-white">Historial</h2>
+                <p class="mt-1 text-xs text-slate-400">
+                    Registro de eventos y cambios de estado del envío.
+                </p>
+            </div>
+
+            <ol class="divide-y divide-white/5">
+                @foreach (var evento in envio.Eventos.OrderByDescending(e => e.FechaHora))
+                {
+                    <li class="flex flex-wrap items-start justify-between gap-4 px-6 py-5 transition-colors hover:bg-white/[0.025]">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <span class="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-violet-400"></span>
+                            <div>
+                                <span class="mb-2 inline-flex rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-300">
+                                    @EstadosEnvio.Texto(evento.Tipo)
+                                </span>
+                                <p class="text-sm text-slate-300">
+                                    @evento.Descripcion
+                                </p>
+                            </div>
+                        </div>
+
+                        <span class="shrink-0 text-xs text-slate-500">
+                            @Formato.Fecha(evento.FechaHora) · @evento.Origen
+                        </span>
+                    </li>
+                }
+            </ol>
+        </section>
     }
 </div>
-
-<div class="row g-3 mb-3">
-    <div class="col-12 col-lg-4">
-        <div class="card h-100">
-            <div class="card-header">Envío</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-5">Comercio</dt>
-                    <dd class="col-7">@envio.Comercio</dd>
-                    <dt class="col-5">Referencia</dt>
-                    <dd class="col-7">@(envio.ReferenciaExterna ?? "—")</dd>
-                    <dt class="col-5">Modalidad</dt>
-                    <dd class="col-7">@(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")</dd>
-                    <dt class="col-5">Origen</dt>
-                    <dd class="col-7">@CanalesIngreso.Texto(envio.Canal)</dd>
-                    <dt class="col-5">Creado</dt>
-                    <dd class="col-7">@Formato.Fecha(envio.FechaCreacion)</dd>
-                    <dt class="col-5">Entregar antes de</dt>
-                    <dd class="col-7">@Formato.Fecha(envio.FechaLimiteEntrega)</dd>
-                    <dt class="col-5">Entregado</dt>
-                    <dd class="col-7">@Formato.Fecha(envio.FechaEntrega)</dd>
-                    <dt class="col-5">Costo</dt>
-                    <dd class="col-7 mb-0">@Formato.Pesos(envio.CostoEnvio)</dd>
-                </dl>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-header">Destinatario</div>
-            <div class="card-body">
-                <p class="fw-semibold mb-1">@envio.Destinatario.Nombre @envio.Destinatario.Apellido</p>
-                <p class="mb-1">Teléfono: @(envio.Destinatario.Telefono ?? "—")</p>
-                <p class="mb-0">Correo: @(envio.Destinatario.Email ?? "—")</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-lg-4">
-        <div class="card h-100">
-            <div class="card-header">Dirección de entrega</div>
-            <div class="card-body">
-                <p class="mb-1">@envio.Direccion.Calle @envio.Direccion.Numero@(envio.Direccion.Apartamento is null ? "" : ", " + envio.Direccion.Apartamento)</p>
-                <p class="mb-1">@envio.Direccion.Ciudad, @envio.Direccion.Departamento @envio.Direccion.CodigoPostal</p>
-                @if (envio.Direccion.Referencia is not null)
-                {
-                <p class="text-muted mb-0">Referencia: @envio.Direccion.Referencia</p>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card mb-3">
-    <div class="card-header">Bultos (@envio.Bultos.Count)</div>
-    <div class="table-responsive">
-        <table class="table mb-0">
-            <thead>
-            <tr>
-                <th>Código</th>
-                <th>Descripción</th>
-                <th class="text-end">Peso (kg)</th>
-                <th class="text-end">Medidas (cm)</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var bulto in envio.Bultos)
-            {
-            <tr>
-                <td class="font-monospace">@bulto.Codigo</td>
-                <td>@(bulto.Descripcion ?? "—")</td>
-                <td class="text-end">@Formato.Numero(bulto.PesoKg)</td>
-                <td class="text-end">@Formato.Numero(bulto.LargoCm) × @Formato.Numero(bulto.AnchoCm)
-                    × @Formato.Numero(bulto.AltoCm)</td>
-            </tr>
-            }
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="card mb-3">
-    <div class="card-header">Regla operativa</div>
-    <div class="card-body">
-        @if (envio.Regla is null)
-        {
-        <p class="text-muted mb-0">El operador no tiene una regla para esta modalidad: solo se aplica la tabla de estados.</p>
-        }
-        else
-        {
-        <p class="fw-semibold mb-2">@envio.Regla.Nombre</p>
-        <dl class="row mb-0">
-            <dt class="col-sm-5 col-lg-3">Intentos de entrega</dt>
-            <dd class="col-sm-7 col-lg-9">@envio.IntentosFallidos fallidos de @envio.Regla.MaximoIntentosEntrega permitidos</dd>
-            <dt class="col-sm-5 col-lg-3">Entre intentos</dt>
-            <dd class="col-sm-7 col-lg-9">@envio.Regla.HorasEntreIntentos horas</dd>
-            <dt class="col-sm-5 col-lg-3">Plazo de entrega</dt>
-            <dd class="col-sm-7 col-lg-9">@envio.Regla.PlazoEntregaHoras horas</dd>
-            <dt class="col-sm-5 col-lg-3">Al entregar pide</dt>
-            <dd class="col-sm-7 col-lg-9 mb-0">@Formato.Requisitos(envio.Regla)</dd>
-        </dl>
-        }
-    </div>
-</div>
-
-<div class="card mb-3">
-    <div class="card-header">Cambiar estado</div>
-    <div class="card-body">
-        @if (envio.EstadosSiguientes.Count == 0)
-        {
-        <p class="text-muted mb-0">El envío está en un estado final: ya no puede cambiar.</p>
-        }
-        else if (!Permisos.PuedeCambiarEstado(User))
-        {
-        <p class="text-muted mb-0">Tu perfil (@Permisos.Perfil(User)) puede ver el envío pero no cambiar su estado.</p>
-        }
-        else
-        {
-        @if (envio.Estado == "NoEntregado" && !envio.EstadosSiguientes.Contains("Reprogramado"))
-        {
-        <div class="alert alert-warning">Se agotaron los intentos de entrega que permite la regla: el envío tiene que pasar a devolución.</div>
-        }
-        <form method="post" asp-page-handler="CambiarEstado" asp-route-id="@envio.Id" class="row g-2 align-items-end">
-            <div class="col-12 col-md-4">
-                <label for="nuevoEstado" class="form-label">Pasar a</label>
-                <select id="nuevoEstado" name="nuevoEstado" class="form-select" required>
-                    <option value="">Elegí un estado</option>
-                    @foreach (var estado in envio.EstadosSiguientes)
-                    {
-                    <option value="@estado">@EstadosEnvio.Texto(estado)</option>
-                    }
-                </select>
-            </div>
-            <div class="col-12 col-md-6">
-                <label for="comentario" class="form-label">Comentario (opcional)</label>
-                <input id="comentario" name="comentario" class="form-control" maxlength="1000"/>
-            </div>
-            <div class="col-12 col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Guardar</button>
-            </div>
-        </form>
-        }
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header">Historial</div>
-    <ul class="list-group list-group-flush">
-        @foreach (var evento in envio.Eventos.OrderByDescending(e => e.FechaHora))
-        {
-        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
-                    <span>
-                        <span class="badge @EstadosEnvio.ClaseCss(evento.Tipo)">@EstadosEnvio.Texto(evento.Tipo)</span>
-                        @evento.Descripcion
-                    </span>
-            <span class="text-muted small">@Formato.Fecha(evento.FechaHora) · @evento.Origen</span>
-        </li>
-        }
-    </ul>
-</div>
-}

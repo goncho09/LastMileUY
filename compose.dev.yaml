@@ -1,0 +1,33 @@
+﻿services:
+  lastmileuy.backoffice:
+    build:
+      context: .
+      dockerfile: src/LastMileUY.Backoffice/Dockerfile.dev
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+
+    volumes:
+      - ./src/LastMileUY.Backoffice:/workspace/src/LastMileUY.Backoffice
+      - ./src/LastMileUY.Contracts:/workspace/src/LastMileUY.Contracts
+      - type: volume
+        source: backoffice_obj
+        target: /workspace/src/LastMileUY.Backoffice/obj
+      - type: volume
+        source: backoffice_bin
+        target: /workspace/src/LastMileUY.Backoffice/bin
+        
+
+    entrypoint:
+      - dotnet
+      - watch
+      - run
+      - --no-launch-profile
+      - --urls
+      - http://0.0.0.0:8080
+
+volumes:
+  backoffice_obj:
+  backoffice_bin:
