@@ -123,6 +123,9 @@ builder.Services.AddScoped<OperadorActualService>();
 builder.Services.AddScoped<ConsultasDestinatariosService>();
 builder.Services.AddScoped<OperadoresDeComercioService>();
 
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<SeleccionOperadorTemporalService>();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

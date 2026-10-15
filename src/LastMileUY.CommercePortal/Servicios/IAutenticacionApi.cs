@@ -6,13 +6,22 @@ namespace LastMileUY.CommercePortal.Servicios;
 // Recibe la cookie de la API a mano porque se usa desde páginas sin interactividad (con HttpContext).
 public interface IAutenticacionApi
 {
-    Task<ResultadoLogin> IniciarSesionAsync(string email, string password, int? operadorId, CancellationToken ct = default);
+    Task<ResultadoLogin> IniciarSesionAsync(
+        string email, string password, int? operadorId,
+        CancellationToken ct = default);
 
-    Task<List<OperadorDisponibleDto>> ListarOperadoresAsync(string cookieApi, CancellationToken ct = default);
+    Task<ResultadoLogin> SeleccionarOperadorAsync(
+        string tokenTemporal, int operadorId,
+        CancellationToken ct = default);
 
-    Task<ResultadoLogin> CambiarOperadorAsync(string cookieApi, int operadorId, CancellationToken ct = default);
+    Task<List<OperadorDisponibleDto>> ListarOperadoresAsync(
+        string cookieApi, CancellationToken ct = default);
 
-    Task CerrarSesionAsync(string cookieApi, CancellationToken ct = default);
+    Task<ResultadoLogin> CambiarOperadorAsync(
+        string cookieApi, int operadorId, CancellationToken ct = default);
+
+    Task CerrarSesionAsync(
+        string cookieApi, CancellationToken ct = default);
 }
 
 public enum EstadoLogin
@@ -23,11 +32,13 @@ public enum EstadoLogin
     Rechazado
 }
 
+
 public record ResultadoLogin(
     EstadoLogin Estado,
     SesionApi? Sesion = null,
     string? Mensaje = null,
-    List<OperadorDisponibleDto>? Operadores = null);
+    List<OperadorDisponibleDto>? Operadores = null,
+    string? TokenTemporal = null);
 
 // Quién entró, con qué comercio y operador, y la cookie que le dio la API
 public record SesionApi(
@@ -37,3 +48,5 @@ public record SesionApi(
     int OperadorId,
     string? OperadorNombre,
     string CookieApi);
+
+

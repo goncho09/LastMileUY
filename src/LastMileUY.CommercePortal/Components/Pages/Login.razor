@@ -7,62 +7,150 @@
 @inject IAutenticacionApi Autenticacion
 @inject NavigationManager Navegacion
 @inject ILogger<Login> Logger
+@inject SeleccionOperadorCookie SeleccionCookie
 
 @* Página SIN interactividad (renderizado estático, formulario POST común): así hay HttpContext
    y se puede escribir la cookie del portal, igual que el Login de Razor Pages del Backoffice. *@
 
-<PageTitle>Iniciar sesión</PageTitle>
 
-@* Mismo diseño que el Login del Backoffice: formulario centrado *@
-<div class="row justify-content-center">
-    <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-        <h1 class="h3 mb-1">Iniciar sesión</h1>
-        <p class="text-muted mb-3">Portal del comercio</p>
+<PageTitle>Iniciar sesión | LastMileUY</PageTitle>
 
-        @if (error is not null)
-        {
-            <div class="alert alert-danger">@error</div>
-        }
+<div class="login-container d-flex align-items-center justify-content-center py-5">
+    <div class="card login-card border-0 shadow-lg">
+        <div class="card-body p-4 p-md-5">
 
-        @if (aviso is not null)
-        {
-            <div class="alert alert-info">@aviso</div>
-        }
+            <div class="text-center mb-4">
+                <div class="login-icon mx-auto mb-3">
+                    <i class="bi bi-box-seam"></i>
+                </div>
 
-        <EditForm Model="Formulario" FormName="login" OnValidSubmit="IniciarSesionAsync">
-            <DataAnnotationsValidator/>
-
-            <div class="mb-3">
-                <label class="form-label" for="email">Email</label>
-                <InputText id="email" class="form-control" @bind-Value="Formulario.Email" autocomplete="username" autofocus/>
-                <ValidationMessage For="() => Formulario.Email" class="text-danger small"/>
+                <h1 class="fw-bold fs-3 mb-1">LastMileUY</h1>
+                <p class="text-muted mb-0">Portal de comercios</p>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label" for="password">Contraseña</label>
-                <InputText id="password" type="password" class="form-control" @bind-Value="Formulario.Password"
-                           autocomplete="current-password"/>
-                <ValidationMessage For="() => Formulario.Password" class="text-danger small"/>
+            <div class="mb-4">
+                <h2 class="fs-5 fw-semibold mb-1">Bienvenido de nuevo</h2>
+                <p class="text-muted small mb-0">
+                    Ingresá tus credenciales para gestionar tus envíos.
+                </p>
             </div>
 
-            @if (operadores is not null)
+            @if (error is not null)
             {
-                <div class="mb-3">
-                    <label class="form-label" for="operador">Operador logístico</label>
-                    <InputSelect id="operador" class="form-select" @bind-Value="Formulario.OperadorId">
-                        <option value="">Elegí un operador…</option>
-                        @foreach (var operador in operadores)
-                        {
-                            <option value="@operador.Id">@operador.Nombre</option>
-                        }
-                    </InputSelect>
+                <div class="alert alert-danger small" role="alert">
+                    <i class="bi bi-exclamation-circle me-2"></i>@error
                 </div>
             }
 
-            <button type="submit" class="btn btn-primary w-100">Entrar</button>
-        </EditForm>
+            @if (aviso is not null)
+            {
+                <div class="alert alert-info small" role="status">
+                    <i class="bi bi-info-circle me-2"></i>@aviso
+                </div>
+            }
+
+            <EditForm Model="Formulario" FormName="login"
+                      OnValidSubmit="IniciarSesionAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label fw-medium" for="email">
+                        Correo electrónico
+                    </label>
+
+                    <InputText id="email"
+                               class="form-control form-control-lg login-input"
+                               @bind-Value="Formulario.Email"
+                               placeholder="nombre@comercio.com"
+                               autocomplete="username"
+                               autofocus />
+
+                    <ValidationMessage For="() => Formulario.Email"
+                                       class="text-danger small" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-medium" for="password">
+                        Contraseña
+                    </label>
+
+                    <InputText id="password"
+                               type="password"
+                               class="form-control form-control-lg login-input"
+                               @bind-Value="Formulario.Password"
+                               placeholder="Ingresá tu contraseña"
+                               autocomplete="current-password" />
+
+                    <ValidationMessage For="() => Formulario.Password"
+                                       class="text-danger small" />
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary btn-lg w-100 login-button">
+                    Iniciar sesión
+                    <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+            </EditForm>
+
+            <div class="text-center mt-4">
+                <span class="text-muted small">
+                    Gestión de envíos simple y segura
+                </span>
+            </div>
+
+        </div>
     </div>
 </div>
+
+<style>
+    .login-container {
+        min-height: 85vh;
+        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+        border-radius: 16px;
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 460px;
+        border-radius: 20px;
+    }
+
+    .login-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+        background: #e8f0ff;
+        color: #2563eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+    }
+
+    .login-input {
+        border-radius: 10px;
+        font-size: 15px;
+        padding: 12px 14px;
+    }
+
+    .login-input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+    }
+
+    .login-button {
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: 600;
+        background: #2563eb;
+        border-color: #2563eb;
+    }
+
+    .login-button:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+    }
+</style>
 
 @code {
     [CascadingParameter]
@@ -80,7 +168,6 @@
 
     private string? error;
     private string? aviso;
-    private List<OperadorDisponibleDto>? operadores;
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,11 +205,20 @@
                 return;
 
             case EstadoLogin.ElegirOperador:
-                // La contraseña no se vuelve a escribir en la página: hay que ingresarla de nuevo
-                operadores = resultado.Operadores;
-                Formulario.Password = string.Empty;
-                aviso = (resultado.Mensaje ?? "Elegí con qué operador vas a trabajar.")
-                        + " Volvé a ingresar tu contraseña.";
+                if (string.IsNullOrWhiteSpace(resultado.TokenTemporal) ||
+                    resultado.Operadores is null ||
+                    resultado.Operadores.Count == 0)
+                {
+                    error = "No se pudo preparar la selección de operador. Intentá nuevamente.";
+                    return;
+                }
+
+                SeleccionCookie.Guardar(
+                    HttpContext,
+                    resultado.TokenTemporal,
+                    resultado.Operadores);
+
+                Navegacion.NavigateTo("/seleccionar-operador", forceLoad: true);
                 return;
 
             case EstadoLogin.Rechazado:

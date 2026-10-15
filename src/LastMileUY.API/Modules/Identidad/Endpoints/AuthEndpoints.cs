@@ -25,6 +25,7 @@ public static class AuthEndpoints
                 SignInManager<Usuario> signInManager,
                 UserManager<Usuario> userManager,
                 OperadoresDeComercioService operadoresDeComercio,
+                SeleccionOperadorTemporalService seleccionTemporal,
                 CancellationToken cancellationToken) =>
             {
                 var usuario = await userManager.FindByEmailAsync(request.Email);
@@ -81,10 +82,14 @@ public static class AuthEndpoints
                 }
                 else
                 {
-                    return Results.Conflict(new OperadorRequeridoResponse
+                    var tokenTemporal = seleccionTemporal.Crear(
+                        await userManager.GetUserIdAsync(usuario));
+
+                    return Results.Conflict(new
                     {
-                        Mensaje = "Tu comercio trabaja con varios operadores. Elegí con cuál vas a trabajar.",
-                        Operadores = operadores
+                        Mensaje = "Elegí con qué operador vas a trabajar.",
+                        Operadores = operadores,
+                        TokenTemporal = tokenTemporal
                     });
                 }
 
@@ -92,6 +97,47 @@ public static class AuthEndpoints
                 return SesionIniciada();
             })
             .AllowAnonymous();
+        
+        
+        group.MapPost("/seleccionar-operador", async (
+                SeleccionarOperadorRequest request,
+                SeleccionOperadorTemporalService seleccionTemporal,
+                UserManager<Usuario> userManager,
+                SignInManager<Usuario> signInManager,
+                OperadoresDeComercioService operadoresDeComercio,
+                CancellationToken cancellationToken) =>
+            {
+                if (!seleccionTemporal.IntentarConsumir(
+                        request.TokenTemporal, out var usuarioId))
+                {
+                    return Results.Unauthorized();
+                }
+
+                var usuario = await userManager.FindByIdAsync(usuarioId);
+
+                if (usuario is null || !usuario.Activo || usuario.ComercioId is null)
+                {
+                    return Results.Unauthorized();
+                }
+
+                var operadores = await operadoresDeComercio.ListarAsync(
+                    usuario.ComercioId.Value, cancellationToken);
+
+                if (operadores.All(o => o.Id != request.OperadorId))
+                {
+                    return Results.BadRequest(new
+                    {
+                        mensaje = "Tu comercio no trabaja con ese operador."
+                    });
+                }
+
+                await IniciarSesionConOperadorAsync(
+                    signInManager, usuario, request.OperadorId);
+
+                return SesionIniciada();
+            })
+            .AllowAnonymous();
+
 
         group.MapGet("/me", async (
                 HttpContext httpContext,

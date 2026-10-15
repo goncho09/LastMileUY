@@ -299,18 +299,28 @@ public class IdentitySeeder
 
         foreach (var comercioId in comerciosId)
         {
-            var yaVinculado = await db.Set<OperadorComercio>()
-                .AnyAsync(oc => oc.OperadorId == operadorId && oc.ComercioId == comercioId);
-
-            if (yaVinculado)
-                continue;
-
-            db.Set<OperadorComercio>().Add(new OperadorComercio
+            foreach (var idOperador in operadoresId)
             {
-                OperadorId = operadorId,
-                ComercioId = comercioId,
-                Activo = true
-            });
+                // El comercio 1 trabaja con ambos operadores.
+                // El comercio 2 trabaja solamente con el operador 1.
+                if (comercioId == comerciosId[1] && idOperador == operadoresId[1])
+                    continue;
+
+                var yaVinculado = await db.Set<OperadorComercio>()
+                    .AnyAsync(oc =>
+                        oc.OperadorId == idOperador &&
+                        oc.ComercioId == comercioId);
+
+                if (yaVinculado)
+                    continue;
+
+                db.Set<OperadorComercio>().Add(new OperadorComercio
+                {
+                    OperadorId = idOperador,
+                    ComercioId = comercioId,
+                    Activo = true
+                });
+            }
         }
 
         await db.SaveChangesAsync();

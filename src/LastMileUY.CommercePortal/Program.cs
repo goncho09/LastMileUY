@@ -63,6 +63,9 @@ builder.Services.AddHttpClient<IDestinatariosApi, DestinatariosApiHttp>(Configur
 builder.Services.AddHttpClient<IEnviosApi, EnviosApiHttp>(ConfigurarCliente)
     .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
 
+builder.Services.AddSingleton<SeleccionOperadorCookie>();
+builder.Services.AddDataProtection();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
