@@ -1,8 +1,10 @@
+using System.Net;
+
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using System.Net.Http.Json;
 using LastMileUY.API.Modules.Identidad.Domain;
-using LastMileUY.Contracts.Auth;
+using Contracts.Auth;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -79,17 +81,55 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 
     // Un cliente HTTP con sesión iniciada (guarda la cookie como un navegador).
     // operadorId: para un comercio que trabaja con varios operadores.
+    
     public async Task<HttpClient> IniciarSesionAsync(string email, int? operadorId = null)
     {
         var cliente = ClienteSinSesion();
 
-        using var respuesta = await cliente.PostAsJsonAsync("api/auth/login",
-            new LoginRequest { Email = email, Password = Clave, OperadorId = operadorId });
+        using var respuesta = await cliente.PostAsJsonAsync(
+            "api/auth/login",
+            new LoginRequest
+            {
+                Email = email,
+                Password = Clave,
+                OperadorId = operadorId
+            });
 
-        respuesta.EnsureSuccessStatusCode();
+        if (respuesta.StatusCode == HttpStatusCode.Conflict)
+        {
+            var seleccion = await respuesta.Content
+                .ReadFromJsonAsync<OperadorRequeridoResponse>();
+
+            if (seleccion is null ||
+                string.IsNullOrWhiteSpace(seleccion.TokenTemporal))
+            {
+                throw new InvalidOperationException(
+                    "La API no devolvió un token temporal válido.");
+            }
+
+            var operadorElegido = operadorId
+                                  ?? seleccion.Operadores.FirstOrDefault()?.Id
+                                  ?? throw new InvalidOperationException(
+                                      "No hay operadores disponibles para seleccionar.");
+
+            using var confirmacion = await cliente.PostAsJsonAsync(
+                "api/auth/seleccionar-operador",
+                new SeleccionarOperadorRequest
+                {
+                    TokenTemporal = seleccion.TokenTemporal,
+                    OperadorId = operadorElegido
+                });
+
+            confirmacion.EnsureSuccessStatusCode();
+        }
+        else
+        {
+            respuesta.EnsureSuccessStatusCode();
+        }
 
         return cliente;
     }
+
 
     // La cookie de sesión es Secure: se usa https, como en producción
     public HttpClient ClienteSinSesion() => CreateClient(new WebApplicationFactoryClientOptions
