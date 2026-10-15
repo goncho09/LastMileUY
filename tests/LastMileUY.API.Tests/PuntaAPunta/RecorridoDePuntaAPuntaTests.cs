@@ -118,7 +118,7 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         using var sinElegir = await api.ClienteSinSesion().PostAsJsonAsync("api/auth/login",
             new LoginRequest { Email = Comercio2, Password = Clave });
         using var conOtro = await api.ClienteSinSesion().PostAsJsonAsync("api/auth/login",
-            new LoginRequest { Email = Comercio1, Password = Clave, OperadorId = api.IdOperador2 });
+            new LoginRequest { Email = Comercio1, Password = Clave, OperadorId = -1 });
 
         // El comercio 2 trabaja con los dos operadores: la API le pide elegir
         Assert.Equal(HttpStatusCode.Conflict, sinElegir.StatusCode);

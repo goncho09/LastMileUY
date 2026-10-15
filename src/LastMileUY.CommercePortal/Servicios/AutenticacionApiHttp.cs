@@ -24,10 +24,13 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
             // El comercio trabaja con varios operadores: hay que elegir uno
             case HttpStatusCode.Conflict:
                 var requerido = await login.Content.ReadFromJsonAsync<OperadorRequeridoResponse>(ct);
+
                 return new ResultadoLogin(
                     EstadoLogin.ElegirOperador,
                     Mensaje: requerido?.Mensaje,
-                    Operadores: requerido?.Operadores ?? []);
+                    Operadores: requerido?.Operadores ?? [],
+                    TokenTemporal: requerido?.TokenTemporal);
+
 
             case HttpStatusCode.BadRequest or HttpStatusCode.Forbidden:
                 return new ResultadoLogin(EstadoLogin.Rechazado, Mensaje: await LeerMensajeAsync(login, ct));
@@ -37,6 +40,41 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
 
         return await ObtenerSesionAsync(LeerCookieObligatoria(login), ct);
     }
+    
+    
+    public async Task<ResultadoLogin> SeleccionarOperadorAsync(
+        string tokenTemporal,
+        int operadorId,
+        CancellationToken ct = default)
+    {
+        using var respuesta = await http.PostAsJsonAsync(
+            "api/auth/seleccionar-operador",
+            new SeleccionarOperadorRequest
+            {
+                TokenTemporal = tokenTemporal,
+                OperadorId = operadorId
+            },
+            ct);
+
+        switch (respuesta.StatusCode)
+        {
+            case HttpStatusCode.Unauthorized:
+                return new ResultadoLogin(
+                    EstadoLogin.Rechazado,
+                    Mensaje: "La selección venció o ya fue utilizada. Volvé a iniciar sesión.");
+
+            case HttpStatusCode.BadRequest or HttpStatusCode.Forbidden:
+                return new ResultadoLogin(
+                    EstadoLogin.Rechazado,
+                    Mensaje: await LeerMensajeAsync(respuesta, ct));
+        }
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return await ObtenerSesionAsync(
+            LeerCookieObligatoria(respuesta), ct);
+    }
+
 
     public async Task<List<OperadorDisponibleDto>> ListarOperadoresAsync(string cookieApi, CancellationToken ct = default)
     {

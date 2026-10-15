@@ -1,0 +1,163 @@
+﻿
+@page "/seleccionar-operador"
+@attribute [AllowAnonymous]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject IAutenticacionApi Autenticacion
+@inject SeleccionOperadorCookie SeleccionCookie
+@inject NavigationManager Navegacion
+@inject ILogger<SeleccionarOperador> Logger
+
+<PageTitle>Seleccionar operador | LastMileUY</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center py-5"
+     style="min-height: 80vh; background: #f1f5f9; border-radius: 16px;">
+
+    <div class="card border-0 shadow-lg w-100"
+         style="max-width: 480px; border-radius: 20px;">
+
+        <div class="card-body p-4 p-md-5">
+
+            <div class="text-center mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center mb-3"
+                     style="width: 64px; height: 64px; border-radius: 18px;
+                            background: #e8f0ff; color: #2563eb; font-size: 30px;">
+                    <i class="bi bi-truck"></i>
+                </div>
+
+                <h1 class="fs-4 fw-bold mb-2">Seleccioná un operador</h1>
+                <p class="text-muted small">
+                    Elegí con qué operador logístico querés gestionar tus envíos.
+                </p>
+            </div>
+
+            @if (error is not null)
+            {
+                <div class="alert alert-danger" role="alert">@error</div>
+            }
+
+            @if (datos is not null)
+            {
+                <EditForm Model="Formulario"
+                          FormName="seleccionar-operador"
+                          OnValidSubmit="ConfirmarAsync">
+
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" for="operador">
+                            Operador logístico
+                        </label>
+
+                        <InputSelect id="operador"
+                                     class="form-select form-select-lg"
+                                     @bind-Value="Formulario.OperadorId">
+                            <option value="0">Elegí un operador...</option>
+
+                            @foreach (var operador in datos.Operadores)
+                            {
+                                <option value="@operador.Id">
+                                    @operador.Nombre
+                                </option>
+                            }
+                        </InputSelect>
+
+                        <ValidationMessage For="() => Formulario.OperadorId"
+                                           class="text-danger small" />
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-primary btn-lg w-100 fw-semibold">
+                        Continuar
+                        <i class="bi bi-arrow-right ms-2"></i>
+                    </button>
+                </EditForm>
+            }
+
+            <div class="text-center mt-4">
+                <a href="/login" class="text-decoration-none small">
+                    Volver al inicio de sesión
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private FormularioSeleccion Formulario { get; set; } = default!;
+
+    private SeleccionOperadorCookie.DatosSeleccion? datos;
+    private string? error;
+
+    protected override void OnInitialized()
+    {
+        Formulario ??= new();
+        datos = SeleccionCookie.Leer(HttpContext);
+
+        if (datos is null)
+        {
+            error = "La selección venció. Volvé a iniciar sesión.";
+        }
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        if (datos is null)
+        {
+            error = "La selección venció. Volvé a iniciar sesión.";
+            return;
+        }
+
+        if (datos.Operadores.All(o => o.Id != Formulario.OperadorId))
+        {
+            error = "Seleccioná un operador válido.";
+            return;
+        }
+
+        ResultadoLogin resultado;
+
+        try
+        {
+            resultado = await Autenticacion.SeleccionarOperadorAsync(
+                datos.TokenTemporal,
+                Formulario.OperadorId);
+        }
+        catch (Exception ex) when (ex is HttpRequestException
+                                   or TaskCanceledException
+                                   or InvalidOperationException)
+        {
+            Logger.LogError(ex, "Error al seleccionar operador");
+            error = "No se pudo conectar con el servidor. Intentá nuevamente.";
+            return;
+        }
+
+        if (resultado.Estado != EstadoLogin.Ok || resultado.Sesion is null)
+        {
+            SeleccionCookie.Eliminar(HttpContext);
+            datos = null;
+            error = resultado.Mensaje ?? "No se pudo completar el inicio de sesión.";
+            return;
+        }
+
+        SeleccionCookie.Eliminar(HttpContext);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            ClaimsPortal.CrearPrincipal(
+                resultado.Sesion,
+                CookieAuthenticationDefaults.AuthenticationScheme));
+
+        Navegacion.NavigateTo("/envios/nuevo", forceLoad: true);
+    }
+
+    private sealed class FormularioSeleccion
+    {
+        [Range(1, int.MaxValue, ErrorMessage = "Seleccioná un operador.")]
+        public int OperadorId { get; set; }
+    }
+}
