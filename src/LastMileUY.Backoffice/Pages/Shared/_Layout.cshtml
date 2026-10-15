@@ -1,86 +1,183 @@
-﻿<!DOCTYPE html>
+﻿
+@using System
+@{
+    var operador = IdentidadOperador.Desde(User);
+    var autenticado = User.Identity?.IsAuthenticated == true;
+    var titulo = ViewData["Title"]?.ToString() ?? "Inicio";
+
+    var paginaActual = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+
+    var enInicio = paginaActual.Equals("/Index", StringComparison.OrdinalIgnoreCase);
+    var enEnvios = paginaActual.StartsWith("/Envios", StringComparison.OrdinalIgnoreCase);
+    var enOperador = paginaActual.StartsWith("/Operador", StringComparison.OrdinalIgnoreCase);
+
+    var claseNavBase = "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium no-underline transition-colors";
+    var claseNavActivo = "bg-violet-500/15 text-violet-300";
+    var claseNavInactivo = "text-slate-400 hover:bg-white/5 hover:text-white";
+}
+
+<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>@ViewData["Title"] - LastMileUY Backoffice</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LastMileUY - @ViewData["Title"]</title>
+
     <script type="importmap"></script>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
-    <link rel="stylesheet" href="~/LastMileUY.Backoffice.styles.css" asp-append-version="true"/>
+
+    <link rel="stylesheet" href="~/css/tailwind.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/LastMileUY.Backoffice.styles.css" asp-append-version="true" />
 </head>
-@{
-    // Con sesión, el Backoffice toma el color y el logo del operador (ver IdentidadOperador)
-    var operador = IdentidadOperador.Desde(User);
-    var textoClaro = operador?.ColorTexto == "#ffffff";
-}
-<body class="@(operador is null ? null : "con-operador")"
+
+<body class="min-h-screen bg-[#0c0e14] text-slate-100 antialiased"
       style="@(operador is null ? null : $"--color-operador: {operador.Color}; --color-operador-texto: {operador.ColorTexto};")">
-<header>
-    <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3 @(operador is null ? "navbar-light bg-white" : "navbar-operador")"
-         data-bs-theme="@(textoClaro ? "dark" : "light")">
-        <div class="container">
-            @if (operador is null)
-            {
-            <a class="navbar-brand" asp-area="" asp-page="/Index">LastMileUY Backoffice</a>
-            }
-            else
-            {
-            <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
-                @if (operador.LogoUrl is not null)
-                {
-                <img src="@operador.LogoUrl" alt="" class="operador-logo"/>
-                }
-                else
-                {
-                <span class="operador-inicial" aria-hidden="true">@operador.Inicial</span>
-                }
-                <span>@operador.Nombre</span>
-                <span class="small opacity-75 d-none d-md-inline">Backoffice</span>
-            </a>
-            }
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
-                    aria-controls="navbarSupportedContent"
-                    aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                <ul class="navbar-nav flex-grow-1">
-                    <li class="nav-item">
-                        <a class="nav-link" asp-area="" asp-page="/Envios/Index">Envíos</a>
-                    </li>
-                    @if (Permisos.PuedeVerConfiguracion(User))
-                    {
-                    <li class="nav-item">
-                        <a class="nav-link" asp-area="" asp-page="/Operador/Index">Mi operador</a>
-                    </li>
-                    }
-                </ul>
-                <form method="post" asp-page="/Logout" class="d-flex align-items-center gap-2">
-                    <span class="navbar-text small">@User.Identity.Name · @Permisos.Perfil(User)</span>
-                    <button type="submit" class="btn btn-sm @(textoClaro ? "btn-outline-light" : "btn-outline-secondary")">Salir</button>
-                </form>
-                }
+
+@if (autenticado)
+{
+    <div class="min-h-screen lg:flex">
+
+        <!-- Sidebar -->
+        <aside class="flex w-full shrink-0 flex-col border-b border-white/10 bg-[#11131b] lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-r lg:border-b-0">
+
+            <!-- Marca -->
+            <div class="border-b border-white/10 px-6 py-6">
+                <a asp-page="/Index"
+                   class="flex items-center gap-3 no-underline">
+
+                    <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500 text-xl font-bold text-white shadow-lg shadow-violet-950/30">
+                        L
+                    </span>
+
+                    <span class="flex flex-col">
+                        <strong class="text-base font-bold tracking-tight text-white">
+                            LastMileUY
+                        </strong>
+                        <small class="mt-0.5 text-xs text-slate-400">
+                            Backoffice
+                        </small>
+                    </span>
+                </a>
             </div>
+
+            <!-- Navegación -->
+            <nav class="flex flex-col gap-1 px-4 py-6" aria-label="Navegación principal">
+
+                <span class="mb-4 px-4 text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
+                    Menú principal
+                </span>
+
+                <a asp-page="/Index"
+                   aria-current="@(enInicio ? "page" : null)"
+                   class="@(claseNavBase) @(enInicio ? claseNavActivo : claseNavInactivo)">
+                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                         stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>
+                    </svg>
+                    Inicio
+                </a>
+
+                <a asp-page="/Envios/Index"
+                   aria-current="@(enEnvios ? "page" : null)"
+                   class="@(claseNavBase) @(enEnvios ? claseNavActivo : claseNavInactivo)">
+                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                         stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M3 7h18v14H3zM3 7l4-4h10l4 4M3 12h18M9 16h6"/>
+                    </svg>
+                    Envíos
+                </a>
+
+                @if (Permisos.PuedeVerConfiguracion(User))
+                {
+                    <a asp-page="/Operador/Index"
+                       aria-current="@(enOperador ? "page" : null)"
+                       class="@(claseNavBase) @(enOperador ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l-1.86 1.86A1.7 1.7 0 0 0 16 18.4a1.7 1.7 0 0 0-1.54 1.06L13.8 21h-3.6l-.66-1.54A1.7 1.7 0 0 0 8 18.4a1.7 1.7 0 0 0-1.88.34l-1.86-1.86A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.06-1.54L2 12.8V11.2l1.54-.66A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l1.86-1.86A1.7 1.7 0 0 0 8 5.6a1.7 1.7 0 0 0 1.54-1.06L10.2 3h3.6l.66 1.54A1.7 1.7 0 0 0 16 5.6a1.7 1.7 0 0 0 1.88-.34l1.86 1.86A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.06 1.54L22 11.2v1.6l-1.54.66A1.7 1.7 0 0 0 19.4 15z"/>
+                        </svg>
+                        Mi operador
+                    </a>
+                }
+            </nav>
+
+            <!-- Usuario y cerrar sesión -->
+            <div class="mt-auto border-t border-white/10 px-4 py-5">
+
+                <div class="mb-4 flex items-center gap-3 px-2">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-500/20 text-sm font-bold text-violet-300">
+                        @(User.Identity?.Name?.Substring(0, 1).ToUpperInvariant() ?? "U")
+                    </span>
+
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-white">
+                            @User.Identity?.Name
+                        </p>
+                        <p class="mt-0.5 text-xs text-slate-400">
+                            @Permisos.Perfil(User)
+                        </p>
+                    </div>
+                </div>
+
+                <form method="post" asp-page="/Logout">
+                    <button type="submit"
+                            class="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-300">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                        </svg>
+                        Cerrar sesión
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Contenido principal -->
+        <div class="flex min-w-0 flex-1 flex-col">
+
+            <!-- Barra superior -->
+            <header class="flex min-h-22 flex-wrap items-center justify-between gap-4 border-b border-white/10 px-5 py-5 sm:px-8">
+
+                <div>
+                    <h1 class="text-lg font-bold text-white">
+                        @titulo
+                    </h1>
+                    <p class="mt-1 text-xs text-slate-400">
+                        LastMileUY · Gestión logística
+                    </p>
+                </div>
+
+                @if (operador is not null)
+                {
+                    <div class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#171923] px-4 py-2.5 text-xs font-medium text-slate-200">
+                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+                        <span>@operador.Nombre</span>
+                    </div>
+                }
+            </header>
+
+            <!-- Página -->
+            <main role="main" class="w-full flex-1 px-5 py-8 sm:px-8">
+                @RenderBody()
+            </main>
         </div>
-    </nav>
-</header>
-<div class="container">
-    <main role="main" class="pb-3">
+    </div>
+}
+else
+{
+    <!-- Login y páginas públicas -->
+    <main role="main" class="min-h-screen">
         @RenderBody()
     </main>
-</div>
-
-<footer class="border-top footer text-muted">
-    <div class="container">
-        &copy; 2026 - LastMileUY
-    </div>
-</footer>
+}
 
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 
 @await RenderSectionAsync("Scripts", required: false)

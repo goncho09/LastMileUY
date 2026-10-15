@@ -123,5 +123,5 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
 
     // Solo vuelve a direcciones del propio Backoffice (evita redirigir a otro sitio)
     private IActionResult Volver() =>
-        Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToPage("/Envios/Index");
+        Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToPage("/Index");
 }

@@ -1,92 +1,270 @@
+
 @page
 @model LastMileUY.Backoffice.Pages.Operador.IndexModel
+
 @{
-ViewData["Title"] = "Mi operador";
-var operador = Model.Operador;
+    ViewData["Title"] = "Mi operador";
+    var operador = Model.Operador;
 }
 
-<h1 class="h3 mb-3">Mi operador</h1>
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
-@if (Model.Error is not null)
-{
-<div class="alert alert-danger">@Model.Error</div>
-}
-else if (operador is not null)
-{
-var color = IdentidadOperador.ColorSeguro(operador.ColorPrimario);
-var logo = IdentidadOperador.LogoSeguro(operador.LogoUrl);
+    <!-- Encabezado -->
+    <div>
+        <p class="mb-2 text-sm font-medium text-violet-400">
+            Configuración del operador
+        </p>
 
-<div class="card mb-3">
-    <div class="card-header">Identidad</div>
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-4 col-lg-3">Nombre</dt>
-            <dd class="col-sm-8 col-lg-9">@operador.Nombre</dd>
-            <dt class="col-sm-4 col-lg-3">Color</dt>
-            <dd class="col-sm-8 col-lg-9">
-                <span class="muestra-color" style="--color-operador: @color"></span>
-                @(operador.ColorPrimario ?? "Sin definir (se usa el gris del sistema)")
-            </dd>
-            <dt class="col-sm-4 col-lg-3">Logo</dt>
-            <dd class="col-sm-8 col-lg-9 mb-0">
-                @if (logo is null)
-                {
-                <span class="text-muted">Sin logo (se muestra la inicial del nombre)</span>
-                }
-                else
-                {
-                <img src="@logo" alt="Logo de @operador.Nombre" class="operador-logo"/>
-                }
-            </dd>
-        </dl>
+        <h1 class="text-3xl font-bold tracking-tight text-white">
+            Mi operador
+        </h1>
+
+        <p class="mt-2 text-sm text-slate-400">
+            Consultá la identidad y las reglas operativas de tu organización.
+        </p>
     </div>
-</div>
 
-<div class="card">
-    <div class="card-header">Reglas operativas</div>
-    @if (operador.Reglas.Count == 0)
+    @if (Model.Error is not null)
     {
-    <div class="card-body">
-        <p class="text-muted mb-0">No hay reglas definidas: los envíos solo siguen la tabla de estados, sin límite de intentos ni plazo.</p>
-    </div>
+        <div role="alert"
+             class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+    else if (operador is not null)
+    {
+        var color = IdentidadOperador.ColorSeguro(operador.ColorPrimario);
+        var logo = IdentidadOperador.LogoSeguro(operador.LogoUrl);
+
+        <!-- Identidad -->
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+                <div>
+                    <h2 class="text-base font-semibold text-white">
+                        Identidad del operador
+                    </h2>
+                    <p class="mt-1 text-xs text-slate-400">
+                        Información visual asociada a tu organización.
+                    </p>
+                </div>
+
+                <span class="rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-300">
+                    Identidad
+                </span>
+            </div>
+
+            <div class="grid gap-8 p-6 lg:grid-cols-3">
+
+                <!-- Presentación -->
+                <div class="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#11131b] p-8 text-center">
+                    <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                        @if (logo is not null)
+                        {
+                            <img src="@logo"
+                                 alt="Logo de @operador.Nombre"
+                                 class="h-full w-full object-contain p-2" />
+                        }
+                        else
+                        {
+                            <span class="text-3xl font-bold text-violet-300">
+                                @(string.IsNullOrWhiteSpace(operador.Nombre)
+                                    ? "O"
+                                    : operador.Nombre.Substring(0, 1).ToUpperInvariant())
+                            </span>
+                        }
+                    </div>
+
+                    <h3 class="mt-5 text-lg font-bold text-white">
+                        @operador.Nombre
+                    </h3>
+
+                    <p class="mt-2 text-xs text-slate-500">
+                        Identidad visual del operador
+                    </p>
+
+                    <div class="mt-5 h-1.5 w-20 rounded-full"
+                         style="background-color: @color">
+                    </div>
+                </div>
+
+                <!-- Información -->
+                <div class="space-y-6 lg:col-span-2">
+
+                    <div class="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+                        <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+                            Nombre
+                        </p>
+                        <p class="text-lg font-semibold text-white">
+                            @operador.Nombre
+                        </p>
+                    </div>
+
+                    <div class="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+                        <p class="mb-3 text-xs font-medium uppercase tracking-wider text-slate-500">
+                            Color principal
+                        </p>
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            <span class="h-9 w-9 shrink-0 rounded-xl border border-white/10"
+                                  style="background-color: @color">
+                            </span>
+
+                            <div>
+                                <p class="font-mono text-sm font-semibold text-slate-200">
+                                    @(operador.ColorPrimario ?? "Sin definir")
+                                </p>
+                                @if (operador.ColorPrimario is null)
+                                {
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        Se utiliza el color predeterminado del sistema.
+                                    </p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+                        <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+                            Logo
+                        </p>
+
+                        <p class="text-sm text-slate-300">
+                            @(logo is null
+                                ? "Sin logo. Se muestra la inicial del nombre."
+                                : "Logo configurado correctamente.")
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reglas operativas -->
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+                <div>
+                    <h2 class="text-base font-semibold text-white">
+                        Reglas operativas
+                    </h2>
+
+                    <p class="mt-1 text-xs text-slate-400">
+                        Condiciones de entrega según la modalidad del envío.
+                    </p>
+                </div>
+
+                <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                    @operador.Reglas.Count reglas
+                </span>
+            </div>
+
+            @if (operador.Reglas.Count == 0)
+            {
+                <div class="flex min-h-48 flex-col items-center justify-center px-6 py-10 text-center">
+                    <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1"/>
+                            <circle cx="12" cy="12" r="4"/>
+                        </svg>
+                    </div>
+
+                    <h3 class="text-sm font-semibold text-white">
+                        No hay reglas configuradas
+                    </h3>
+
+                    <p class="mt-2 max-w-md text-sm leading-relaxed text-slate-400">
+                        Los envíos siguen únicamente la tabla de estados,
+                        sin límite de intentos ni plazo definido por una regla.
+                    </p>
+                </div>
+            }
+            else
+            {
+                <div class="w-full overflow-x-auto">
+                    <table class="w-full min-w-[1050px] text-left text-sm">
+
+                        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            <tr>
+                                <th scope="col" class="px-6 py-4">Modalidad</th>
+                                <th scope="col" class="px-5 py-4">Regla</th>
+                                <th scope="col" class="px-5 py-4 text-right">Intentos</th>
+                                <th scope="col" class="px-5 py-4 text-right">Entre intentos</th>
+                                <th scope="col" class="px-5 py-4 text-right">Plazo de entrega</th>
+                                <th scope="col" class="px-5 py-4 text-right">Inicio devolución</th>
+                                <th scope="col" class="px-6 py-4">Al entregar pide</th>
+                            </tr>
+                        </thead>
+
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var regla in operador.Reglas)
+                            {
+                                <tr class="transition-colors hover:bg-white/[0.035]">
+
+                                    <td class="px-6 py-5">
+                                        @if (regla.Modalidad == "Urgente")
+                                        {
+                                            <span class="inline-flex rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-300">
+                                                Urgente
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                                                Estándar
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td class="px-5 py-5">
+                                        <p class="font-semibold text-slate-200">
+                                            @regla.Nombre
+                                        </p>
+
+                                        @if (regla.Descripcion is not null)
+                                        {
+                                            <p class="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+                                                @regla.Descripcion
+                                            </p>
+                                        }
+                                    </td>
+
+                                    <td class="px-5 py-5 text-right font-semibold text-slate-200">
+                                        @regla.MaximoIntentosEntrega
+                                    </td>
+
+                                    <td class="px-5 py-5 text-right text-slate-300">
+                                        @regla.HorasEntreIntentos h
+                                    </td>
+
+                                    <td class="px-5 py-5 text-right text-slate-300">
+                                        @regla.PlazoEntregaHoras h
+                                    </td>
+
+                                    <td class="px-5 py-5 text-right text-slate-300">
+                                        @regla.HorasParaIniciarDevolucion h
+                                    </td>
+
+                                    <td class="px-6 py-5 text-slate-300">
+                                        @Formato.Requisitos(
+                                            regla.RequiereFirma,
+                                            regla.RequiereFotografia,
+                                            regla.RequiereDocumentoReceptor)
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
     }
     else
     {
-    <div class="table-responsive">
-        <table class="table mb-0 align-middle">
-            <thead>
-            <tr>
-                <th>Modalidad</th>
-                <th>Regla</th>
-                <th class="text-end">Intentos</th>
-                <th class="text-end">Entre intentos</th>
-                <th class="text-end">Plazo de entrega</th>
-                <th class="text-end">Inicio de devolución</th>
-                <th>Al entregar pide</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var regla in operador.Reglas)
-            {
-            <tr>
-                <td>@(regla.Modalidad == "Urgente" ? "Urgente" : "Estándar")</td>
-                <td>
-                    @regla.Nombre
-                    @if (regla.Descripcion is not null)
-                    {
-                    <div class="small text-muted">@regla.Descripcion</div>
-                    }
-                </td>
-                <td class="text-end">@regla.MaximoIntentosEntrega</td>
-                <td class="text-end">@regla.HorasEntreIntentos h</td>
-                <td class="text-end">@regla.PlazoEntregaHoras h</td>
-                <td class="text-end">@regla.HorasParaIniciarDevolucion h</td>
-                <td>@Formato.Requisitos(regla.RequiereFirma, regla.RequiereFotografia, regla.RequiereDocumentoReceptor)</td>
-            </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+        <div class="rounded-xl border border-white/10 bg-[#171923] px-6 py-8 text-sm text-slate-400">
+            No hay información del operador disponible.
+        </div>
     }
 </div>
-}

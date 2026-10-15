@@ -61,6 +61,13 @@
       DataProtection__Directorio: /claves
     volumes:
       - claves_backoffice:/claves
+      - type: bind
+        source: ./src/LastMileUY.Backoffice/wwwroot/css/site.css
+        target: /app/wwwroot/css/site.css
+        read_only: true
+        bind:
+          create_host_path: false
+      
     depends_on:
       - lastmileuy.api
 

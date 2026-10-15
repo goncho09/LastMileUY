@@ -1,10 +1,12 @@
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages;
 
-// Por ahora la pantalla principal del Backoffice es el listado de envíos
+[Authorize]
 public class IndexModel : PageModel
 {
-    public IActionResult OnGet() => RedirectToPage("/Envios/Index");
+    public void OnGet()
+    {
+    }
 }

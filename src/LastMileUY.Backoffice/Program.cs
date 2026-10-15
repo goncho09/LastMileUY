@@ -10,8 +10,11 @@ var builder = WebApplication.CreateBuilder(args);
 // La configuración del operador además pide el perfil Operador (ver Permisos).
 builder.Services.AddRazorPages(opciones =>
 {
+    // Permisos
     opciones.Conventions.AuthorizeFolder("/", Permisos.PoliticaBackoffice);
     opciones.Conventions.AuthorizeFolder("/Operador", Permisos.PoliticaConfiguracion);
+
+    // Páginas públicas
     opciones.Conventions.AllowAnonymousToPage("/Login");
     opciones.Conventions.AllowAnonymousToPage("/Logout");
     opciones.Conventions.AllowAnonymousToPage("/AccesoDenegado");
@@ -30,8 +33,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         opciones.Cookie.Name = "LastMileUY.Backoffice";
         opciones.Cookie.HttpOnly = true;
         opciones.Cookie.SameSite = SameSiteMode.Lax;
-        opciones.LoginPath = "/Login";
-        opciones.AccessDeniedPath = "/AccesoDenegado";
+        opciones.LoginPath = "/login";
+        opciones.AccessDeniedPath = "/acceso-denegado";
         // Igual que la sesión de la API: 8 horas. Si la API la corta antes, se vuelve al login.
         opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
         opciones.SlidingExpiration = false;
@@ -94,6 +97,12 @@ else
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
 }
 
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.LowercaseUrls = true;
+    options.LowercaseQueryStrings = true;
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -123,12 +132,13 @@ app.Use(async (contexto, siguiente) =>
         await contexto.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         var volverA = Uri.EscapeDataString(contexto.Request.Path + contexto.Request.QueryString);
-        contexto.Response.Redirect($"/Login?ReturnUrl={volverA}");
+        contexto.Response.Redirect($"/login?ReturnUrl={volverA}");
     }
 });
 
 app.MapStaticAssets();
+
 app.MapRazorPages()
-   .WithStaticAssets();
+    .WithStaticAssets();
 
 app.Run();
