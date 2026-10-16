@@ -251,7 +251,7 @@ public class HojasDeRutaTests
     {
         var http = new DefaultHttpContext { User = usuario };
 
-        return new DetalleModel(api, NullLogger<DetalleModel>.Instance)
+        return new DetalleModel(api, new SincronizacionApiDePrueba(), NullLogger<DetalleModel>.Instance)
         {
             PageContext = new PageContext { HttpContext = http },
             TempData = new TempDataDictionary(http, new TempDataEnMemoria())

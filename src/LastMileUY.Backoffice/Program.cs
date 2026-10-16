@@ -62,6 +62,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IAutenticacionApi, AutenticacionApiDePrueba>();
     builder.Services.AddSingleton<IOperadorApi, OperadorApiDePrueba>();
     builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
+    builder.Services.AddSingleton<ISincronizacionApi, SincronizacionApiDePrueba>();
 }
 else
 {
@@ -91,6 +92,14 @@ else
         .AddHttpMessageHandler<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IRutasApi, RutasApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<ISincronizacionApi, SincronizacionApiHttp>(cliente =>
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);
