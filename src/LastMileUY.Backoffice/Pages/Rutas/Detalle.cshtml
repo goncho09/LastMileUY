@@ -1,0 +1,173 @@
+@page "{id:int}"
+@model LastMileUY.Backoffice.Pages.Rutas.DetalleModel
+
+@{
+    ViewData["Title"] = Model.Ruta?.Nombre ?? "Hoja de ruta";
+    var ruta = Model.Ruta;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <a asp-page="/Rutas/Index" class="text-sm text-slate-400 no-underline hover:text-white">← Hojas de ruta</a>
+
+    @if (Model.Aviso is not null)
+    {
+        <div role="status"
+             class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
+            @Model.Aviso
+        </div>
+    }
+
+    @if (Model.ErrorDespacho is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+            @Model.ErrorDespacho
+        </div>
+    }
+
+    @if (Model.Error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+    else if (ruta is null)
+    {
+        <div class="rounded-2xl border border-white/10 bg-[#171923] px-6 py-12 text-center">
+            <h1 class="text-xl font-semibold text-white">La hoja de ruta no existe</h1>
+            <p class="mt-2 text-sm text-slate-400">Puede que el enlace esté mal o que sea de otro operador.</p>
+        </div>
+    }
+    else
+    {
+        <!-- Encabezado -->
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <h1 class="text-3xl font-bold tracking-tight text-white">@ruta.Nombre</h1>
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium @EstadosRuta.ClaseCss(ruta.Estado)">
+                        @EstadosRuta.Texto(ruta.Estado)
+                    </span>
+                </div>
+                <p class="mt-2 text-sm text-slate-400">@Formato.Fecha(ruta.Fecha) · @ruta.Paradas.Count paradas</p>
+            </div>
+
+            @if (ruta.Estado == EstadosRuta.Planificada && Permisos.PuedePlanificarRutas(User))
+            {
+                <form method="post" asp-page-handler="Despachar" asp-route-id="@ruta.Id">
+                    <button type="submit"
+                            class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+                        Despachar ruta
+                    </button>
+                    <p class="mt-2 max-w-64 text-xs text-slate-400">
+                        Los envíos pasan a En tránsito y el repartidor ya puede descargar la hoja.
+                    </p>
+                </form>
+            }
+        </div>
+
+        <!-- Repartidor, vehículo y carga -->
+        <section class="grid gap-4 md:grid-cols-3">
+            <div class="rounded-2xl border border-white/10 bg-[#171923] p-5">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Repartidor</p>
+                <p class="mt-2 text-base font-semibold text-white">@ruta.Repartidor.Nombre</p>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-[#171923] p-5">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Vehículo</p>
+                <p class="mt-2 text-base font-semibold text-white">@ruta.Vehiculo.Matricula</p>
+                <p class="mt-1 text-sm text-slate-400">@ruta.Vehiculo.Tipo</p>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-[#171923] p-5">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Carga</p>
+                @{
+                    var cargas = new[]
+                    {
+                        ("Peso", Formato.Numero(ruta.PesoTotalKg) + " kg", Formato.Numero(ruta.Vehiculo.CapacidadPesoKg) + " kg",
+                            DetalleModel.Porcentaje(ruta.PesoTotalKg, ruta.Vehiculo.CapacidadPesoKg)),
+                        ("Volumen", Formato.Volumen(ruta.VolumenTotalM3), Formato.Volumen(ruta.Vehiculo.CapacidadVolumenM3),
+                            DetalleModel.Porcentaje(ruta.VolumenTotalM3, ruta.Vehiculo.CapacidadVolumenM3))
+                    };
+                }
+                @foreach (var (nombre, usado, capacidad, porcentaje) in cargas)
+                {
+                    <div class="mt-3">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>@nombre</span>
+                            <span>@usado de @capacidad</span>
+                        </div>
+                        <div class="mt-1 h-2 overflow-hidden rounded-full bg-white/10"
+                             role="meter" aria-label="@nombre usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@porcentaje">
+                            <div class="h-full rounded-full bg-violet-500" style="width: @porcentaje%"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <!-- Paradas -->
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+            <div class="border-b border-white/10 px-5 py-5 sm:px-6">
+                <h2 class="text-base font-semibold text-white">Paradas</h2>
+                <p class="mt-1 text-xs text-slate-400">En el orden en que las visita el repartidor.</p>
+            </div>
+
+            <div class="w-full overflow-x-auto">
+                <table class="w-full min-w-[1000px] border-collapse text-left text-sm">
+                    <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <tr>
+                            <th scope="col" class="px-5 py-4">#</th>
+                            <th scope="col" class="px-4 py-4">Envío</th>
+                            <th scope="col" class="px-4 py-4">Destinatario</th>
+                            <th scope="col" class="px-4 py-4">Dirección</th>
+                            <th scope="col" class="px-4 py-4">Franja</th>
+                            <th scope="col" class="px-4 py-4 text-right">Bultos</th>
+                            <th scope="col" class="px-4 py-4 text-right">Peso</th>
+                            <th scope="col" class="px-5 py-4">Estado del envío</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var parada in ruta.Paradas)
+                        {
+                            <tr class="transition-colors hover:bg-white/[0.035]">
+                                <td class="px-5 py-4 font-semibold text-white">@parada.Orden</td>
+                                <td class="whitespace-nowrap px-4 py-4">
+                                    <a asp-page="/Envios/Detalle" asp-route-id="@parada.EnvioId"
+                                       class="font-mono text-xs font-semibold text-violet-300 no-underline hover:text-violet-200">
+                                        @parada.CodigoSeguimiento
+                                    </a>
+                                </td>
+                                <td class="px-4 py-4 text-slate-300">
+                                    @parada.Destinatario.Nombre @parada.Destinatario.Apellido
+                                    @if (parada.Destinatario.Telefono is not null)
+                                    {
+                                        <span class="block text-xs text-slate-500">@parada.Destinatario.Telefono</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-4 text-slate-400">
+                                    @parada.Direccion.Calle @parada.Direccion.Numero@(parada.Direccion.Apartamento is null ? "" : $" ap. {parada.Direccion.Apartamento}"),
+                                    @parada.Direccion.Ciudad
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-4 text-slate-300">
+                                    @(parada.Franja is null
+                                        ? "—"
+                                        : $"{parada.Franja.Nombre} ({Formato.Hora(parada.Franja.HoraInicio)} a {Formato.Hora(parada.Franja.HoraFin)})")
+                                </td>
+                                <td class="px-4 py-4 text-right text-slate-300">@parada.CantidadBultos</td>
+                                <td class="whitespace-nowrap px-4 py-4 text-right text-slate-300">@Formato.Numero(parada.PesoKg) kg</td>
+                                <td class="px-5 py-4">
+                                    <span class="inline-flex items-center whitespace-nowrap rounded-full border border-slate-500/20 bg-slate-500/10 px-2.5 py-1 text-xs font-medium text-slate-300">
+                                        @EstadosEnvio.Texto(parada.EstadoEnvio)
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>
