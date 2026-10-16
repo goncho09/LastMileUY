@@ -53,7 +53,7 @@ if (!string.IsNullOrWhiteSpace(directorioClaves))
         .PersistKeysToFileSystem(new DirectoryInfo(directorioClaves));
 }
 
-// De dónde salen los envíos: datos de prueba en memoria o la API real por HTTP.
+// De dónde salen los envíos y las hojas de ruta: datos de prueba en memoria o la API real por HTTP.
 var api = builder.Configuration.GetSection("Api");
 
 if (api.GetValue<bool>("UsarDatosDePrueba"))
@@ -61,6 +61,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IEnviosApi, EnviosApiDePrueba>();
     builder.Services.AddSingleton<IAutenticacionApi, AutenticacionApiDePrueba>();
     builder.Services.AddSingleton<IOperadorApi, OperadorApiDePrueba>();
+    builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
 }
 else
 {
@@ -82,6 +83,14 @@ else
         .AddHttpMessageHandler<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IOperadorApi, OperadorApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IRutasApi, RutasApiHttp>(cliente =>
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);

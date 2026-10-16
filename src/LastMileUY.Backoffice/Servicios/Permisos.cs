@@ -23,11 +23,16 @@ public static class Permisos
     // Identidad y reglas del operador: solo el perfil Operador (el despachador trabaja con los envíos)
     public static readonly string[] RolesConfiguracion = [Operador];
 
+    // Tiene que coincidir con la API: armar y despachar hojas de ruta (/api/rutas) pide Operador o Despachador
+    public static readonly string[] RolesPlanificarRutas = [Operador, Despachador];
+
     public static bool PuedeEntrar(IEnumerable<string> roles) => roles.Any(RolesBackoffice.Contains);
 
     public static bool PuedeCambiarEstado(ClaimsPrincipal usuario) => RolesCambiarEstado.Any(usuario.IsInRole);
 
     public static bool PuedeVerConfiguracion(ClaimsPrincipal usuario) => RolesConfiguracion.Any(usuario.IsInRole);
+
+    public static bool PuedePlanificarRutas(ClaimsPrincipal usuario) => RolesPlanificarRutas.Any(usuario.IsInRole);
 
     // "Operador", "Despachador" o "Operador y Despachador", para mostrar junto al nombre
     public static string Perfil(ClaimsPrincipal usuario)
