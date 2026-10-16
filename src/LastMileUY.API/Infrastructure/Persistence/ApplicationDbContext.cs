@@ -5,6 +5,7 @@ using LastMileUY.API.Modules.Destinatarios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Tarifas.Domain;
 using LastMileUY.API.Modules.Rutas.Domain;
+using LastMileUY.API.Modules.Sincronizacion.Domain;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.API.Modules.Notificaciones.Domain;
@@ -81,6 +82,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<SuscripcionAvisos> SuscripcionesAvisos => Set<SuscripcionAvisos>();
     public DbSet<EntregaAviso> EntregasAvisos => Set<EntregaAviso>();
+
+    // Sincronización de la app del repartidor
+    public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
     
     // Configura las entidades y relaciones de la base de datos,
     protected override void OnModelCreating(ModelBuilder modelBuilder)

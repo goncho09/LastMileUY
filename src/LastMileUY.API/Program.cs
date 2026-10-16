@@ -15,6 +15,10 @@ using LastMileUY.API.Modules.Operadores.Infrastructure;
 using LastMileUY.API.Modules.Rutas.Application;
 using LastMileUY.API.Modules.Rutas.Endpoints;
 using LastMileUY.API.Modules.Rutas.Infrastructure;
+using LastMileUY.API.Modules.Sincronizacion.Application;
+using LastMileUY.API.Modules.Sincronizacion.Endpoints;
+using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
+using LastMileUY.API.Modules.Entregas.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -127,6 +131,9 @@ builder.Services.AddScoped<ConsultasDestinatariosService>();
 builder.Services.AddScoped<OperadoresDeComercioService>();
 builder.Services.AddScoped<PlanificarRutaService>();
 builder.Services.AddScoped<ConsultasRutasService>();
+builder.Services.AddScoped<SincronizarEntregasService>();
+builder.Services.AddScoped<ConsultasSincronizacionService>();
+builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<SeleccionOperadorTemporalService>();
@@ -155,6 +162,7 @@ if (app.Environment.IsDevelopment())
     var operadoresPrueba = await IdentitySeeder.SeedOperadoresPruebaAsync(app.Services);
     await ReglasOperativasSeeder.SeedPruebaAsync(app.Services, operadoresPrueba);
     await RutasSeeder.SeedPruebaAsync(app.Services, operadoresPrueba);
+    await MotivosNoEntregaSeeder.SeedPruebaAsync(app.Services, operadoresPrueba);
 }
 
 app.UseHttpsRedirection();
@@ -170,6 +178,7 @@ app.MapEnviosEndpoints();
 app.MapOperadorEndpoints();
 app.MapDestinatariosEndpoints();
 app.MapRutasEndpoints();
+app.MapSincronizacionEndpoints();
 
 app.Run();
 

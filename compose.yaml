@@ -41,8 +41,11 @@
       SeedComercioPrueba__Password: ${SeedComercioPrueba__Password:?Configurar SeedComercioPrueba__Password}
       # Claves de las cookies de sesión en un volumen: las sesiones sobreviven a recrear el contenedor
       DataProtection__Directorio: /claves
+      # Firmas y fotos de las entregas que manda la app del repartidor
+      Evidencias__Directorio: /evidencias
     volumes:
       - claves_api:/claves
+      - evidencias_api:/evidencias
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,5 +111,6 @@
 volumes:
   postgres_data:
   claves_api:
+  evidencias_api:
   claves_backoffice:
   claves_portal:

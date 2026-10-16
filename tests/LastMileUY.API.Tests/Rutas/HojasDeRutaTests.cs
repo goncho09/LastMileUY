@@ -7,7 +7,6 @@ using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 
 // Hojas de ruta contra la base real: armado, validaciones (capacidad, franjas, duplicados),
@@ -16,7 +15,7 @@ using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
 {
-    private static readonly DateOnly Manana = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+    private static readonly DateOnly Manana = DatosDeRutas.Manana;
 
     [Fact]
     public async Task Crear_una_ruta_guarda_las_paradas_en_el_orden_pedido_y_asigna_los_envios()
@@ -345,62 +344,12 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
     private Task<int> CrearEnvioEnDepositoAsync(int operadorId, int? franjaId = null) =>
         CrearEnvioAsync(operadorId, enDeposito: true, franjaId);
 
-    // Un envío del comercio compartido con un bulto de 2 kg y 10x10x10 cm
-    private async Task<int> CrearEnvioAsync(int operadorId, bool enDeposito, int? franjaId = null)
-    {
-        await using var db = baseDeDatos.CrearContexto(operadorId);
-        var envio = new Envio { ComercioId = ComercioCompartido, DestinatarioId = 1, FranjaHorariaId = franjaId };
-        envio.AsignarDireccionEntrega(new DireccionEntrega(
-            "Rivera", "1234", null, "Montevideo", "Montevideo", null, null));
-        envio.Bultos.Add(new Bulto { Codigo = "B1", PesoKg = 2, LargoCm = 10, AnchoCm = 10, AltoCm = 10 });
+    private Task<int> CrearEnvioAsync(int operadorId, bool enDeposito, int? franjaId = null) =>
+        DatosDeRutas.CrearEnvioAsync(baseDeDatos, operadorId, enDeposito, franjaId);
 
-        if (enDeposito)
-        {
-            envio.CambiarEstado(EstadoEnvio.EnDeposito);
-        }
-
-        db.Envios.Add(envio);
-        await db.SaveChangesAsync();
-
-        return envio.Id;
-    }
-
-    // Un usuario repartidor (con su ficha) y un vehículo nuevos del operador.
-    // Devuelve el Id del usuario también, que es lo que identifica al repartidor al iniciar sesión.
-    private async Task<(int RepartidorId, int VehiculoId, string UsuarioId)> CrearRepartidorYVehiculoAsync(
-        int operadorId, decimal capacidadKg = 100, decimal capacidadM3 = 1)
-    {
-        var usuarioId = Guid.NewGuid().ToString();
-
-        // Los usuarios no tienen RLS, pero se cargan como superusuario igual que el resto de los datos base
-        await using (var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador))
-        {
-            await conexion.OpenAsync();
-            await using var comando = new NpgsqlCommand($"""
-                INSERT INTO "AspNetUsers"("Id", "UserName", "OperadorId", "Nombre", "Apellido", "Activo", "FechaCreacion",
-                        "EmailConfirmed", "PhoneNumberConfirmed", "TwoFactorEnabled", "LockoutEnabled", "AccessFailedCount")
-                    VALUES ('{usuarioId}', '{usuarioId}', {operadorId}, 'Repartidor', 'De prueba', true, now(),
-                        true, false, false, false, 0)
-                """, conexion);
-            await comando.ExecuteNonQueryAsync();
-        }
-
-        await using var db = baseDeDatos.CrearContexto(operadorId);
-        var repartidor = new Repartidor { UsuarioId = usuarioId };
-        var vehiculo = new Vehiculo
-        {
-            Matricula = $"T{Guid.NewGuid():N}"[..10],
-            Tipo = "Furgoneta",
-            CapacidadPesoKg = capacidadKg,
-            CapacidadVolumenM3 = capacidadM3
-        };
-
-        db.Repartidores.Add(repartidor);
-        db.Vehiculos.Add(vehiculo);
-        await db.SaveChangesAsync();
-
-        return (repartidor.Id, vehiculo.Id, usuarioId);
-    }
+    private Task<(int RepartidorId, int VehiculoId, string UsuarioId)> CrearRepartidorYVehiculoAsync(
+        int operadorId, decimal capacidadKg = 100, decimal capacidadM3 = 1) =>
+        DatosDeRutas.CrearRepartidorYVehiculoAsync(baseDeDatos, operadorId, capacidadKg, capacidadM3);
 
     // Una zona del operador con franjas de mañana y tarde (activas) y una inactiva
     private async Task<(int Manana, int Tarde, int Inactiva)> CrearFranjasAsync(int operadorId)
