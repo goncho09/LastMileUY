@@ -17,4 +17,9 @@ public class Bulto
     public decimal AltoCm { get; set; }
 
     public string? Descripcion { get; set; }
+
+    public const decimal CentimetrosCubicosPorMetroCubico = 1_000_000m;
+
+    // Lo que ocupa en el vehículo (no es columna: sale de las medidas)
+    public decimal VolumenM3 => LargoCm * AnchoCm * AltoCm / CentimetrosCubicosPorMetroCubico;
 }

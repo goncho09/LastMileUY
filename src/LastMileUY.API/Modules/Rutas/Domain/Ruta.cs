@@ -34,4 +34,30 @@ public class Ruta : IPerteneceAOperador
     
     public ICollection<Incidencia> Incidencias { get; set; }
         = new List<Incidencia>();
+
+    // Estados en los que la ruta todavía tiene a cargo a su repartidor, su vehículo y sus envíos
+    public static readonly EstadoRuta[] EstadosAbiertos =
+        [EstadoRuta.Planificada, EstadoRuta.Despachada, EstadoRuta.EnCurso];
+
+    // Estados en los que el repartidor asignado puede descargar la hoja de ruta
+    public static readonly EstadoRuta[] EstadosParaElRepartidor =
+        [EstadoRuta.Despachada, EstadoRuta.EnCurso];
+
+    // Despachar: la ruta queda lista para que el repartidor la descargue y salga.
+    // Los envíos se pasan a En tránsito desde el servicio (ver PlanificarRutaService).
+    public void Despachar()
+    {
+        if (Estado != EstadoRuta.Planificada)
+        {
+            throw new InvalidOperationException(
+                $"Solo se puede despachar una ruta planificada (esta está {Estado}).");
+        }
+
+        if (Paradas.Count == 0)
+        {
+            throw new InvalidOperationException("La ruta no tiene paradas.");
+        }
+
+        Estado = EstadoRuta.Despachada;
+    }
 }

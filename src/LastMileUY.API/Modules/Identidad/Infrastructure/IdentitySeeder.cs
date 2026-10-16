@@ -198,6 +198,10 @@ public class IdentitySeeder
             // Un despachador por operador: trabaja con los envíos pero no ve la configuración del operador
             await CrearUsuarioPruebaAsync(userManager, $"despachador{sufijo}{dominio}", password,
                 "Despachador", $"Prueba {i + 1}", operadorId, "Despachador");
+
+            // Un repartidor por operador, para asignarle hojas de ruta (ver RutasSeeder)
+            await CrearUsuarioPruebaAsync(userManager, $"repartidor{sufijo}{dominio}", password,
+                "Repartidor", $"Prueba {i + 1}", operadorId, "Repartidor");
         }
     }
 
