@@ -1,0 +1,198 @@
+@page
+@model LastMileUY.Backoffice.Pages.Rutas.NuevaModel
+
+@{
+    ViewData["Title"] = "Nueva hoja de ruta";
+    var claseCampo = "block w-full rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-violet-500 focus:ring-2 focus:ring-violet-500/15 [color-scheme:dark]";
+    var invariante = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <div>
+        <a asp-page="/Rutas/Index" class="text-sm text-slate-400 no-underline hover:text-white">← Hojas de ruta</a>
+        <h1 class="mt-3 text-3xl font-bold tracking-tight text-white">Nueva hoja de ruta</h1>
+        <p class="mt-2 text-sm text-slate-400">
+            Elegí repartidor, vehículo y los envíos. El orden de visita es el número que le pongas a cada
+            envío (sin número, van al final en el orden de la lista). Las paradas con franja horaria
+            tienen que ir en orden de horario.
+        </p>
+    </div>
+
+    @if (Model.Error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300 motion-safe:animate-lm-error-in">
+            @Model.Error
+        </div>
+    }
+
+    <form method="post" class="space-y-7">
+
+        <!-- Datos de la ruta -->
+        <section class="grid gap-4 rounded-2xl border border-white/10 bg-[#171923] p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+                <label for="nombre" class="mb-2 block text-sm font-medium text-slate-300">Nombre</label>
+                <input id="nombre" name="Nombre" value="@Model.Nombre" required maxlength="150"
+                       placeholder="Ej.: Centro mañana" class="@claseCampo" />
+            </div>
+
+            <div>
+                <label for="fecha" class="mb-2 block text-sm font-medium text-slate-300">Fecha</label>
+                <input id="fecha" name="Fecha" type="date" required
+                       value="@Model.Fecha.ToString("yyyy-MM-dd")"
+                       min="@Formato.Hoy().ToString("yyyy-MM-dd")"
+                       class="@claseCampo" />
+            </div>
+
+            <div>
+                <label for="repartidor" class="mb-2 block text-sm font-medium text-slate-300">Repartidor</label>
+                <select id="repartidor" name="RepartidorId" required class="@claseCampo">
+                    <option value="">Elegí un repartidor</option>
+                    @foreach (var repartidor in Model.Opciones.Repartidores)
+                    {
+                        <option value="@repartidor.Id" selected="@(repartidor.Id == Model.RepartidorId)">
+                            @repartidor.Nombre
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label for="vehiculo" class="mb-2 block text-sm font-medium text-slate-300">Vehículo</label>
+                <select id="vehiculo" name="VehiculoId" required class="@claseCampo">
+                    <option value="">Elegí un vehículo</option>
+                    @foreach (var vehiculo in Model.Opciones.Vehiculos)
+                    {
+                        <option value="@vehiculo.Id" selected="@(vehiculo.Id == Model.VehiculoId)"
+                                data-peso="@vehiculo.CapacidadPesoKg.ToString(invariante)"
+                                data-volumen="@vehiculo.CapacidadVolumenM3.ToString(invariante)">
+                            @vehiculo.Matricula · @vehiculo.Tipo · hasta @Formato.Numero(vehiculo.CapacidadPesoKg) kg / @Formato.Volumen(vehiculo.CapacidadVolumenM3)
+                        </option>
+                    }
+                </select>
+            </div>
+        </section>
+
+        <!-- Envíos -->
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-5 sm:px-6">
+                <div>
+                    <h2 class="text-base font-semibold text-white">Envíos disponibles</h2>
+                    <p class="mt-1 text-xs text-slate-400">En depósito o reprogramados, que todavía no están en ninguna ruta.</p>
+                </div>
+
+                <p id="carga" class="text-sm text-slate-300" aria-live="polite">Carga elegida: 0 kg · 0 m³</p>
+            </div>
+
+            @if (Model.Opciones.Envios.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">No hay envíos disponibles para armar una ruta.</p>
+            }
+            else
+            {
+                <div class="w-full overflow-x-auto">
+                    <table class="w-full min-w-[900px] border-collapse text-left text-sm">
+                        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            <tr>
+                                <th scope="col" class="px-5 py-4">Incluir</th>
+                                <th scope="col" class="px-4 py-4">Orden</th>
+                                <th scope="col" class="px-4 py-4">Código</th>
+                                <th scope="col" class="px-4 py-4">Destinatario</th>
+                                <th scope="col" class="px-4 py-4">Dirección</th>
+                                <th scope="col" class="px-4 py-4">Franja</th>
+                                <th scope="col" class="px-4 py-4 text-right">Peso</th>
+                                <th scope="col" class="px-5 py-4 text-right">Volumen</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var envio in Model.Opciones.Envios)
+                            {
+                                var seleccionado = Model.Seleccionados.Contains(envio.Id);
+
+                                <tr class="transition-colors hover:bg-white/[0.035]">
+                                    <td class="px-5 py-3">
+                                        <input type="checkbox" name="Seleccionados" value="@envio.Id" checked="@seleccionado"
+                                               id="envio-@envio.Id" aria-label="Incluir el envío @envio.CodigoSeguimiento"
+                                               data-peso="@envio.PesoKg.ToString(invariante)"
+                                               data-volumen="@envio.VolumenM3.ToString(invariante)"
+                                               class="h-4 w-4 accent-violet-500" />
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <input type="number" min="1" max="100" name="Orden[@envio.Id]"
+                                               value="@Model.Orden.GetValueOrDefault(envio.Id)"
+                                               aria-label="Orden del envío @envio.CodigoSeguimiento"
+                                               class="w-20 rounded-lg border border-[#343747] bg-[#10121a] px-3 py-2 text-sm text-white outline-none focus:border-violet-500" />
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-violet-300">
+                                        <label for="envio-@envio.Id">@envio.CodigoSeguimiento</label>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-300">@envio.Destinatario</td>
+                                    <td class="px-4 py-3 text-slate-400">@envio.Direccion</td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-slate-300">
+                                        @(envio.Franja is null
+                                            ? "—"
+                                            : $"{envio.Franja.Nombre} ({Formato.Hora(envio.Franja.HoraInicio)} a {Formato.Hora(envio.Franja.HoraFin)})")
+                                    </td>
+                                    <td class="whitespace-nowrap px-4 py-3 text-right text-slate-300">@Formato.Numero(envio.PesoKg) kg</td>
+                                    <td class="whitespace-nowrap px-5 py-3 text-right text-slate-300">@Formato.Volumen(envio.VolumenM3)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <div class="flex justify-end gap-2">
+            <a asp-page="/Rutas/Index"
+               class="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-300 no-underline hover:bg-white/10 hover:text-white">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+                Armar hoja de ruta
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        // Suma lo elegido y lo compara con lo que carga el vehículo (la API lo vuelve a controlar)
+        (() => {
+            const carga = document.getElementById("carga");
+            const vehiculo = document.getElementById("vehiculo");
+            const casillas = document.querySelectorAll("input[name='Seleccionados']");
+            const formato = new Intl.NumberFormat("es-UY", { maximumFractionDigits: 3 });
+
+            function actualizar() {
+                let peso = 0, volumen = 0;
+                casillas.forEach(c => {
+                    if (c.checked) {
+                        peso += Number(c.dataset.peso);
+                        volumen += Number(c.dataset.volumen);
+                    }
+                });
+
+                const opcion = vehiculo.selectedOptions[0];
+                const maxPeso = opcion?.dataset.peso ? Number(opcion.dataset.peso) : null;
+                const maxVolumen = opcion?.dataset.volumen ? Number(opcion.dataset.volumen) : null;
+
+                let texto = `Carga elegida: ${formato.format(peso)} kg · ${formato.format(volumen)} m³`;
+                if (maxPeso !== null) {
+                    texto += ` (el vehículo carga ${formato.format(maxPeso)} kg · ${formato.format(maxVolumen)} m³)`;
+                }
+
+                const excede = maxPeso !== null && (peso > maxPeso || volumen > maxVolumen);
+                carga.textContent = excede ? texto + ": se pasa de la capacidad" : texto;
+                carga.classList.toggle("text-red-300", excede);
+                carga.classList.toggle("text-slate-300", !excede);
+            }
+
+            casillas.forEach(c => c.addEventListener("change", actualizar));
+            vehiculo.addEventListener("change", actualizar);
+            actualizar();
+        })();
+    </script>
+}

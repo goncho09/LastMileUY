@@ -9,6 +9,7 @@
 
     var enInicio = paginaActual.Equals("/Index", StringComparison.OrdinalIgnoreCase);
     var enEnvios = paginaActual.StartsWith("/Envios", StringComparison.OrdinalIgnoreCase);
+    var enRutas = paginaActual.StartsWith("/Rutas", StringComparison.OrdinalIgnoreCase);
     var enOperador = paginaActual.StartsWith("/Operador", StringComparison.OrdinalIgnoreCase);
 
     var claseNavBase = "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium no-underline transition-colors";
@@ -87,6 +88,17 @@
                               d="M3 7h18v14H3zM3 7l4-4h10l4 4M3 12h18M9 16h6"/>
                     </svg>
                     Envíos
+                </a>
+
+                <a asp-page="/Rutas/Index"
+                   aria-current="@(enRutas ? "page" : null)"
+                   class="@(claseNavBase) @(enRutas ? claseNavActivo : claseNavInactivo)">
+                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                         stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>
+                    </svg>
+                    Hojas de ruta
                 </a>
 
                 @if (Permisos.PuedeVerConfiguracion(User))

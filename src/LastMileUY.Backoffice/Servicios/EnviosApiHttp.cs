@@ -44,35 +44,14 @@ public class EnviosApiHttp(HttpClient http) : IEnviosApi
             case HttpStatusCode.Forbidden:
                 throw new OperacionRechazadaException("Tu usuario no tiene permiso para cambiar el estado de los envíos.");
             case HttpStatusCode.BadRequest or HttpStatusCode.Conflict:
-                throw new OperacionRechazadaException(await LeerMensajeAsync(respuesta, ct));
+                throw new OperacionRechazadaException(
+                    await RespuestasApi.LeerMensajeAsync(respuesta, "La API rechazó el cambio.", ct));
         }
 
         respuesta.EnsureSuccessStatusCode();
 
         return await respuesta.Content.ReadFromJsonAsync<EnvioDetalleDto>(ct);
     }
-
-    // La API responde los errores como { "mensaje": "..." }
-    private static async Task<string> LeerMensajeAsync(HttpResponseMessage respuesta, CancellationToken ct)
-    {
-        try
-        {
-            var error = await respuesta.Content.ReadFromJsonAsync<MensajeDeError>(ct);
-
-            if (!string.IsNullOrWhiteSpace(error?.Mensaje))
-            {
-                return error.Mensaje;
-            }
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            // Sin cuerpo o con otro formato: se usa el mensaje genérico
-        }
-
-        return "La API rechazó el cambio.";
-    }
-
-    private record MensajeDeError(string? Mensaje);
 
     public static string ArmarUrlListado(FiltroEnvios filtro)
     {
