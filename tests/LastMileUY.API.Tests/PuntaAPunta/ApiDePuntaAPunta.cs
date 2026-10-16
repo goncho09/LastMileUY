@@ -3,18 +3,15 @@ using System.Net;
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using System.Net.Http.Json;
-using LastMileUY.API.Modules.Identidad.Domain;
 using Contracts.Auth;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
 // La API completa, tal como arranca en desarrollo, contra un PostgreSQL real en Docker:
 // aplica las migraciones, corre los seeders (operadores, despachadores, comercios, destinatarios
-// y reglas) y se le habla por HTTP iniciando sesión con esos usuarios. Nada se simula.
+// reglas, vehículos y repartidores) y se le habla por HTTP iniciando sesión con esos usuarios. Nada se simula.
 public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string Clave = "Prueba1234";
@@ -26,8 +23,9 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     public const string Comercio1 = "comercio@prueba.test";
     public const string Comercio2 = "comercio2@prueba.test";
 
-    // Este no lo crea ningún seeder: se agrega acá para probar un perfil sin acceso al Backoffice
+    // Un repartidor por operador (IdentitySeeder + RutasSeeder, que le crea la ficha de repartidor)
     public const string Repartidor1 = "repartidor@prueba.test";
+    public const string Repartidor2 = "repartidor2@prueba.test";
 
     private readonly PostgreSqlContainer contenedor = new PostgreSqlBuilder("postgres:17").Build();
 
@@ -55,8 +53,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
             INSERT INTO "OperadoresComercios"("OperadorId", "ComercioId", "FechaVinculacion", "Activo")
                 VALUES ({IdOperador2}, {IdComercio2}, now(), true)
             """);
-
-        await CrearRepartidorAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -155,31 +151,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         await lector.ReadAsync();
 
         return (lector.GetInt32(0), lector.GetInt32(1));
-    }
-
-    private async Task CrearRepartidorAsync()
-    {
-        using var scope = Services.CreateScope();
-        var usuarios = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
-
-        var repartidor = new Usuario
-        {
-            UserName = Repartidor1,
-            Email = Repartidor1,
-            Nombre = "Repartidor",
-            Apellido = "Prueba",
-            OperadorId = IdOperador1,
-            EmailConfirmed = true,
-            Activo = true
-        };
-
-        var creado = await usuarios.CreateAsync(repartidor, Clave);
-        var conRol = await usuarios.AddToRoleAsync(repartidor, "Repartidor");
-
-        if (!creado.Succeeded || !conRol.Succeeded)
-        {
-            throw new InvalidOperationException("No se pudo crear el repartidor de prueba.");
-        }
     }
 
     private async Task<int> ConsultarIdAsync(string sql)
