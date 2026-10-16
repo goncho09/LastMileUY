@@ -169,5 +169,27 @@
                 </table>
             </div>
         </section>
+
+        <!-- Lo que llegó desde la app del repartidor -->
+        @if (ruta.Estado != EstadosRuta.Planificada)
+        {
+            <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+                <div class="border-b border-white/10 px-5 py-5 sm:px-6">
+                    <h2 class="text-base font-semibold text-white">Recibido desde la app</h2>
+                    <p class="mt-1 text-xs text-slate-400">
+                        Entregas e intentos fallidos que sincronizó el repartidor, con lo que pasó con cada uno.
+                    </p>
+                </div>
+
+                @if (Model.Operaciones.Count == 0)
+                {
+                    <p class="px-6 py-8 text-center text-sm text-slate-400">El repartidor todavía no sincronizó nada de esta ruta.</p>
+                }
+                else
+                {
+                    <partial name="_OperacionesSincronizadas" model="(Model.Operaciones, false)" />
+                }
+            </section>
+        }
     }
 </div>

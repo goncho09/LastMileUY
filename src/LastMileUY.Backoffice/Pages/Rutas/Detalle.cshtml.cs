@@ -1,14 +1,22 @@
 using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Contracts.Rutas;
+using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Rutas;
 
-// Detalle de una hoja de ruta: repartidor, vehículo, carga, paradas en orden y el despacho
-public class DetalleModel(IRutasApi rutasApi, ILogger<DetalleModel> logger) : PageModel
+// Detalle de una hoja de ruta: repartidor, vehículo, carga, paradas en orden, el despacho
+// y lo que llegó desde la app del repartidor
+public class DetalleModel(
+    IRutasApi rutasApi,
+    ISincronizacionApi sincronizacionApi,
+    ILogger<DetalleModel> logger) : PageModel
 {
     public RutaDetalleDto? Ruta { get; private set; }
+
+    // Lo que mandó el repartidor desde la app para esta ruta (vacío mientras está planificada)
+    public IReadOnlyList<OperacionSincronizadaDto> Operaciones { get; private set; } = [];
 
     public string? Error { get; private set; }
 
@@ -24,6 +32,12 @@ public class DetalleModel(IRutasApi rutasApi, ILogger<DetalleModel> logger) : Pa
         try
         {
             Ruta = await rutasApi.ObtenerAsync(id, ct);
+
+            if (Ruta is not null && Ruta.Estado != EstadosRuta.Planificada)
+            {
+                Operaciones = (await sincronizacionApi.ListarAsync(
+                    new FiltroOperaciones(RutaId: id, TamanioPagina: 100), ct)).Items;
+            }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
