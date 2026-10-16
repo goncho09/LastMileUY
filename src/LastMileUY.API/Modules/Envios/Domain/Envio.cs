@@ -90,12 +90,17 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
     // origen: desde dónde se hizo (Backoffice, Repartidor, Sistema...); responsableId: el usuario.
     // regla: la regla operativa vigente del operador; sin regla solo aplica la tabla de transiciones.
     // Para pasar a Entregado o NoEntregado hay que tener cargados los IntentosEntrega.
-    public void CambiarEstado(
+    // ocurrido y ubicacion: cuándo y dónde pasó, si no es ahora (la app del repartidor registra
+    // sin conexión y sincroniza después; ver SincronizarEntregasService).
+    // Devuelve el intento de entrega que registró, si el cambio fue a Entregado o NoEntregado.
+    public IntentoEntrega? CambiarEstado(
         EstadoEnvio nuevoEstado,
         string origen = "Sistema",
         string? descripcion = null,
         string? responsableId = null,
-        ReglaOperativa? regla = null)
+        ReglaOperativa? regla = null,
+        DateTime? ocurrido = null,
+        (decimal Latitud, decimal Longitud)? ubicacion = null)
     {
         var motivo = MotivoDeRechazo(nuevoEstado, regla);
 
@@ -104,26 +109,33 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
             throw new InvalidOperationException(motivo);
         }
 
+        var cuando = ocurrido ?? DateTime.UtcNow;
+        IntentoEntrega? intento = null;
+
         // Llegar a Entregado o NoEntregado es el resultado de un intento de entrega
         if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
         {
-            IntentosEntrega.Add(new IntentoEntrega
+            intento = new IntentoEntrega
             {
                 NumeroIntento = IntentosEntrega.Count + 1,
-                FechaHora = DateTime.UtcNow,
+                FechaHora = cuando,
                 Exitoso = nuevoEstado == EstadoEnvio.Entregado,
                 Observaciones = descripcion
-            });
+            };
+
+            IntentosEntrega.Add(intento);
         }
 
         Estado = nuevoEstado;
 
         if (nuevoEstado == EstadoEnvio.Entregado)
         {
-            FechaEntrega = DateTime.UtcNow;
+            FechaEntrega = cuando;
         }
 
-        RegistrarEvento(origen, descripcion, responsableId);
+        RegistrarEvento(origen, descripcion, responsableId, cuando, ubicacion);
+
+        return intento;
     }
 
     // null si se puede pasar a ese estado; si no, el motivo para mostrarle al usuario
@@ -148,16 +160,23 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
 
     // Primer evento del historial: el envío quedó admitido
     public void RegistrarAdmision(string origen, string? responsableId = null) =>
-        RegistrarEvento(origen, "Envío admitido", responsableId);
+        RegistrarEvento(origen, "Envío admitido", responsableId, DateTime.UtcNow, null);
 
-    private void RegistrarEvento(string origen, string? descripcion, string? responsableId) =>
+    private void RegistrarEvento(
+        string origen,
+        string? descripcion,
+        string? responsableId,
+        DateTime cuando,
+        (decimal Latitud, decimal Longitud)? ubicacion) =>
         Eventos.Add(new EventoEnvio
         {
             Tipo = Estado.ToString(),
             Descripcion = descripcion,
             Origen = origen,
             ResponsableId = responsableId,
-            FechaHora = DateTime.UtcNow
+            FechaHora = cuando,
+            Latitud = ubicacion?.Latitud,
+            Longitud = ubicacion?.Longitud
         });
 
     public void AsignarDireccionEntrega(DireccionEntrega direccion)

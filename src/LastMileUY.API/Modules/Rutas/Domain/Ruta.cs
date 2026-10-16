@@ -1,5 +1,6 @@
 ﻿namespace LastMileUY.API.Modules.Rutas.Domain;
 
+using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 
 public class Ruta : IPerteneceAOperador
@@ -59,5 +60,31 @@ public class Ruta : IPerteneceAOperador
         }
 
         Estado = EstadoRuta.Despachada;
+    }
+
+    // La primera entrega o intento que sincroniza el repartidor pone la ruta en curso.
+    // inicio: cuándo pasó en el dispositivo (puede llegar más tarde, al recuperar conexión).
+    public void RegistrarActividad(DateTime inicio)
+    {
+        if (Estado == EstadoRuta.Despachada)
+        {
+            Estado = EstadoRuta.EnCurso;
+        }
+
+        if (FechaInicio is null || inicio < FechaInicio)
+        {
+            FechaInicio = inicio;
+        }
+    }
+
+    // Cuando ningún envío de la ruta sigue en tránsito, el recorrido terminó
+    public void FinalizarSiTermino(IEnumerable<EstadoEnvio> estadosDeSusEnvios)
+    {
+        if (Estado == EstadoRuta.EnCurso
+            && estadosDeSusEnvios.All(e => e != EstadoEnvio.EnTransito))
+        {
+            Estado = EstadoRuta.Finalizada;
+            FechaFin = DateTime.UtcNow;
+        }
     }
 }

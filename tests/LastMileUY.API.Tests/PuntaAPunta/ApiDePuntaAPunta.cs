@@ -34,6 +34,10 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     public int IdComercio1 { get; private set; }
     public int IdComercio2 { get; private set; }
 
+    // Las firmas y fotos de las pruebas van a una carpeta temporal, no al proyecto
+    public string DirectorioEvidencias { get; } =
+        Path.Combine(Path.GetTempPath(), "lastmileuy-evidencias-" + Guid.NewGuid().ToString("N"));
+
     public async Task InitializeAsync()
     {
         await contenedor.StartAsync();
@@ -73,6 +77,7 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("SeedOperadorPrueba:Password", Clave);
         builder.UseSetting("SeedComercioPrueba:Email", Comercio1);
         builder.UseSetting("SeedComercioPrueba:Password", Clave);
+        builder.UseSetting("Evidencias:Directorio", DirectorioEvidencias);
     }
 
     // Un cliente HTTP con sesión iniciada (guarda la cookie como un navegador).
@@ -174,6 +179,11 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await contenedor.DisposeAsync();
+
+        if (Directory.Exists(DirectorioEvidencias))
+        {
+            Directory.Delete(DirectorioEvidencias, recursive: true);
+        }
     }
 }
 

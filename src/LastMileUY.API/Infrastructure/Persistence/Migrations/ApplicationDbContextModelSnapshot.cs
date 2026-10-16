@@ -1246,6 +1246,63 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("EventosEnvio", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Sincronizacion.Domain.OperacionSincronizada", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EnvioId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaHoraDispositivo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaRecepcion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("IdOperacion")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("IntentoEntregaId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Mensaje")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Resultado")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RutaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UsuarioId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IntentoEntregaId");
+
+                    b.HasIndex("RutaId");
+
+                    b.HasIndex("OperadorId", "IdOperacion")
+                        .IsUnique();
+
+                    b.ToTable("OperacionesSincronizadas", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Tarifas.Domain.AjusteTarifa", b =>
                 {
                     b.Property<int>("Id")
@@ -1830,6 +1887,22 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasForeignKey("EnvioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Sincronizacion.Domain.OperacionSincronizada", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Entregas.Domain.IntentoEntrega", "IntentoEntrega")
+                        .WithMany()
+                        .HasForeignKey("IntentoEntregaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("IntentoEntrega");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Tarifas.Domain.AjusteTarifa", b =>
