@@ -2,6 +2,7 @@ using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Rutas.Application;
+using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
 
@@ -180,27 +181,24 @@ public static class RutasEndpoints
                 ClaimsPrincipal usuario,
                 CancellationToken cancellationToken) =>
             {
-                if (contextoOperador.OperadorId is null)
+                if (contextoOperador.OperadorId is not int operadorId)
                     return Results.Forbid();
 
-                var usuarioId = usuario.FindFirstValue(ClaimTypes.NameIdentifier)!;
+                var usuarioId = usuario.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                // Verificar que la ruta pertenezca al repartidor autenticado
-                var misRutas = await consultas.ListarDelRepartidorAsync(
-                    usuarioId, cancellationToken);
+                if (string.IsNullOrEmpty(usuarioId))
+                    return Results.Unauthorized();
 
-                if (!misRutas.Any(r => r.Id == id))
-                    return Results.NotFound(new { mensaje = "Ruta no encontrada." });
-
-                var ruta = await consultas.ObtenerDetalleAsync(id, cancellationToken);
+                var ruta = await consultas.ObtenerDetalleDelRepartidorAsync(
+                    id, operadorId, usuarioId, cancellationToken);
 
                 return ruta is null
                     ? Results.NotFound(new { mensaje = "Ruta no encontrada." })
                     : Results.Ok(ruta);
             })
-            .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
+            .RequireAuthorization(p => p.RequireRole("Repartidor"))
             .WithName("ObtenerMiRutaPorId");
-
+        
         // App del repartidor: descarga la hoja de ruta (solo si es suya y ya se despachó)
         group.MapGet("/{id:int}/hoja", async (
                 int id,

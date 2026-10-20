@@ -255,6 +255,28 @@ public class ConsultasRutasService(ApplicationDbContext db)
 
     private static DireccionDto ADto(DireccionEntrega d) =>
         new(d.Calle, d.Numero, d.Apartamento, d.Ciudad, d.Departamento, d.CodigoPostal, d.Referencia);
+    
+    public async Task<RutaDetalleDto?> ObtenerDetalleDelRepartidorAsync(
+        int rutaId,
+        int operadorId,
+        string usuarioId,
+        CancellationToken ct = default)
+    {
+        var esMiRuta = await db.Set<Ruta>()
+            .AnyAsync(r =>
+                    r.Id == rutaId &&
+                    r.OperadorId == operadorId &&
+                    db.Set<Repartidor>().Any(rep =>
+                        rep.Id == r.RepartidorId &&
+                        rep.UsuarioId == usuarioId &&
+                        rep.OperadorId == operadorId),
+                ct);
+
+        if (!esMiRuta)
+            return null;
+
+        return await ObtenerDetalleAsync(rutaId, ct);
+    }
 }
 
 public enum ResultadoHoja
