@@ -1,3 +1,5 @@
+using LastMileUY.API.Infrastructure.Cache;
+using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Operadores.Application;
 
 namespace LastMileUY.API.Modules.Operadores.Endpoints;
@@ -11,9 +13,19 @@ public static class OperadorEndpoints
         // No recibe Id: cada usuario solo puede ver el suyo.
         app.MapGet("/api/operador", async (
                 OperadorActualService servicio,
+                IContextoOperador contexto,
+                CacheDistribuido cache,
                 CancellationToken cancellationToken) =>
             {
-                var operador = await servicio.ObtenerAsync(cancellationToken);
+                if (contexto.OperadorId is not int operadorId)
+                    return Results.Unauthorized();
+
+                // Caché por operador (casi nunca cambia): ver CasosDeCache
+                var operador = await cache.ObtenerOCrearAsync(
+                    CasosDeCache.Operador(operadorId),
+                    ct => servicio.ObtenerAsync(ct),
+                    CasosDeCache.DuracionOperador,
+                    cancellationToken);
 
                 return operador is null ? Results.Unauthorized() : Results.Ok(operador);
             })

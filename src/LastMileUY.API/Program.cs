@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Destinatarios.Application;
@@ -35,8 +36,10 @@ builder.Services.AddScoped<IContextoOperador, ContextoOperadorHttp>();
 builder.Services.AddDbContext<ApplicationDbContext>((servicios, options) =>
     options
         .UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-        .AddInterceptors(new InterceptorOperadorConexion(
-            servicios.GetRequiredService<IContextoOperador>()))
+        .AddInterceptors(
+            new InterceptorOperadorConexion(servicios.GetRequiredService<IContextoOperador>()),
+            // Al guardar cambios, borra del caché lo que quedó viejo (ver InvalidacionCacheInterceptor)
+            new InvalidacionCacheInterceptor(servicios.GetRequiredService<CacheDistribuido>()))
 );
 
 
@@ -146,6 +149,7 @@ builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
 builder.Services.AddScoped<OperadorActualService>();
+builder.Services.AddSingleton<CacheDistribuido>();
 builder.Services.AddScoped<ConsultasDestinatariosService>();
 builder.Services.AddScoped<OperadoresDeComercioService>();
 builder.Services.AddScoped<PlanificarRutaService>();
