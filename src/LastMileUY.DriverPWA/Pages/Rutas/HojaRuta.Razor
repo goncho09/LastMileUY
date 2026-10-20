@@ -124,6 +124,18 @@
                     <span class="mx-2">·</span>
                     <strong>Peso:</strong> @parada.PesoKg.ToString("0.##") kg
                 </div>
+                
+                
+                @if (parada.EstadoEnvio == "EnTransito")
+                {
+                    <button class="btn btn-primary w-100 mt-3"
+                            style="background:#6d28d9;border-color:#6d28d9"
+                            disabled="@procesando"
+                            @onclick="() => ConfirmarEntrega(parada.EnvioId)">
+                        @(procesando ? "Confirmando..." : "Confirmar entrega")
+                    </button>
+                }
+
 
                 @if (parada.Franja is not null)
                 {
@@ -146,6 +158,8 @@
     private RutaDetalleDto? ruta;
     private bool cargando = true;
     private string? error;
+    
+    private bool procesando;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -172,9 +186,31 @@
             cargando = false;
         }
     }
+    
+    private async Task ConfirmarEntrega(int envioId)
+    {
+        procesando = true;
+        error = null;
+
+        try
+        {
+            await RutasService.ConfirmarEntregaAsync(envioId);
+            ruta = await RutasService.ObtenerRutaAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
 
     private void Volver()
     {
         Navigation.NavigateTo("/rutas");
     }
+    
 }
