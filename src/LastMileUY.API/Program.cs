@@ -96,6 +96,25 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
     };
 });
 
+// Caché distribuido (ver ADR de caché): Redis, compartido por todas las instancias de la API.
+// Sin cadena de conexión "Redis" (pruebas, o la API corriendo fuera de Docker) se usa
+// un caché en memoria con la misma interfaz, así el resto del código no cambia.
+var conexionRedis = builder.Configuration.GetConnectionString("Redis");
+
+if (!string.IsNullOrWhiteSpace(conexionRedis))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = conexionRedis;
+        // Prefijo de todas las claves de la app en Redis
+        options.InstanceName = "lastmileuy:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
 // Configurar COOKIES
 builder.Services.ConfigureApplicationCookie(options =>
 {
