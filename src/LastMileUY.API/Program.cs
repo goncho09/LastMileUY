@@ -4,6 +4,7 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Destinatarios.Application;
 using LastMileUY.API.Modules.Destinatarios.Endpoints;
+using LastMileUY.API.Modules.Entregas.Application;
 using LastMileUY.API.Modules.Entregas.Endpoints;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Endpoints;
@@ -159,6 +160,8 @@ builder.Services.AddScoped<ConsultasRutasService>();
 builder.Services.AddScoped<SincronizarEntregasService>();
 builder.Services.AddScoped<ConsultasSincronizacionService>();
 builder.Services.AddScoped<ConfirmarEntregaService>();
+builder.Services.AddScoped<RegistrarIntentoFallidoService>();
+builder.Services.AddScoped<ConsultarMotivosNoEntregaService>();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 
 builder.Services.AddMemoryCache();

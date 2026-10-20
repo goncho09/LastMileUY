@@ -1,5 +1,6 @@
 ﻿
 @page "/rutas/{Id:int}"
+@using LastMileUY.Contracts.Entregas
 @using LastMileUY.Contracts.Rutas
 @using LastMileUY.DriverPWA.Services
 @inject RutasService RutasService
@@ -18,135 +19,232 @@
     {
         <p>Cargando hoja de ruta...</p>
     }
-    else if (error is not null)
+    else
     {
-        <div class="alert alert-danger">@error</div>
-    }
-    else if (ruta is not null)
-    {
-        <div class="rounded-4 p-4 mb-4 text-white"
-             style="background:#6d28d9">
-            <div class="small opacity-75">HOJA DE RUTA</div>
-            <h2 class="fw-bold mt-2 mb-1">@ruta.Nombre</h2>
-            <div>@ruta.Fecha.ToString("dd/MM/yyyy")</div>
-
-            <span class="badge bg-white text-dark mt-3">
-                @ruta.Estado
-            </span>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-6">
-                <div class="bg-white rounded-4 border p-3 h-100">
-                    <div class="text-muted small">Paradas</div>
-                    <div class="fs-3 fw-bold">
-                        @ruta.Paradas.Count
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-6">
-                <div class="bg-white rounded-4 border p-3 h-100">
-                    <div class="text-muted small">Peso total</div>
-                    <div class="fs-5 fw-bold mt-2">
-                        @ruta.PesoTotalKg.ToString("0.##") kg
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <h5 class="fw-bold mb-3">Paradas de la ruta</h5>
-
-        @if (ruta.Paradas.Count == 0)
+        @if (!string.IsNullOrEmpty(error))
         {
-            <div class="bg-white rounded-4 border p-4 text-center text-muted">
-                Esta ruta todavía no tiene paradas.
+            <div class="alert alert-danger" role="alert">
+                @error
             </div>
         }
-        else
+
+        @if (ruta is not null)
         {
-@foreach (var parada in ruta.Paradas.OrderBy(p => p.Orden))
+            <div class="rounded-4 p-4 mb-4 text-white"
+                 style="background:#6d28d9">
+                <div class="small opacity-75">HOJA DE RUTA</div>
+                <h2 class="fw-bold mt-2 mb-1">@ruta.Nombre</h2>
+                <div>@ruta.Fecha.ToString("dd/MM/yyyy")</div>
+
+                <span class="badge bg-white text-dark mt-3">
+                    @ruta.Estado
+                </span>
+            </div>
+
+            @if (ruta.Estado == "Finalizada")
 {
-    <div class="bg-white rounded-4 border p-3 mb-3">
-        <div class="d-flex align-items-start gap-3">
-            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
-                 style="background:#ede9fe;color:#6d28d9;width:42px;height:42px;flex-shrink:0">
-                @parada.Orden
-            </div>
-
-            <div class="flex-grow-1">
-                <div class="d-flex justify-content-between align-items-center gap-2">
-                    <div class="fw-bold">
-                        @parada.Destinatario.Nombre @parada.Destinatario.Apellido
-                    </div>
-
-                    <span class="badge bg-light text-dark border">
-                        @parada.EstadoEnvio
-                    </span>
-                </div>
-
-                <div class="mt-2">
-                    <div class="fw-semibold">
-                        @parada.Direccion.Calle @parada.Direccion.Numero
-                        @if (!string.IsNullOrWhiteSpace(parada.Direccion.Apartamento))
-                        {
-                            <span> - Apto. @parada.Direccion.Apartamento</span>
-                        }
-                    </div>
-
-                    <div class="text-muted small">
-                        @parada.Direccion.Ciudad, @parada.Direccion.Departamento
-                    </div>
-
-                    @if (!string.IsNullOrWhiteSpace(parada.Direccion.Referencia))
-                    {
-                        <div class="text-muted small mt-1">
-                            Referencia: @parada.Direccion.Referencia
-                        </div>
-                    }
-                </div>
-
-                @if (!string.IsNullOrWhiteSpace(parada.Destinatario.Telefono))
-                {
-                    <div class="small mt-2">
-                        Teléfono: @parada.Destinatario.Telefono
-                    </div>
-                }
-
-                <hr class="my-3" />
-
-                <div class="small text-muted">
-                    Seguimiento: @parada.CodigoSeguimiento
-                </div>
-
-                <div class="small mt-2">
-                    <strong>Bultos:</strong> @parada.CantidadBultos
-                    <span class="mx-2">·</span>
-                    <strong>Peso:</strong> @parada.PesoKg.ToString("0.##") kg
-                </div>
-                
-                
-                @if (parada.EstadoEnvio == "EnTransito")
-                {
-                    <button class="btn btn-primary w-100 mt-3"
-                            style="background:#6d28d9;border-color:#6d28d9"
-                            disabled="@procesando"
-                            @onclick="() => ConfirmarEntrega(parada.EnvioId)">
-                        @(procesando ? "Confirmando..." : "Confirmar entrega")
-                    </button>
-                }
-
-
-                @if (parada.Franja is not null)
-                {
-                    <div class="small mt-2" style="color:#6d28d9">
-                        Entrega con franja horaria asignada
-                    </div>
-                }
-            </div>
+    <div class="rounded-4 p-3 mb-4"
+         style="background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6">
+        <div class="fw-bold">Ruta finalizada</div>
+        <div class="small mt-1">
+            Todas las paradas fueron procesadas.
         </div>
     </div>
 }
+
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="bg-white rounded-4 border p-3 h-100">
+                        <div class="text-muted small">Paradas</div>
+                        <div class="fs-3 fw-bold">
+                            @ruta.Paradas.Count
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6">
+                    <div class="bg-white rounded-4 border p-3 h-100">
+                        <div class="text-muted small">Peso total</div>
+                        <div class="fs-5 fw-bold mt-2">
+                            @ruta.PesoTotalKg.ToString("0.##") kg
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mb-3">Paradas de la ruta</h5>
+
+            @if (ruta.Paradas.Count == 0)
+            {
+                <div class="bg-white rounded-4 border p-4 text-center text-muted">
+                    Esta ruta todavía no tiene paradas.
+                </div>
+            }
+            else
+            {
+                @foreach (var parada in ruta.Paradas.OrderBy(p => p.Orden))
+                {
+                    <div class="bg-white rounded-4 border p-3 mb-3">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                                 style="background:#ede9fe;color:#6d28d9;width:42px;height:42px;flex-shrink:0">
+                                @parada.Orden
+                            </div>
+
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center gap-2">
+                                    <div class="fw-bold">
+                                        @parada.Destinatario.Nombre
+                                        @parada.Destinatario.Apellido
+                                    </div>
+
+                                    <span class="badge bg-light text-dark border">
+                                        @parada.EstadoEnvio
+                                    </span>
+                                </div>
+
+                                <div class="mt-2">
+                                    <div class="fw-semibold">
+                                        @parada.Direccion.Calle
+                                        @parada.Direccion.Numero
+
+                                        @if (!string.IsNullOrWhiteSpace(parada.Direccion.Apartamento))
+                                        {
+                                            <span> - Apto. @parada.Direccion.Apartamento</span>
+                                        }
+                                    </div>
+
+                                    <div class="text-muted small">
+                                        @parada.Direccion.Ciudad,
+                                        @parada.Direccion.Departamento
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(parada.Direccion.Referencia))
+                                    {
+                                        <div class="text-muted small mt-1">
+                                            Referencia: @parada.Direccion.Referencia
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(parada.Destinatario.Telefono))
+                                {
+                                    <div class="small mt-2">
+                                        Teléfono: @parada.Destinatario.Telefono
+                                    </div>
+                                }
+
+                                <hr class="my-3" />
+
+                                <div class="small text-muted">
+                                    Seguimiento: @parada.CodigoSeguimiento
+                                </div>
+
+                                <div class="small mt-2">
+                                    <strong>Bultos:</strong> @parada.CantidadBultos
+                                    <span class="mx-2">·</span>
+                                    <strong>Peso:</strong> @parada.PesoKg.ToString("0.##") kg
+                                </div>
+
+                                
+@if (parada.EstadoEnvio == "EnTransito")
+{
+    <div class="d-grid gap-2 mt-3">
+        <button class="btn text-white rounded-3 py-2 fw-semibold"
+                style="background:#6d28d9"
+                disabled="@procesando"
+                @onclick="() => ConfirmarEntrega(parada.EnvioId)">
+            Confirmar entrega
+        </button>
+
+        <button class="btn rounded-3 py-2 fw-semibold"
+                style="border:1px solid #ddd6fe;color:#6d28d9;background:#faf5ff"
+                disabled="@procesando"
+                @onclick="() => MostrarFormularioFallido(parada.EnvioId)">
+            No se pudo entregar
+        </button>
+    </div>
+
+    @if (envioFormularioFallido == parada.EnvioId)
+    {
+        <div class="rounded-4 p-3 mt-3"
+             style="background:#faf5ff;border:1px solid #ddd6fe">
+
+            <div class="fw-bold mb-1" style="color:#4c1d95">
+                Registrar entrega fallida
+            </div>
+
+            <p class="small mb-3" style="color:#7c3aed">
+                Seleccioná el motivo por el que no se pudo completar la entrega.
+            </p>
+
+            <label class="form-label fw-semibold small"
+                   for="@($"motivo-{parada.EnvioId}")">
+                Motivo de no entrega
+            </label>
+
+            <select id="@($"motivo-{parada.EnvioId}")"
+                    class="form-select rounded-3 py-2"
+                    style="border-color:#ddd6fe"
+                    @bind="motivoSeleccionado">
+                <option value="0">Seleccioná un motivo</option>
+
+                @foreach (var motivo in motivosNoEntrega)
+                {
+                    <option value="@motivo.Id">@motivo.Nombre</option>
+                }
+            </select>
+
+            @if (motivosNoEntrega.Count == 0)
+            {
+                <p class="small mt-2" style="color:#7c3aed">
+                    No hay motivos disponibles.
+                </p>
+            }
+
+            <label class="form-label fw-semibold small mt-3"
+                   for="@($"observaciones-{parada.EnvioId}")">
+                Observaciones
+                <span class="fw-normal text-muted">(opcional)</span>
+            </label>
+
+            <textarea id="@($"observaciones-{parada.EnvioId}")"
+                      class="form-control rounded-3"
+                      style="border-color:#ddd6fe"
+                      rows="3"
+                      maxlength="1000"
+                      placeholder="Agregá detalles sobre el intento..."
+                      @bind="observacionesFallido"></textarea>
+
+            <div class="d-grid gap-2 mt-3">
+                <button class="btn text-white rounded-3 py-2 fw-semibold"
+                        style="background:#6d28d9"
+                        disabled="@(procesando || motivoSeleccionado == 0)"
+                        @onclick="() => RegistrarEntregaFallida(parada.EnvioId)">
+                    @(procesando ? "Guardando..." : "Registrar intento")
+                </button>
+
+                <button class="btn rounded-3 py-2"
+                        style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
+                        disabled="@procesando"
+                        @onclick="CerrarFormularioFallido">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    }
+}
+                                @if (parada.Franja is not null)
+                                {
+                                    <div class="small mt-2" style="color:#6d28d9">
+                                        Entrega con franja horaria asignada
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
         }
     }
 </div>
@@ -158,8 +256,12 @@
     private RutaDetalleDto? ruta;
     private bool cargando = true;
     private string? error;
-    
     private bool procesando;
+
+    private List<MotivoNoEntregaDto> motivosNoEntrega = [];
+    private int? envioFormularioFallido;
+    private int motivoSeleccionado;
+    private string? observacionesFallido;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -186,15 +288,88 @@
             cargando = false;
         }
     }
-    
+
     private async Task ConfirmarEntrega(int envioId)
     {
+        if (procesando)
+            return;
+
         procesando = true;
         error = null;
 
         try
         {
             await RutasService.ConfirmarEntregaAsync(envioId);
+            ruta = await RutasService.ObtenerRutaAsync(Id);
+            CerrarFormularioFallido();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private async Task MostrarFormularioFallido(int envioId)
+    {
+        if (procesando)
+            return;
+
+        error = null;
+
+        if (envioFormularioFallido == envioId)
+        {
+            CerrarFormularioFallido();
+            return;
+        }
+
+        procesando = true;
+
+        try
+        {
+            motivosNoEntrega = await RutasService.ObtenerMotivosNoEntregaAsync();
+
+            envioFormularioFallido = envioId;
+            motivoSeleccionado = 0;
+            observacionesFallido = null;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+    private void CerrarFormularioFallido()
+    {
+        envioFormularioFallido = null;
+        motivoSeleccionado = 0;
+        observacionesFallido = null;
+    }
+
+    private async Task RegistrarEntregaFallida(int envioId)
+    {
+        if (motivoSeleccionado == 0 || procesando)
+            return;
+
+        procesando = true;
+        error = null;
+
+        try
+        {
+            await RutasService.RegistrarEntregaFallidaAsync(
+                envioId,
+                motivoSeleccionado,
+                observacionesFallido);
+
+            CerrarFormularioFallido();
+
             ruta = await RutasService.ObtenerRutaAsync(Id);
         }
         catch (Exception ex)
@@ -207,10 +382,8 @@
         }
     }
 
-
     private void Volver()
     {
         Navigation.NavigateTo("/rutas");
     }
-    
 }

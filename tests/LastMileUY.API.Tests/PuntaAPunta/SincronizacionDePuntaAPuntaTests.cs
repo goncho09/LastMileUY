@@ -1,3 +1,5 @@
+using LastMileUY.Contracts.Entregas;
+
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using System.Net;
