@@ -141,6 +141,22 @@ builder.Services.AddSingleton<SeleccionOperadorTemporalService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DriverPWA", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:8083",
+                "https://localhost:7264"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+
 var app = builder.Build();
 
 // Primero las tablas (si corresponde), después los datos iniciales
@@ -148,7 +164,6 @@ await MigracionesAlIniciar.AplicarSiCorrespondeAsync(app);
 await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 
 await IdentitySeeder.SeedRolesAsync(app.Services);
-
 
 // Configure the HTTP request pipeline y Scalar 
 if (app.Environment.IsDevelopment())
@@ -165,7 +180,12 @@ if (app.Environment.IsDevelopment())
     await MotivosNoEntregaSeeder.SeedPruebaAsync(app.Services, operadoresPrueba);
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("DriverPWA");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -121,6 +121,8 @@ builder.Services.Configure<RouteOptions>(options =>
     options.LowercaseQueryStrings = true;
 });
 
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

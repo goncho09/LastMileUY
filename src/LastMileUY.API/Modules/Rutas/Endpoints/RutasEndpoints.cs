@@ -170,6 +170,35 @@ public static class RutasEndpoints
             })
             .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
             .WithName("MisRutas");
+        
+        // App del repartidor: detalle de una ruta asignada
+        group.MapGet("/mias/{id:int}", async (
+                int id,
+                ConsultasRutasService consultas,
+                IContextoOperador contextoOperador,
+                ClaimsPrincipal usuario,
+                CancellationToken cancellationToken) =>
+            {
+                if (contextoOperador.OperadorId is null)
+                    return Results.Forbid();
+
+                var usuarioId = usuario.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+                // Verificar que la ruta pertenezca al repartidor autenticado
+                var misRutas = await consultas.ListarDelRepartidorAsync(
+                    usuarioId, cancellationToken);
+
+                if (!misRutas.Any(r => r.Id == id))
+                    return Results.NotFound(new { mensaje = "Ruta no encontrada." });
+
+                var ruta = await consultas.ObtenerDetalleAsync(id, cancellationToken);
+
+                return ruta is null
+                    ? Results.NotFound(new { mensaje = "Ruta no encontrada." })
+                    : Results.Ok(ruta);
+            })
+            .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
+            .WithName("ObtenerMiRutaPorId");
 
         // App del repartidor: descarga la hoja de ruta (solo si es suya y ya se despachó)
         group.MapGet("/{id:int}/hoja", async (

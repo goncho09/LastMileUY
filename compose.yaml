@@ -95,6 +95,8 @@
     build:
       context: .
       dockerfile: src/LastMileUY.DriverPWA/Dockerfile
+    ports:
+        - "8083:80"
 
   lastmileuy.publictracking:
     image: lastmileuy.publictracking
