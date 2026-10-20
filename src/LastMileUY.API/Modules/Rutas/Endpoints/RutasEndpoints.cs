@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Rutas.Application;
 using LastMileUY.Contracts.Rutas;
@@ -205,17 +206,28 @@ public static class RutasEndpoints
                 int id,
                 ConsultasRutasService consultas,
                 IContextoOperador contextoOperador,
+                CacheDistribuido cache,
                 ClaimsPrincipal usuario,
                 CancellationToken cancellationToken) =>
             {
-                if (contextoOperador.OperadorId is null)
+                if (contextoOperador.OperadorId is not int operadorId)
                     return Results.Forbid();
 
-                var (resultado, hoja) = await consultas.ObtenerHojaDelRepartidorAsync(
+                // Los controles se hacen siempre contra la base; solo la hoja armada sale del caché
+                var resultado = await consultas.VerificarHojaDelRepartidorAsync(
                     id, usuario.FindFirstValue(ClaimTypes.NameIdentifier)!, cancellationToken);
+
+                var hoja = resultado == ResultadoHoja.Disponible
+                    ? await cache.ObtenerOCrearAsync(
+                        CasosDeCache.HojaDeRuta(operadorId, id),
+                        ct => consultas.ObtenerDetalleAsync(id, ct),
+                        CasosDeCache.DuracionHojaDeRuta,
+                        cancellationToken)
+                    : null;
 
                 return resultado switch
                 {
+                    ResultadoHoja.Disponible when hoja is null => Results.NotFound(new { mensaje = "La ruta no existe." }),
                     ResultadoHoja.Disponible => Results.Ok(hoja),
                     ResultadoHoja.DeOtroRepartidor => Results.Forbid(),
                     ResultadoHoja.NoDespachada => Results.Conflict(new
