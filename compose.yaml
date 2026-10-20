@@ -17,6 +17,19 @@
       timeout: 5s
       retries: 5
 
+  # Caché distribuido (compartido entre instancias de la API)
+  redis:
+    image: redis:7.4-alpine
+    container_name: lastmileuy-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   lastmileuy.api:
     image: lastmileuy.api
     build:
@@ -43,11 +56,15 @@
       DataProtection__Directorio: /claves
       # Firmas y fotos de las entregas que manda la app del repartidor
       Evidencias__Directorio: /evidencias
+      # Caché distribuido: Redis del compose
+      ConnectionStrings__Redis: "redis:6379"
     volumes:
       - claves_api:/claves
       - evidencias_api:/evidencias
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   lastmileuy.backoffice:
@@ -97,6 +114,9 @@
       dockerfile: src/LastMileUY.DriverPWA/Dockerfile
     ports:
         - "8083:80"
+    # nginx necesita que exista el contenedor de la API al arrancar (hace de proxy hacia ella)
+    depends_on:
+      - lastmileuy.api
 
   lastmileuy.publictracking:
     image: lastmileuy.publictracking
