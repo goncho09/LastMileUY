@@ -17,4 +17,3 @@ public record OperacionSincronizadaDto(
     bool TieneFirma,
     bool TieneFoto);
 
-public record MotivoNoEntregaDto(int Id, string Nombre);

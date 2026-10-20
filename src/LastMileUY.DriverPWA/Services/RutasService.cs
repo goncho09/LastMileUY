@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
@@ -91,5 +92,58 @@ public class RutasService(HttpClient http)
     }
 
     private sealed record ErrorEntrega(string Mensaje);
+    
+    public async Task<List<MotivoNoEntregaDto>> ObtenerMotivosNoEntregaAsync()
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "https://localhost:8443/api/entregas/motivos");
+
+        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+
+        using var response = await http.SendAsync(request);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("Tu sesión expiró.");
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+            .ReadFromJsonAsync<List<MotivoNoEntregaDto>>() ?? [];
+    }
+
+    public async Task RegistrarEntregaFallidaAsync(
+        int envioId,
+        int motivoNoEntregaId,
+        string? observaciones)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"https://localhost:8443/api/entregas/{envioId}/fallida");
+
+        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+
+        request.Content = JsonContent.Create(
+            new RegistrarIntentoFallidoRequest(
+                motivoNoEntregaId,
+                observaciones));
+
+        using var response = await http.SendAsync(request);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("Tu sesión expiró.");
+
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+            throw new UnauthorizedAccessException(
+                "No tenés permisos para registrar esta entrega.");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var mensaje = await response.Content.ReadAsStringAsync();
+
+            throw new InvalidOperationException(
+                $"No se pudo registrar la entrega fallida: {mensaje}");
+        }
+    }
 
 }
