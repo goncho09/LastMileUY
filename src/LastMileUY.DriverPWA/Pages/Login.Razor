@@ -1,0 +1,182 @@
+﻿
+@page "/login"
+@using LastMileUY.DriverPWA.Services
+@inject AuthService Auth
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar sesión | LastMileUY</PageTitle>
+
+<div class="flex min-h-dvh items-center justify-center bg-slate-100 px-4 py-8 sm:px-6">
+
+    <main class="w-full max-w-md rounded-3xl bg-white p-7 shadow-xl shadow-slate-200/70 sm:p-10">
+
+        <!-- Logo -->
+        <div class="mb-10 flex items-center gap-3">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600 text-2xl text-white">
+                📦
+            </div>
+
+            <div>
+                <div class="text-2xl font-extrabold tracking-tight text-slate-900">
+                    LastMile<span class="text-violet-600">UY</span>
+                </div>
+                <p class="text-xs font-medium text-slate-500">
+                    Portal de repartidores
+                </p>
+            </div>
+        </div>
+
+        <!-- Encabezado -->
+        <div class="mb-8">
+            <h1 class="mb-3 text-3xl font-extrabold tracking-tight text-slate-900">
+                Iniciar turno
+            </h1>
+
+            <p class="text-sm leading-6 text-slate-500">
+                Accedé con tus credenciales para consultar tus recorridos
+                y paquetes del día.
+            </p>
+        </div>
+
+        <!-- Formulario -->
+        <form @onsubmit="IniciarSesion"
+              @onsubmit:preventDefault="true"
+              class="space-y-5">
+
+            <div>
+                <label for="email"
+                       class="mb-2 block text-sm font-semibold text-slate-700">
+                    Correo electrónico
+                </label>
+
+                <input id="email"
+                       type="email"
+                       autocomplete="username"
+                       placeholder="nombre@ejemplo.com"
+                       @bind="email"
+                       required
+                       class="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200" />
+            </div>
+
+            <div>
+                <label for="password"
+                       class="mb-2 block text-sm font-semibold text-slate-700">
+                    Contraseña
+                </label>
+
+                <div class="relative">
+                    <input id="password"
+                           type="@(mostrarPassword ? "text" : "password")"
+                           autocomplete="current-password"
+                           placeholder="Ingresá tu contraseña"
+                           @bind="password"
+                           required
+                           class="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 pr-20 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200" />
+
+                    <button type="button"
+                            @onclick="() => mostrarPassword = !mostrarPassword"
+                            class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-violet-600">
+
+                        @if (mostrarPassword)
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 width="20" height="20"
+                                 viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round"
+                                 stroke-linejoin="round">
+                                <path d="M3 3l18 18"/>
+                                <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/>
+                                <path d="M9.9 5.1A10.9 10.9 0 0 1 12 5c7 0 10 7 10 7a13.4 13.4 0 0 1-4 4.9"/>
+                                <path d="M6.6 6.6C3.6 8.4 2 12 2 12s3 7 10 7c1.7 0 3.2-.4 4.5-1"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 width="20" height="20"
+                                 viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round"
+                                 stroke-linejoin="round">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div role="alert"
+                     class="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    @error
+                </div>
+            }
+
+            <button type="submit"
+                    disabled="@cargando"
+                    class="flex h-13 w-full items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-bold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60">
+                @(cargando ? "Ingresando..." : "Iniciar sesión →")
+            </button>
+        </form>
+
+        <!-- Información offline -->
+        <div class="mt-9 rounded-2xl border border-violet-100 bg-violet-50 p-4">
+            <div class="mb-2 flex items-center gap-2 text-sm font-bold text-violet-800">
+                <span>📡</span>
+                <span>Preparado para trabajar offline</span>
+            </div>
+
+            <p class="text-xs leading-5 text-violet-700">
+                Una vez descargadas tus rutas, podrás consultar tus entregas
+                incluso sin conexión.
+            </p>
+        </div>
+
+        <p class="mt-8 text-center text-xs text-slate-400">
+            © 2026 LastMileUY
+        </p>
+    </main>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string error = "";
+    private bool cargando;
+    private bool mostrarPassword;
+
+    private void AlternarPassword()
+    {
+        mostrarPassword = !mostrarPassword;
+    }
+
+    private async Task IniciarSesion()
+    {
+        if (cargando)
+            return;
+
+        cargando = true;
+        error = "";
+
+        try
+        {
+            bool correcto = await Auth.LoginAsync(email, password);
+
+            if (correcto)
+                Navigation.NavigateTo("/");
+            else
+                error = "Correo o contraseña incorrectos.";
+        }
+        catch (Exception)
+        {
+            error = "No se pudo conectar con el servidor.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}

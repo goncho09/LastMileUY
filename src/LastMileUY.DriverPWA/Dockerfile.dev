@@ -1,0 +1,19 @@
+﻿FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /workspace
+
+COPY src/LastMileUY.DriverPWA/LastMileUY.DriverPWA.csproj src/LastMileUY.DriverPWA/
+
+RUN dotnet restore src/LastMileUY.DriverPWA/LastMileUY.DriverPWA.csproj
+
+COPY src/LastMileUY.DriverPWA/ src/LastMileUY.DriverPWA/
+
+WORKDIR /workspace/src/LastMileUY.DriverPWA
+
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:8080
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "watch", "run", "--no-hot-reload", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]
