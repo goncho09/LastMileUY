@@ -12,6 +12,8 @@
     <link href="favicon.png" rel="icon" type="image/png"/>
     <link href="LastMileUY.DriverPWA.styles.css" rel="stylesheet"/>
     <link href="css/tailwind.css" rel="stylesheet"/>
+    <link rel="manifest" href="manifest.webmanifest"/>
+    <meta name="theme-color" content="#6d28d9"/>
     <script type="importmap"></script>
 </head>
 
@@ -32,6 +34,14 @@
 <script src="js/entrega.js"></script>
 <script src="js/almacen.js"></script>
 <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .catch(error => console.error('Error al registrar PWA:', error));
+        });
+    }
+</script>
 </body>
 
 </html>
