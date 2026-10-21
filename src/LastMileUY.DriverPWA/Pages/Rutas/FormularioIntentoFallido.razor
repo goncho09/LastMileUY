@@ -1,0 +1,135 @@
+@using LastMileUY.Contracts.Entregas
+@using LastMileUY.Contracts.Sincronizacion
+@using LastMileUY.DriverPWA.Services
+@inject SincronizacionService Sincronizacion
+@inject IJSRuntime JS
+
+@* Intento fallido de una parada: motivo (de los que configuró el operador) y observaciones *@
+<div class="rounded-4 p-3 mt-3" style="background:#faf5ff;border:1px solid #ddd6fe">
+
+    <div class="fw-bold mb-1" style="color:#4c1d95">Registrar entrega fallida</div>
+
+    <p class="small mb-3" style="color:#7c3aed">
+        Seleccioná el motivo por el que no se pudo completar la entrega.
+    </p>
+
+    <label class="form-label fw-semibold small" for="motivo-@EnvioId">Motivo de no entrega</label>
+
+    <select id="motivo-@EnvioId" class="form-select rounded-3 py-2" style="border-color:#ddd6fe"
+            @bind="motivoSeleccionado">
+        <option value="0">Seleccioná un motivo</option>
+
+        @foreach (var motivo in motivos)
+        {
+            <option value="@motivo.Id">@motivo.Nombre</option>
+        }
+    </select>
+
+    @if (motivosCargados && motivos.Count == 0)
+    {
+        <p class="small mt-2" style="color:#7c3aed">No hay motivos disponibles.</p>
+    }
+
+    <label class="form-label fw-semibold small mt-3" for="observaciones-@EnvioId">
+        Observaciones <span class="fw-normal text-muted">(opcional)</span>
+    </label>
+
+    <textarea id="observaciones-@EnvioId" class="form-control rounded-3" style="border-color:#ddd6fe"
+              rows="3" maxlength="1000" placeholder="Agregá detalles sobre el intento..."
+              @bind="observaciones"></textarea>
+
+    @if (error is not null)
+    {
+        <div class="alert alert-danger small mt-3 mb-0" role="alert">@error</div>
+    }
+
+    <div class="d-grid gap-2 mt-3">
+        <button class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
+                disabled="@(enviando || motivoSeleccionado == 0)" @onclick="Enviar">
+            @(enviando ? "Guardando..." : "Registrar intento")
+        </button>
+
+        <button class="btn rounded-3 py-2" style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
+                disabled="@enviando" @onclick="OnCancelar">
+            Cancelar
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int RutaId { get; set; }
+    [Parameter, EditorRequired] public int EnvioId { get; set; }
+
+    // Resultado final (Aplicada o Conflicto): la hoja se recarga con lo que dice el servidor
+    [Parameter] public EventCallback<ResultadoOperacionDto> OnTerminado { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private List<MotivoNoEntregaDto> motivos = [];
+    private bool motivosCargados;
+    private int motivoSeleccionado;
+    private string? observaciones;
+    private string? error;
+    private bool enviando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            motivos = await Sincronizacion.ObtenerMotivosAsync();
+            motivosCargados = true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or UnauthorizedAccessException)
+        {
+            error = "No se pudieron cargar los motivos. Comprobá tu conexión.";
+        }
+    }
+
+    private async Task Enviar()
+    {
+        if (enviando || motivoSeleccionado == 0)
+            return;
+
+        enviando = true;
+        error = null;
+
+        try
+        {
+            var ubicacion = await Ubicacion.ObtenerAsync(JS);
+
+            if (ubicacion is null)
+            {
+                error = Ubicacion.SinUbicacion;
+                return;
+            }
+
+            var resultado = await Sincronizacion.EnviarAsync(new OperacionRequest
+            {
+                Tipo = "IntentoFallido",
+                RutaId = RutaId,
+                EnvioId = EnvioId,
+                FechaHoraDispositivo = DateTime.UtcNow,
+                Latitud = ubicacion.Latitud,
+                Longitud = ubicacion.Longitud,
+                MotivoNoEntregaId = motivoSeleccionado,
+                Observaciones = string.IsNullOrWhiteSpace(observaciones) ? null : observaciones.Trim()
+            });
+
+            if (resultado.Resultado is "Rechazada" or "Error")
+                error = resultado.Mensaje;
+            else
+                await OnTerminado.InvokeAsync(resultado);
+        }
+        catch (HttpRequestException)
+        {
+            error = "No se pudo conectar con el servidor. Probá de nuevo: no se va a registrar dos veces.";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+}

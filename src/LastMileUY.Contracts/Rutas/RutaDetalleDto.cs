@@ -36,7 +36,19 @@ public record ParadaDto(
     FranjaHorariaDto? Franja,
     int CantidadBultos,
     decimal PesoKg,
-    decimal VolumenM3);
+    decimal VolumenM3,
+    string Modalidad,
+    EvidenciaRequeridaDto Evidencia);
+
+// Qué tiene que juntar el repartidor para entregar, según la regla operativa vigente
+// para la modalidad del envío (sin regla, nada es obligatorio)
+public record EvidenciaRequeridaDto(
+    bool Firma,
+    bool Foto,
+    bool DocumentoReceptor)
+{
+    public static readonly EvidenciaRequeridaDto Ninguna = new(false, false, false);
+}
 
 public record FranjaHorariaDto(
     string Nombre,

@@ -1,10 +1,9 @@
-using LastMileUY.Contracts.Entregas;
-
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Comun;
+using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Envios;
 using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
@@ -25,7 +24,7 @@ public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var despachador = await api.IniciarSesionAsync(Despachador1);
         var repartidor = await api.IniciarSesionAsync(Repartidor1);
 
-        var (rutaId, envioId) = await RutaDespachadaAsync(operador, despachador);
+        var (rutaId, envioId) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 2);
 
         // La app descarga los motivos de no entrega del operador (los crea el seeder)
         var motivos = (await repartidor.GetFromJsonAsync<List<MotivoNoEntregaDto>>("api/sincronizacion/motivos"))!;
@@ -90,7 +89,7 @@ public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
     }
 
-    private static async Task<ResultadoOperacionDto> SincronizarAsync(HttpClient repartidor, OperacionRequest operacion)
+    internal static async Task<ResultadoOperacionDto> SincronizarAsync(HttpClient repartidor, OperacionRequest operacion)
     {
         using var respuesta = await repartidor.PostAsJsonAsync("api/sincronizacion",
             new SincronizarRequest { Operaciones = [operacion] });
@@ -98,46 +97,5 @@ public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
 
         return Assert.Single((await respuesta.Content.ReadFromJsonAsync<SincronizarResponse>())!.Resultados);
-    }
-
-    // Un envío en depósito, en una ruta del repartidor 1 ya despachada (envío en tránsito).
-    // La fecha es pasado mañana para no chocar con la ruta de HojasDeRutaDePuntaAPuntaTests.
-    private async Task<(int RutaId, int EnvioId)> RutaDespachadaAsync(HttpClient operador, HttpClient despachador)
-    {
-        var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
-
-        using var alta = await operador.PostAsJsonAsync("api/envios", new CrearEnvioRequest
-        {
-            ComercioId = api.IdComercio1,
-            DestinatarioId = destinatario,
-            DireccionId = direccion
-        });
-        var envioId = (await alta.Content.ReadFromJsonAsync<EnvioResponse>())!.Id;
-
-        using (var deposito = await operador.PatchAsJsonAsync($"api/envios/{envioId}/estado",
-                   new CambiarEstadoRequest { Estado = "EnDeposito" }))
-        {
-            Assert.True(deposito.IsSuccessStatusCode);
-        }
-
-        var opciones = (await despachador.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
-
-        using var ruta = await despachador.PostAsJsonAsync("api/rutas", new CrearRutaRequest
-        {
-            Nombre = "Ruta para sincronizar",
-            Fecha = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2),
-            RepartidorId = opciones.Repartidores[0].Id,
-            VehiculoId = opciones.Vehiculos[0].Id,
-            EnvioIds = [envioId]
-        });
-        Assert.Equal(HttpStatusCode.Created, ruta.StatusCode);
-        var rutaId = (await ruta.Content.ReadFromJsonAsync<RutaDetalleDto>())!.Id;
-
-        using (var despacho = await despachador.PostAsync($"api/rutas/{rutaId}/despachar", null))
-        {
-            Assert.Equal(HttpStatusCode.OK, despacho.StatusCode);
-        }
-
-        return (rutaId, envioId);
     }
 }

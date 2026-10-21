@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Json;
 using LastMileUY.Contracts.Auth;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace LastMileUY.DriverPWA.Services;
 
@@ -8,53 +7,25 @@ public class AuthService(HttpClient http)
 {
     public async Task<bool> LoginAsync(string email, string password)
     {
-        var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            "https://localhost:8443/api/auth/login"
-        );
-
-        request.Content = JsonContent.Create(new
+        using var response = await http.PostAsJsonAsync("api/auth/login", new
         {
             email,
             password,
             operadorId = (int?)null
         });
 
-        request.SetBrowserRequestCredentials(
-            BrowserRequestCredentials.Include
-        );
-
-        using var response = await http.SendAsync(request);
-
         return response.IsSuccessStatusCode;
     }
-    
-    
+
     public async Task LogoutAsync()
     {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Post,
-            "https://localhost:8443/api/auth/logout"
-        );
-
-        request.SetBrowserRequestCredentials(
-            BrowserRequestCredentials.Include
-        );
-
-        using var response = await http.SendAsync(request);
+        using var response = await http.PostAsync("api/auth/logout", null);
         response.EnsureSuccessStatusCode();
     }
-    
+
     public async Task<UsuarioAutenticadoResponse?> ObtenerUsuarioAsync()
     {
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            "https://localhost:8443/api/auth/me");
-
-        request.SetBrowserRequestCredentials(
-            BrowserRequestCredentials.Include);
-
-        using var response = await http.SendAsync(request);
+        using var response = await http.GetAsync("api/auth/me");
 
         if (!response.IsSuccessStatusCode)
             return null;
@@ -62,5 +33,4 @@ public class AuthService(HttpClient http)
         return await response.Content
             .ReadFromJsonAsync<UsuarioAutenticadoResponse>();
     }
-
 }
