@@ -63,7 +63,15 @@ Ejemplo, con las franjas Mañana (9 a 12) y Tarde (14 a 18):
 - `GET /api/rutas/mias`: las rutas despachadas o en curso del repartidor que inició sesión.
 - `GET /api/rutas/{id}/hoja`: la hoja completa (paradas en orden, destinatario, dirección, franja,
   bultos). Responde 403 si la ruta es de otro repartidor, 409 si todavía no se despachó y 404 si es
-  de otro operador (por el aislamiento, ni siquiera existe).
+  de otro operador (por el aislamiento, ni siquiera existe). Se guarda un minuto en el caché, pero los
+  controles se hacen siempre contra la base, y cualquier cambio en la ruta o en sus envíos la borra
+  del caché (`InvalidacionCacheInterceptor`).
+- `GET /api/rutas/mias/{id}`: la misma hoja, para la pantalla de la app. Además de las despachadas y
+  en curso, deja ver las finalizadas (para mostrar cómo terminó); nunca una planificada ni una de otro
+  repartidor (404).
+- Cada parada trae la `Modalidad` del envío y la `Evidencia` que pide la regla operativa vigente para
+  esa modalidad (`Firma`, `Foto`, `DocumentoReceptor`). Así la app sabe qué pedir antes de entregar;
+  la sincronización lo vuelve a controlar igual.
 
 ## Endpoints
 
@@ -75,6 +83,7 @@ Ejemplo, con las franjas Mañana (9 a 12) y Tarde (14 a 18):
 | `POST /api/rutas` | Operador, Despachador |
 | `POST /api/rutas/{id}/despachar` | Operador, Despachador |
 | `GET /api/rutas/mias` | Repartidor |
+| `GET /api/rutas/mias/{id}` | Repartidor |
 | `GET /api/rutas/{id}/hoja` | Repartidor |
 
 ## Datos de prueba (desarrollo)

@@ -1,0 +1,184 @@
+@using LastMileUY.Contracts.Rutas
+@using LastMileUY.Contracts.Sincronizacion
+@using LastMileUY.DriverPWA.Services
+@inject SincronizacionService Sincronizacion
+@inject IJSRuntime JS
+
+@* Entrega de una parada con la evidencia que pide la regla del operador (Parada.Evidencia).
+   La API vuelve a controlar todo: si falta algo, la rechaza y se muestra el motivo acá. *@
+<div class="rounded-4 p-3 mt-3" style="background:#faf5ff;border:1px solid #ddd6fe">
+
+    <div class="fw-bold mb-1" style="color:#4c1d95">Confirmar entrega</div>
+
+    <p class="small mb-3" style="color:#7c3aed">
+        @(PideAlgo ? "La regla del operador pide lo marcado como obligatorio." : "La regla del operador no pide evidencia para este envío.")
+    </p>
+
+    <label class="form-label fw-semibold small" for="receptor-@Parada.EnvioId">
+        Quién recibe
+        <span class="fw-normal text-muted">@(Parada.Evidencia.DocumentoReceptor ? "(obligatorio)" : "(opcional)")</span>
+    </label>
+    <input id="receptor-@Parada.EnvioId" class="form-control rounded-3" style="border-color:#ddd6fe"
+           maxlength="150" @bind="nombreReceptor" />
+
+    @if (Parada.Evidencia.DocumentoReceptor)
+    {
+        <label class="form-label fw-semibold small mt-3" for="documento-@Parada.EnvioId">
+            Documento de quien recibe <span class="fw-normal text-muted">(obligatorio)</span>
+        </label>
+        <input id="documento-@Parada.EnvioId" class="form-control rounded-3" style="border-color:#ddd6fe"
+               maxlength="50" inputmode="numeric" @bind="documentoReceptor" />
+    }
+
+    <div class="d-flex justify-content-between align-items-end mt-3">
+        <span class="form-label fw-semibold small mb-1">
+            Firma
+            <span class="fw-normal text-muted">@(Parada.Evidencia.Firma ? "(obligatoria)" : "(opcional)")</span>
+        </span>
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" style="color:#6d28d9"
+                @onclick="LimpiarFirma">
+            Borrar firma
+        </button>
+    </div>
+    <canvas @ref="lienzoFirma" width="600" height="220" aria-label="Firma de quien recibe"
+            class="w-100 rounded-3 bg-white" style="border:1px dashed #a78bfa;touch-action:none;height:150px"></canvas>
+
+    <label class="form-label fw-semibold small mt-3" for="foto-@Parada.EnvioId">
+        Foto
+        <span class="fw-normal text-muted">@(Parada.Evidencia.Foto ? "(obligatoria)" : "(opcional)")</span>
+    </label>
+    <InputFile id="@($"foto-{Parada.EnvioId}")" class="form-control rounded-3" accept="image/*" capture="environment"
+               OnChange="CargarFoto" />
+    @if (fotoBase64 is not null)
+    {
+        <div class="small mt-1" style="color:#6d28d9">Foto lista para enviar.</div>
+    }
+
+    <label class="form-label fw-semibold small mt-3" for="obs-entrega-@Parada.EnvioId">
+        Observaciones <span class="fw-normal text-muted">(opcional)</span>
+    </label>
+    <textarea id="obs-entrega-@Parada.EnvioId" class="form-control rounded-3" style="border-color:#ddd6fe"
+              rows="2" maxlength="1000" @bind="observaciones"></textarea>
+
+    @if (error is not null)
+    {
+        <div class="alert alert-danger small mt-3 mb-0" role="alert">@error</div>
+    }
+
+    <div class="d-grid gap-2 mt-3">
+        <button class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
+                disabled="@enviando" @onclick="Enviar">
+            @(enviando ? "Guardando..." : "Confirmar entrega")
+        </button>
+        <button class="btn rounded-3 py-2" style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
+                disabled="@enviando" @onclick="OnCancelar">
+            Cancelar
+        </button>
+    </div>
+</div>
+
+@code {
+    // La API acepta imágenes de hasta 1 MB: la foto se achica en el celular antes de mandarla
+    private const long MaximoImagen = 1024 * 1024;
+
+    [Parameter, EditorRequired] public int RutaId { get; set; }
+    [Parameter, EditorRequired] public ParadaDto Parada { get; set; } = null!;
+
+    // Resultado final (Aplicada o Conflicto): la hoja se recarga con lo que dice el servidor
+    [Parameter] public EventCallback<ResultadoOperacionDto> OnTerminado { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private ElementReference lienzoFirma;
+    private string? nombreReceptor;
+    private string? documentoReceptor;
+    private string? observaciones;
+    private string? fotoBase64;
+    private string? error;
+    private bool enviando;
+
+    private bool PideAlgo => Parada.Evidencia is { Firma: true } or { Foto: true } or { DocumentoReceptor: true };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("lastMileEntrega.iniciarFirma", lienzoFirma);
+    }
+
+    private async Task LimpiarFirma() =>
+        await JS.InvokeVoidAsync("lastMileEntrega.limpiarFirma", lienzoFirma);
+
+    private async Task CargarFoto(InputFileChangeEventArgs e)
+    {
+        error = null;
+        fotoBase64 = null;
+
+        try
+        {
+            var achicada = await e.File.RequestImageFileAsync("image/jpeg", 1280, 1280);
+            await using var lectura = achicada.OpenReadStream(MaximoImagen);
+            using var memoria = new MemoryStream();
+            await lectura.CopyToAsync(memoria);
+            fotoBase64 = Convert.ToBase64String(memoria.ToArray());
+        }
+        catch (IOException)
+        {
+            error = "La foto es demasiado grande. Probá con otra.";
+        }
+    }
+
+    private async Task Enviar()
+    {
+        if (enviando)
+            return;
+
+        enviando = true;
+        error = null;
+
+        try
+        {
+            var ubicacion = await Ubicacion.ObtenerAsync(JS);
+
+            if (ubicacion is null)
+            {
+                error = Ubicacion.SinUbicacion;
+                return;
+            }
+
+            var resultado = await Sincronizacion.EnviarAsync(new OperacionRequest
+            {
+                Tipo = "Entrega",
+                RutaId = RutaId,
+                EnvioId = Parada.EnvioId,
+                FechaHoraDispositivo = DateTime.UtcNow,
+                Latitud = ubicacion.Latitud,
+                Longitud = ubicacion.Longitud,
+                Observaciones = Limpio(observaciones),
+                NombreReceptor = Limpio(nombreReceptor),
+                DocumentoReceptor = Limpio(documentoReceptor),
+                FirmaBase64 = await JS.InvokeAsync<string?>("lastMileEntrega.leerFirma", lienzoFirma),
+                FotoBase64 = fotoBase64
+            });
+
+            // Rechazada (falta evidencia, por ejemplo) o Error: el formulario queda abierto para corregir
+            if (resultado.Resultado is "Rechazada" or "Error")
+                error = resultado.Mensaje;
+            else
+                await OnTerminado.InvokeAsync(resultado);
+        }
+        catch (HttpRequestException)
+        {
+            error = "No se pudo conectar con el servidor. Probá de nuevo: no se va a registrar dos veces.";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+
+    private static string? Limpio(string? texto) =>
+        string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+}

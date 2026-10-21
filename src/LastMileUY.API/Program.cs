@@ -4,8 +4,6 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Destinatarios.Application;
 using LastMileUY.API.Modules.Destinatarios.Endpoints;
-using LastMileUY.API.Modules.Entregas.Application;
-using LastMileUY.API.Modules.Entregas.Endpoints;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Endpoints;
 using LastMileUY.API.Modules.Identidad.Application;
@@ -22,7 +20,6 @@ using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.API.Modules.Entregas.Infrastructure;
-using LastMileUY.API.Modules.Entregas.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -159,9 +156,6 @@ builder.Services.AddScoped<PlanificarRutaService>();
 builder.Services.AddScoped<ConsultasRutasService>();
 builder.Services.AddScoped<SincronizarEntregasService>();
 builder.Services.AddScoped<ConsultasSincronizacionService>();
-builder.Services.AddScoped<ConfirmarEntregaService>();
-builder.Services.AddScoped<RegistrarIntentoFallidoService>();
-builder.Services.AddScoped<ConsultarMotivosNoEntregaService>();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 
 builder.Services.AddMemoryCache();
@@ -170,21 +164,22 @@ builder.Services.AddSingleton<SeleccionOperadorTemporalService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// CORS
+// CORS: solo hace falta cuando la app del repartidor se sirve desde otro origen que la API
+// (en desarrollo, con dotnet watch). En Docker nginx le pasa /api a la API y es el mismo origen.
+// Los orígenes van en la configuración (AppRepartidor:Origenes), no en el código.
+var origenesAppRepartidor = builder.Configuration
+    .GetSection("AppRepartidor:Origenes").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DriverPWA", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:8083",
-                "https://localhost:7264"
-            )
+        policy.WithOrigins(origenesAppRepartidor)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
 });
-
 
 var app = builder.Build();
 
@@ -227,7 +222,6 @@ app.MapEnviosEndpoints();
 app.MapOperadorEndpoints();
 app.MapDestinatariosEndpoints();
 app.MapRutasEndpoints();
-app.MapEntregasEndpoints();
 app.MapSincronizacionEndpoints();
 
 app.Run();

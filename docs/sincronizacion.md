@@ -4,10 +4,16 @@ El repartidor trabaja con la hoja de ruta descargada (ver [hojas-de-ruta.md](hoj
 puede quedarse sin señal. La app registra cada entrega o intento fallido en el celular y, al
 recuperar conexión, los manda a la API. Este documento explica qué hace la API con cada operación.
 
+**Es la única forma de registrar entregas e intentos fallidos.** La app usa este mismo endpoint
+también cuando tiene conexión (manda una operación por vez): así la evidencia, los duplicados y los
+conflictos se controlan en un solo lugar, y el Backoffice ve todo lo que hizo el repartidor.
+
 Código: `src/LastMileUY.API/Modules/Sincronizacion` (`SincronizarEntregasService`,
-`ConsultasSincronizacionService`, `SincronizacionEndpoints`). Pruebas:
-`tests/LastMileUY.API.Tests/Sincronizacion` y
-`tests/LastMileUY.API.Tests/PuntaAPunta/SincronizacionDePuntaAPuntaTests.cs`.
+`ConsultasSincronizacionService`, `SincronizacionEndpoints`). En la app:
+`src/LastMileUY.DriverPWA/Services/SincronizacionService.cs`. Pruebas:
+`tests/LastMileUY.API.Tests/Sincronizacion`,
+`tests/LastMileUY.API.Tests/PuntaAPunta/SincronizacionDePuntaAPuntaTests.cs` y
+`tests/LastMileUY.DriverPWA.Tests`.
 
 ## Qué manda la app
 
@@ -66,6 +72,7 @@ Son las mismas que en el Backoffice, porque el cambio de estado pasa por `Envio.
   - `RequiereDocumentoReceptor`: tienen que venir el nombre y el documento de quien recibe.
 
   Por ejemplo, con los datos de prueba, el operador 1 pide firma y el operador 2 pide foto y documento.
+  La hoja de ruta trae lo que pide cada parada (`Evidencia`), para que la app lo pida antes de mandar.
 - Intento fallido: el motivo tiene que existir y estar activo.
 - La fecha del celular no puede estar más de 5 minutos en el futuro, y la ubicación tiene que ser válida.
 

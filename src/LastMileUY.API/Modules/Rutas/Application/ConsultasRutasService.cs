@@ -112,6 +112,14 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 })
             .ToListAsync(cancellationToken);
 
+        // La evidencia que pide cada parada sale de la regla vigente para la modalidad de su envío
+        var evidencias = await db.ReglasOperativas.AsNoTracking()
+            .Where(r => r.Activa)
+            .ToDictionaryAsync(
+                r => r.Modalidad,
+                r => new EvidenciaRequeridaDto(r.RequiereFirma, r.RequiereFotografia, r.RequiereDocumentoReceptor),
+                cancellationToken);
+
         var paradas = filas
             .Select(x => new ParadaDto(
                 x.Orden,
@@ -123,7 +131,9 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 x.Franja,
                 x.CantidadBultos,
                 x.PesoKg,
-                x.VolumenM3 / Bulto.CentimetrosCubicosPorMetroCubico))
+                x.VolumenM3 / Bulto.CentimetrosCubicosPorMetroCubico,
+                x.Envio.Modalidad.ToString(),
+                evidencias.GetValueOrDefault(x.Envio.Modalidad, EvidenciaRequeridaDto.Ninguna)))
             .ToList();
 
         var ruta = cabecera.Ruta;
@@ -255,7 +265,12 @@ public class ConsultasRutasService(ApplicationDbContext db)
 
     private static DireccionDto ADto(DireccionEntrega d) =>
         new(d.Calle, d.Numero, d.Apartamento, d.Ciudad, d.Departamento, d.CodigoPostal, d.Referencia);
-    
+
+    // Lo que el repartidor puede abrir desde la app: sus rutas despachadas o en curso, y también
+    // las finalizadas (para ver cómo quedó la última). Una planificada todavía se está armando.
+    private static readonly EstadoRuta[] EstadosVisiblesEnLaApp =
+        [.. Ruta.EstadosParaElRepartidor, EstadoRuta.Finalizada];
+
     public async Task<RutaDetalleDto?> ObtenerDetalleDelRepartidorAsync(
         int rutaId,
         int operadorId,
@@ -266,6 +281,7 @@ public class ConsultasRutasService(ApplicationDbContext db)
             .AnyAsync(r =>
                     r.Id == rutaId &&
                     r.OperadorId == operadorId &&
+                    EstadosVisiblesEnLaApp.Contains(r.Estado) &&
                     db.Set<Repartidor>().Any(rep =>
                         rep.Id == r.RepartidorId &&
                         rep.UsuarioId == usuarioId &&

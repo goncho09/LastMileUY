@@ -145,7 +145,8 @@ public class RutasApiDePrueba : IRutasApi
             var paradas = envios
                 .Select((e, i) => new ParadaDto(
                     i + 1, e.Id, e.CodigoSeguimiento, "AsignadoARuta",
-                    Destinatario(e), Direccion(e), e.Franja, 1, e.PesoKg, e.VolumenM3))
+                    Destinatario(e), Direccion(e), e.Franja, 1, e.PesoKg, e.VolumenM3,
+                    "Estandar", EvidenciaRequeridaDto.Ninguna))
                 .ToList();
 
             var creada = new RutaDetalleDto(

@@ -1,7 +1,7 @@
 ﻿
 @page "/rutas/{Id:int}"
-@using LastMileUY.Contracts.Entregas
 @using LastMileUY.Contracts.Rutas
+@using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
 @inject RutasService RutasService
 @inject NavigationManager Navigation
@@ -25,6 +25,13 @@
         {
             <div class="alert alert-danger" role="alert">
                 @error
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(aviso))
+        {
+            <div class="alert @(avisoEsConflicto ? "alert-warning" : "alert-success")" role="status">
+                @aviso
             </div>
         }
 
@@ -84,7 +91,7 @@
             {
                 @foreach (var parada in ruta.Paradas.OrderBy(p => p.Orden))
                 {
-                    <div class="bg-white rounded-4 border p-3 mb-3">
+                    <div class="bg-white rounded-4 border p-3 mb-3" @key="parada.EnvioId">
                         <div class="d-flex align-items-start gap-3">
                             <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
                                  style="background:#ede9fe;color:#6d28d9;width:42px;height:42px;flex-shrink:0">
@@ -146,91 +153,32 @@
                                     <strong>Peso:</strong> @parada.PesoKg.ToString("0.##") kg
                                 </div>
 
-                                
 @if (parada.EstadoEnvio == "EnTransito")
 {
-    <div class="d-grid gap-2 mt-3">
-        <button class="btn text-white rounded-3 py-2 fw-semibold"
-                style="background:#6d28d9"
-                disabled="@procesando"
-                @onclick="() => ConfirmarEntrega(parada.EnvioId)">
-            Confirmar entrega
-        </button>
-
-        <button class="btn rounded-3 py-2 fw-semibold"
-                style="border:1px solid #ddd6fe;color:#6d28d9;background:#faf5ff"
-                disabled="@procesando"
-                @onclick="() => MostrarFormularioFallido(parada.EnvioId)">
-            No se pudo entregar
-        </button>
-    </div>
-
-    @if (envioFormularioFallido == parada.EnvioId)
+    @if (formularioAbierto == (parada.EnvioId, Formulario.Entrega))
     {
-        <div class="rounded-4 p-3 mt-3"
-             style="background:#faf5ff;border:1px solid #ddd6fe">
+        <FormularioEntrega RutaId="Id" Parada="parada"
+                           OnTerminado="Registrado" OnCancelar="CerrarFormulario" />
+    }
+    else if (formularioAbierto == (parada.EnvioId, Formulario.IntentoFallido))
+    {
+        <FormularioIntentoFallido RutaId="Id" EnvioId="parada.EnvioId"
+                                  OnTerminado="Registrado" OnCancelar="CerrarFormulario" />
+    }
+    else
+    {
+        <div class="d-grid gap-2 mt-3">
+            <button class="btn text-white rounded-3 py-2 fw-semibold"
+                    style="background:#6d28d9"
+                    @onclick="() => AbrirFormulario(parada.EnvioId, Formulario.Entrega)">
+                Confirmar entrega
+            </button>
 
-            <div class="fw-bold mb-1" style="color:#4c1d95">
-                Registrar entrega fallida
-            </div>
-
-            <p class="small mb-3" style="color:#7c3aed">
-                Seleccioná el motivo por el que no se pudo completar la entrega.
-            </p>
-
-            <label class="form-label fw-semibold small"
-                   for="@($"motivo-{parada.EnvioId}")">
-                Motivo de no entrega
-            </label>
-
-            <select id="@($"motivo-{parada.EnvioId}")"
-                    class="form-select rounded-3 py-2"
-                    style="border-color:#ddd6fe"
-                    @bind="motivoSeleccionado">
-                <option value="0">Seleccioná un motivo</option>
-
-                @foreach (var motivo in motivosNoEntrega)
-                {
-                    <option value="@motivo.Id">@motivo.Nombre</option>
-                }
-            </select>
-
-            @if (motivosNoEntrega.Count == 0)
-            {
-                <p class="small mt-2" style="color:#7c3aed">
-                    No hay motivos disponibles.
-                </p>
-            }
-
-            <label class="form-label fw-semibold small mt-3"
-                   for="@($"observaciones-{parada.EnvioId}")">
-                Observaciones
-                <span class="fw-normal text-muted">(opcional)</span>
-            </label>
-
-            <textarea id="@($"observaciones-{parada.EnvioId}")"
-                      class="form-control rounded-3"
-                      style="border-color:#ddd6fe"
-                      rows="3"
-                      maxlength="1000"
-                      placeholder="Agregá detalles sobre el intento..."
-                      @bind="observacionesFallido"></textarea>
-
-            <div class="d-grid gap-2 mt-3">
-                <button class="btn text-white rounded-3 py-2 fw-semibold"
-                        style="background:#6d28d9"
-                        disabled="@(procesando || motivoSeleccionado == 0)"
-                        @onclick="() => RegistrarEntregaFallida(parada.EnvioId)">
-                    @(procesando ? "Guardando..." : "Registrar intento")
-                </button>
-
-                <button class="btn rounded-3 py-2"
-                        style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
-                        disabled="@procesando"
-                        @onclick="CerrarFormularioFallido">
-                    Cancelar
-                </button>
-            </div>
+            <button class="btn rounded-3 py-2 fw-semibold"
+                    style="border:1px solid #ddd6fe;color:#6d28d9;background:#faf5ff"
+                    @onclick="() => AbrirFormulario(parada.EnvioId, Formulario.IntentoFallido)">
+                No se pudo entregar
+            </button>
         </div>
     }
 }
@@ -250,24 +198,34 @@
 </div>
 
 @code {
+    private enum Formulario { Entrega, IntentoFallido }
+
     [Parameter]
     public int Id { get; set; }
 
     private RutaDetalleDto? ruta;
     private bool cargando = true;
     private string? error;
-    private bool procesando;
 
-    private List<MotivoNoEntregaDto> motivosNoEntrega = [];
-    private int? envioFormularioFallido;
-    private int motivoSeleccionado;
-    private string? observacionesFallido;
+    // Resultado de la última operación registrada
+    private string? aviso;
+    private bool avisoEsConflicto;
+
+    // Un solo formulario abierto a la vez: el de qué envío y cuál
+    private (int EnvioId, Formulario Tipo)? formularioAbierto;
 
     protected override async Task OnParametersSetAsync()
     {
         cargando = true;
         error = null;
 
+        await CargarRutaAsync();
+
+        cargando = false;
+    }
+
+    private async Task CargarRutaAsync()
+    {
         try
         {
             ruta = await RutasService.ObtenerRutaAsync(Id);
@@ -283,103 +241,25 @@
         {
             error = "No se pudo cargar la hoja de ruta.";
         }
-        finally
-        {
-            cargando = false;
-        }
     }
 
-    private async Task ConfirmarEntrega(int envioId)
+    private void AbrirFormulario(int envioId, Formulario tipo)
     {
-        if (procesando)
-            return;
-
-        procesando = true;
-        error = null;
-
-        try
-        {
-            await RutasService.ConfirmarEntregaAsync(envioId);
-            ruta = await RutasService.ObtenerRutaAsync(Id);
-            CerrarFormularioFallido();
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-        }
-        finally
-        {
-            procesando = false;
-        }
+        aviso = null;
+        formularioAbierto = (envioId, tipo);
     }
 
-    private async Task MostrarFormularioFallido(int envioId)
+    private void CerrarFormulario() => formularioAbierto = null;
+
+    // Aplicada: quedó registrada. Conflicto: el envío cambió en el servidor (el despachador
+    // lo movió) y gana el servidor. En los dos casos se recarga la hoja para ver cómo quedó.
+    private async Task Registrado(ResultadoOperacionDto resultado)
     {
-        if (procesando)
-            return;
+        formularioAbierto = null;
+        avisoEsConflicto = resultado.Resultado == "Conflicto";
+        aviso = avisoEsConflicto ? resultado.Mensaje : "Registrado correctamente.";
 
-        error = null;
-
-        if (envioFormularioFallido == envioId)
-        {
-            CerrarFormularioFallido();
-            return;
-        }
-
-        procesando = true;
-
-        try
-        {
-            motivosNoEntrega = await RutasService.ObtenerMotivosNoEntregaAsync();
-
-            envioFormularioFallido = envioId;
-            motivoSeleccionado = 0;
-            observacionesFallido = null;
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-        }
-        finally
-        {
-            procesando = false;
-        }
-    }
-
-    private void CerrarFormularioFallido()
-    {
-        envioFormularioFallido = null;
-        motivoSeleccionado = 0;
-        observacionesFallido = null;
-    }
-
-    private async Task RegistrarEntregaFallida(int envioId)
-    {
-        if (motivoSeleccionado == 0 || procesando)
-            return;
-
-        procesando = true;
-        error = null;
-
-        try
-        {
-            await RutasService.RegistrarEntregaFallidaAsync(
-                envioId,
-                motivoSeleccionado,
-                observacionesFallido);
-
-            CerrarFormularioFallido();
-
-            ruta = await RutasService.ObtenerRutaAsync(Id);
-        }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-        }
-        finally
-        {
-            procesando = false;
-        }
+        await CargarRutaAsync();
     }
 
     private void Volver()
