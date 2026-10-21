@@ -118,4 +118,5 @@ primeros bytes.
 | `POST /api/sincronizacion` | Repartidor |
 | `GET /api/sincronizacion/motivos` | Repartidor, Operador, Despachador |
 | `GET /api/sincronizacion/operaciones?rutaId=&resultado=&pagina=` (historial) | Operador, Despachador |
+| `GET /api/sincronizacion/mias?resultado=&pagina=` (las propias, para "Mis operaciones" de la app) | Repartidor |
 | `GET /api/sincronizacion/evidencias/{intentoId}/{firma\|foto}` | Operador, Despachador |

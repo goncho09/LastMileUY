@@ -218,7 +218,7 @@ public static class RutasEndpoints
                 var hoja = resultado == ResultadoHoja.Disponible
                     ? await cache.ObtenerOCrearAsync(
                         CasosDeCache.HojaDeRuta(operadorId, id),
-                        ct => consultas.ObtenerDetalleAsync(id, ct),
+                        ct => consultas.ObtenerHojaParaLaAppAsync(id, ct),
                         CasosDeCache.DuracionHojaDeRuta,
                         cancellationToken)
                     : null;

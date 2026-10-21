@@ -2,6 +2,7 @@ namespace LastMileUY.DriverPWA.Tests;
 
 using System.Net;
 using System.Net.Http.Json;
+using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Sincronizacion;
 using LastMileUY.DriverPWA.Services;
 
@@ -110,6 +111,21 @@ public class SincronizacionServiceTests
         Assert.Equal("/api/sincronizacion/motivos", Assert.Single(api.Pedidos).Ruta);
     }
 
+    [Theory]
+    [InlineData(null, "/api/sincronizacion/mias?pagina=2")]
+    [InlineData("Conflicto", "/api/sincronizacion/mias?pagina=2&resultado=Conflicto")]
+    public async Task Mis_operaciones_se_piden_filtradas_y_por_pagina(string? resultado, string url)
+    {
+        var api = new ApiFalsa(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new PaginaDto<OperacionSincronizadaDto>([], 0, 2, 20))
+        });
+
+        await Servicio(api).ObtenerMisOperacionesAsync(resultado, pagina: 2);
+
+        Assert.Equal(url, Assert.Single(api.Pedidos).RutaYConsulta);
+    }
+
     private static SincronizacionService Servicio(ApiFalsa api) =>
         new(new HttpClient(api) { BaseAddress = new Uri("https://api.prueba/") });
 
@@ -133,14 +149,14 @@ public class SincronizacionServiceTests
     // Simula la API sin red y anota qué le llegó
     private class ApiFalsa(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
-        public List<(string Ruta, SincronizarRequest? Cuerpo)> Pedidos { get; } = [];
+        public List<(string Ruta, string RutaYConsulta, SincronizarRequest? Cuerpo)> Pedidos { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var cuerpo = request.Content is null
                 ? null
                 : await request.Content.ReadFromJsonAsync<SincronizarRequest>(ct);
-            Pedidos.Add((request.RequestUri!.AbsolutePath, cuerpo));
+            Pedidos.Add((request.RequestUri!.AbsolutePath, request.RequestUri.PathAndQuery, cuerpo));
 
             return responder(request);
         }

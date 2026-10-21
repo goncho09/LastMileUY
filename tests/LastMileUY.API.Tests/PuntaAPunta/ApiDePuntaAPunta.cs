@@ -167,7 +167,8 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         return Convert.ToInt32(await comando.ExecuteScalarAsync());
     }
 
-    private async Task EjecutarAsync(string sql)
+    // SQL con el superusuario (saltea RLS): para armar datos que la API no deja crear
+    public async Task EjecutarAsync(string sql)
     {
         await using var conexion = new NpgsqlConnection(contenedor.GetConnectionString());
         await conexion.OpenAsync();

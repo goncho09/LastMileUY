@@ -15,6 +15,8 @@ builder.Services.AddScoped(_ => new HttpClient(new CredencialesHandler { InnerHa
     BaseAddress = new Uri(string.IsNullOrWhiteSpace(urlApi) ? builder.HostEnvironment.BaseAddress : urlApi)
 });
 
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<AlmacenLocal>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RutasService>();
 builder.Services.AddScoped<SincronizacionService>();

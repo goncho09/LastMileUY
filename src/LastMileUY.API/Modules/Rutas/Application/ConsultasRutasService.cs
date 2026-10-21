@@ -160,7 +160,7 @@ public class ConsultasRutasService(ApplicationDbContext db)
         var resultado = await VerificarHojaDelRepartidorAsync(id, usuarioId, cancellationToken);
 
         return resultado == ResultadoHoja.Disponible
-            ? (resultado, await ObtenerDetalleAsync(id, cancellationToken))
+            ? (resultado, await ObtenerHojaParaLaAppAsync(id, cancellationToken))
             : (resultado, null);
     }
 
@@ -291,8 +291,24 @@ public class ConsultasRutasService(ApplicationDbContext db)
         if (!esMiRuta)
             return null;
 
-        return await ObtenerDetalleAsync(rutaId, ct);
+        return await ObtenerHojaParaLaAppAsync(rutaId, ct);
     }
+
+    // La hoja que se le manda al celular del repartidor. Lo que llega al celular puede quedar
+    // guardado ahí (para trabajar sin conexión), así que va solo lo que necesita para entregar:
+    // sin el email del destinatario (para comunicarse alcanza el teléfono).
+    public async Task<RutaDetalleDto?> ObtenerHojaParaLaAppAsync(int id, CancellationToken ct = default) =>
+        SinDatosInnecesarios(await ObtenerDetalleAsync(id, ct));
+
+    private static RutaDetalleDto? SinDatosInnecesarios(RutaDetalleDto? hoja) =>
+        hoja is null
+            ? null
+            : hoja with
+            {
+                Paradas = hoja.Paradas
+                    .Select(p => p with { Destinatario = p.Destinatario with { Email = null } })
+                    .ToList()
+            };
 }
 
 public enum ResultadoHoja
