@@ -9,25 +9,47 @@ namespace LastMileUY.DriverPWA.Services;
 // Entregas e intentos fallidos: la app los manda por la misma API de sincronización que va a usar
 // cuando registre sin conexión (POST /api/sincronizacion, ver docs/sincronizacion.md). Así la API
 // controla la evidencia que pide la regla, descarta los reenvíos y el Backoffice ve cada operación.
-public class SincronizacionService(HttpClient http)
+public class SincronizacionService(HttpClient http,AlmacenLocal almacen)
 {
     // El IdOperacion de lo que se está registrando para cada envío. Se conserva mientras no haya
     // un resultado final (se cortó la conexión o la API pidió reintentar): el reenvío lleva el mismo
     // id y la API no lo aplica dos veces. Con un resultado final, lo próximo es una operación nueva.
     private readonly Dictionary<int, Guid> enCurso = [];
 
+    
     public async Task<List<MotivoNoEntregaDto>> ObtenerMotivosAsync()
     {
-        using var response = await http.GetAsync("api/sincronizacion/motivos");
+        const string clave = "driver:motivos";
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
-            throw new UnauthorizedAccessException("Tu sesión expiró.");
+        try
+        {
+            using var response = await http.GetAsync("api/sincronizacion/motivos");
 
-        response.EnsureSuccessStatusCode();
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new UnauthorizedAccessException("Tu sesión expiró.");
 
-        return await response.Content.ReadFromJsonAsync<List<MotivoNoEntregaDto>>() ?? [];
+            response.EnsureSuccessStatusCode();
+
+            var motivos = await response.Content
+                .ReadFromJsonAsync<List<MotivoNoEntregaDto>>() ?? [];
+
+            await almacen.GuardarAsync(
+                clave,
+                motivos,
+                AlmacenLocal.DuracionMaxima);
+
+            return motivos;
+        }
+        catch (HttpRequestException)
+        {
+            return await almacen.LeerAsync<List<MotivoNoEntregaDto>>(clave) ?? [];
+        }
+        catch (TaskCanceledException)
+        {
+            return await almacen.LeerAsync<List<MotivoNoEntregaDto>>(clave) ?? [];
+        }
     }
-
+    
     // Lo que mandó este repartidor y qué pasó con cada cosa, lo más nuevo primero.
     // resultado: null (todas), "Aplicada", "Rechazada" o "Conflicto".
     public async Task<PaginaDto<OperacionSincronizadaDto>> ObtenerMisOperacionesAsync(string? resultado, int pagina)
