@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Sincronizacion;
 
@@ -25,6 +26,24 @@ public class SincronizacionService(HttpClient http)
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<List<MotivoNoEntregaDto>>() ?? [];
+    }
+
+    // Lo que mandó este repartidor y qué pasó con cada cosa, lo más nuevo primero.
+    // resultado: null (todas), "Aplicada", "Rechazada" o "Conflicto".
+    public async Task<PaginaDto<OperacionSincronizadaDto>> ObtenerMisOperacionesAsync(string? resultado, int pagina)
+    {
+        var url = $"api/sincronizacion/mias?pagina={pagina}"
+                  + (resultado is null ? "" : $"&resultado={Uri.EscapeDataString(resultado)}");
+
+        using var response = await http.GetAsync(url);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("Tu sesión expiró.");
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<PaginaDto<OperacionSincronizadaDto>>()
+               ?? new PaginaDto<OperacionSincronizadaDto>([], 0, pagina, 20);
     }
 
     // Completa IdOperacion y la manda sola. Si no llega a la API, lanza HttpRequestException

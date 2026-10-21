@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 namespace LastMileUY.API.Modules.Sincronizacion.Application;
 
 // Lo que se consulta de la sincronización: los motivos de no entrega (para la app),
-// el historial de operaciones recibidas y las imágenes de evidencia (para el Backoffice).
-// El operador lo filtran EF y RLS.
+// el historial de operaciones recibidas (para el Backoffice, y el propio para cada repartidor)
+// y las imágenes de evidencia (para el Backoffice). El operador lo filtran EF y RLS.
 public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvidencias almacen)
 {
     public const int TamanioPaginaMaximo = 100;
@@ -23,17 +23,24 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
             .ToListAsync(cancellationToken);
 
     // Las más recientes primero. rutaId y resultado son opcionales.
+    // usuarioId: solo las que mandó ese repartidor (la app muestra únicamente las propias).
     public async Task<PaginaDto<OperacionSincronizadaDto>> ListarOperacionesAsync(
         int pagina,
         int tamanioPagina,
         int? rutaId,
         string? resultado,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? usuarioId = null)
     {
         pagina = Math.Max(1, pagina);
         tamanioPagina = Math.Clamp(tamanioPagina, 1, TamanioPaginaMaximo);
 
         var operaciones = db.OperacionesSincronizadas.AsNoTracking();
+
+        if (usuarioId is not null)
+        {
+            operaciones = operaciones.Where(o => o.UsuarioId == usuarioId);
+        }
 
         if (rutaId is not null)
         {

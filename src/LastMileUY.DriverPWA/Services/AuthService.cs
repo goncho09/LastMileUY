@@ -3,7 +3,7 @@ using LastMileUY.Contracts.Auth;
 
 namespace LastMileUY.DriverPWA.Services;
 
-public class AuthService(HttpClient http)
+public class AuthService(HttpClient http, AlmacenLocal almacen)
 {
     public async Task<bool> LoginAsync(string email, string password)
     {
@@ -14,11 +14,23 @@ public class AuthService(HttpClient http)
             operadorId = (int?)null
         });
 
-        return response.IsSuccessStatusCode;
+        if (!response.IsSuccessStatusCode)
+            return false;
+
+        // Lo que haya quedado guardado en el celular de otro repartidor se borra antes de seguir
+        var usuario = await ObtenerUsuarioAsync();
+
+        if (usuario is not null)
+            await almacen.AsignarDuenoAsync(usuario.Id);
+
+        return true;
     }
 
     public async Task LogoutAsync()
     {
+        // Primero lo local: aunque la API no responda, en el celular no quedan datos personales
+        await almacen.BorrarTodoAsync();
+
         using var response = await http.PostAsync("api/auth/logout", null);
         response.EnsureSuccessStatusCode();
     }

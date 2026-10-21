@@ -83,6 +83,33 @@ public static class SincronizacionEndpoints
             .RequireAuthorization(politica => politica.RequireRole(PersonalDelOperador))
             .WithName("OperacionesSincronizadas");
 
+        // App del repartidor: lo que mandó él y qué pasó con cada cosa. ?resultado=Conflicto&pagina=1
+        group.MapGet("/mias", async (
+                ConsultasSincronizacionService consultas,
+                IContextoOperador contextoOperador,
+                ClaimsPrincipal usuario,
+                CancellationToken cancellationToken,
+                int pagina = 1,
+                int tamanioPagina = 20,
+                string? resultado = null) =>
+            {
+                if (contextoOperador.OperadorId is null)
+                    return Results.Forbid();
+
+                try
+                {
+                    return Results.Ok(await consultas.ListarOperacionesAsync(
+                        pagina, tamanioPagina, rutaId: null, resultado, cancellationToken,
+                        usuarioId: usuario.FindFirstValue(ClaimTypes.NameIdentifier)!));
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+            })
+            .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
+            .WithName("MisOperacionesSincronizadas");
+
         // Backoffice: la imagen de la firma o la foto de una entrega
         group.MapGet("/evidencias/{intentoId:int}/{tipo}", async (
                 int intentoId,

@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Operadores.Domain;
+using LastMileUY.Contracts.Auth;
+using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Operadores;
 using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
@@ -145,6 +147,73 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         finally
         {
             await CambiarColorAsync(api.IdOperador1, original.ColorPrimario);
+        }
+    }
+
+    [Fact]
+    public async Task El_repartidor_ve_solo_sus_operaciones_y_puede_filtrarlas()
+    {
+        var (operador, despachador, repartidor) = await SesionesAsync();
+        var otro = await api.IniciarSesionAsync(Repartidor2);
+        var (rutaId, envioId) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 7);
+
+        var entrega = Entrega(rutaId, envioId);
+        await SincronizacionDePuntaAPuntaTests.SincronizarAsync(repartidor, entrega);
+
+        var mias = (await repartidor.GetFromJsonAsync<PaginaDto<OperacionSincronizadaDto>>(
+            "api/sincronizacion/mias?tamanioPagina=100"))!;
+        var propia = Assert.Single(mias.Items, o => o.IdOperacion == entrega.IdOperacion);
+        Assert.Equal("Aplicada", propia.Resultado);
+
+        var conflictos = (await repartidor.GetFromJsonAsync<PaginaDto<OperacionSincronizadaDto>>(
+            "api/sincronizacion/mias?resultado=Conflicto&tamanioPagina=100"))!;
+        Assert.DoesNotContain(conflictos.Items, o => o.IdOperacion == entrega.IdOperacion);
+
+        var delOtro = (await otro.GetFromJsonAsync<PaginaDto<OperacionSincronizadaDto>>(
+            "api/sincronizacion/mias?tamanioPagina=100"))!;
+        Assert.DoesNotContain(delOtro.Items, o => o.IdOperacion == entrega.IdOperacion);
+
+        // Del mismo operador pero de otro usuario: el aislamiento no la filtra, la tiene que filtrar /mias.
+        // La seeder tiene un solo repartidor por operador, así que se carga a mano a nombre del despachador.
+        var ajena = Guid.NewGuid();
+        var idDespachador = (await despachador.GetFromJsonAsync<UsuarioAutenticadoResponse>("api/auth/me"))!.Id;
+        await api.EjecutarAsync($"""
+            INSERT INTO "OperacionesSincronizadas"("OperadorId", "IdOperacion", "UsuarioId", "Tipo", "RutaId", "EnvioId",
+                "Resultado", "Mensaje", "FechaHoraDispositivo", "FechaRecepcion")
+            VALUES ({api.IdOperador1}, '{ajena}', '{idDespachador}', 1, {rutaId}, {envioId}, 3, 'De otro usuario', now(), now())
+            """);
+
+        var deNuevo = (await repartidor.GetFromJsonAsync<PaginaDto<OperacionSincronizadaDto>>(
+            "api/sincronizacion/mias?tamanioPagina=100"))!;
+        Assert.DoesNotContain(deNuevo.Items, o => o.IdOperacion == ajena);
+
+        var enBackoffice = (await despachador.GetFromJsonAsync<PaginaDto<OperacionSincronizadaDto>>(
+            $"api/sincronizacion/operaciones?rutaId={rutaId}"))!;
+        Assert.Contains(enBackoffice.Items, o => o.IdOperacion == ajena);
+
+        // El despachador usa el historial completo del Backoffice, no este
+        using var noEsRepartidor = await despachador.GetAsync("api/sincronizacion/mias");
+        Assert.Equal(HttpStatusCode.Forbidden, noEsRepartidor.StatusCode);
+    }
+
+    [Fact]
+    public async Task Al_celular_no_le_llega_el_email_del_destinatario()
+    {
+        var (operador, despachador, repartidor) = await SesionesAsync();
+        var (rutaId, _) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 8);
+
+        // El Backoffice sí lo ve (el destinatario de prueba tiene email)
+        var enBackoffice = (await despachador.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}"))!;
+        Assert.NotNull(Assert.Single(enBackoffice.Paradas).Destinatario.Email);
+
+        var hoja = (await repartidor.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}/hoja"))!;
+        var enLaApp = (await repartidor.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/mias/{rutaId}"))!;
+
+        foreach (var parada in hoja.Paradas.Concat(enLaApp.Paradas))
+        {
+            Assert.Null(parada.Destinatario.Email);
+            // Lo que necesita para entregar sigue estando
+            Assert.False(string.IsNullOrEmpty(parada.Destinatario.Telefono));
         }
     }
 
