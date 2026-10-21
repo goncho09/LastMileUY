@@ -66,8 +66,15 @@
     }
 
     <div class="d-grid gap-2 mt-3">
+        @if (mensajePendiente is not null)
+        {
+            <div class="alert alert-warning small mt-3" role="status">
+                @mensajePendiente
+            </div>
+        }
+        
         <button class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
-                disabled="@enviando" @onclick="Enviar">
+                disabled="@(enviando || mensajePendiente is not null)" @onclick="Enviar" >
             @(enviando ? "Guardando..." : "Confirmar entrega")
         </button>
         <button class="btn rounded-3 py-2" style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
@@ -95,6 +102,7 @@
     private string? fotoBase64;
     private string? error;
     private bool enviando;
+    private string? mensajePendiente;
 
     private bool PideAlgo => Parada.Evidencia is { Firma: true } or { Foto: true } or { DocumentoReceptor: true };
 
@@ -144,7 +152,7 @@
                 return;
             }
 
-            var resultado = await Sincronizacion.EnviarAsync(new OperacionRequest
+            var operacion = new OperacionRequest
             {
                 Tipo = "Entrega",
                 RutaId = RutaId,
@@ -155,15 +163,30 @@
                 Observaciones = Limpio(observaciones),
                 NombreReceptor = Limpio(nombreReceptor),
                 DocumentoReceptor = Limpio(documentoReceptor),
-                FirmaBase64 = await JS.InvokeAsync<string?>("lastMileEntrega.leerFirma", lienzoFirma),
+                FirmaBase64 = await JS.InvokeAsync<string?>(
+                    "lastMileEntrega.leerFirma", lienzoFirma),
                 FotoBase64 = fotoBase64
-            });
+            };
 
-            // Rechazada (falta evidencia, por ejemplo) o Error: el formulario queda abierto para corregir
+            var estado = await Sincronizacion.GuardarOperacionAsync(operacion);
+
+            if (estado.Pendiente)
+            {
+                mensajePendiente =
+                    "Entrega guardada en el dispositivo. Pendiente de sincronización.";
+                return;
+            }
+
+            var resultado = estado.Resultado!;
+
             if (resultado.Resultado is "Rechazada" or "Error")
+            {
                 error = resultado.Mensaje;
+            }
             else
+            {
                 await OnTerminado.InvokeAsync(resultado);
+            }
         }
         catch (HttpRequestException)
         {

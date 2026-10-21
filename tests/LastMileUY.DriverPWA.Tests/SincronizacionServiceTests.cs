@@ -141,9 +141,10 @@ public class SincronizacionServiceTests
             TimeProvider.System
         );
 
-        return new SincronizacionService(http, almacen);
-    }
+        var cola = new ColaOperacionesService(almacen);
 
+        return new SincronizacionService(http, almacen, cola);
+    }
 
     private static OperacionRequest Entrega(int envioId) => new()
     {

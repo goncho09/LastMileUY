@@ -20,5 +20,6 @@ builder.Services.AddScoped<AlmacenLocal>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RutasService>();
 builder.Services.AddScoped<SincronizacionService>();
+builder.Services.AddScoped<ColaOperacionesService>();
 
 await builder.Build().RunAsync();

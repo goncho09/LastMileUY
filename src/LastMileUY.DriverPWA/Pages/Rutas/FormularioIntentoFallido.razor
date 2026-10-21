@@ -1,92 +1,174 @@
+
 @using LastMileUY.Contracts.Entregas
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
 @inject SincronizacionService Sincronizacion
 @inject IJSRuntime JS
 
-@* Intento fallido de una parada: motivo (de los que configuró el operador) y observaciones *@
-<div class="rounded-4 p-3 mt-3" style="background:#faf5ff;border:1px solid #ddd6fe">
+<div class="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
 
-    <div class="fw-bold mb-1" style="color:#4c1d95">Registrar entrega fallida</div>
+    <div class="mb-5">
+        <h3 class="text-lg font-bold text-violet-900">
+            Registrar entrega fallida
+        </h3>
 
-    <p class="small mb-3" style="color:#7c3aed">
-        Seleccioná el motivo por el que no se pudo completar la entrega.
-    </p>
+        <p class="mt-1 text-sm text-violet-700">
+            Seleccioná el motivo por el que no se pudo completar la entrega.
+        </p>
+    </div>
 
-    <label class="form-label fw-semibold small" for="motivo-@EnvioId">Motivo de no entrega</label>
+    <div class="space-y-5">
 
-    <select id="motivo-@EnvioId" class="form-select rounded-3 py-2" style="border-color:#ddd6fe"
-            @bind="motivoSeleccionado">
-        <option value="0">Seleccioná un motivo</option>
+        <div>
+            <label for="motivo-@EnvioId"
+                   class="mb-2 block text-sm font-semibold text-gray-800">
+                Motivo de no entrega
+                <span class="text-red-600">*</span>
+            </label>
 
-        @foreach (var motivo in motivos)
+            <select id="motivo-@EnvioId"
+                    class="w-full rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:opacity-60"
+                    disabled="@(enviando || mensajePendiente is not null)"
+                    @bind="motivoSeleccionado">
+
+                <option value="0">Seleccioná un motivo</option>
+
+                @foreach (var motivo in motivos)
+                {
+                    <option value="@motivo.Id">
+                        @motivo.Nombre
+                    </option>
+                }
+            </select>
+
+            @if (motivosCargados && motivos.Count == 0)
+            {
+                <p class="mt-2 text-sm text-violet-700">
+                    No hay motivos disponibles.
+                </p>
+            }
+        </div>
+
+        <div>
+            <label for="observaciones-@EnvioId"
+                   class="mb-2 block text-sm font-semibold text-gray-800">
+                Observaciones
+                <span class="font-normal text-gray-500">(opcional)</span>
+            </label>
+
+            <textarea id="observaciones-@EnvioId"
+                      class="w-full resize-y rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:opacity-60"
+                      rows="3"
+                      maxlength="1000"
+                      placeholder="Agregá detalles sobre el intento..."
+                      disabled="@(enviando || mensajePendiente is not null)"
+                      @bind="observaciones"></textarea>
+        </div>
+
+        @if (error is not null)
         {
-            <option value="@motivo.Id">@motivo.Nombre</option>
+            <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+                 role="alert">
+                @error
+            </div>
         }
-    </select>
 
-    @if (motivosCargados && motivos.Count == 0)
-    {
-        <p class="small mt-2" style="color:#7c3aed">No hay motivos disponibles.</p>
-    }
+        @if (mensajePendiente is not null)
+        {
+            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4"
+                 role="status">
 
-    <label class="form-label fw-semibold small mt-3" for="observaciones-@EnvioId">
-        Observaciones <span class="fw-normal text-muted">(opcional)</span>
-    </label>
+                <p class="text-sm font-semibold text-amber-900">
+                    Intento guardado
+                </p>
 
-    <textarea id="observaciones-@EnvioId" class="form-control rounded-3" style="border-color:#ddd6fe"
-              rows="3" maxlength="1000" placeholder="Agregá detalles sobre el intento..."
-              @bind="observaciones"></textarea>
+                <p class="mt-1 text-sm text-amber-800">
+                    @mensajePendiente
+                </p>
+            </div>
+        }
 
-    @if (error is not null)
-    {
-        <div class="alert alert-danger small mt-3 mb-0" role="alert">@error</div>
-    }
+        <div class="grid gap-3 pt-2">
 
-    <div class="d-grid gap-2 mt-3">
-        <button class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
-                disabled="@(enviando || motivoSeleccionado == 0)" @onclick="Enviar">
-            @(enviando ? "Guardando..." : "Registrar intento")
-        </button>
+            <button type="button"
+                    class="w-full rounded-xl bg-violet-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled="@(enviando || motivoSeleccionado == 0 || mensajePendiente is not null)"
+                    @onclick="Enviar">
 
-        <button class="btn rounded-3 py-2" style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
-                disabled="@enviando" @onclick="OnCancelar">
-            Cancelar
-        </button>
+                @(enviando
+                    ? "Guardando..."
+                    : mensajePendiente is not null
+                        ? "Pendiente de sincronización"
+                        : "Registrar intento")
+            </button>
+
+            <button type="button"
+                    class="w-full rounded-xl border border-violet-200 bg-white px-5 py-3 font-medium text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
+                    disabled="@enviando"
+                    @onclick="OnCancelar">
+                @(mensajePendiente is not null ? "Volver" : "Cancelar")
+            </button>
+
+        </div>
     </div>
 </div>
 
 @code {
-    [Parameter, EditorRequired] public int RutaId { get; set; }
-    [Parameter, EditorRequired] public int EnvioId { get; set; }
+    [Parameter, EditorRequired]
+    public int RutaId { get; set; }
 
-    // Resultado final (Aplicada o Conflicto): la hoja se recarga con lo que dice el servidor
-    [Parameter] public EventCallback<ResultadoOperacionDto> OnTerminado { get; set; }
-    [Parameter] public EventCallback OnCancelar { get; set; }
+    [Parameter, EditorRequired]
+    public int EnvioId { get; set; }
+
+    [Parameter]
+    public EventCallback<ResultadoOperacionDto> OnTerminado { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelar { get; set; }
 
     private List<MotivoNoEntregaDto> motivos = [];
+
     private bool motivosCargados;
     private int motivoSeleccionado;
+
     private string? observaciones;
     private string? error;
+    private string? mensajePendiente;
+
     private bool enviando;
+    private bool yaExistePendiente;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            yaExistePendiente =
+                await Sincronizacion.TieneOperacionPendienteAsync(EnvioId);
+
+            if (yaExistePendiente)
+            {
+                mensajePendiente =
+                    "Este envío ya tiene una operación pendiente de sincronización.";
+            }
             motivos = await Sincronizacion.ObtenerMotivosAsync();
-            motivosCargados = true;
         }
-        catch (Exception ex) when (ex is HttpRequestException or UnauthorizedAccessException)
+        catch (UnauthorizedAccessException)
+        {
+            error = "Tu sesión expiró. Volvé a iniciar sesión.";
+        }
+        catch (HttpRequestException)
         {
             error = "No se pudieron cargar los motivos. Comprobá tu conexión.";
+        }
+        finally
+        {
+            motivosCargados = true;
         }
     }
 
     private async Task Enviar()
     {
-        if (enviando || motivoSeleccionado == 0)
+        if (enviando || motivoSeleccionado == 0 || mensajePendiente is not null)
             return;
 
         enviando = true;
@@ -102,7 +184,7 @@
                 return;
             }
 
-            var resultado = await Sincronizacion.EnviarAsync(new OperacionRequest
+            var operacion = new OperacionRequest
             {
                 Tipo = "IntentoFallido",
                 RutaId = RutaId,
@@ -111,21 +193,54 @@
                 Latitud = ubicacion.Latitud,
                 Longitud = ubicacion.Longitud,
                 MotivoNoEntregaId = motivoSeleccionado,
-                Observaciones = string.IsNullOrWhiteSpace(observaciones) ? null : observaciones.Trim()
-            });
+                Observaciones = string.IsNullOrWhiteSpace(observaciones)
+                    ? null
+                    : observaciones.Trim()
+            };
+
+            var estado = await Sincronizacion.GuardarOperacionAsync(operacion);
+
+            if (estado.Pendiente)
+            {
+                mensajePendiente =
+                    "El intento fallido quedó guardado en este dispositivo. " +
+                    "Se enviará cuando se ejecute la sincronización.";
+
+                return;
+            }
+
+            var resultado = estado.Resultado;
+
+            if (resultado is null)
+            {
+                error = "No se pudo determinar el resultado de la operación.";
+                return;
+            }
 
             if (resultado.Resultado is "Rechazada" or "Error")
+            {
                 error = resultado.Mensaje;
+            }
             else
+            {
                 await OnTerminado.InvokeAsync(resultado);
-        }
-        catch (HttpRequestException)
-        {
-            error = "No se pudo conectar con el servidor. Probá de nuevo: no se va a registrar dos veces.";
+            }
         }
         catch (UnauthorizedAccessException ex)
         {
             error = ex.Message;
+        }
+        catch (HttpRequestException)
+        {
+            error = "No se pudo completar el envío. Revisá las operaciones pendientes.";
+        }
+        catch (TaskCanceledException)
+        {
+            error = "La solicitud tardó demasiado. Revisá las operaciones pendientes.";
+        }
+        catch (JSException)
+        {
+            error = "No se pudo acceder al almacenamiento local. Intentá nuevamente.";
         }
         finally
         {
