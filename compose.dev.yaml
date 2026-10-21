@@ -62,6 +62,7 @@ services:
 
     volumes:
       - ./src/LastMileUY.DriverPWA:/workspace/src/LastMileUY.DriverPWA
+      - ./src/LastMileUY.Contracts:/workspace/src/LastMileUY.Contracts
       - type: volume
         source: driverpwa_obj
         target: /workspace/src/LastMileUY.DriverPWA/obj
