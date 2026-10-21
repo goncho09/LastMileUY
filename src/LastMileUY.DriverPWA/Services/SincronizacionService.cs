@@ -9,13 +9,69 @@ namespace LastMileUY.DriverPWA.Services;
 // Entregas e intentos fallidos: la app los manda por la misma API de sincronización que va a usar
 // cuando registre sin conexión (POST /api/sincronizacion, ver docs/sincronizacion.md). Así la API
 // controla la evidencia que pide la regla, descarta los reenvíos y el Backoffice ve cada operación.
-public class SincronizacionService(HttpClient http,AlmacenLocal almacen)
+public class SincronizacionService(
+    HttpClient http,
+    AlmacenLocal almacen,
+    ColaOperacionesService cola)
 {
     // El IdOperacion de lo que se está registrando para cada envío. Se conserva mientras no haya
     // un resultado final (se cortó la conexión o la API pidió reintentar): el reenvío lleva el mismo
     // id y la API no lo aplica dos veces. Con un resultado final, lo próximo es una operación nueva.
     private readonly Dictionary<int, Guid> enCurso = [];
+    
+    private async Task<EstadoEnvioOperacion> EnviarOperacionGuardadaAsync(
+        OperacionRequest operacion)
+    {
+        try
+        {
+            using var response = await http.PostAsJsonAsync(
+                "api/sincronizacion",
+                new SincronizarRequest
+                {
+                    Operaciones = [operacion]
+                });
 
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new UnauthorizedAccessException("Tu sesión expiró.");
+
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new UnauthorizedAccessException(
+                    "Tu usuario no puede registrar entregas.");
+
+            response.EnsureSuccessStatusCode();
+
+            var respuesta = await response.Content
+                .ReadFromJsonAsync<SincronizarResponse>();
+
+            var resultado = respuesta?.Resultados.SingleOrDefault()
+                            ?? throw new HttpRequestException(
+                                "La API no devolvió el resultado de la operación.");
+
+            if (!resultado.Reintentar)
+            {
+                await cola.EliminarAsync(operacion.IdOperacion);
+            }
+
+            return new EstadoEnvioOperacion(
+                resultado.Reintentar,
+                resultado);
+        }
+        catch (HttpRequestException)
+        {
+            return new EstadoEnvioOperacion(true, null);
+        }
+        catch (TaskCanceledException)
+        {
+            return new EstadoEnvioOperacion(true, null);
+        }
+    }
+
+    public async Task<bool> TieneOperacionPendienteAsync(int envioId)
+    {
+        var pendientes = await cola.ObtenerPendientesAsync();
+
+        return pendientes.Any(x => x.EnvioId == envioId);
+    }
     
     public async Task<List<MotivoNoEntregaDto>> ObtenerMotivosAsync()
     {
@@ -102,5 +158,32 @@ public class SincronizacionService(HttpClient http,AlmacenLocal almacen)
         }
 
         return resultado;
+    }
+    
+    // Guarda una operación localmente antes de intentar sincronizarla.
+    // Si no hay conexión, permanece en la cola para enviarla después.
+    public async Task<EstadoEnvioOperacion> GuardarOperacionAsync(
+        OperacionRequest operacion)
+    {
+        // La operación se guarda antes de intentar enviarla.
+        operacion = await cola.AgregarAsync(operacion);
+
+        return await EnviarOperacionGuardadaAsync(operacion);
+    }
+    
+    // Reintenta una operación existente sin generar otro IdOperacion.
+    public async Task<EstadoEnvioOperacion> ReintentarOperacionAsync(
+        Guid idOperacion)
+    {
+        var pendientes = await cola.ObtenerPendientesAsync();
+
+        var operacion = pendientes.FirstOrDefault(x =>
+            x.IdOperacion == idOperacion);
+
+        if (operacion is null)
+            throw new InvalidOperationException(
+                "La operación ya no está pendiente.");
+
+        return await EnviarOperacionGuardadaAsync(operacion);
     }
 }

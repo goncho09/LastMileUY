@@ -50,6 +50,28 @@ public class AlmacenLocal(IJSRuntime js, TimeProvider reloj)
 
         return entrada.Valor;
     }
+    
+    // Guarda una operación pendiente sin vencimiento automático.
+// Sigue usando el cifrado AES-GCM de almacen.js.
+    public async Task GuardarPendienteAsync<T>(string nombre, T valor)
+    {
+        await js.InvokeVoidAsync(
+            "lastMileAlmacen.guardar",
+            nombre,
+            JsonSerializer.Serialize(valor, OpcionesJson));
+    }
+
+// Recupera una operación pendiente, incluso después de cerrar la PWA.
+    public async Task<T?> LeerPendienteAsync<T>(string nombre)
+    {
+        var texto = await js.InvokeAsync<string?>(
+            "lastMileAlmacen.leer",
+            nombre);
+
+        return texto is null
+            ? default
+            : JsonSerializer.Deserialize<T>(texto, OpcionesJson);
+    }
 
     public async Task BorrarAsync(string nombre) =>
         await js.InvokeVoidAsync("lastMileAlmacen.borrar", nombre);
@@ -57,16 +79,17 @@ public class AlmacenLocal(IJSRuntime js, TimeProvider reloj)
     // Todo, con la clave de cifrado incluida
     public async Task BorrarTodoAsync() =>
         await js.InvokeVoidAsync("lastMileAlmacen.borrarTodo");
-
-    // Al iniciar sesión: si lo guardado no es de este usuario, se borra antes de que lo vea.
-    // Si no se sabe de quién es (el dato del dueño venció o no se puede leer), también.
+    
+    // Al iniciar sesión, comprueba que los datos locales pertenezcan al usuario.
+    // El identificador del dueño no vence automáticamente, para evitar perder operaciones pendientes por el paso del tiempo.
+    // Si pertenece a otro usuario o no se puede leer, se borra el almacenamiento local.
     public async Task AsignarDuenoAsync(string usuarioId)
     {
-        var dueno = await LeerAsync<string>(ClaveDueno);
+        var dueno = await LeerPendienteAsync<string>(ClaveDueno);
 
         if (dueno != usuarioId)
             await BorrarTodoAsync();
 
-        await GuardarAsync(ClaveDueno, usuarioId, DuracionMaxima);
+        await GuardarPendienteAsync(ClaveDueno, usuarioId);
     }
 }
