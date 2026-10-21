@@ -1,3 +1,5 @@
+using Microsoft.JSInterop;
+
 namespace LastMileUY.DriverPWA.Tests;
 
 using System.Net;
@@ -126,8 +128,22 @@ public class SincronizacionServiceTests
         Assert.Equal(url, Assert.Single(api.Pedidos).RutaYConsulta);
     }
 
-    private static SincronizacionService Servicio(ApiFalsa api) =>
-        new(new HttpClient(api) { BaseAddress = new Uri("https://api.prueba/") });
+    
+    private static SincronizacionService Servicio(ApiFalsa api)
+    {
+        var http = new HttpClient(api)
+        {
+            BaseAddress = new Uri("https://api.prueba/")
+        };
+
+        var almacen = new AlmacenLocal(
+            new NavegadorFalso(),
+            TimeProvider.System
+        );
+
+        return new SincronizacionService(http, almacen);
+    }
+
 
     private static OperacionRequest Entrega(int envioId) => new()
     {
@@ -146,6 +162,57 @@ public class SincronizacionServiceTests
                 [new ResultadoOperacionDto(Guid.NewGuid(), resultado, "mensaje", false, reintentar, "EnTransito")]))
         };
 
+    
+    private class NavegadorFalso : IJSRuntime
+    {
+        private readonly Dictionary<string, string> datos = [];
+
+        public ValueTask<TValue> InvokeAsync<TValue>(
+            string identifier,
+            object?[]? args)
+        {
+            return InvokeAsync<TValue>(
+                identifier,
+                CancellationToken.None,
+                args);
+        }
+
+        public ValueTask<TValue> InvokeAsync<TValue>(
+            string identifier,
+            CancellationToken cancellationToken,
+            object?[]? args)
+        {
+            object? resultado = null;
+
+            switch (identifier)
+            {
+                case "lastMileAlmacen.guardar":
+                    datos[(string)args![0]!] = (string)args[1]!;
+                    break;
+
+                case "lastMileAlmacen.leer":
+                    resultado = datos.GetValueOrDefault(
+                        (string)args![0]!);
+                    break;
+
+                case "lastMileAlmacen.borrar":
+                    datos.Remove((string)args![0]!);
+                    break;
+
+                case "lastMileAlmacen.borrarTodo":
+                    datos.Clear();
+                    break;
+
+                default:
+                    throw new InvalidOperationException(
+                        $"Función inesperada: {identifier}");
+            }
+
+            return ValueTask.FromResult((TValue)resultado!);
+        }
+    }
+
+    
     // Simula la API sin red y anota qué le llegó
     private class ApiFalsa(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
