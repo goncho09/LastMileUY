@@ -21,7 +21,8 @@ public class SincronizacionServiceTests
 
         Assert.False(estado.Pendiente);
         Assert.Equal("Aplicada", estado.Resultado!.Resultado);
-        var pedido = Assert.Single(api.Pedidos);
+        var pedido = Assert.Single(
+            api.Pedidos.Where(p => p.Ruta == "/api/sincronizacion"));
         Assert.Equal("/api/sincronizacion", pedido.Ruta);
         var operacion = Assert.Single(pedido.Cuerpo!.Operaciones);
         Assert.Equal(7, operacion.EnvioId);
@@ -97,7 +98,15 @@ public class SincronizacionServiceTests
 
         await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
 
-        Assert.NotEqual(api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
+        var sincronizaciones = api.Pedidos
+            .Where(p => p.Ruta == "/api/sincronizacion")
+            .ToList();
+
+        Assert.Equal(2, sincronizaciones.Count);
+
+        Assert.NotEqual(
+            sincronizaciones[0].Cuerpo!.Operaciones[0].IdOperacion,
+            sincronizaciones[1].Cuerpo!.Operaciones[0].IdOperacion);
     }
 
     [Fact]
