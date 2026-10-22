@@ -1,30 +1,36 @@
 namespace LastMileUY.API.Infrastructure.Cache;
 
-// Los casos cacheados: su clave y cuánto dura cada uno (ver ADR de caché).
-// Las claves SIEMPRE llevan el operador: así un operador nunca recibe datos cacheados de otro (ADR-01).
+// Un caso cacheado: su identificador (para claves y métricas), cómo se muestra en el tablero,
+// por qué se cachea y cuánto dura cada dato en el caché.
+public record CasoDeCache(string Id, string Nombre, string Perfil, TimeSpan Duracion);
+
+// Los casos cacheados y sus claves (ver ADR de caché). Para sumar uno nuevo: agregarlo acá y en Todos,
+// y envolver su consulta con CacheDistribuido.ObtenerOCrearAsync.
 public static class CasosDeCache
 {
-    // Configuración del operador (nombre, color, logo y reglas operativas):
-    // se lee en cada pantalla y casi nunca cambia -> duración larga.
-    public static readonly TimeSpan DuracionOperador = TimeSpan.FromHours(1);
-
-    public static string Operador(int operadorId) => $"operador:{operadorId}";
-
-    // Hoja de ruta del repartidor: se descarga varias veces en la jornada y cambia
-    // con cada entrega o intento fallido. Lo que la mantiene al día es la invalidación
-    // (InvalidacionCacheInterceptor la borra en cuanto cambia algo de la ruta); la expiración
-    // es solo la red de seguridad para cambios que no pasen por EF (SQL directo, ExecuteUpdate).
-    // Con 1 minuto casi siempre vencía entre una consulta y otra del repartidor: 10 minutos
-    // aprovecha el caché y limita el peor caso de dato viejo a 10 minutos.
-    public static readonly TimeSpan DuracionHojaDeRuta = TimeSpan.FromMinutes(10);
-
-    public static string HojaDeRuta(int operadorId, int rutaId) => $"hoja:op:{operadorId}:ruta:{rutaId}";
+    // Configuración del operador (nombre, color, logo y reglas operativas): se pide en cada inicio de
+    // sesión y en la página del operador, y casi nunca cambia -> duración larga.
+    public static readonly CasoDeCache ConfiguracionOperador = new(
+        "operador",
+        "Configuración del operador",
+        "Se lee seguido y casi nunca cambia",
+        TimeSpan.FromHours(1));
 
     // Seguimiento público: el componente de más tráfico (lo consulta cualquiera con el código, sin sesión)
     // y el estado cambia pocas veces en el viaje del paquete -> muchas lecturas por cada cambio.
     // Duración corta porque es lo que ve el destinatario; la invalidación lo actualiza en cuanto cambia el envío.
-    // La clave no lleva operador: el código de seguimiento ya identifica un único envío.
-    public static readonly TimeSpan DuracionSeguimiento = TimeSpan.FromMinutes(2);
+    public static readonly CasoDeCache SeguimientoPublico = new(
+        "seguimiento",
+        "Seguimiento público",
+        "Mucho tráfico y el estado cambia pocas veces",
+        TimeSpan.FromMinutes(2));
 
-    public static string Seguimiento(string codigoSeguimiento) => $"seguimiento:{codigoSeguimiento}";
+    // En el orden en que se muestran en el tablero técnico
+    public static readonly IReadOnlyList<CasoDeCache> Todos = [ConfiguracionOperador, SeguimientoPublico];
+
+    // Las claves de los datos de un operador llevan su Id: así nunca se recibe un dato cacheado de otro (ADR-01).
+    public static string ClaveOperador(int operadorId) => $"operador:{operadorId}";
+
+    // Sin operador: el código de seguimiento ya identifica un único envío
+    public static string ClaveSeguimiento(string codigoSeguimiento) => $"seguimiento:{codigoSeguimiento}";
 }

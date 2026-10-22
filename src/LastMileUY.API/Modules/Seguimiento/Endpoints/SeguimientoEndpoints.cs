@@ -24,9 +24,9 @@ public static class SeguimientoEndpoints
 
                 // Caché (ver CasosDeCache): solo se guardan envíos encontrados, nunca un "no existe"
                 var envio = await cache.ObtenerOCrearAsync(
-                    CasosDeCache.Seguimiento(codigo),
+                    CasosDeCache.SeguimientoPublico,
+                    CasosDeCache.ClaveSeguimiento(codigo),
                     ct => seguimiento.ObtenerAsync(codigo, ct),
-                    CasosDeCache.DuracionSeguimiento,
                     cancellationToken);
 
                 return envio is null

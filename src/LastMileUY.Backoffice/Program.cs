@@ -13,6 +13,8 @@ builder.Services.AddRazorPages(opciones =>
     // Permisos
     opciones.Conventions.AuthorizeFolder("/", Permisos.PoliticaBackoffice);
     opciones.Conventions.AuthorizeFolder("/Operador", Permisos.PoliticaConfiguracion);
+    // Tablero técnico (métricas del caché): mismo perfil que la configuración del operador
+    opciones.Conventions.AuthorizeFolder("/Tablero", Permisos.PoliticaConfiguracion);
 
     // Páginas públicas
     opciones.Conventions.AllowAnonymousToPage("/Login");
@@ -61,6 +63,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IEnviosApi, EnviosApiDePrueba>();
     builder.Services.AddSingleton<IAutenticacionApi, AutenticacionApiDePrueba>();
     builder.Services.AddSingleton<IOperadorApi, OperadorApiDePrueba>();
+    builder.Services.AddSingleton<ICacheApi, CacheApiDePrueba>();
     builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
     builder.Services.AddSingleton<ISincronizacionApi, SincronizacionApiDePrueba>();
 }
@@ -84,6 +87,14 @@ else
         .AddHttpMessageHandler<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IOperadorApi, OperadorApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<ICacheApi, CacheApiHttp>(cliente =>
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);
