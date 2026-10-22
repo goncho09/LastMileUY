@@ -21,7 +21,8 @@ public class SincronizacionServiceTests
 
         Assert.False(estado.Pendiente);
         Assert.Equal("Aplicada", estado.Resultado!.Resultado);
-        var pedido = Assert.Single(api.Pedidos);
+        var pedido = Assert.Single(
+            api.Pedidos.Where(p => p.Ruta == "/api/sincronizacion"));
         Assert.Equal("/api/sincronizacion", pedido.Ruta);
         var operacion = Assert.Single(pedido.Cuerpo!.Operaciones);
         Assert.Equal(7, operacion.EnvioId);
@@ -97,7 +98,15 @@ public class SincronizacionServiceTests
 
         await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
 
-        Assert.NotEqual(api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
+        var sincronizaciones = api.Pedidos
+            .Where(p => p.Ruta == "/api/sincronizacion")
+            .ToList();
+
+        Assert.Equal(2, sincronizaciones.Count);
+
+        Assert.NotEqual(
+            sincronizaciones[0].Cuerpo!.Operaciones[0].IdOperacion,
+            sincronizaciones[1].Cuerpo!.Operaciones[0].IdOperacion);
     }
 
     [Fact]
@@ -160,15 +169,34 @@ public class SincronizacionServiceTests
     }
 
     // navegador: lo guardado en el celular; si se pasa uno, es como volver a abrir la app
+    
     private static (SincronizacionService Servicio, NavegadorFalso Navegador) Servicio(
         ApiFalsa api, NavegadorFalso? navegador = null)
     {
         navegador ??= new NavegadorFalso();
-        var http = new HttpClient(api) { BaseAddress = new Uri("https://api.prueba/") };
+
+        var http = new HttpClient(api)
+        {
+            BaseAddress = new Uri("https://api.prueba/")
+        };
+
         var almacen = new AlmacenLocal(navegador, TimeProvider.System);
 
-        return (new SincronizacionService(http, almacen, new ColaOperacionesService(almacen)), navegador);
+        var cola = new ColaOperacionesService(almacen);
+        var rutas = new RutasService(http, almacen);
+        var confirmadas = new OperacionesConfirmadasService(almacen);
+
+        var sincronizacion = new SincronizacionService(
+            http,
+            almacen,
+            rutas,
+            confirmadas,
+            cola
+        );
+
+        return (sincronizacion, navegador);
     }
+
 
     private static OperacionRequest Entrega(int envioId) => new()
     {

@@ -15,6 +15,8 @@ namespace LastMileUY.DriverPWA.Services;
 public class SincronizacionService(
     HttpClient http,
     AlmacenLocal almacen,
+    RutasService rutasService,
+    OperacionesConfirmadasService confirmadas,
     ColaOperacionesService cola)
 {
     private async Task<EstadoEnvioOperacion> EnviarOperacionGuardadaAsync(
@@ -47,7 +49,28 @@ public class SincronizacionService(
 
             if (!resultado.Reintentar)
             {
+                // Solo bloqueamos permanentemente las entregas exitosas.
+                // Los intentos fallidos no se guardan como entregas confirmadas.
+                if (resultado.Resultado == "Aplicada" &&
+                    operacion.Tipo == "Entrega")
+                {
+                    await confirmadas.RegistrarAsync(operacion.EnvioId);
+                }
+
                 await cola.EliminarAsync(operacion.IdOperacion);
+
+                try
+                {
+                    await rutasService.ActualizarCacheRutaAsync(operacion.RutaId);
+                }
+                catch (HttpRequestException)
+                {
+                    // El resultado de la operación ya es definitivo.
+                }
+                catch (TaskCanceledException)
+                {
+                    // Conservamos la caché anterior.
+                }
             }
 
             return new EstadoEnvioOperacion(
@@ -147,5 +170,25 @@ public class SincronizacionService(
                 "La operación ya no está pendiente.");
 
         return await EnviarOperacionGuardadaAsync(operacion);
+    }
+    
+    public async Task<(int Enviadas, int Pendientes)> SincronizarPendientesAsync()
+    {
+        var operaciones = await cola.ObtenerPendientesAsync();
+        var enviadas = 0;
+
+        foreach (var operacion in operaciones.OrderBy(x => x.FechaHoraDispositivo))
+        {
+            var resultado = await ReintentarOperacionAsync(operacion.IdOperacion);
+
+            // Si la API dio un resultado definitivo, la operación
+            // ya fue eliminada de la cola por EnviarOperacionGuardadaAsync.
+            if (!resultado.Pendiente)
+                enviadas++;
+        }
+
+        var restantes = await cola.ObtenerPendientesAsync();
+
+        return (enviadas, restantes.Count);
     }
 }

@@ -21,5 +21,6 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RutasService>();
 builder.Services.AddScoped<SincronizacionService>();
 builder.Services.AddScoped<ColaOperacionesService>();
+builder.Services.AddScoped<OperacionesConfirmadasService>();
 
 await builder.Build().RunAsync();

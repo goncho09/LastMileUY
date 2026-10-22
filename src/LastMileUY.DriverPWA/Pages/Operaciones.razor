@@ -1,6 +1,8 @@
 @page "/operaciones"
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 @inject SincronizacionService Sincronizacion
 @inject ColaOperacionesService Cola
 @inject NavigationManager Navigation
@@ -33,6 +35,14 @@
                 <h2 id="titulo-pendientes" class="font-bold text-amber-900">
                     Sin enviar (@pendientes.Count)
                 </h2>
+                
+                <button type="button"
+                        disabled="@sincronizando"
+                        @onclick="SincronizarAsync"
+                        class="mt-4 rounded-xl bg-amber-800 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
+                    @(sincronizando ? "Sincronizando..." : "Sincronizar pendientes")
+                </button>
+                
                 <p class="mt-1 text-sm text-amber-800">
                     Están guardadas en este celular y todavía no llegaron al servidor. No cierres sesión: se perderían.
                 </p>
@@ -55,6 +65,14 @@
                 </ul>
             </section>
         }
+        
+        @if (mensajeSincronizacion is not null)
+        {
+            <div role="status"
+                 class="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-800">
+                @mensajeSincronizacion
+            </div>
+        }
 
         <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar por resultado">
             @foreach (var (valor, texto) in Filtros)
@@ -69,22 +87,38 @@
 
         @if (error is not null)
         {
-            <div class="rounded-2xl bg-red-50 p-5 text-red-700">@error</div>
+            <div class="rounded-2xl bg-red-50 p-5 text-red-700">
+                @error
+            </div>
+        }
+
+        @if (historialNoDisponible)
+        {
+            <div role="status"
+                 class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+                <h2 class="font-bold">Historial no disponible sin conexión</h2>
+                <p class="mt-2 text-sm">
+                    Las operaciones pendientes siguen guardadas en este dispositivo.
+                    El historial del servidor se actualizará cuando recuperes la conexión.
+                </p>
+            </div>
         }
         else if (cargando && operaciones.Count == 0)
         {
             <p class="text-center text-slate-500">Cargando operaciones...</p>
         }
-        else if (operaciones.Count == 0)
+        else if (operaciones.Count == 0 && !historialNoDisponible)
         {
             <div class="rounded-2xl bg-white p-8 text-center shadow-sm">
                 <h2 class="font-bold text-slate-800">No hay operaciones</h2>
                 <p class="mt-2 text-sm text-slate-500">
-                    @(filtro is null ? "Las entregas e intentos que registres aparecen acá." : "No tenés operaciones con ese resultado.")
+                    @(filtro is null
+                        ? "Las entregas e intentos que registres aparecen acá."
+                        : "No tenés operaciones con ese resultado.")
                 </p>
             </div>
         }
-        else
+        else if (operaciones.Count > 0)
         {
             <p class="text-sm font-medium text-slate-500">@total @(total == 1 ? "operación" : "operaciones")</p>
 
@@ -119,7 +153,7 @@
             {
                 <button type="button" disabled="@cargando"
                         class="w-full rounded-xl border border-violet-200 bg-white py-3 font-semibold text-violet-700 disabled:opacity-60"
-                        @onclick="CargarMasAsync">
+                        @onclick="() => CargarMasAsync()">
                     @(cargando ? "Cargando..." : "Ver más")
                 </button>
             }
@@ -135,15 +169,27 @@
         ("Rechazada", "Rechazadas"),
         ("Conflicto", "En conflicto")
     ];
-
+    private readonly SemaphoreSlim bloqueoSincronizacion = new(1, 1);
     private readonly List<OperacionSincronizadaDto> operaciones = [];
     private List<OperacionRequest> pendientes = [];
+    
+    private IJSObjectReference? moduloConexion;
+    private IJSObjectReference? detectorConexion;
+    private DotNetObjectReference<Operaciones>? referenciaDotNet;
+    
     private string? filtro;
+    private string? error;
+    private string? mensajeSincronizacion;
+    
     private int pagina;
     private int total;
+    
     private bool cargando;
-    private string? error;
-
+    private bool sincronizando;
+    private bool componenteDestruido;
+    private bool historialNoDisponible;
+    private bool historialCargado;
+    
     protected override async Task OnInitializedAsync()
     {
         // Las pendientes salen del celular: se ven aunque no haya conexión
@@ -153,42 +199,186 @@
 
         await FiltrarAsync(null);
     }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+    if (!firstRender)
+        return;
 
-    private async Task FiltrarAsync(string? resultado)
+    moduloConexion = await JS.InvokeAsync<IJSObjectReference>(
+        "import", "./js/conexion.js");
+
+    referenciaDotNet = DotNetObjectReference.Create(this);
+
+    detectorConexion = await moduloConexion.InvokeAsync<IJSObjectReference>(
+        "escucharConexion", referenciaDotNet);
+
+    // También intenta sincronizar cuando se abre la pantalla.
+    await SincronizarAsync();
+    
+    if (historialNoDisponible)
     {
-        filtro = resultado;
-        pagina = 0;
-        operaciones.Clear();
+        await InvokeAsync(StateHasChanged);
+    }
+}
 
-        await CargarMasAsync();
+    [JSInvokable]
+    public async Task ConexionRestablecida()
+    {
+        if (componenteDestruido)
+            return;
+
+        await SincronizarAsync();
+
+        if (!componenteDestruido && !cargando)
+        {
+            await FiltrarAsync(filtro);
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
-    private async Task CargarMasAsync()
+private async Task SincronizarAsync()
+{
+    if (componenteDestruido)
+        return;
+
+    // Evita dos sincronizaciones simultáneas.
+    if (!await bloqueoSincronizacion.WaitAsync(0))
+        return;
+
+    try
     {
-        cargando = true;
-        error = null;
+        sincronizando = true;
+        mensajeSincronizacion = null;
+        await InvokeAsync(StateHasChanged);
 
-        try
-        {
-            var siguiente = await Sincronizacion.ObtenerMisOperacionesAsync(filtro, pagina + 1);
+        var resultado = await Sincronizacion.SincronizarPendientesAsync();
 
-            pagina = siguiente.Pagina;
-            total = siguiente.Total;
-            operaciones.AddRange(siguiente.Items);
-        }
-        catch (UnauthorizedAccessException)
+        pendientes = (await Cola.ObtenerPendientesAsync())
+            .OrderBy(p => p.FechaHoraDispositivo)
+            .ToList();
+
+        if (resultado.Enviadas > 0)
         {
-            Navigation.NavigateTo("/login");
+            mensajeSincronizacion =
+                $"Se procesaron {resultado.Enviadas} operaciones. " +
+                $"Quedan {resultado.Pendientes} pendientes.";
+
+            // Actualizar el historial mostrado.
+            await FiltrarAsync(filtro);
         }
-        catch (HttpRequestException)
+        else if (resultado.Pendientes > 0)
         {
-            error = "No se pudieron cargar las operaciones. Comprobá tu conexión.";
-        }
-        finally
-        {
-            cargando = false;
+            mensajeSincronizacion =
+                "No se pudieron sincronizar las operaciones. " +
+                "Se mantienen guardadas para reintentar.";
         }
     }
+    catch (UnauthorizedAccessException)
+    {
+        mensajeSincronizacion =
+            "Tu sesión expiró. Iniciá sesión para sincronizar.";
+    }
+    catch (Exception ex) when (
+        ex is HttpRequestException or
+        TaskCanceledException or
+        InvalidOperationException)
+    {
+        mensajeSincronizacion =
+            "No se pudo completar la sincronización. " +
+            "Las operaciones pendientes siguen guardadas.";
+    }
+    finally
+    {
+        sincronizando = false;
+        bloqueoSincronizacion.Release();
+
+        if (!componenteDestruido)
+            await InvokeAsync(StateHasChanged);
+    }
+}
+
+public async ValueTask DisposeAsync()
+{
+    componenteDestruido = true;
+
+    try
+    {
+        if (detectorConexion is not null)
+            await detectorConexion.InvokeVoidAsync("dispose");
+
+        if (detectorConexion is not null)
+            await detectorConexion.DisposeAsync();
+
+        if (moduloConexion is not null)
+            await moduloConexion.DisposeAsync();
+    }
+    catch (JSDisconnectedException)
+    {
+        // La página o conexión Blazor ya se cerró.
+    }
+
+    referenciaDotNet?.Dispose();
+}
+
+private async Task FiltrarAsync(string? resultado)
+{
+    if (cargando)
+        return;
+
+    // No borramos el historial anterior hasta obtener
+    // correctamente la nueva respuesta.
+    filtro = resultado;
+    pagina = 0;
+    total = 0;
+
+    await CargarMasAsync(reemplazar: true);
+}
+
+private async Task CargarMasAsync(bool reemplazar = false)
+{
+    if (cargando)
+        return;
+
+    cargando = true;
+    error = null;
+
+    try
+    {
+        var paginaSolicitada = reemplazar ? 1 : pagina + 1;
+
+        var siguiente = await Sincronizacion.ObtenerMisOperacionesAsync(
+            filtro,
+            paginaSolicitada);
+
+        if (reemplazar)
+            operaciones.Clear();
+
+        operaciones.AddRange(siguiente.Items);
+
+        pagina = siguiente.Pagina;
+        total = siguiente.Total;
+
+        historialNoDisponible = false;
+        historialCargado = true;
+    }
+    catch (UnauthorizedAccessException)
+    {
+        Navigation.NavigateTo("/login");
+    }
+    catch (Exception ex) when (
+        ex is HttpRequestException or TaskCanceledException)
+    {
+        historialNoDisponible = true;
+
+        // No eliminamos las operaciones que ya estaban en pantalla.
+        // Las pendientes se siguen mostrando desde IndexedDB.
+    }
+    finally
+    {
+        cargando = false;
+    }
+}
 
     private static string Texto(string resultado) => resultado switch
     {

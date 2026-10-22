@@ -1,15 +1,14 @@
 @using LastMileUY.Contracts.Rutas
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
 @inject SincronizacionService Sincronizacion
 @inject IJSRuntime JS
+@inject OperacionesConfirmadasService Confirmadas
 
-@* Entrega de una parada con la evidencia que pide la regla del operador (Parada.Evidencia).
-   La API vuelve a controlar todo: si falta algo, la rechaza y se muestra el motivo acá. *@
 <div class="rounded-4 p-3 mt-3" style="background:#faf5ff;border:1px solid #ddd6fe">
-
     <div class="fw-bold mb-1" style="color:#4c1d95">Confirmar entrega</div>
-
     <p class="small mb-3" style="color:#7c3aed">
         @(PideAlgo ? "La regla del operador pide lo marcado como obligatorio." : "La regla del operador no pide evidencia para este envío.")
     </p>
@@ -32,23 +31,19 @@
 
     <div class="d-flex justify-content-between align-items-end mt-3">
         <span class="form-label fw-semibold small mb-1">
-            Firma
-            <span class="fw-normal text-muted">@(Parada.Evidencia.Firma ? "(obligatoria)" : "(opcional)")</span>
+            Firma <span class="fw-normal text-muted">@(Parada.Evidencia.Firma ? "(obligatoria)" : "(opcional)")</span>
         </span>
         <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" style="color:#6d28d9"
-                @onclick="LimpiarFirma">
-            Borrar firma
-        </button>
+                @onclick="LimpiarFirma">Borrar firma</button>
     </div>
     <canvas @ref="lienzoFirma" width="600" height="220" aria-label="Firma de quien recibe"
             class="w-100 rounded-3 bg-white" style="border:1px dashed #a78bfa;touch-action:none;height:150px"></canvas>
 
     <label class="form-label fw-semibold small mt-3" for="foto-@Parada.EnvioId">
-        Foto
-        <span class="fw-normal text-muted">@(Parada.Evidencia.Foto ? "(obligatoria)" : "(opcional)")</span>
+        Foto <span class="fw-normal text-muted">@(Parada.Evidencia.Foto ? "(obligatoria)" : "(opcional)")</span>
     </label>
-    <InputFile id="@($"foto-{Parada.EnvioId}")" class="form-control rounded-3" accept="image/*" capture="environment"
-               OnChange="CargarFoto" />
+    <InputFile id="@($"foto-{Parada.EnvioId}")" class="form-control rounded-3" accept="image/*"
+               capture="environment" OnChange="CargarFoto" />
     @if (fotoBase64 is not null)
     {
         <div class="small mt-1" style="color:#6d28d9">Foto lista para enviar.</div>
@@ -66,33 +61,24 @@
     }
 
     <div class="d-grid gap-2 mt-3">
-        @if (mensajePendiente is not null)
-        {
-            <div class="alert alert-warning small mt-3" role="status">
-                @mensajePendiente
-            </div>
-        }
-        
-        <button class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
-                disabled="@(enviando || mensajePendiente is not null)" @onclick="Enviar" >
+        <button type="button" class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
+                disabled="@(enviando || comprobandoPendiente || operacionPendiente || entregaConfirmada || EstadoFinalizado)"
+                @onclick="Enviar">
             @(enviando ? "Guardando..." : "Confirmar entrega")
         </button>
-        <button class="btn rounded-3 py-2" style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
-                disabled="@enviando" @onclick="OnCancelar">
-            Cancelar
-        </button>
+        <button type="button" class="btn rounded-3 py-2"
+                style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
+                disabled="@enviando" @onclick="OnCancelar">Cancelar</button>
     </div>
 </div>
 
 @code {
-    // La API acepta imágenes de hasta 1 MB: la foto se achica en el celular antes de mandarla
     private const long MaximoImagen = 1024 * 1024;
 
     [Parameter, EditorRequired] public int RutaId { get; set; }
     [Parameter, EditorRequired] public ParadaDto Parada { get; set; } = null!;
-
-    // Resultado final (Aplicada o Conflicto): la hoja se recarga con lo que dice el servidor
     [Parameter] public EventCallback<ResultadoOperacionDto> OnTerminado { get; set; }
+    [Parameter] public EventCallback OnGuardadoPendiente { get; set; }
     [Parameter] public EventCallback OnCancelar { get; set; }
 
     private ElementReference lienzoFirma;
@@ -102,14 +88,31 @@
     private string? fotoBase64;
     private string? error;
     private bool enviando;
-    private string? mensajePendiente;
+    private bool operacionPendiente;
+    private bool entregaConfirmada;
+    private bool comprobandoPendiente = true;
 
     private bool PideAlgo => Parada.Evidencia is { Firma: true } or { Foto: true } or { DocumentoReceptor: true };
+    private bool EstadoFinalizado => Parada.EstadoEnvio is "Entregado" or "Devuelto" or "Extraviado";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !operacionPendiente && !entregaConfirmada && !EstadoFinalizado)
             await JS.InvokeVoidAsync("lastMileEntrega.iniciarFirma", lienzoFirma);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        comprobandoPendiente = true;
+        try
+        {
+            operacionPendiente = await Sincronizacion.TieneOperacionPendienteAsync(Parada.EnvioId);
+            entregaConfirmada = await Confirmadas.EstaConfirmadoAsync(Parada.EnvioId);
+        }
+        finally
+        {
+            comprobandoPendiente = false;
+        }
     }
 
     private async Task LimpiarFirma() =>
@@ -119,7 +122,6 @@
     {
         error = null;
         fotoBase64 = null;
-
         try
         {
             var achicada = await e.File.RequestImageFileAsync("image/jpeg", 1280, 1280);
@@ -136,16 +138,28 @@
 
     private async Task Enviar()
     {
-        if (enviando)
+        if (enviando || comprobandoPendiente || operacionPendiente || entregaConfirmada)
             return;
 
         enviando = true;
         error = null;
-
         try
         {
-            var ubicacion = await Ubicacion.ObtenerAsync(JS);
+            if (EstadoFinalizado || await Confirmadas.EstaConfirmadoAsync(Parada.EnvioId))
+            {
+                entregaConfirmada = true;
+                error = "Este envío ya fue entregado o está finalizado. No se puede confirmar nuevamente.";
+                return;
+            }
 
+            if (await Sincronizacion.TieneOperacionPendienteAsync(Parada.EnvioId))
+            {
+                operacionPendiente = true;
+                await OnGuardadoPendiente.InvokeAsync();
+                return;
+            }
+
+            var ubicacion = await Ubicacion.ObtenerAsync(JS);
             if (ubicacion is null)
             {
                 error = Ubicacion.SinUbicacion;
@@ -163,34 +177,30 @@
                 Observaciones = Limpio(observaciones),
                 NombreReceptor = Limpio(nombreReceptor),
                 DocumentoReceptor = Limpio(documentoReceptor),
-                FirmaBase64 = await JS.InvokeAsync<string?>(
-                    "lastMileEntrega.leerFirma", lienzoFirma),
+                FirmaBase64 = await JS.InvokeAsync<string?>("lastMileEntrega.leerFirma", lienzoFirma),
                 FotoBase64 = fotoBase64
             };
 
             var estado = await Sincronizacion.GuardarOperacionAsync(operacion);
-
+            
             if (estado.Pendiente)
             {
-                mensajePendiente =
-                    "Entrega guardada en el dispositivo. Pendiente de sincronización.";
+                operacionPendiente = true;
+
+                await OnGuardadoPendiente.InvokeAsync();
+
                 return;
             }
 
             var resultado = estado.Resultado!;
-
             if (resultado.Resultado is "Rechazada" or "Error")
-            {
                 error = resultado.Mensaje;
-            }
             else
-            {
                 await OnTerminado.InvokeAsync(resultado);
-            }
         }
         catch (HttpRequestException)
         {
-            error = "No se pudo conectar con el servidor. Probá de nuevo: no se va a registrar dos veces.";
+            error = "No se pudo conectar con el servidor. Revisá las operaciones pendientes antes de reintentar.";
         }
         catch (UnauthorizedAccessException ex)
         {
