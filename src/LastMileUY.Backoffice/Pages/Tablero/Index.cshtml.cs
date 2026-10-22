@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace LastMileUY.Backoffice.Pages.Tablero;
 
 // Tablero técnico: aciertos, fallos y porcentaje de aciertos del caché de la API, por caso.
-// Se pide a la API en cada visita (y con el botón Actualizar).
+// Se pide a la API cada vez que se abre la página.
 public class IndexModel(ICacheApi cacheApi, ILogger<IndexModel> logger) : PageModel
 {
     public List<MetricaCacheDto> Metricas { get; private set; } = [];
