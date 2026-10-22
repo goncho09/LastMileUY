@@ -8,6 +8,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/LastMileUY.PublicTracking/LastMileUY.PublicTracking.csproj", "src/LastMileUY.PublicTracking/"]
+COPY ["src/LastMileUY.Contracts/LastMileUY.Contracts.csproj", "src/LastMileUY.Contracts/"]
 RUN dotnet restore "src/LastMileUY.PublicTracking/LastMileUY.PublicTracking.csproj"
 COPY . .
 WORKDIR "/src/src/LastMileUY.PublicTracking"

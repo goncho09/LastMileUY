@@ -1,0 +1,13 @@
+@* Formulario común (GET a la portada con ?codigo=): funciona sin JavaScript *@
+<form class="buscador" method="get" action="/" role="search">
+    <label for="codigo">Código de seguimiento</label>
+    <div class="buscador-fila">
+        <input id="codigo" name="codigo" value="@Codigo" required maxlength="32" autocomplete="off"
+               autocapitalize="characters" spellcheck="false" placeholder="Ej.: K7MP3QXA9RTE"/>
+        <button type="submit">Buscar</button>
+    </div>
+</form>
+
+@code {
+    [Parameter] public string? Codigo { get; set; }
+}

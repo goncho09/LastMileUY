@@ -1,0 +1,123 @@
+@page "/seguimiento/{Codigo}"
+@using System.Text.RegularExpressions
+@using LastMileUY.Contracts.Seguimiento
+@using LastMileUY.PublicTracking.Servicios
+@inject SeguimientoApi Api
+
+<PageTitle>Envío @Codigo | LastMileUY</PageTitle>
+
+@if (error is not null)
+{
+    <section class="tarjeta">
+        <h1>No pudimos consultar el envío</h1>
+        <p class="suave">@error</p>
+        <BuscadorCodigo Codigo="@Codigo"/>
+    </section>
+}
+else if (envio is null)
+{
+    <section class="tarjeta">
+        <h1>No encontramos ese código</h1>
+        <p class="suave">
+            Revisá que esté bien escrito (son letras y números, sin espacios). Si lo copiaste de un mensaje
+            del comercio, probá pegarlo de nuevo.
+        </p>
+        <BuscadorCodigo Codigo="@Codigo"/>
+    </section>
+}
+else
+{
+    <article class="envio" style="@EstiloOperador">
+        <header class="envio-operador">
+            @if (LogoValido)
+            {
+                <img src="@envio.Operador.LogoUrl" alt="" class="logo"/>
+            }
+            <div>
+                <p class="suave">Lo entrega</p>
+                <p class="nombre-operador">@envio.Operador.Nombre</p>
+            </div>
+        </header>
+
+        <section class="tarjeta estado estado-@EstadosEnvio.Tono(envio.Estado)" aria-labelledby="titulo-estado">
+            <p class="codigo">Envío @envio.CodigoSeguimiento</p>
+            <h1 id="titulo-estado">@EstadosEnvio.Titulo(envio.Estado)</h1>
+            <p>@EstadosEnvio.Detalle(envio.Estado)</p>
+
+            @if (EstadosEnvio.Paso(envio.Estado) is { } paso)
+            {
+                <ol class="pasos" aria-label="Avance del envío">
+                    @for (var i = 0; i < EstadosEnvio.Pasos.Length; i++)
+                    {
+                        <li class="@(i <= paso ? "hecho" : "")" aria-current="@(i == paso ? "step" : null)">
+                            @EstadosEnvio.Pasos[i]
+                        </li>
+                    }
+                </ol>
+            }
+
+            <dl class="datos">
+                <div>
+                    <dt>Destino</dt>
+                    <dd>@envio.Ciudad, @envio.Departamento</dd>
+                </div>
+                <div>
+                    <dt>@(envio.FechaEntrega is null ? "Despachado" : "Entregado")</dt>
+                    <dd>@EstadosEnvio.Hora(envio.FechaEntrega ?? envio.FechaCreacion)</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="tarjeta" aria-labelledby="titulo-historial">
+            <h2 id="titulo-historial">Historial</h2>
+            <ol class="historial">
+                @foreach (var evento in envio.Eventos.Reverse())
+                {
+                    <li>
+                        <span class="historial-estado">@EstadosEnvio.Titulo(evento.Estado)</span>
+                        <time>@EstadosEnvio.Hora(evento.FechaHora)</time>
+                    </li>
+                }
+            </ol>
+        </section>
+
+        <section class="tarjeta">
+            <h2>Buscar otro envío</h2>
+            <BuscadorCodigo/>
+        </section>
+    </article>
+}
+
+@code {
+    [Parameter] public string Codigo { get; set; } = string.Empty;
+
+    private SeguimientoPublicoDto? envio;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            envio = await Api.ObtenerAsync(Codigo);
+        }
+        catch (ConsultasExcedidasException)
+        {
+            error = "Se hicieron muchas consultas seguidas. Probá de nuevo en un minuto.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            error = "El servicio de seguimiento no responde en este momento. Probá de nuevo más tarde.";
+        }
+    }
+
+    // El color y el logo los carga el operador: se usan solo si tienen la forma esperada,
+    // para que no se pueda meter otra cosa en el estilo o en la imagen de la página
+    private string? EstiloOperador =>
+        envio?.Operador.ColorPrimario is { } color && Regex.IsMatch(color, "^#[0-9A-Fa-f]{6}$")
+            ? $"--color-operador: {color}"
+            : null;
+
+    private bool LogoValido =>
+        Uri.TryCreate(envio?.Operador.LogoUrl, UriKind.Absolute, out var url)
+        && (url.Scheme == Uri.UriSchemeHttps || url.Scheme == Uri.UriSchemeHttp);
+}
