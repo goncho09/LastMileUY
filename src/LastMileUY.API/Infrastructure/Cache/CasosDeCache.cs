@@ -19,4 +19,12 @@ public static class CasosDeCache
     public static readonly TimeSpan DuracionHojaDeRuta = TimeSpan.FromMinutes(10);
 
     public static string HojaDeRuta(int operadorId, int rutaId) => $"hoja:op:{operadorId}:ruta:{rutaId}";
+
+    // Seguimiento público: el componente de más tráfico (lo consulta cualquiera con el código, sin sesión)
+    // y el estado cambia pocas veces en el viaje del paquete -> muchas lecturas por cada cambio.
+    // Duración corta porque es lo que ve el destinatario; la invalidación lo actualiza en cuanto cambia el envío.
+    // La clave no lleva operador: el código de seguimiento ya identifica un único envío.
+    public static readonly TimeSpan DuracionSeguimiento = TimeSpan.FromMinutes(2);
+
+    public static string Seguimiento(string codigoSeguimiento) => $"seguimiento:{codigoSeguimiento}";
 }

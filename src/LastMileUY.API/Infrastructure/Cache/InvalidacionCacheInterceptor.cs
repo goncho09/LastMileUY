@@ -13,6 +13,7 @@ namespace LastMileUY.API.Infrastructure.Cache;
 //   - Hoja de ruta: cambia una ruta, una parada o el estado de un envío que está en una ruta
 //     (sincronización del repartidor, cambio de estado en el Backoffice, armado y despacho).
 //   - Configuración del operador: cambia el operador (nombre, color, logo) o una regla operativa.
+//   - Seguimiento público: cambia el envío (su estado y su historial).
 // Se crea uno por pedido (con su DbContext), por eso puede guardar lo pendiente en campos.
 public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesInterceptor
 {
@@ -20,6 +21,7 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
     private readonly List<Parada> paradasCambiadas = [];
     private readonly HashSet<int> enviosCambiados = [];
     private readonly HashSet<int> operadoresCambiados = [];
+    private readonly HashSet<string> codigosCambiados = [];
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData,
@@ -90,6 +92,7 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
                     break;
                 case Envio envio when entrada.State == EntityState.Modified:
                     enviosCambiados.Add(envio.Id);
+                    codigosCambiados.Add(envio.CodigoSeguimiento);
                     break;
                 case Operador operador:
                     operadoresCambiados.Add(operador.Id);
@@ -110,6 +113,11 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
                 foreach (var operadorId in operadoresCambiados)
                 {
                     await cache.InvalidarAsync(CasosDeCache.Operador(operadorId), cancellationToken);
+                }
+
+                foreach (var codigo in codigosCambiados)
+                {
+                    await cache.InvalidarAsync(CasosDeCache.Seguimiento(codigo), cancellationToken);
                 }
 
                 foreach (var (operadorId, rutaId) in await RutasAfectadasAsync(db, cancellationToken))
@@ -169,5 +177,6 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
         paradasCambiadas.Clear();
         enviosCambiados.Clear();
         operadoresCambiados.Clear();
+        codigosCambiados.Clear();
     }
 }
