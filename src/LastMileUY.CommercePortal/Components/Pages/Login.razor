@@ -8,149 +8,61 @@
 @inject NavigationManager Navegacion
 @inject ILogger<Login> Logger
 @inject SeleccionOperadorCookie SeleccionCookie
+@layout LastMileUY.CommercePortal.Components.Layout.AuthLayout
 
-@* Página SIN interactividad (renderizado estático, formulario POST común): así hay HttpContext
-   y se puede escribir la cookie del portal, igual que el Login de Razor Pages del Backoffice. *@
-
-
+@* Renderizado estático: necesario para escribir la cookie de autenticación. *@
 <PageTitle>Iniciar sesión | LastMileUY</PageTitle>
 
-<div class="login-container d-flex align-items-center justify-content-center py-5">
-    <div class="card login-card border-0 shadow-lg">
-        <div class="card-body p-4 p-md-5">
+<section class="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-[#0D0F16] px-4 py-12 text-[#F1F3F9]">
+    <div aria-hidden="true" class="pointer-events-none absolute -top-40 left-1/2 h-[460px] w-[720px] -translate-x-1/2 rounded-full bg-[#635BFF]/10 blur-[130px]"></div>
+    <div aria-hidden="true" class="pointer-events-none absolute -bottom-40 -right-24 h-[350px] w-[480px] rounded-full bg-cyan-400/5 blur-[130px]"></div>
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(#262938_1px,transparent_1px)] [background-size:28px_28px]"></div>
 
-            <div class="text-center mb-4">
-                <div class="login-icon mx-auto mb-3">
-                    <i class="bi bi-box-seam"></i>
+    <div class="relative z-10 w-full max-w-[440px]">
+        <div class="mb-8 text-center">
+            <div class="mb-4 flex items-center justify-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl border border-[#262938] bg-[#191D2B] text-xl font-bold text-[#635BFF]">L</div>
+                <div class="text-left">
+                    <div class="text-xl font-bold tracking-tight">LastMile<span class="text-[#635BFF]">UY</span></div>
+                    <div class="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9CA3AF]">CommercePortal</div>
                 </div>
-
-                <h1 class="fw-bold fs-3 mb-1">LastMileUY</h1>
-                <p class="text-muted mb-0">Portal de comercios</p>
             </div>
+        
+            <h1 class="text-2xl font-bold tracking-tight">Iniciar sesión en CommercePortal</h1>
+            <p class="mt-2 text-sm leading-relaxed text-[#9CA3AF]">Ingresá tus credenciales comerciales para gestionar tus envíos y operadores logísticos.</p>
+        </div>
 
-            <div class="mb-4">
-                <h2 class="fs-5 fw-semibold mb-1">Bienvenido de nuevo</h2>
-                <p class="text-muted small mb-0">
-                    Ingresá tus credenciales para gestionar tus envíos.
-                </p>
-            </div>
-
+        <div class="rounded-2xl border border-[#262938] bg-[#151821] p-7 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.65)]">
             @if (error is not null)
             {
-                <div class="alert alert-danger small" role="alert">
-                    <i class="bi bi-exclamation-circle me-2"></i>@error
-                </div>
+                <div role="alert" class="mb-5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">@error</div>
             }
-
             @if (aviso is not null)
             {
-                <div class="alert alert-info small" role="status">
-                    <i class="bi bi-info-circle me-2"></i>@aviso
-                </div>
+                <div role="status" class="mb-5 rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-200">@aviso</div>
             }
 
-            <EditForm Model="Formulario" FormName="login"
-                      OnValidSubmit="IniciarSesionAsync">
+            <EditForm Model="Formulario" FormName="login" OnValidSubmit="IniciarSesionAsync" class="flex flex-col gap-5">
                 <DataAnnotationsValidator />
-
-                <div class="mb-3">
-                    <label class="form-label fw-medium" for="email">
-                        Correo electrónico
-                    </label>
-
-                    <InputText id="email"
-                               class="form-control form-control-lg login-input"
-                               @bind-Value="Formulario.Email"
-                               placeholder="nombre@comercio.com"
-                               autocomplete="username"
-                               autofocus />
-
-                    <ValidationMessage For="() => Formulario.Email"
-                                       class="text-danger small" />
+                <div>
+                    <label for="email" class="mb-2 block text-sm font-medium text-[#9CA3AF]">Email corporativo</label>
+                    <InputText id="email" type="email" class="h-11 w-full rounded-lg border border-[#2E3346] bg-[#0C0E15] px-4 text-sm text-white outline-none placeholder:text-[#6B7280] focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]" @bind-Value="Formulario.Email" placeholder="ejemplo@comercio.com.uy" autocomplete="username" autofocus />
+                    <ValidationMessage For="() => Formulario.Email" class="mt-1 block text-xs text-red-400" />
                 </div>
-
-                <div class="mb-4">
-                    <label class="form-label fw-medium" for="password">
-                        Contraseña
-                    </label>
-
-                    <InputText id="password"
-                               type="password"
-                               class="form-control form-control-lg login-input"
-                               @bind-Value="Formulario.Password"
-                               placeholder="Ingresá tu contraseña"
-                               autocomplete="current-password" />
-
-                    <ValidationMessage For="() => Formulario.Password"
-                                       class="text-danger small" />
+                <div>
+                    <label for="password" class="mb-2 block text-sm font-medium text-[#9CA3AF]">Contraseña</label>
+                    <InputText id="password" type="password" class="h-11 w-full rounded-lg border border-[#2E3346] bg-[#0C0E15] px-4 text-sm text-white outline-none placeholder:text-[#6B7280] focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]" @bind-Value="Formulario.Password" placeholder="Ingresá tu contraseña" autocomplete="current-password" />
+                    <ValidationMessage For="() => Formulario.Password" class="mt-1 block text-xs text-red-400" />
                 </div>
-
-                <button type="submit"
-                        class="btn btn-primary btn-lg w-100 login-button">
-                    Iniciar sesión
-                    <i class="bi bi-arrow-right ms-2"></i>
+                <button type="submit" class="cursor-pointer mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#635BFF] px-4 text-sm font-semibold text-white transition hover:bg-[#736CFF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#635BFF]">
+                    Iniciar sesión <span aria-hidden="true">→</span>
                 </button>
             </EditForm>
-
-            <div class="text-center mt-4">
-                <span class="text-muted small">
-                    Gestión de envíos simple y segura
-                </span>
-            </div>
-
+            <div class="mt-6 border-t border-[#262938] pt-5 text-center text-xs text-[#9CA3AF]">Acceso seguro para comercios asociados</div>
         </div>
+        <p class="mt-6 text-center text-xs text-[#6B7280]">LastMileUY · Portal de Comercios</p>
     </div>
-</div>
-
-<style>
-    .login-container {
-        min-height: 85vh;
-        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
-        border-radius: 16px;
-    }
-
-    .login-card {
-        width: 100%;
-        max-width: 460px;
-        border-radius: 20px;
-    }
-
-    .login-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 18px;
-        background: #e8f0ff;
-        color: #2563eb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 30px;
-    }
-
-    .login-input {
-        border-radius: 10px;
-        font-size: 15px;
-        padding: 12px 14px;
-    }
-
-    .login-input:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
-    }
-
-    .login-button {
-        border-radius: 10px;
-        padding: 12px;
-        font-weight: 600;
-        background: #2563eb;
-        border-color: #2563eb;
-    }
-
-    .login-button:hover {
-        background: #1d4ed8;
-        border-color: #1d4ed8;
-    }
-</style>
+</section>
 
 @code {
     [CascadingParameter]

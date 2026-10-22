@@ -1,3 +1,4 @@
+
 @page "/operador"
 @attribute [Authorize]
 @using LastMileUY.Contracts.Auth
@@ -7,45 +8,162 @@
 @inject NavigationManager Navegacion
 @inject ILogger<Operador> Logger
 
-@* Sin interactividad (como el login): al cambiar de operador hay que reescribir la cookie del portal. *@
+<PageTitle>Cambiar operador | LastMileUY</PageTitle>
 
-<PageTitle>Cambiar operador</PageTitle>
+<div class="mx-auto max-w-4xl space-y-8">
 
-<h1>Cambiar operador</h1>
-<p class="text-muted">
-    Los envíos que des de alta quedan a cargo del operador con el que estás trabajando.
-    Ahora: <strong>@operadorActualNombre</strong>.
-</p>
+    <!-- Encabezado -->
+    <div>
+        <a href="/"
+           class="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-violet-300">
+            <span>←</span>
+            Volver al inicio
+        </a>
 
-@if (error is not null)
-{
-    <div class="alert alert-danger">@error</div>
-}
-
-@if (operadores is null)
-{
-    <p>Cargando…</p>
-}
-else if (operadores.Count <= 1)
-{
-    <div class="alert alert-info">Tu comercio trabaja con un solo operador.</div>
-}
-else
-{
-    <EditForm Model="Formulario" FormName="cambiar-operador" OnSubmit="CambiarAsync" style="max-width: 420px">
-        <div class="mb-3">
-            <label class="form-label" for="operador">Operador logístico</label>
-            <InputSelect id="operador" class="form-select" @bind-Value="Formulario.OperadorId">
-                @foreach (var operador in operadores)
-                {
-                    <option value="@operador.Id">@operador.Nombre</option>
-                }
-            </InputSelect>
+        <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+            Configuración del comercio
         </div>
 
-        <button type="submit" class="btn btn-primary">Trabajar con este operador</button>
-    </EditForm>
-}
+        <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Cambiar operador logístico
+        </h1>
+
+        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
+            Seleccioná el operador con el que querés trabajar.
+            Los nuevos envíos quedarán asociados al operador elegido.
+        </p>
+    </div>
+
+    <!-- Operador actual -->
+    <div class="flex items-center gap-4 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] p-5">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/15 text-xl text-violet-300">
+            ◈
+        </div>
+
+        <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wider text-slate-400">
+                Operador actual
+            </p>
+            <p class="mt-1 truncate text-lg font-semibold text-white">
+                @(operadorActualNombre ?? "Sin operador seleccionado")
+            </p>
+        </div>
+
+        <span class="ml-auto hidden shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300 sm:inline-flex">
+            Activo
+        </span>
+    </div>
+
+    @if (error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">
+            @error
+        </div>
+    }
+
+    @if (operadores is null)
+    {
+        <div class="rounded-2xl border border-white/10 bg-[#131a2a] p-8 text-center">
+            <p class="text-sm text-slate-400">Cargando operadores disponibles…</p>
+        </div>
+    }
+    else if (operadores.Count <= 1)
+    {
+        <div class="rounded-2xl border border-white/10 bg-[#131a2a] p-7">
+            <h2 class="text-lg font-semibold text-white">
+                No hay otros operadores disponibles
+            </h2>
+
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">
+                Tu comercio trabaja con un solo operador logístico.
+                No es necesario realizar ningún cambio.
+            </p>
+
+            <a href="/"
+               class="mt-6 inline-flex items-center rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-500">
+                Volver al inicio
+            </a>
+        </div>
+    }
+    else
+    {
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#131a2a] shadow-xl shadow-black/10">
+
+            <div class="border-b border-white/10 px-6 py-5 sm:px-8">
+                <h2 class="text-lg font-semibold text-white">
+                    Seleccionar operador
+                </h2>
+                <p class="mt-1 text-sm text-slate-400">
+                    Elegí uno de los operadores vinculados a tu comercio.
+                </p>
+            </div>
+
+            <EditForm Model="Formulario"
+                      FormName="cambiar-operador"
+                      OnSubmit="CambiarAsync"
+                      method="post"
+                      Enhance="false"
+                      class="space-y-6 p-6 sm:p-8">
+
+                <div class="space-y-3">
+                    @foreach (var operador in operadores)
+                    {
+                        var esActual = operador.Id ==
+                            (HttpContext.User.LeerEntero(ClaimsPortal.OperadorId) ?? 0);
+
+                        <label class="group relative block cursor-pointer">
+                            <input type="radio"
+                                   name="Formulario.OperadorId"
+                                   value="@operador.Id"
+                                   checked="@(Formulario.OperadorId == operador.Id)"
+                                   class="peer sr-only" />
+
+                            <span class="flex items-center gap-4 rounded-xl border border-white/10 bg-[#0d1423] p-4 transition
+                                         hover:border-violet-500/40 hover:bg-violet-500/[0.04]
+                                         peer-checked:border-violet-500
+                                         peer-checked:bg-violet-500/10
+                                         peer-focus-visible:ring-2
+                                         peer-focus-visible:ring-violet-400">
+
+                                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg font-bold text-violet-300">
+                                    @operador.Nombre.Substring(0, 1).ToUpperInvariant()
+                                </span>
+
+                                <span class="min-w-0 flex-1">
+                                    <span class="block truncate text-sm font-semibold text-white">
+                                        @operador.Nombre
+                                    </span>
+
+                                    <span class="mt-1 block text-xs text-slate-400">
+                                        @(esActual ? "Operador actualmente seleccionado" : "Disponible para trabajar")
+                                    </span>
+                                </span>
+
+                                <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-slate-500
+                                             peer-checked:border-violet-400">
+                                    <span class="h-2.5 w-2.5 rounded-full bg-violet-400 opacity-0 transition group-has-[:checked]:opacity-100"></span>
+                                </span>
+                            </span>
+                        </label>
+                    }
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-3 border-t border-white/10 pt-6">
+                    <a href="/"
+                       class="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/5">
+                        Cancelar
+                    </a>
+
+                    <button type="submit"
+                            class="rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:bg-violet-500">
+                        Trabajar con este operador →
+                    </button>
+                </div>
+            </EditForm>
+        </section>
+    }
+</div>
 
 @code {
     [CascadingParameter]
@@ -58,19 +176,20 @@ else
     private string? operadorActualNombre;
     private string? error;
 
-    private string CookieApi => HttpContext.User.FindFirst(ClaimsPortal.CookieApi)?.Value ?? string.Empty;
+    private string CookieApi =>
+        HttpContext.User.FindFirst(ClaimsPortal.CookieApi)?.Value ?? string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        // En el GET no llega formulario: se arranca uno vacío
         Formulario ??= new();
 
-        operadorActualNombre = HttpContext.User.FindFirst(ClaimsPortal.OperadorNombre)?.Value;
+        operadorActualNombre =
+            HttpContext.User.FindFirst(ClaimsPortal.OperadorNombre)?.Value;
 
-        // En el GET se preselecciona el operador actual
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
-            Formulario.OperadorId = HttpContext.User.LeerEntero(ClaimsPortal.OperadorId) ?? 0;
+            Formulario.OperadorId =
+                HttpContext.User.LeerEntero(ClaimsPortal.OperadorId) ?? 0;
         }
 
         try
@@ -93,7 +212,8 @@ else
     {
         try
         {
-            var resultado = await Autenticacion.CambiarOperadorAsync(CookieApi, Formulario.OperadorId);
+            var resultado = await Autenticacion.CambiarOperadorAsync(
+                CookieApi, Formulario.OperadorId);
 
             if (resultado.Estado != EstadoLogin.Ok)
             {
@@ -101,12 +221,13 @@ else
                 return;
             }
 
-            // La API renovó su cookie con el nuevo operador: se reescribe la del portal
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                ClaimsPortal.CrearPrincipal(resultado.Sesion!, CookieAuthenticationDefaults.AuthenticationScheme));
+                ClaimsPortal.CrearPrincipal(
+                    resultado.Sesion!,
+                    CookieAuthenticationDefaults.AuthenticationScheme));
 
-            Navegacion.NavigateTo("/envios/nuevo", forceLoad: true);
+            Navegacion.NavigateTo("/", forceLoad: true);
         }
         catch (SesionVencidaException)
         {
