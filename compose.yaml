@@ -123,6 +123,13 @@
     build:
       context: .
       dockerfile: src/LastMileUY.PublicTracking/Dockerfile
+    ports:
+      - "8084:8080"
+    environment:
+      # Página pública: le consulta a la API desde el servidor, sin sesión
+      Api__UrlBase: "http://lastmileuy.api:8080/"
+    depends_on:
+      - lastmileuy.api
 
   lastmileuy.worker:
     image: lastmileuy.worker
