@@ -22,9 +22,9 @@ public static class OperadorEndpoints
 
                 // Caché por operador (casi nunca cambia): ver CasosDeCache
                 var operador = await cache.ObtenerOCrearAsync(
-                    CasosDeCache.Operador(operadorId),
+                    CasosDeCache.ConfiguracionOperador,
+                    CasosDeCache.ClaveOperador(operadorId),
                     ct => servicio.ObtenerAsync(ct),
-                    CasosDeCache.DuracionOperador,
                     cancellationToken);
 
                 return operador is null ? Results.Unauthorized() : Results.Ok(operador);

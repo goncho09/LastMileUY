@@ -109,9 +109,18 @@ var conexionRedis = builder.Configuration.GetConnectionString("Redis");
 
 if (!string.IsNullOrWhiteSpace(conexionRedis))
 {
+    // Una sola conexión a Redis para el caché y para los contadores de aciertos y fallos.
+    // AbortOnConnectFail = false: si Redis no está al arrancar, la API arranca igual y se reconecta sola.
+    var opcionesRedis = StackExchange.Redis.ConfigurationOptions.Parse(conexionRedis);
+    opcionesRedis.AbortOnConnectFail = false;
+    var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(opcionesRedis);
+
+    builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redis);
+    builder.Services.AddSingleton<IMetricasCache, MetricasCacheRedis>();
+
     builder.Services.AddStackExchangeRedisCache(options =>
     {
-        options.Configuration = conexionRedis;
+        options.ConnectionMultiplexerFactory = () => Task.FromResult<StackExchange.Redis.IConnectionMultiplexer>(redis);
         // Prefijo de todas las claves de la app en Redis
         options.InstanceName = "lastmileuy:";
     });
@@ -119,6 +128,7 @@ if (!string.IsNullOrWhiteSpace(conexionRedis))
 else
 {
     builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSingleton<IMetricasCache, MetricasCacheMemoria>();
 }
 
 // Configurar COOKIES
@@ -248,6 +258,7 @@ app.MapDestinatariosEndpoints();
 app.MapRutasEndpoints();
 app.MapSincronizacionEndpoints();
 app.MapSeguimientoEndpoints();
+app.MapCacheEndpoints();
 
 app.Run();
 

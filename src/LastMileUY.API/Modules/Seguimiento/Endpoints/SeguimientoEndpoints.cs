@@ -1,3 +1,4 @@
+using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Modules.Seguimiento.Application;
 
 namespace LastMileUY.API.Modules.Seguimiento.Endpoints;
@@ -15,9 +16,18 @@ public static class SeguimientoEndpoints
         app.MapGet("/api/seguimiento/{codigo}", async (
                 string codigo,
                 SeguimientoPublicoService seguimiento,
+                CacheDistribuido cache,
                 CancellationToken cancellationToken) =>
             {
-                var envio = await seguimiento.ObtenerAsync(codigo, cancellationToken);
+                // Mismo formato que guarda la base, así "abc123" y "ABC123 " usan la misma entrada del caché
+                codigo = codigo.Trim().ToUpperInvariant();
+
+                // Caché (ver CasosDeCache): solo se guardan envíos encontrados, nunca un "no existe"
+                var envio = await cache.ObtenerOCrearAsync(
+                    CasosDeCache.SeguimientoPublico,
+                    CasosDeCache.ClaveSeguimiento(codigo),
+                    ct => seguimiento.ObtenerAsync(codigo, ct),
+                    cancellationToken);
 
                 return envio is null
                     ? Results.NotFound()

@@ -157,20 +157,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
         string usuarioId,
         CancellationToken cancellationToken = default)
     {
-        var resultado = await VerificarHojaDelRepartidorAsync(id, usuarioId, cancellationToken);
-
-        return resultado == ResultadoHoja.Disponible
-            ? (resultado, await ObtenerHojaParaLaAppAsync(id, cancellationToken))
-            : (resultado, null);
-    }
-
-    // Solo los controles (que exista, que sea del repartidor y que esté despachada), sin armar la hoja.
-    // Se hace siempre, aunque la hoja venga del caché: así nadie ve la hoja de otro repartidor.
-    public async Task<ResultadoHoja> VerificarHojaDelRepartidorAsync(
-        int id,
-        string usuarioId,
-        CancellationToken cancellationToken = default)
-    {
         var ruta = await (
                 from r in db.Rutas.AsNoTracking()
                 join rep in db.Repartidores on r.RepartidorId equals rep.Id
@@ -180,17 +166,20 @@ public class ConsultasRutasService(ApplicationDbContext db)
 
         if (ruta is null)
         {
-            return ResultadoHoja.NoExiste;
+            return (ResultadoHoja.NoExiste, null);
         }
 
         if (ruta.UsuarioId != usuarioId)
         {
-            return ResultadoHoja.DeOtroRepartidor;
+            return (ResultadoHoja.DeOtroRepartidor, null);
         }
 
-        return Ruta.EstadosParaElRepartidor.Contains(ruta.Estado)
-            ? ResultadoHoja.Disponible
-            : ResultadoHoja.NoDespachada;
+        if (!Ruta.EstadosParaElRepartidor.Contains(ruta.Estado))
+        {
+            return (ResultadoHoja.NoDespachada, null);
+        }
+
+        return (ResultadoHoja.Disponible, await ObtenerHojaParaLaAppAsync(id, cancellationToken));
     }
 
     // Repartidores y vehículos activos, y los envíos que se pueden sumar a una ruta nueva
