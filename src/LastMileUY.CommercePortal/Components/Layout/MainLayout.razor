@@ -1,50 +1,142 @@
 @inherits LayoutComponentBase
 
-@* Mismo diseño que el Backoffice (_Layout.cshtml): barra blanca arriba, contenido centrado y pie *@
+<div class="min-h-dvh bg-[#0b1020] text-slate-100">
 
-<header>
-    <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
-        <div class="container">
-            <a class="navbar-brand" href="">LastMileUY Comercios</a>
+    <AuthorizeView>
+        <Authorized Context="usuario">
 
-            <AuthorizeView>
-                <Authorized>
-                    <div class="d-flex flex-grow-1 justify-content-between align-items-center">
-                        <ul class="navbar-nav flex-grow-1">
-                            <li class="nav-item">
-                                <NavLink class="nav-link text-dark" href="envios/nuevo">Nuevo envío</NavLink>
-                            </li>
-                            <li class="nav-item">
-                                <NavLink class="nav-link text-dark" href="operador">Cambiar operador</NavLink>
-                            </li>
-                        </ul>
+            <div class="min-h-dvh lg:flex">
 
-                        <form method="post" action="salir" class="d-flex align-items-center gap-2">
-                            <AntiforgeryToken/>
-                            <span class="navbar-text small">
-                                @context.User.Identity?.Name ·
-                                @context.User.FindFirst(ClaimsPortal.OperadorNombre)?.Value
+                <!-- Sidebar -->
+                <aside class="border-b border-white/10 bg-[#101525] lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col lg:border-b-0 lg:border-r">
+
+                    <!-- Marca -->
+                    <a href="/" class="flex items-center gap-3 border-b border-white/10 px-6 py-6">
+                        <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-xl font-extrabold text-white shadow-lg shadow-violet-900/30">
+                            L
+                        </span>
+
+                        <span class="flex flex-col">
+                            <span class="text-lg font-bold tracking-tight text-white">
+                                LastMileUY
                             </span>
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">Salir</button>
+                            <span class="text-xs text-slate-400">
+                                Portal de Comercios
+                            </span>
+                        </span>
+                    </a>
+
+                    <!-- Navegación -->
+                    <nav class="flex gap-2 overflow-x-auto px-4 py-4 lg:flex-1 lg:flex-col lg:gap-1 lg:overflow-visible">
+
+                        <NavLink href="/"
+                                 Match="NavLinkMatch.All"
+                                 class="flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white"
+                                 ActiveClass="!bg-violet-600/15 !text-violet-300">
+                            <span class="text-lg">⌂</span>
+                            Inicio
+                        </NavLink>
+
+                        <NavLink href="/envios/nuevo"
+                                 class="flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white"
+                                 ActiveClass="!bg-violet-600/15 !text-violet-300">
+                            <span class="text-lg">＋</span>
+                            Nuevo envío
+                        </NavLink>
+
+                        <NavLink href="/operador"
+                                 class="flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white"
+                                 ActiveClass="!bg-violet-600/15 !text-violet-300">
+                            <span class="text-lg">⇄</span>
+                            Cambiar operador
+                        </NavLink>
+
+                    </nav>
+
+                    <!-- Usuario -->
+                    <div class="hidden border-t border-white/10 p-4 lg:block">
+
+                        <div class="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                            <p class="truncate text-sm font-semibold text-white">
+                                @usuario.User.Identity?.Name
+                            </p>
+
+                            <p class="mt-1 text-xs text-slate-400">
+                                Operador seleccionado
+                            </p>
+
+                            <p class="mt-1 truncate text-sm font-medium text-violet-300">
+                                @(usuario.User.FindFirst(ClaimsPortal.OperadorNombre)?.Value ?? "Sin seleccionar")
+                            </p>
+                        </div>
+
+                        <form method="post" action="/salir">
+                            <AntiforgeryToken />
+
+                            <button type="submit"
+                                    class="w-full rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300">
+                                Cerrar sesión
+                            </button>
                         </form>
+
                     </div>
-                </Authorized>
-            </AuthorizeView>
-        </div>
-    </nav>
-</header>
+                </aside>
 
-<div class="container">
-    <main role="main" class="pb-3">
-        @Body
-    </main>
+                <!-- Contenido principal -->
+                <div class="flex min-h-dvh min-w-0 flex-1 flex-col lg:ml-64">
+
+                    <!-- Barra superior -->
+                    <header class="flex min-h-18 items-center justify-between gap-4 border-b border-white/10 bg-[#0e1424] px-5 py-4 sm:px-8">
+
+                        <div>
+                            <p class="text-xs font-medium uppercase tracking-widest text-slate-500">
+                                LastMileUY
+                            </p>
+                            <p class="text-sm font-semibold text-white">
+                                Portal de Comercios
+                            </p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="hidden max-w-48 truncate rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-300 sm:block">
+                                @(usuario.User.FindFirst(ClaimsPortal.OperadorNombre)?.Value ?? "Sin operador")
+                            </span>
+
+                            <div class="flex h-9 w-9 items-center justify-center rounded-full border border-violet-500/30 bg-violet-500/15 text-sm font-bold text-violet-300">
+                                @(usuario.User.Identity?.Name?.Substring(0, 1).ToUpperInvariant() ?? "U")
+                            </div>
+
+                            <form method="post" action="/salir" class="lg:hidden">
+                                <AntiforgeryToken />
+                                <button type="submit"
+                                        class="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 hover:text-white">
+                                    Salir
+                                </button>
+                            </form>
+                        </div>
+                    </header>
+
+                    <main tabindex="-1"
+                          class="mx-auto w-full max-w-7xl flex-1 px-5 py-8 outline-none sm:px-8 lg:py-10">
+                        @Body
+                    </main>
+
+                    <footer class="border-t border-white/10 px-6 py-5 text-center text-xs text-slate-500">
+                        © 2026 LastMileUY · Portal de Comercios
+                    </footer>
+                </div>
+            </div>
+
+        </Authorized>
+
+        <NotAuthorized>
+            <main tabindex="-1" class="min-h-dvh outline-none">
+                @Body
+            </main>
+        </NotAuthorized>
+    </AuthorizeView>
+
 </div>
-
-<footer class="border-top footer text-muted">
-    <div class="container">
-        &copy; 2026 - LastMileUY
-    </div>
-</footer>
 
 <div id="blazor-error-ui" data-nosnippet>
     Ocurrió un error inesperado.

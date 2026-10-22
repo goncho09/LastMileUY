@@ -1,10 +1,68 @@
 @page "/"
 @attribute [Authorize]
-@inject NavigationManager Navegacion
 
-<PageTitle>Portal del comercio</PageTitle>
+<PageTitle>Inicio | LastMileUY</PageTitle>
 
-@code {
-    // Por ahora la única pantalla del portal es el alta de envíos
-    protected override void OnInitialized() => Navegacion.NavigateTo("envios/nuevo");
-}
+<div class="space-y-8">
+    <section class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#1d2041] via-[#171a30] to-[#101625] p-6 shadow-xl sm:p-10">
+        <div class="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl"></div>
+        <div class="relative">
+            <span class="inline-flex items-center rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+                Portal de Comercios
+            </span>
+            <h1 class="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                Gestioná tus envíos desde un solo lugar
+            </h1>
+            <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
+                Creá envíos, consultá su seguimiento y trabajá con tu operador logístico.
+            </p>
+            <div class="mt-7 flex flex-wrap gap-3">
+                <a href="/envios/nuevo"
+                   class="inline-flex items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:bg-violet-500">
+                    + Crear nuevo envío
+                </a>
+                <a href="/operador"
+                   class="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10">
+                    Ver operador actual
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="mb-4">
+            <h2 class="text-xl font-semibold text-white">Accesos rápidos</h2>
+            <p class="mt-1 text-sm text-slate-400">Elegí qué querés hacer.</p>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+            <a href="/envios/nuevo"
+               class="group rounded-2xl border border-white/10 bg-[#151927] p-6 transition hover:border-violet-500/50 hover:bg-[#1b2033]">
+                <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/15 text-2xl text-violet-300">+</div>
+                <h3 class="text-lg font-semibold text-white group-hover:text-violet-300">Nuevo envío</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">
+                    Seleccioná un destinatario, su dirección y los bultos para generar un envío.
+                </p>
+                <span class="mt-5 inline-block text-sm font-semibold text-violet-400">Crear envío →</span>
+            </a>
+
+            <a href="/operador"
+               class="group rounded-2xl border border-white/10 bg-[#151927] p-6 transition hover:border-cyan-500/40 hover:bg-[#1b2033]">
+                <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/15 text-2xl text-cyan-300">↗</div>
+                <h3 class="text-lg font-semibold text-white group-hover:text-cyan-300">Operador logístico</h3>
+                <p class="mt-2 text-sm leading-6 text-slate-400">
+                    Consultá la información del operador con el que estás gestionando tus envíos.
+                </p>
+                <span class="mt-5 inline-block text-sm font-semibold text-cyan-400">Ver operador →</span>
+            </a>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-6">
+        <h2 class="text-lg font-semibold text-white">Resumen de envíos</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-400">
+            Las métricas y el listado de envíos recientes se mostrarán aquí cuando conectemos el dashboard
+            a los endpoints de consulta del Portal. Por ahora no se muestran cifras de ejemplo.
+        </p>
+    </section>
+</div>
