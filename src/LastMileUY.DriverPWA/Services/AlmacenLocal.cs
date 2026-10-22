@@ -7,7 +7,7 @@ namespace LastMileUY.DriverPWA.Services;
 // pendientes con su firma y su foto). Son datos personales de los destinatarios, así que todo lo que
 // se guarde tiene que pasar por acá, que se encarga de:
 //   - cifrarlo (wwwroot/js/almacen.js: AES-GCM con una clave del navegador que no se puede exportar);
-//   - que venza: un dato vencido no se devuelve y se borra;
+//   - que venza: un dato vencido no se devuelve y se borra (salvo las operaciones pendientes);
 //   - que sea de un solo usuario: al cerrar sesión se borra todo, y si inicia sesión otro
 //     repartidor en el mismo celular, también.
 // Reglas completas: docs/datos-locales.md
@@ -50,9 +50,10 @@ public class AlmacenLocal(IJSRuntime js, TimeProvider reloj)
 
         return entrada.Valor;
     }
-    
-    // Guarda una operación pendiente sin vencimiento automático.
-// Sigue usando el cifrado AES-GCM de almacen.js.
+
+    // Sin vencimiento, para lo que no se puede perder: las operaciones que todavía no llegaron a la
+    // API y el dueño de lo guardado. Va cifrado igual y se borra al cerrar sesión o cambiar de usuario.
+    // Por qué es la excepción a las 24 horas: docs/datos-locales.md
     public async Task GuardarPendienteAsync<T>(string nombre, T valor)
     {
         await js.InvokeVoidAsync(
@@ -61,7 +62,7 @@ public class AlmacenLocal(IJSRuntime js, TimeProvider reloj)
             JsonSerializer.Serialize(valor, OpcionesJson));
     }
 
-// Recupera una operación pendiente, incluso después de cerrar la PWA.
+    // Lo guardado con GuardarPendienteAsync; sigue ahí aunque se cierre la app
     public async Task<T?> LeerPendienteAsync<T>(string nombre)
     {
         var texto = await js.InvokeAsync<string?>(
@@ -79,13 +80,22 @@ public class AlmacenLocal(IJSRuntime js, TimeProvider reloj)
     // Todo, con la clave de cifrado incluida
     public async Task BorrarTodoAsync() =>
         await js.InvokeVoidAsync("lastMileAlmacen.borrarTodo");
-    
-    // Al iniciar sesión, comprueba que los datos locales pertenezcan al usuario.
-    // El identificador del dueño no vence automáticamente, para evitar perder operaciones pendientes por el paso del tiempo.
-    // Si pertenece a otro usuario o no se puede leer, se borra el almacenamiento local.
+
+    // Al iniciar sesión: si lo guardado no es de este usuario (o no se sabe de quién es), se borra
+    // antes de que lo vea. El dueño no vence, para no perder las pendientes con el paso del tiempo.
     public async Task AsignarDuenoAsync(string usuarioId)
     {
-        var dueno = await LeerPendienteAsync<string>(ClaveDueno);
+        string? dueno;
+
+        try
+        {
+            dueno = await LeerPendienteAsync<string>(ClaveDueno);
+        }
+        catch (JsonException)
+        {
+            // Guardado con el formato anterior (con vencimiento): no se sabe de quién es
+            dueno = null;
+        }
 
         if (dueno != usuarioId)
             await BorrarTodoAsync();
