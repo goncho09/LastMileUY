@@ -116,19 +116,35 @@ public class AlmacenLocalTests
         Assert.Equal(1, navegador.VecesBorradoTodo);
     }
 
+  
     [Fact]
-    public async Task Al_cerrar_sesion_se_borra_todo_aunque_la_api_no_responda()
+    public async Task Al_cerrar_sesion_no_se_borran_datos_si_la_api_no_responde()
     {
         var (almacen, navegador, _) = Nuevo();
-        await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
 
-        var sinApi = new HttpClient(new SinConexion()) { BaseAddress = new Uri("https://api.prueba/") };
-        var auth = new AuthService(sinApi, almacen);
+        await almacen.GuardarAsync(
+            "hoja:1",
+            new Hoja("Ana Silva"),
+            TimeSpan.FromHours(8));
+
+        var sinApi = new HttpClient(new SinConexion())
+        {
+            BaseAddress = new Uri("https://api.prueba/")
+        };
+
+        var cola = new ColaOperacionesService(almacen);
+        var auth = new AuthService(sinApi, almacen, cola);
 
         await Assert.ThrowsAsync<HttpRequestException>(auth.LogoutAsync);
 
-        Assert.Empty(navegador.Datos);
+        // Si la API falla, los datos locales deben conservarse.
+        Assert.NotEmpty(navegador.Datos);
+
+        var hoja = await almacen.LeerAsync<Hoja>("hoja:1");
+
+        Assert.NotNull(hoja);
     }
+
 
     private static (AlmacenLocal, NavegadorFalso, RelojFalso) Nuevo()
     {

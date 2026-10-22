@@ -3,6 +3,7 @@
 @using LastMileUY.DriverPWA.Services
 @inject NavigationManager Navigation
 @inject AuthService AuthService
+@inject ColaOperacionesService Cola
 
 <PageTitle>Mi jornada | LastMileUY</PageTitle>
 
@@ -256,12 +257,13 @@ else
         }
         catch (HttpRequestException)
         {
-            // Sin conexión no redirigimos automáticamente:
-            // el repartidor podría estar trabajando offline.
+            errorSesion =
+                "No se pudo cerrar sesión porque no hay conexión con el servidor. Intentá nuevamente.";
         }
         catch (TaskCanceledException)
         {
-            // La API no respondió. Conservamos la sesión local.
+            errorSesion =
+                "El servidor tardó demasiado en responder. Intentá cerrar sesión nuevamente.";
         }
         finally
         {
@@ -285,7 +287,12 @@ else
         try
         {
             await AuthService.LogoutAsync();
+
             Navigation.NavigateTo("/login", replace: true);
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorSesion = ex.Message;
         }
         catch (Exception)
         {

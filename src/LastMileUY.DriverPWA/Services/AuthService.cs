@@ -3,7 +3,7 @@ using LastMileUY.Contracts.Auth;
 
 namespace LastMileUY.DriverPWA.Services;
 
-public class AuthService(HttpClient http, AlmacenLocal almacen)
+public class AuthService(HttpClient http, AlmacenLocal almacen,ColaOperacionesService cola)
 {
     public async Task<bool> LoginAsync(string email, string password)
     {
@@ -28,11 +28,21 @@ public class AuthService(HttpClient http, AlmacenLocal almacen)
 
     public async Task LogoutAsync()
     {
-        // Primero lo local: aunque la API no responda, en el celular no quedan datos personales
-        await almacen.BorrarTodoAsync();
+        var pendientes = await cola.ObtenerPendientesAsync();
 
+        if (pendientes.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Tenés {pendientes.Count} operaciones pendientes de sincronización. " +
+                "Sincronizalas antes de cerrar sesión para no perderlas.");
+        }
+
+        // Primero cerramos la sesión en el servidor.
         using var response = await http.PostAsync("api/auth/logout", null);
         response.EnsureSuccessStatusCode();
+
+        // Solo borramos los datos locales si el servidor confirmó el logout.
+        await almacen.BorrarTodoAsync();
     }
 
     public async Task<UsuarioAutenticadoResponse?> ObtenerUsuarioAsync()
