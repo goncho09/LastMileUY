@@ -1,11 +1,10 @@
 namespace LastMileUY.DriverPWA.Tests;
 
 using LastMileUY.DriverPWA.Services;
-using Microsoft.JSInterop;
 
 // Las reglas de lo que la app guarda en el celular (docs/datos-locales.md): vencimiento y un solo
 // usuario. El cifrado lo hace el navegador (wwwroot/js/almacen.js); acá el navegador se simula con
-// un diccionario, para ver qué se le pide guardar y borrar.
+// un diccionario (NavegadorFalso), para ver qué se le pide guardar y borrar.
 public class AlmacenLocalTests
 {
     private record Hoja(string Destinatario);
@@ -71,17 +70,50 @@ public class AlmacenLocalTests
     [Fact]
     public async Task Si_no_se_sabe_de_quien_es_lo_guardado_se_borra()
     {
+        var (almacen, navegador, _) = Nuevo();
+
+        await almacen.AsignarDuenoAsync("repartidor-1");
+        await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
+
+        // Se perdió el dato del dueño, pero la hoja sigue: aunque entre el mismo, no se puede saber
+        navegador.Datos.Remove("dueno");
+        await almacen.AsignarDuenoAsync("repartidor-1");
+
+        Assert.Null(await almacen.LeerAsync<Hoja>("hoja:1"));
+    }
+
+    [Fact]
+    public async Task Lo_pendiente_no_vence_pero_se_borra_si_entra_otro_repartidor()
+    {
+        // Una entrega sin enviar no se puede perder por el paso del tiempo: solo sale de la cola
+        // con un resultado final de la API, al cerrar sesión o si cambia el repartidor
         var (almacen, _, reloj) = Nuevo();
 
         await almacen.AsignarDuenoAsync("repartidor-1");
-        reloj.Avanzar(TimeSpan.FromHours(23));
+        await almacen.GuardarPendienteAsync("pendientes", new Hoja("Ana Silva"));
+        reloj.Avanzar(TimeSpan.FromDays(3));
+
+        Assert.NotNull(await almacen.LeerPendienteAsync<Hoja>("pendientes"));
+
+        await almacen.AsignarDuenoAsync("repartidor-1");
+        Assert.NotNull(await almacen.LeerPendienteAsync<Hoja>("pendientes"));
+
+        await almacen.AsignarDuenoAsync("repartidor-2");
+        Assert.Null(await almacen.LeerPendienteAsync<Hoja>("pendientes"));
+    }
+
+    [Fact]
+    public async Task Si_el_dueno_quedo_con_el_formato_anterior_se_borra_y_se_puede_entrar()
+    {
+        // Antes el dueño se guardaba con vencimiento ({ valor, venceEn }): no se sabe de quién es
+        var (almacen, navegador, _) = Nuevo();
+        await almacen.GuardarAsync("dueno", "repartidor-1", TimeSpan.FromHours(8));
         await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
 
-        // Venció el dato del dueño, pero la hoja todavía no: entra otro repartidor
-        reloj.Avanzar(TimeSpan.FromHours(2));
-        await almacen.AsignarDuenoAsync("repartidor-2");
+        await almacen.AsignarDuenoAsync("repartidor-1");
 
         Assert.Null(await almacen.LeerAsync<Hoja>("hoja:1"));
+        Assert.Equal(1, navegador.VecesBorradoTodo);
     }
 
     [Fact]
@@ -103,42 +135,6 @@ public class AlmacenLocalTests
         var navegador = new NavegadorFalso();
         var reloj = new RelojFalso();
         return (new AlmacenLocal(navegador, reloj), navegador, reloj);
-    }
-
-    // Hace de wwwroot/js/almacen.js: guarda los textos en memoria
-    private class NavegadorFalso : IJSRuntime
-    {
-        public Dictionary<string, string> Datos { get; } = [];
-        public int VecesBorradoTodo { get; private set; }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
-            InvokeAsync<TValue>(identifier, CancellationToken.None, args);
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
-            object? resultado = null;
-
-            switch (identifier)
-            {
-                case "lastMileAlmacen.guardar":
-                    Datos[(string)args![0]!] = (string)args[1]!;
-                    break;
-                case "lastMileAlmacen.leer":
-                    resultado = Datos.GetValueOrDefault((string)args![0]!);
-                    break;
-                case "lastMileAlmacen.borrar":
-                    Datos.Remove((string)args![0]!);
-                    break;
-                case "lastMileAlmacen.borrarTodo":
-                    Datos.Clear();
-                    VecesBorradoTodo++;
-                    break;
-                default:
-                    throw new InvalidOperationException($"Función inesperada: {identifier}");
-            }
-
-            return ValueTask.FromResult((TValue)resultado!);
-        }
     }
 
     private class RelojFalso : TimeProvider

@@ -2,12 +2,14 @@
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
 @inject SincronizacionService Sincronizacion
+@inject ColaOperacionesService Cola
 @inject NavigationManager Navigation
 
 <PageTitle>Mis operaciones | LastMileUY</PageTitle>
 
 @* Lo que mandó el repartidor y qué pasó con cada cosa en el servidor: registrada, rechazada
-   (con el motivo) o en conflicto (el despachador cambió el envío y lo resuelve él). *@
+   (con el motivo) o en conflicto (el despachador cambió el envío y lo resuelve él).
+   Arriba, lo que registró sin conexión y todavía está guardado en el celular. *@
 <div class="min-h-dvh bg-slate-50 pb-24">
 
     <header class="bg-gradient-to-r from-violet-700 to-indigo-700 px-5 pb-8 pt-7 text-white">
@@ -24,6 +26,35 @@
     </header>
 
     <main class="mx-auto max-w-4xl space-y-4 px-4 pt-6">
+
+        @if (pendientes.Count > 0)
+        {
+            <section class="rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-labelledby="titulo-pendientes">
+                <h2 id="titulo-pendientes" class="font-bold text-amber-900">
+                    Sin enviar (@pendientes.Count)
+                </h2>
+                <p class="mt-1 text-sm text-amber-800">
+                    Están guardadas en este celular y todavía no llegaron al servidor. No cierres sesión: se perderían.
+                </p>
+
+                <ul class="mt-4 space-y-2">
+                    @foreach (var pendiente in pendientes)
+                    {
+                        <li class="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-3" @key="pendiente.IdOperacion">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                                    @(pendiente.Tipo == "Entrega" ? "Entrega" : "Intento fallido") · Ruta #@pendiente.RutaId
+                                </p>
+                                <p class="font-semibold text-slate-900">Envío @pendiente.EnvioId</p>
+                            </div>
+                            <p class="text-xs text-slate-500">
+                                @pendiente.FechaHoraDispositivo.ToLocalTime().ToString("dd/MM HH:mm")
+                            </p>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
 
         <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrar por resultado">
             @foreach (var (valor, texto) in Filtros)
@@ -106,13 +137,22 @@
     ];
 
     private readonly List<OperacionSincronizadaDto> operaciones = [];
+    private List<OperacionRequest> pendientes = [];
     private string? filtro;
     private int pagina;
     private int total;
     private bool cargando;
     private string? error;
 
-    protected override Task OnInitializedAsync() => FiltrarAsync(null);
+    protected override async Task OnInitializedAsync()
+    {
+        // Las pendientes salen del celular: se ven aunque no haya conexión
+        pendientes = (await Cola.ObtenerPendientesAsync())
+            .OrderBy(p => p.FechaHoraDispositivo)
+            .ToList();
+
+        await FiltrarAsync(null);
+    }
 
     private async Task FiltrarAsync(string? resultado)
     {

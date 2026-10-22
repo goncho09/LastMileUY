@@ -1,5 +1,3 @@
-using Microsoft.JSInterop;
-
 namespace LastMileUY.DriverPWA.Tests;
 
 using System.Net;
@@ -8,19 +6,21 @@ using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Sincronizacion;
 using LastMileUY.DriverPWA.Services;
 
-// Cómo la app manda entregas e intentos a la API de sincronización: un solo pedido por operación
-// y el mismo IdOperacion en cada reenvío, para que la API no la aplique dos veces.
+// Cómo la app manda entregas e intentos a la API de sincronización: cada operación se guarda primero
+// en la cola del celular, va sola en su pedido y lleva el mismo IdOperacion en cada reenvío, para
+// que la API no la aplique dos veces. Sale de la cola solo con un resultado final.
 public class SincronizacionServiceTests
 {
     [Fact]
     public async Task Manda_la_operacion_sola_a_la_api_de_sincronizacion()
     {
         var api = new ApiFalsa(_ => Resultado("Aplicada"));
-        var servicio = Servicio(api);
+        var (servicio, _) = Servicio(api);
 
-        var resultado = await servicio.EnviarAsync(Entrega(envioId: 7));
+        var estado = await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
 
-        Assert.Equal("Aplicada", resultado.Resultado);
+        Assert.False(estado.Pendiente);
+        Assert.Equal("Aplicada", estado.Resultado!.Resultado);
         var pedido = Assert.Single(api.Pedidos);
         Assert.Equal("/api/sincronizacion", pedido.Ruta);
         var operacion = Assert.Single(pedido.Cuerpo!.Operaciones);
@@ -29,7 +29,24 @@ public class SincronizacionServiceTests
     }
 
     [Fact]
-    public async Task Si_no_llega_la_respuesta_el_reenvio_lleva_el_mismo_id()
+    public async Task Sin_conexion_queda_pendiente_en_el_celular()
+    {
+        var (servicio, navegador) = Servicio(new ApiFalsa(_ => throw new HttpRequestException("Sin conexión")));
+
+        var estado = await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
+
+        Assert.True(estado.Pendiente);
+        Assert.Null(estado.Resultado);
+        Assert.True(await servicio.TieneOperacionPendienteAsync(7));
+        Assert.False(await servicio.TieneOperacionPendienteAsync(8));
+
+        // Sigue ahí aunque se cierre la app: otra instancia, sobre lo mismo guardado, la encuentra
+        var (despues, _) = Servicio(new ApiFalsa(_ => Resultado("Aplicada")), navegador);
+        Assert.True(await despues.TieneOperacionPendienteAsync(7));
+    }
+
+    [Fact]
+    public async Task El_reenvio_de_una_pendiente_lleva_el_mismo_id_y_la_saca_de_la_cola()
     {
         var primera = true;
         var api = new ApiFalsa(_ =>
@@ -40,41 +57,45 @@ public class SincronizacionServiceTests
             primera = false;
             throw new HttpRequestException("Sin conexión");
         });
-        var servicio = Servicio(api);
+        var (servicio, _) = Servicio(api);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => servicio.EnviarAsync(Entrega(envioId: 7)));
-        await servicio.EnviarAsync(Entrega(envioId: 7));
+        await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
+        var id = api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion;
 
-        Assert.Equal(2, api.Pedidos.Count);
-        Assert.Equal(api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
+        var estado = await servicio.ReintentarOperacionAsync(id);
+
+        Assert.False(estado.Pendiente);
+        Assert.Equal(id, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
+        Assert.False(await servicio.TieneOperacionPendienteAsync(7));
     }
 
     [Fact]
-    public async Task Si_la_api_pide_reintentar_el_reenvio_lleva_el_mismo_id()
+    public async Task Si_la_api_pide_reintentar_sigue_pendiente()
     {
-        var respuestas = new Queue<HttpResponseMessage>([Resultado("Error", reintentar: true), Resultado("Aplicada")]);
-        var api = new ApiFalsa(_ => respuestas.Dequeue());
-        var servicio = Servicio(api);
+        var (servicio, _) = Servicio(new ApiFalsa(_ => Resultado("Error", reintentar: true)));
 
-        await servicio.EnviarAsync(Entrega(envioId: 7));
-        await servicio.EnviarAsync(Entrega(envioId: 7));
+        var estado = await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
 
-        Assert.Equal(api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
+        Assert.True(estado.Pendiente);
+        Assert.True(await servicio.TieneOperacionPendienteAsync(7));
     }
 
     [Theory]
     [InlineData("Aplicada")]
     [InlineData("Rechazada")]
     [InlineData("Conflicto")]
-    public async Task Con_un_resultado_final_lo_proximo_es_una_operacion_nueva(string resultado)
+    public async Task Con_un_resultado_final_sale_de_la_cola_y_lo_proximo_es_una_operacion_nueva(string resultado)
     {
         // Rechazada: el repartidor corrige (por ejemplo, agrega la firma) y la manda de nuevo.
         // Con el mismo id la API devolvería el rechazo anterior sin mirarla.
         var api = new ApiFalsa(_ => Resultado(resultado));
-        var servicio = Servicio(api);
+        var (servicio, _) = Servicio(api);
 
-        await servicio.EnviarAsync(Entrega(envioId: 7));
-        await servicio.EnviarAsync(Entrega(envioId: 7));
+        await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
+
+        Assert.False(await servicio.TieneOperacionPendienteAsync(7));
+
+        await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
 
         Assert.NotEqual(api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
     }
@@ -83,20 +104,30 @@ public class SincronizacionServiceTests
     public async Task Cada_envio_tiene_su_propia_operacion()
     {
         var api = new ApiFalsa(_ => throw new HttpRequestException("Sin conexión"));
-        var servicio = Servicio(api);
+        var (servicio, _) = Servicio(api);
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => servicio.EnviarAsync(Entrega(envioId: 7)));
-        await Assert.ThrowsAsync<HttpRequestException>(() => servicio.EnviarAsync(Entrega(envioId: 8)));
+        await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
+        await servicio.GuardarOperacionAsync(Entrega(envioId: 8));
 
         Assert.NotEqual(api.Pedidos[0].Cuerpo!.Operaciones[0].IdOperacion, api.Pedidos[1].Cuerpo!.Operaciones[0].IdOperacion);
     }
 
     [Fact]
-    public async Task Con_la_sesion_vencida_avisa_para_volver_a_iniciar()
+    public async Task Con_la_sesion_vencida_avisa_para_volver_a_iniciar_y_no_la_pierde()
     {
-        var servicio = Servicio(new ApiFalsa(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)));
+        var (servicio, _) = Servicio(new ApiFalsa(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)));
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => servicio.EnviarAsync(Entrega(envioId: 7)));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => servicio.GuardarOperacionAsync(Entrega(envioId: 7)));
+
+        Assert.True(await servicio.TieneOperacionPendienteAsync(7));
+    }
+
+    [Fact]
+    public async Task No_se_reintenta_una_operacion_que_ya_no_esta_pendiente()
+    {
+        var (servicio, _) = Servicio(new ApiFalsa(_ => Resultado("Aplicada")));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => servicio.ReintentarOperacionAsync(Guid.NewGuid()));
     }
 
     [Fact]
@@ -107,7 +138,7 @@ public class SincronizacionServiceTests
             Content = JsonContent.Create(new[] { new { id = 1, nombre = "Ausente", descripcion = (string?)null } })
         });
 
-        var motivos = await Servicio(api).ObtenerMotivosAsync();
+        var motivos = await Servicio(api).Servicio.ObtenerMotivosAsync();
 
         Assert.Equal("Ausente", Assert.Single(motivos).Nombre);
         Assert.Equal("/api/sincronizacion/motivos", Assert.Single(api.Pedidos).Ruta);
@@ -123,27 +154,20 @@ public class SincronizacionServiceTests
             Content = JsonContent.Create(new PaginaDto<OperacionSincronizadaDto>([], 0, 2, 20))
         });
 
-        await Servicio(api).ObtenerMisOperacionesAsync(resultado, pagina: 2);
+        await Servicio(api).Servicio.ObtenerMisOperacionesAsync(resultado, pagina: 2);
 
         Assert.Equal(url, Assert.Single(api.Pedidos).RutaYConsulta);
     }
 
-    
-    private static SincronizacionService Servicio(ApiFalsa api)
+    // navegador: lo guardado en el celular; si se pasa uno, es como volver a abrir la app
+    private static (SincronizacionService Servicio, NavegadorFalso Navegador) Servicio(
+        ApiFalsa api, NavegadorFalso? navegador = null)
     {
-        var http = new HttpClient(api)
-        {
-            BaseAddress = new Uri("https://api.prueba/")
-        };
+        navegador ??= new NavegadorFalso();
+        var http = new HttpClient(api) { BaseAddress = new Uri("https://api.prueba/") };
+        var almacen = new AlmacenLocal(navegador, TimeProvider.System);
 
-        var almacen = new AlmacenLocal(
-            new NavegadorFalso(),
-            TimeProvider.System
-        );
-
-        var cola = new ColaOperacionesService(almacen);
-
-        return new SincronizacionService(http, almacen, cola);
+        return (new SincronizacionService(http, almacen, new ColaOperacionesService(almacen)), navegador);
     }
 
     private static OperacionRequest Entrega(int envioId) => new()
@@ -163,57 +187,6 @@ public class SincronizacionServiceTests
                 [new ResultadoOperacionDto(Guid.NewGuid(), resultado, "mensaje", false, reintentar, "EnTransito")]))
         };
 
-    
-    private class NavegadorFalso : IJSRuntime
-    {
-        private readonly Dictionary<string, string> datos = [];
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier,
-            object?[]? args)
-        {
-            return InvokeAsync<TValue>(
-                identifier,
-                CancellationToken.None,
-                args);
-        }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier,
-            CancellationToken cancellationToken,
-            object?[]? args)
-        {
-            object? resultado = null;
-
-            switch (identifier)
-            {
-                case "lastMileAlmacen.guardar":
-                    datos[(string)args![0]!] = (string)args[1]!;
-                    break;
-
-                case "lastMileAlmacen.leer":
-                    resultado = datos.GetValueOrDefault(
-                        (string)args![0]!);
-                    break;
-
-                case "lastMileAlmacen.borrar":
-                    datos.Remove((string)args![0]!);
-                    break;
-
-                case "lastMileAlmacen.borrarTodo":
-                    datos.Clear();
-                    break;
-
-                default:
-                    throw new InvalidOperationException(
-                        $"Función inesperada: {identifier}");
-            }
-
-            return ValueTask.FromResult((TValue)resultado!);
-        }
-    }
-
-    
     // Simula la API sin red y anota qué le llegó
     private class ApiFalsa(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {

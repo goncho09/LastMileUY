@@ -17,6 +17,11 @@ Pruebas: `tests/LastMileUY.DriverPWA.Tests/AlmacenLocalTests.cs`.
    puede usar para cifrar y descifrar, pero nadie la puede leer, ni siquiera la app.
 3. **Vencimiento.** Cada dato se guarda con una duración, como máximo 24 horas (`DuracionMaxima`). Un
    dato vencido no se devuelve y se borra al intentar leerlo.
+   **Excepción: las operaciones pendientes** (`GuardarPendienteAsync`). Una entrega registrada sin
+   conexión no vence: si se borrara sola, el envío quedaría entregado en la calle y sin registrar en el
+   sistema, y la firma de quien recibió no se puede volver a pedir. El dato de quién es el dueño de lo
+   guardado tampoco vence, porque es el que permite conservar esas pendientes. Siguen cifradas, y salen
+   del celular con un resultado final de la API, al cerrar sesión o si entra otro repartidor (regla 4).
 4. **De un solo usuario.**
    - Al cerrar sesión se borra todo, la clave incluida, antes de avisarle a la API.
    - Al iniciar sesión, si lo guardado no es de ese usuario (o no se sabe de quién es), se borra todo.
@@ -30,11 +35,20 @@ Pruebas: `tests/LastMileUY.DriverPWA.Tests/AlmacenLocalTests.cs`.
 |---|---|
 | Otro repartidor usa el mismo celular | Sí: al iniciar sesión se borra lo del anterior. |
 | Alguien revisa el almacenamiento del navegador (herramientas de desarrollo, una extensión, una copia de la carpeta del perfil) | Sí: ve datos cifrados, y la clave no se puede exportar. |
-| Se pierde o se roba el celular con la sesión abierta | En parte: los datos vencen en un día, como máximo. Además depende del bloqueo de pantalla del celular, que no controla la app. |
+| Se pierde o se roba el celular con la sesión abierta | En parte: la hoja y los motivos vencen en un día, como máximo; las operaciones sin enviar quedan hasta que se sincronicen. Además depende del bloqueo de pantalla del celular, que no controla la app. |
 | Código malicioso ejecutándose dentro de la app | No: puede usar la clave igual que la app. Lo cubren las protecciones de la app web (sin scripts de terceros, todo servido desde el mismo origen). |
 
-## Para el modo sin conexión
+## Qué guarda la app
 
-- Guardar la hoja con `GuardarAsync("hoja:{rutaId}", hoja, ...)` y una duración que no pase el fin de la jornada.
-- Guardar cada operación pendiente por su `IdOperacion` y borrarla con `BorrarAsync` cuando la API devuelva un resultado final.
-- Antes de cerrar sesión, si quedan operaciones pendientes, avisarle al repartidor: al cerrar sesión se borran.
+| Qué | Dónde (código) | Vence |
+|---|---|---|
+| Mis rutas y el detalle de cada una (`driver:mis-rutas`, `driver:ruta:{id}`) | `RutasService` | 24 horas |
+| Motivos de no entrega (`driver:motivos`) | `SincronizacionService` | 24 horas |
+| Operaciones sin enviar, con su `IdOperacion` (`driver:operaciones-pendientes`) | `ColaOperacionesService` | No: salen con un resultado final de la API |
+| Dueño de lo guardado (`dueno`) | `AlmacenLocal` | No |
+
+Las operaciones sin enviar se ven en la pantalla "Mis operaciones" (`/operaciones`).
+
+## Pendiente
+
+- Antes de cerrar sesión, si quedan operaciones sin enviar, avisarle al repartidor: al cerrar sesión se borran.
