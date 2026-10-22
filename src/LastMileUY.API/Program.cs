@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
@@ -20,6 +21,8 @@ using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.API.Modules.Entregas.Infrastructure;
+using LastMileUY.API.Modules.Seguimiento.Application;
+using LastMileUY.API.Modules.Seguimiento.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -156,10 +159,30 @@ builder.Services.AddScoped<PlanificarRutaService>();
 builder.Services.AddScoped<ConsultasRutasService>();
 builder.Services.AddScoped<SincronizarEntregasService>();
 builder.Services.AddScoped<ConsultasSincronizacionService>();
+builder.Services.AddScoped<SeguimientoPublicoService>();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<SeleccionOperadorTemporalService>();
+
+// Seguimiento público: es el único endpoint sin sesión que lee envíos, así que tiene un tope de
+// consultas por IP (429 al pasarlo). Probar códigos al azar no sirve igual (12 caracteres de 31
+// posibles); el tope es para que nadie lo use para cargar la API.
+// La página de seguimiento le consulta a la API desde su servidor (una sola IP para todos sus
+// visitantes): por eso el tope es amplio acá y la página tiene el suyo, por visitante.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(SeguimientoEndpoints.PoliticaLimite, contexto =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue("Seguimiento:ConsultasPorMinuto", 120),
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -213,6 +236,7 @@ app.UseCors("DriverPWA");
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers(); 
 
@@ -223,6 +247,7 @@ app.MapOperadorEndpoints();
 app.MapDestinatariosEndpoints();
 app.MapRutasEndpoints();
 app.MapSincronizacionEndpoints();
+app.MapSeguimientoEndpoints();
 
 app.Run();
 
