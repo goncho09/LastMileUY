@@ -253,6 +253,7 @@
         {
             await CargarRutaAsync();
             await ActualizarPendientesAsync();
+            await PrecargarMotivosAsync();
         }
         catch (Exception)
         {
@@ -359,17 +360,27 @@
 
         formularioAbierto = (envioId, tipo);
     }
+    
+    private async Task PrecargarMotivosAsync()
+    {
+        try
+        {
+            await Sincronizacion.ObtenerMotivosAsync();
+        }
+        catch (HttpRequestException)
+        {
+            // Si estamos offline, el formulario utilizará
+            // los motivos previamente guardados.
+        }
+        catch (TaskCanceledException)
+        {
+            // No bloqueamos la hoja de ruta.
+        }
+    }
 
     private async Task CerrarFormulario()
     {
         formularioAbierto = null;
-        await ActualizarPendientesAsync();
-    }
-
-    private async Task GuardadoPendiente()
-    {
-        formularioAbierto = null;
-        aviso = null;
         await ActualizarPendientesAsync();
     }
 
