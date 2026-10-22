@@ -1,10 +1,13 @@
-﻿
+﻿```
+
 @page "/rutas/{Id:int}"
 @using LastMileUY.Contracts.Rutas
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
 @inject RutasService RutasService
 @inject NavigationManager Navigation
+@inject SincronizacionService Sincronizacion
+@inject OperacionesConfirmadasService Confirmadas
 
 <PageTitle>Hoja de ruta</PageTitle>
 
@@ -30,7 +33,8 @@
 
         @if (!string.IsNullOrEmpty(aviso))
         {
-            <div class="alert @(avisoEsConflicto ? "alert-warning" : "alert-success")" role="status">
+            <div class="alert @(avisoEsConflicto ? "alert-warning" : "alert-success")"
+                 role="status">
                 @aviso
             </div>
         }
@@ -49,15 +53,15 @@
             </div>
 
             @if (ruta.Estado == "Finalizada")
-{
-    <div class="rounded-4 p-3 mb-4"
-         style="background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6">
-        <div class="fw-bold">Ruta finalizada</div>
-        <div class="small mt-1">
-            Todas las paradas fueron procesadas.
-        </div>
-    </div>
-}
+            {
+                <div class="rounded-4 p-3 mb-4"
+                     style="background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6">
+                    <div class="fw-bold">Ruta finalizada</div>
+                    <div class="small mt-1">
+                        Todas las paradas fueron procesadas.
+                    </div>
+                </div>
+            }
 
             <div class="row g-3 mb-4">
                 <div class="col-6">
@@ -91,7 +95,8 @@
             {
                 @foreach (var parada in ruta.Paradas.OrderBy(p => p.Orden))
                 {
-                    <div class="bg-white rounded-4 border p-3 mb-3" @key="parada.EnvioId">
+                    <div class="bg-white rounded-4 border p-3 mb-3"
+                         @key="parada.EnvioId">
                         <div class="d-flex align-items-start gap-3">
                             <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
                                  style="background:#ede9fe;color:#6d28d9;width:42px;height:42px;flex-shrink:0">
@@ -153,35 +158,55 @@
                                     <strong>Peso:</strong> @parada.PesoKg.ToString("0.##") kg
                                 </div>
 
-@if (parada.EstadoEnvio == "EnTransito")
-{
-    @if (formularioAbierto == (parada.EnvioId, Formulario.Entrega))
-    {
-        <FormularioEntrega RutaId="Id" Parada="parada"
-                           OnTerminado="Registrado" OnCancelar="CerrarFormulario" />
-    }
-    else if (formularioAbierto == (parada.EnvioId, Formulario.IntentoFallido))
-    {
-        <FormularioIntentoFallido RutaId="Id" EnvioId="parada.EnvioId"
-                                  OnTerminado="Registrado" OnCancelar="CerrarFormulario" />
-    }
-    else
-    {
-        <div class="d-grid gap-2 mt-3">
-            <button class="btn text-white rounded-3 py-2 fw-semibold"
-                    style="background:#6d28d9"
-                    @onclick="() => AbrirFormulario(parada.EnvioId, Formulario.Entrega)">
-                Confirmar entrega
-            </button>
+                                @if (enviosPendientes.Contains(parada.EnvioId))
+                                {
+                                    <div class="alert alert-warning small mt-3 mb-0">
+                                        <strong>Operación pendiente de sincronización</strong>
+                                        <div>Está guardada en este dispositivo y se enviará cuando vuelva la conexión.</div>
+                                    </div>
+                                }
+                                else if (enviosConfirmados.Contains(parada.EnvioId))
+                                {
+                                    <div class="alert alert-info small mt-3 mb-0">
+                                        Entrega registrada correctamente. No se puede confirmar nuevamente.
+                                    </div>
+                                }
+                                else if (ruta.Estado != "Finalizada" &&
+                                         parada.EstadoEnvio == "EnTransito")
+                                {
+                                    @if (formularioAbierto == (parada.EnvioId, Formulario.Entrega))
+                                    {
+                                        <FormularioEntrega RutaId="Id"
+                                                           Parada="parada"
+                                                           OnTerminado="Registrado"
+                                                           OnGuardadoPendiente="OperacionGuardadaPendiente"
+                                                           OnCancelar="CerrarFormulario" />
+                                    }
+                                    else if (formularioAbierto == (parada.EnvioId, Formulario.IntentoFallido))
+                                    {
+                                        <FormularioIntentoFallido RutaId="Id"
+                                                                 EnvioId="parada.EnvioId"
+                                                                 OnTerminado="Registrado"
+                                                                 OnCancelar="CerrarFormulario" />
+                                    }
+                                    else
+                                    {
+                                        <div class="d-grid gap-2 mt-3">
+                                            <button class="btn text-white rounded-3 py-2 fw-semibold"
+                                                    style="background:#6d28d9"
+                                                    @onclick="() => AbrirFormulario(parada.EnvioId, Formulario.Entrega)">
+                                                Confirmar entrega
+                                            </button>
 
-            <button class="btn rounded-3 py-2 fw-semibold"
-                    style="border:1px solid #ddd6fe;color:#6d28d9;background:#faf5ff"
-                    @onclick="() => AbrirFormulario(parada.EnvioId, Formulario.IntentoFallido)">
-                No se pudo entregar
-            </button>
-        </div>
-    }
-}
+                                            <button class="btn rounded-3 py-2 fw-semibold"
+                                                    style="border:1px solid #ddd6fe;color:#6d28d9;background:#faf5ff"
+                                                    @onclick="() => AbrirFormulario(parada.EnvioId, Formulario.IntentoFallido)">
+                                                No se pudo entregar
+                                            </button>
+                                        </div>
+                                    }
+                                }
+
                                 @if (parada.Franja is not null)
                                 {
                                     <div class="small mt-2" style="color:#6d28d9">
@@ -198,20 +223,25 @@
 </div>
 
 @code {
-    private enum Formulario { Entrega, IntentoFallido }
+    private enum Formulario
+    {
+        Entrega,
+        IntentoFallido
+    }
 
     [Parameter]
     public int Id { get; set; }
 
     private RutaDetalleDto? ruta;
-    private bool cargando = true;
-    private string? error;
+    private HashSet<int> enviosPendientes = [];
+    private HashSet<int> enviosConfirmados = [];
 
-    // Resultado de la última operación registrada
-    private string? aviso;
+    private bool cargando = true;
     private bool avisoEsConflicto;
 
-    // Un solo formulario abierto a la vez: el de qué envío y cuál
+    private string? error;
+    private string? aviso;
+
     private (int EnvioId, Formulario Tipo)? formularioAbierto;
 
     protected override async Task OnParametersSetAsync()
@@ -219,9 +249,49 @@
         cargando = true;
         error = null;
 
-        await CargarRutaAsync();
+        try
+        {
+            await CargarRutaAsync();
+            await ActualizarPendientesAsync();
+        }
+        catch (Exception)
+        {
+            error = "No se pudieron consultar las operaciones pendientes.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+    
+    private async Task OperacionGuardadaPendiente()
+    {
+        formularioAbierto = null;
 
-        cargando = false;
+        aviso = null;
+
+        await ActualizarPendientesAsync();
+    }
+
+    private async Task ActualizarPendientesAsync()
+    {
+        var pendientes = new HashSet<int>();
+        var confirmados = new HashSet<int>();
+
+        if (ruta is not null)
+        {
+            foreach (var parada in ruta.Paradas)
+            {
+                if (await Sincronizacion.TieneOperacionPendienteAsync(parada.EnvioId))
+                    pendientes.Add(parada.EnvioId);
+
+                if (await Confirmadas.EstaConfirmadoAsync(parada.EnvioId))
+                    confirmados.Add(parada.EnvioId);
+            }
+        }
+
+        enviosPendientes = pendientes;
+        enviosConfirmados = confirmados;
     }
 
     private async Task CargarRutaAsync()
@@ -231,7 +301,9 @@
             ruta = await RutasService.ObtenerRutaAsync(Id);
 
             if (ruta is null)
+            {
                 error = "No se encontró la ruta.";
+            }
         }
         catch (UnauthorizedAccessException)
         {
@@ -243,23 +315,76 @@
         }
     }
 
-    private void AbrirFormulario(int envioId, Formulario tipo)
+    private async Task AbrirFormulario(int envioId, Formulario tipo)
     {
         aviso = null;
+
+        var parada = ruta?.Paradas.FirstOrDefault(p => p.EnvioId == envioId);
+
+        if (ruta is null ||
+            ruta.Estado == "Finalizada" ||
+            parada is null ||
+            parada.EstadoEnvio != "EnTransito")
+        {
+            avisoEsConflicto = true;
+            aviso = "Este envío ya no está disponible para registrar una entrega.";
+            return;
+        }
+
+        try
+        {
+            if (await Sincronizacion.TieneOperacionPendienteAsync(envioId))
+            {
+                enviosPendientes.Add(envioId);
+
+                avisoEsConflicto = true;
+                aviso = "Este envío ya tiene una operación pendiente de sincronización.";
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            avisoEsConflicto = true;
+            aviso = "No se pudo comprobar si existen operaciones pendientes.";
+            return;
+        }
+        
+        if (await Confirmadas.EstaConfirmadoAsync(envioId))
+        {
+            enviosConfirmados.Add(envioId);
+            avisoEsConflicto = true;
+            aviso = "Este envío ya tiene una operación confirmada.";
+            return;
+        }
+
         formularioAbierto = (envioId, tipo);
     }
 
-    private void CerrarFormulario() => formularioAbierto = null;
+    private async Task CerrarFormulario()
+    {
+        formularioAbierto = null;
+        await ActualizarPendientesAsync();
+    }
 
-    // Aplicada: quedó registrada. Conflicto: el envío cambió en el servidor (el despachador
-    // lo movió) y gana el servidor. En los dos casos se recarga la hoja para ver cómo quedó.
+    private async Task GuardadoPendiente()
+    {
+        formularioAbierto = null;
+        aviso = null;
+        await ActualizarPendientesAsync();
+    }
+
     private async Task Registrado(ResultadoOperacionDto resultado)
     {
         formularioAbierto = null;
+
         avisoEsConflicto = resultado.Resultado == "Conflicto";
-        aviso = avisoEsConflicto ? resultado.Mensaje : "Registrado correctamente.";
+
+        aviso = avisoEsConflicto
+            ? resultado.Mensaje
+            : "Registrado correctamente.";
 
         await CargarRutaAsync();
+        await ActualizarPendientesAsync();
     }
 
     private void Volver()
@@ -267,3 +392,5 @@
         Navigation.NavigateTo("/rutas");
     }
 }
+
+```

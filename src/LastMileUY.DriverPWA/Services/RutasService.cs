@@ -88,4 +88,21 @@ public class RutasService(HttpClient http, AlmacenLocal almacen)
         return await almacen.LeerAsync<RutaDetalleDto>(
             ClaveRuta(id));
     }
+    
+    public async Task ActualizarCacheRutaAsync(int rutaId)
+    {
+        // No usamos ObtenerRutaAsync porque ese método
+        // puede devolver la caché si falla la conexión.
+        using var response = await http.GetAsync($"api/rutas/mias/{rutaId}");
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+            throw new UnauthorizedAccessException("Tu sesión expiró.");
+
+        response.EnsureSuccessStatusCode();
+
+        var ruta = await response.Content.ReadFromJsonAsync<RutaDetalleDto>();
+
+        if (ruta is not null)
+            await almacen.GuardarAsync(ClaveRuta(rutaId), ruta, DuracionCache);
+    }
 }

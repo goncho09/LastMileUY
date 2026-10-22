@@ -160,15 +160,34 @@ public class SincronizacionServiceTests
     }
 
     // navegador: lo guardado en el celular; si se pasa uno, es como volver a abrir la app
+    
     private static (SincronizacionService Servicio, NavegadorFalso Navegador) Servicio(
         ApiFalsa api, NavegadorFalso? navegador = null)
     {
         navegador ??= new NavegadorFalso();
-        var http = new HttpClient(api) { BaseAddress = new Uri("https://api.prueba/") };
+
+        var http = new HttpClient(api)
+        {
+            BaseAddress = new Uri("https://api.prueba/")
+        };
+
         var almacen = new AlmacenLocal(navegador, TimeProvider.System);
 
-        return (new SincronizacionService(http, almacen, new ColaOperacionesService(almacen)), navegador);
+        var cola = new ColaOperacionesService(almacen);
+        var rutas = new RutasService(http, almacen);
+        var confirmadas = new OperacionesConfirmadasService(almacen);
+
+        var sincronizacion = new SincronizacionService(
+            http,
+            almacen,
+            rutas,
+            confirmadas,
+            cola
+        );
+
+        return (sincronizacion, navegador);
     }
+
 
     private static OperacionRequest Entrega(int envioId) => new()
     {

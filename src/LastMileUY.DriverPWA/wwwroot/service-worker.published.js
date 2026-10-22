@@ -48,8 +48,9 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             fetch(request).catch(async () => {
                 const cache = await caches.open(cacheName);
-                return await cache.match('index.html') ||
-                    Response.error();
+                return await cache.match(
+                    new URL('index.html', self.registration.scope).href
+                ) || Response.error();
             })
         );
         return;
