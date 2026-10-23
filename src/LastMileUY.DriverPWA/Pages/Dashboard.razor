@@ -257,13 +257,12 @@ else
         }
         catch (HttpRequestException)
         {
-            errorSesion =
-                "No se pudo cerrar sesión porque no hay conexión con el servidor. Intentá nuevamente.";
+            // Sin conexión no redirigimos automáticamente:
+            // el repartidor podría estar trabajando offline.
         }
         catch (TaskCanceledException)
         {
-            errorSesion =
-                "El servidor tardó demasiado en responder. Intentá cerrar sesión nuevamente.";
+            // La API no respondió. Conservamos la sesión local.
         }
         finally
         {

@@ -1,5 +1,6 @@
 namespace LastMileUY.DriverPWA.Tests;
 
+using System.Net;
 using LastMileUY.DriverPWA.Services;
 
 // Las reglas de lo que la app guarda en el celular (docs/datos-locales.md): vencimiento y un solo
@@ -145,6 +146,24 @@ public class AlmacenLocalTests
         Assert.NotNull(hoja);
     }
 
+    [Fact]
+    public async Task Al_cerrar_sesion_con_la_sesion_ya_vencida_se_borran_los_datos()
+    {
+        var (almacen, navegador, _) = Nuevo();
+        await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
+
+        // La API responde 401: para ella la sesión ya estaba cerrada
+        var sesionVencida = new HttpClient(new Responde(HttpStatusCode.Unauthorized))
+        {
+            BaseAddress = new Uri("https://api.prueba/")
+        };
+        var auth = new AuthService(sesionVencida, almacen, new ColaOperacionesService(almacen));
+
+        await auth.LogoutAsync();
+
+        Assert.Empty(navegador.Datos);
+    }
+
 
     private static (AlmacenLocal, NavegadorFalso, RelojFalso) Nuevo()
     {
@@ -166,5 +185,11 @@ public class AlmacenLocalTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
             throw new HttpRequestException("Sin conexión");
+    }
+
+    private class Responde(HttpStatusCode codigo) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            Task.FromResult(new HttpResponseMessage(codigo));
     }
 }

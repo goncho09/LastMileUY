@@ -21,9 +21,13 @@ Pruebas: `tests/LastMileUY.DriverPWA.Tests/AlmacenLocalTests.cs`.
    conexión no vence: si se borrara sola, el envío quedaría entregado en la calle y sin registrar en el
    sistema, y la firma de quien recibió no se puede volver a pedir. El dato de quién es el dueño de lo
    guardado tampoco vence, porque es el que permite conservar esas pendientes. Siguen cifradas, y salen
-   del celular con un resultado final de la API, al cerrar sesión o si entra otro repartidor (regla 4).
+   del celular con un resultado final de la API o si entra otro repartidor (regla 4). La app las
+   reenvía sola al abrirse y cada vez que vuelve la conexión, en cualquier pantalla (`ReenvioAutomatico`).
 4. **De un solo usuario.**
-   - Al cerrar sesión se borra todo, la clave incluida, antes de avisarle a la API.
+   - Con operaciones sin enviar no se puede cerrar sesión: la app avisa cuántas son, para no perderlas.
+   - Al cerrar sesión se borra todo, la clave incluida, cuando la API confirma el cierre. Si la API
+     responde que la sesión ya había vencido (401) también se borra. Sin conexión no se borra nada y
+     el repartidor lo vuelve a intentar.
    - Al iniciar sesión, si lo guardado no es de ese usuario (o no se sabe de quién es), se borra todo.
 5. **Solo lo necesario.**
    - La API no le manda al repartidor el email del destinatario (`ConsultasRutasService.ObtenerHojaParaLaAppAsync`): para comunicarse alcanza el teléfono.
@@ -48,7 +52,3 @@ Pruebas: `tests/LastMileUY.DriverPWA.Tests/AlmacenLocalTests.cs`.
 | Dueño de lo guardado (`dueno`) | `AlmacenLocal` | No |
 
 Las operaciones sin enviar se ven en la pantalla "Mis operaciones" (`/operaciones`).
-
-## Pendiente
-
-- Antes de cerrar sesión, si quedan operaciones sin enviar, avisarle al repartidor: al cerrar sesión se borran.

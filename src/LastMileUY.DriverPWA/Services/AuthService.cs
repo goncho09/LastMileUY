@@ -1,9 +1,10 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net;
+using System.Net.Http.Json;
 using LastMileUY.Contracts.Auth;
 
 namespace LastMileUY.DriverPWA.Services;
 
-public class AuthService(HttpClient http, AlmacenLocal almacen,ColaOperacionesService cola)
+public class AuthService(HttpClient http, AlmacenLocal almacen, ColaOperacionesService cola)
 {
     public async Task<bool> LoginAsync(string email, string password)
     {
@@ -39,7 +40,10 @@ public class AuthService(HttpClient http, AlmacenLocal almacen,ColaOperacionesSe
 
         // Primero cerramos la sesión en el servidor.
         using var response = await http.PostAsync("api/auth/logout", null);
-        response.EnsureSuccessStatusCode();
+
+        // 401: la sesión ya había vencido en el servidor, así que para él ya está cerrada
+        if (response.StatusCode != HttpStatusCode.Unauthorized)
+            response.EnsureSuccessStatusCode();
 
         // Solo borramos los datos locales si el servidor confirmó el logout.
         await almacen.BorrarTodoAsync();

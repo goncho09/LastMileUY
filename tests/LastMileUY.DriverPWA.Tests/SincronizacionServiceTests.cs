@@ -132,6 +132,37 @@ public class SincronizacionServiceTests
     }
 
     [Fact]
+    public async Task Dos_sincronizaciones_a_la_vez_no_mandan_dos_veces_la_misma_operacion()
+    {
+        var enLaApi = new ManualResetEventSlim();
+        var seguir = new ManualResetEventSlim();
+        var conConexion = false;
+        var api = new ApiFalsa(_ =>
+        {
+            if (!conConexion)
+                throw new HttpRequestException("Sin conexión");
+
+            // La primera sincronización queda esperando la respuesta de la API
+            enLaApi.Set();
+            seguir.Wait();
+            return Resultado("Aplicada");
+        });
+        var (servicio, _) = Servicio(api);
+        await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
+        conConexion = true;
+
+        // Vuelve la conexión: la dispara el layout y también la pantalla de operaciones
+        var primera = Task.Run(servicio.SincronizarPendientesAsync);
+        enLaApi.Wait(TimeSpan.FromSeconds(5));
+        var segunda = await servicio.SincronizarPendientesAsync();
+        seguir.Set();
+
+        Assert.Equal((0, 1), segunda);
+        Assert.Equal((1, 0), await primera);
+        Assert.Equal(2, api.Pedidos.Count(p => p.Ruta == "/api/sincronizacion"));
+    }
+
+    [Fact]
     public async Task No_se_reintenta_una_operacion_que_ya_no_esta_pendiente()
     {
         var (servicio, _) = Servicio(new ApiFalsa(_ => Resultado("Aplicada")));

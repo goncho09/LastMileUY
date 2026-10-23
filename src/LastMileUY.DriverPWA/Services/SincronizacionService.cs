@@ -172,23 +172,38 @@ public class SincronizacionService(
         return await EnviarOperacionGuardadaAsync(operacion);
     }
     
+    // Una sola sincronización a la vez: la disparan la pantalla de operaciones y el reenvío
+    // automático del layout (ReenvioAutomatico), y coinciden al volver la conexión
+    private readonly SemaphoreSlim sincronizando = new(1, 1);
+
     public async Task<(int Enviadas, int Pendientes)> SincronizarPendientesAsync()
     {
-        var operaciones = await cola.ObtenerPendientesAsync();
-        var enviadas = 0;
+        // Si ya hay una en curso, esta no envía nada: las pendientes las manda la otra
+        if (!await sincronizando.WaitAsync(0))
+            return (0, (await cola.ObtenerPendientesAsync()).Count);
 
-        foreach (var operacion in operaciones.OrderBy(x => x.FechaHoraDispositivo))
+        try
         {
-            var resultado = await ReintentarOperacionAsync(operacion.IdOperacion);
+            var operaciones = await cola.ObtenerPendientesAsync();
+            var enviadas = 0;
 
-            // Si la API dio un resultado definitivo, la operación
-            // ya fue eliminada de la cola por EnviarOperacionGuardadaAsync.
-            if (!resultado.Pendiente)
-                enviadas++;
+            foreach (var operacion in operaciones.OrderBy(x => x.FechaHoraDispositivo))
+            {
+                var resultado = await ReintentarOperacionAsync(operacion.IdOperacion);
+
+                // Si la API dio un resultado definitivo, la operación
+                // ya fue eliminada de la cola por EnviarOperacionGuardadaAsync.
+                if (!resultado.Pendiente)
+                    enviadas++;
+            }
+
+            var restantes = await cola.ObtenerPendientesAsync();
+
+            return (enviadas, restantes.Count);
         }
-
-        var restantes = await cola.ObtenerPendientesAsync();
-
-        return (enviadas, restantes.Count);
+        finally
+        {
+            sincronizando.Release();
+        }
     }
 }
