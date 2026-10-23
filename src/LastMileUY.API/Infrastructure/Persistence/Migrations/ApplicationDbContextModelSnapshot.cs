@@ -94,6 +94,26 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("MensajesOutbox", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Infrastructure.Mensajeria.MensajeProcesado", b =>
+                {
+                    b.Property<Guid>("MensajeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Consumidor")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("FechaProcesado")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("MensajeId", "Consumidor");
+
+                    b.ToTable("MensajesProcesados", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Comercios.Domain.Comercio", b =>
                 {
                     b.Property<int>("Id")
