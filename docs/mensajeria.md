@@ -9,9 +9,11 @@ Código:
 - Contrato: `src/LastMileUY.Contracts/Mensajeria` (lo comparten la API y el worker).
 - API: `src/LastMileUY.API/Infrastructure/Mensajeria` (outbox y publicador),
   `Infrastructure/Correlacion` y la migración `Outbox`.
-- Worker: `src/LastMileUY.Worker/ConsumidorEventosEnvio.cs`.
+- Worker: `src/LastMileUY.Worker` (`ConsumidorEventosEnvio` y `ProcesadorAvisos`) y la migración
+  `MensajesProcesados`.
 
-Pruebas: `tests/LastMileUY.API.Tests/Mensajeria`.
+Pruebas: `tests/LastMileUY.API.Tests/Mensajeria` (outbox y publicación) y `tests/LastMileUY.Worker.Tests`
+(procesamiento, repetidos y reintentos).
 
 ## El recorrido
 
@@ -71,7 +73,53 @@ Después, `PublicadorOutbox` (un servicio en segundo plano de la API):
 Publica apenas se guarda un evento (la API le avisa) y, además, revisa la tabla cada 5 segundos.
 
 **Al menos una vez.** Si la API se cae entre publicar y marcar, el mensaje sale de nuevo. El worker
-tiene que descartar los repetidos por `EventoId`.
+descarta los repetidos por `EventoId` (ver abajo).
+
+## El worker
+
+### Qué hace con cada evento
+
+`ProcesadorAvisos` deja un aviso pendiente (`EntregasAvisos`, estado Pendiente) por cada suscripción
+**activa** del comercio **a ese tipo de evento** (`SuscripcionesAvisos.TipoEvento` igual a `Tipo`). El
+contenido del aviso es el evento tal cual, sin datos personales. Mandar el aviso por HTTP al comercio es
+otro paso, que toma los pendientes.
+
+Se conecta a la base con el **usuario de la aplicación** (`lastmileuy_app`) y, antes de nada, carga el
+operador del evento (`app.operador_id`, solo para la transacción). Le aplica el RLS del ADR-01 igual que
+a la API: solo ve las suscripciones de ese operador, aunque el comercio trabaje con varios.
+
+### Sin procesar dos veces
+
+RabbitMQ entrega "al menos una vez": el mismo evento puede llegar dos veces (reenvío del outbox, o el
+worker se cae antes de confirmar). En la **misma transacción** en que registra los avisos, el worker
+anota el evento en `MensajesProcesados` (clave: `EventoId` + nombre del proceso, con RLS por operador):
+
+- Si la anotación entra, registra los avisos y confirma todo junto.
+- Si ya estaba (`ON CONFLICT DO NOTHING` no inserta nada), es un repetido: no hace nada.
+- Si algo falla a mitad, no queda ni la anotación ni los avisos, y el reintento empieza de cero.
+
+### Reintentos con espera creciente
+
+El mensaje se confirma (ack) recién cuando se procesó. Si procesarlo falla (por ejemplo, la base no
+responde), el worker no lo descarta ni lo reintenta enseguida, sino que lo deja en una **cola de espera**:
+
+| Intento que falla | Espera | Cola |
+|---|---|---|
+| 1 | 5 segundos | `lastmileuy.worker.envios.reintento.1` |
+| 2 | 30 segundos | `lastmileuy.worker.envios.reintento.2` |
+| 3 | 2 minutos | `lastmileuy.worker.envios.reintento.3` |
+| 4 | — | `lastmileuy.worker.envios.fallidos` |
+
+- Nadie consume las colas de espera. El mensaje tiene un vencimiento; al vencer, RabbitMQ lo devuelve a
+  la cola principal (dead-letter) y se procesa de nuevo.
+- Una cola por nivel, para que un mensaje que espera 2 minutos no frene a uno que espera 5 segundos.
+- La copia lleva los encabezados `x-intentos` y `x-ultimo-error`, y conserva el `MessageId` y el
+  `CorrelationId`. El original se confirma recién cuando RabbitMQ guardó la copia. Si no se puede dejar
+  la copia, el original vuelve a la cola: ningún mensaje se pierde.
+- Agotados los reintentos, el mensaje queda en la cola de **fallidos** para revisarlo y reintentarlo a
+  mano. Un mensaje que no se puede leer (formato inválido o una versión más nueva del contrato) va
+  directo ahí, porque reintentarlo no lo arregla.
+- Las esperas se configuran en `Mensajeria:EsperasReintento` (las pruebas usan esperas cortas).
 
 ## Permisos en la base
 
@@ -105,5 +153,5 @@ Con ese valor se busca en los registros de la API y del worker todo lo que pasó
 | Dónde | Qué |
 |---|---|
 | API | `ConnectionStrings:RabbitMQ` y `ConnectionStrings:Outbox` (usuario `lastmileuy_publicador`). Sin `RabbitMQ` no se publica: los eventos quedan en el outbox y salen cuando lo haya. |
-| Worker | `ConnectionStrings:RabbitMQ`. |
+| Worker | `ConnectionStrings:RabbitMQ`, `ConnectionStrings:DefaultConnection` (usuario `lastmileuy_app`) y, opcional, `Mensajeria:EsperasReintento`. |
 | compose | Servicio `rabbitmq` (panel en http://localhost:15672). Contraseña: `RABBITMQ_PASSWORD`, con una de desarrollo por defecto. |

@@ -165,9 +165,14 @@
       dockerfile: src/LastMileUY.Worker/Dockerfile
     environment:
       ConnectionStrings__RabbitMQ: "amqp://lastmileuy:${RABBITMQ_PASSWORD:-lastmileuy_rabbit_dev}@rabbitmq:5672/"
+      # Mismo usuario que la API (lastmileuy_app): le aplica el RLS del ADR-01
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=lastmileuy;Username=lastmileuy_app;Password=lastmileuy_app_dev"
     depends_on:
       rabbitmq:
         condition: service_healthy
+      # La API aplica las migraciones al arrancar (crea las tablas que usa el worker)
+      lastmileuy.api:
+        condition: service_started
 
 volumes:
   postgres_data:

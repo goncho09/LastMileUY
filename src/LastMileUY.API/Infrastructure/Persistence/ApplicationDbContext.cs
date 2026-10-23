@@ -89,6 +89,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     // Eventos por publicar en RabbitMQ (los agrega OutboxInterceptor; la app no los lee)
     public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
+
+    // Eventos que el worker ya procesó (para descartar los repetidos)
+    public DbSet<MensajeProcesado> MensajesProcesados => Set<MensajeProcesado>();
     
     // Configura las entidades y relaciones de la base de datos,
     protected override void OnModelCreating(ModelBuilder modelBuilder)
