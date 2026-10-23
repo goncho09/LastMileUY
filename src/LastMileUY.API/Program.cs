@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using LastMileUY.API.Infrastructure.Cache;
+using LastMileUY.API.Infrastructure.Correlacion;
+using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Destinatarios.Application;
@@ -26,6 +28,7 @@ using LastMileUY.API.Modules.Seguimiento.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +36,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Multitenancy (ADR-01): de qué operador es cada pedido.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IContextoOperador, ContextoOperadorHttp>();
+
+// Identificador de correlación de cada pedido (lo carga UseCorrelacion, lo leen el outbox y los logs)
+builder.Services.AddScoped<ContextoCorrelacion>();
+builder.Services.AddSingleton<SenalOutbox>();
 
 // Configura PostgreSQL como base de datos de la aplicación.
 // El interceptor carga el operador en cada conexión para que apliquen las políticas RLS.
@@ -42,8 +49,34 @@ builder.Services.AddDbContext<ApplicationDbContext>((servicios, options) =>
         .AddInterceptors(
             new InterceptorOperadorConexion(servicios.GetRequiredService<IContextoOperador>()),
             // Al guardar cambios, borra del caché lo que quedó viejo (ver InvalidacionCacheInterceptor)
-            new InvalidacionCacheInterceptor(servicios.GetRequiredService<CacheDistribuido>()))
+            new InvalidacionCacheInterceptor(servicios.GetRequiredService<CacheDistribuido>()),
+            // Y deja en el outbox los eventos de los envíos, en el mismo guardado (ver docs/mensajeria.md)
+            new OutboxInterceptor(
+                servicios.GetRequiredService<ContextoCorrelacion>(),
+                servicios.GetRequiredService<SenalOutbox>()))
 );
+
+// Mensajería: el publicador del outbox manda los eventos a RabbitMQ.
+// Sin cadena "RabbitMQ" (pruebas que no la usan, la API fuera de Docker) no se publica: los
+// eventos se siguen guardando en el outbox y salen cuando haya RabbitMQ.
+var conexionRabbit = builder.Configuration.GetConnectionString("RabbitMQ");
+
+if (!string.IsNullOrWhiteSpace(conexionRabbit))
+{
+    // El publicador lee el outbox con su propio usuario de la base (lastmileuy_publicador)
+    var conexionOutbox = builder.Configuration.GetConnectionString("Outbox");
+
+    if (string.IsNullOrWhiteSpace(conexionOutbox))
+        throw new InvalidOperationException(
+            "Con RabbitMQ configurado falta ConnectionStrings:Outbox (usuario lastmileuy_publicador).");
+
+    builder.Services.AddSingleton(new ConexionRabbitMq(conexionRabbit));
+    builder.Services.AddHostedService(servicios => new PublicadorOutbox(
+        NpgsqlDataSource.Create(conexionOutbox),
+        servicios.GetRequiredService<ConexionRabbitMq>(),
+        servicios.GetRequiredService<SenalOutbox>(),
+        servicios.GetRequiredService<ILogger<PublicadorOutbox>>()));
+}
 
 
 // Configurar ASPT.NET AUTH
@@ -246,6 +279,9 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Primero, así todo lo que pase en el pedido (y sus registros) lleva el identificador
+app.UseCorrelacion();
 
 app.UseCors("DriverPWA");
 

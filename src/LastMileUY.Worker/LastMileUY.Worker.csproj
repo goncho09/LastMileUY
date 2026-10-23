@@ -10,11 +10,16 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12"/>
+        <PackageReference Include="RabbitMQ.Client" Version="7.1.2"/>
     </ItemGroup>
 
     <ItemGroup>
       <Content Include="..\..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\LastMileUY.Contracts\LastMileUY.Contracts.csproj"/>
     </ItemGroup>
 </Project>

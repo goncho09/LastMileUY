@@ -2,16 +2,25 @@ using System.Net;
 
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using Contracts.Auth;
+using Contracts.Mensajeria;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Npgsql;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using Testcontainers.PostgreSql;
+using Testcontainers.RabbitMq;
 
 // La API completa, tal como arranca en desarrollo, contra un PostgreSQL real en Docker:
 // aplica las migraciones, corre los seeders (operadores, despachadores, comercios, destinatarios
 // reglas, vehículos y repartidores) y se le habla por HTTP iniciando sesión con esos usuarios. Nada se simula.
+// También levanta un RabbitMQ real: la API publica ahí los eventos de envío, y una cola de la prueba
+// los recibe todos (EventosRecibidos), como los recibiría el worker.
 public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string Clave = "Prueba1234";
@@ -28,6 +37,13 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     public const string Repartidor2 = "repartidor2@prueba.test";
 
     private readonly PostgreSqlContainer contenedor = new PostgreSqlBuilder("postgres:17").Build();
+    private readonly RabbitMqContainer rabbit = new RabbitMqBuilder("rabbitmq:4.1-alpine").Build();
+    private IConnection? conexionRabbit;
+
+    // Lo que llegó a la cola de la prueba, con las propiedades del mensaje
+    public record EventoRecibido(EstadoEnvioCambiado Evento, string? MessageId, string? CorrelationId, string Cuerpo);
+
+    private readonly ConcurrentQueue<EventoRecibido> eventosRecibidos = new();
 
     public int IdOperador1 { get; private set; }
     public int IdOperador2 { get; private set; }
@@ -40,7 +56,10 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await contenedor.StartAsync();
+        await Task.WhenAll(contenedor.StartAsync(), rabbit.StartAsync());
+
+        // La cola de la prueba tiene que existir antes de que la API publique (los seeders ya crean envíos)
+        await EscucharEventosAsync();
 
         // Arranca la API: migraciones + seeders
         _ = Server;
@@ -78,6 +97,56 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("SeedComercioPrueba:Email", Comercio1);
         builder.UseSetting("SeedComercioPrueba:Password", Clave);
         builder.UseSetting("Evidencias:Directorio", DirectorioEvidencias);
+        builder.UseSetting("ConnectionStrings:RabbitMQ", rabbit.GetConnectionString());
+        builder.UseSetting("ConnectionStrings:Outbox", new NpgsqlConnectionStringBuilder(contenedor.GetConnectionString())
+        {
+            Username = "lastmileuy_publicador",
+            Password = "lastmileuy_publicador_dev"
+        }.ConnectionString);
+    }
+
+    // Espera (hasta 15 segundos) a que llegue a RabbitMQ un evento que cumpla la condición
+    public async Task<EventoRecibido> EsperarEventoAsync(Func<EstadoEnvioCambiado, bool> condicion)
+    {
+        var limite = DateTime.UtcNow.AddSeconds(15);
+
+        while (DateTime.UtcNow < limite)
+        {
+            var recibido = eventosRecibidos.FirstOrDefault(r => condicion(r.Evento));
+
+            if (recibido is not null)
+                return recibido;
+
+            await Task.Delay(100);
+        }
+
+        throw new TimeoutException("No llegó el evento esperado a RabbitMQ.");
+    }
+
+    // Cola exclusiva de la prueba, unida al exchange de envíos como la del worker
+    private async Task EscucharEventosAsync()
+    {
+        conexionRabbit = await new ConnectionFactory { Uri = new Uri(rabbit.GetConnectionString()) }
+            .CreateConnectionAsync();
+        var canal = await conexionRabbit.CreateChannelAsync();
+
+        await canal.ExchangeDeclareAsync(TopologiaMensajeria.ExchangeEnvios, ExchangeType.Topic, durable: true);
+        var cola = await canal.QueueDeclareAsync(exclusive: true);
+        await canal.QueueBindAsync(cola.QueueName, TopologiaMensajeria.ExchangeEnvios, TopologiaMensajeria.PatronEventosEnvio);
+
+        var consumidor = new AsyncEventingBasicConsumer(canal);
+        consumidor.ReceivedAsync += (_, mensaje) =>
+        {
+            var cuerpo = Encoding.UTF8.GetString(mensaje.Body.Span);
+            eventosRecibidos.Enqueue(new EventoRecibido(
+                JsonSerializer.Deserialize<EstadoEnvioCambiado>(cuerpo)!,
+                mensaje.BasicProperties.MessageId,
+                mensaje.BasicProperties.CorrelationId,
+                cuerpo));
+            return Task.CompletedTask;
+        };
+
+        await canal.BasicConsumeAsync(cola.QueueName, autoAck: true, consumer: consumidor);
     }
 
     // Un cliente HTTP con sesión iniciada (guarda la cookie como un navegador).
@@ -179,7 +248,11 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     async Task IAsyncLifetime.DisposeAsync()
     {
         await base.DisposeAsync();
-        await contenedor.DisposeAsync();
+
+        if (conexionRabbit is not null)
+            await conexionRabbit.DisposeAsync();
+
+        await Task.WhenAll(contenedor.DisposeAsync().AsTask(), rabbit.DisposeAsync().AsTask());
 
         if (Directory.Exists(DirectorioEvidencias))
         {
