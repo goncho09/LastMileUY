@@ -1,5 +1,7 @@
 namespace LastMileUY.API.Tests.Multitenancy;
 
+using LastMileUY.API.Infrastructure.Correlacion;
+using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +43,13 @@ public class BaseConDosOperadores : IAsyncLifetime
 
     // Conexión con el superusuario (solo para preparar los datos)
     public string CadenaAdministrador => contenedor.GetConnectionString();
+
+    // Conexión con el usuario del publicador del outbox (solo lee y marca MensajesOutbox)
+    public string CadenaPublicador => new NpgsqlConnectionStringBuilder(CadenaAdministrador)
+    {
+        Username = "lastmileuy_publicador",
+        Password = "lastmileuy_publicador_dev"
+    }.ConnectionString;
 
     public async Task InitializeAsync()
     {
@@ -102,14 +111,17 @@ public class BaseConDosOperadores : IAsyncLifetime
     }
 
     // Un DbContext como el de la aplicación: usuario sin privilegios + interceptor del operador
-    // (y del comercio, para simular a un usuario de comercio)
-    public ApplicationDbContext CrearContexto(int? operadorId, int? comercioId = null)
+    // (y del comercio, para simular a un usuario de comercio) + outbox de eventos, con la
+    // correlación del pedido que se quiera simular
+    public ApplicationDbContext CrearContexto(int? operadorId, int? comercioId = null, string? correlacion = null)
     {
         var contexto = new ContextoOperadorFijo(operadorId, comercioId);
 
         var opciones = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(CadenaAplicacion)
-            .AddInterceptors(new InterceptorOperadorConexion(contexto))
+            .AddInterceptors(
+                new InterceptorOperadorConexion(contexto),
+                new OutboxInterceptor(new ContextoCorrelacion { Id = correlacion }, new SenalOutbox()))
             .Options;
 
         return new ApplicationDbContext(opciones, contexto);

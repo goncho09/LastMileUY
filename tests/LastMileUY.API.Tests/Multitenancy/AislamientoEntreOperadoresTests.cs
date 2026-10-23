@@ -166,7 +166,10 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         // OperadoresComercios: la usan las propias políticas para saber quién trabaja con quién
         "OperadoresComercios",
         // Comercios: al darlo de alta todavía no tiene operador; se protege con el filtro de EF
-        "Comercios"
+        "Comercios",
+        // MensajesOutbox: eventos de todos los operadores para publicar en RabbitMQ. En vez de RLS, la
+        // aplicación solo puede insertar (no leer) y el publicador tiene su propio usuario (OutboxTests)
+        "MensajesOutbox"
     ];
 
     [Fact]

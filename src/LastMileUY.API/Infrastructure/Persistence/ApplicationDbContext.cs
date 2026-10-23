@@ -11,6 +11,7 @@ using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.API.Modules.Notificaciones.Domain;
 
 using System.Reflection;
+using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     // Sincronización de la app del repartidor
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
+
+    // Eventos por publicar en RabbitMQ (los agrega OutboxInterceptor; la app no los lee)
+    public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
     
     // Configura las entidades y relaciones de la base de datos,
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -181,6 +185,8 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<Devolucion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<Notificacion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<EntregaAviso>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        // La aplicación no puede leer el outbox (ver la migración Outbox); el filtro queda por coherencia
+        modelBuilder.Entity<MensajeOutbox>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<PruebaEntrega>().HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));
 
         // Hijas de la ruta
