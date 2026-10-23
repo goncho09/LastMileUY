@@ -137,7 +137,12 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "LastMileUY.Auth";
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.None;
+    // Lax: la app del repartidor le habla a la API por el mismo sitio (nginx le pasa /api). None
+    // (la cookie viaja entre sitios) solo si hay orígenes de la app afuera, como con dotnet watch
+    // en desarrollo (ver CORS más abajo)
+    options.Cookie.SameSite = builder.Configuration.GetSection("AppRepartidor:Origenes").Get<string[]>() is { Length: > 0 }
+        ? SameSiteMode.None
+        : SameSiteMode.Lax;
 
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;

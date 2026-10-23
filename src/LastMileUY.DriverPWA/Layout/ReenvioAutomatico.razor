@@ -1,0 +1,60 @@
+@using LastMileUY.DriverPWA.Services
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject SincronizacionService Sincronizacion
+
+@* Manda las operaciones pendientes al abrir la app y cada vez que vuelve la conexión, esté el
+   repartidor en la pantalla que esté. No muestra nada: el detalle se ve en /operaciones. *@
+
+@code {
+    private IJSObjectReference? moduloConexion;
+    private IJSObjectReference? detectorConexion;
+    private DotNetObjectReference<ReenvioAutomatico>? referenciaDotNet;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        moduloConexion = await JS.InvokeAsync<IJSObjectReference>("import", "./js/conexion.js");
+        referenciaDotNet = DotNetObjectReference.Create(this);
+        detectorConexion = await moduloConexion.InvokeAsync<IJSObjectReference>(
+            "escucharConexion", referenciaDotNet);
+
+        await ConexionRestablecida();
+    }
+
+    [JSInvokable]
+    public async Task ConexionRestablecida()
+    {
+        try
+        {
+            await Sincronizacion.SincronizarPendientesAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
+                                       or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Sin conexión o sin sesión las operaciones siguen en la cola para el próximo intento
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (detectorConexion is not null)
+            {
+                await detectorConexion.InvokeVoidAsync("dispose");
+                await detectorConexion.DisposeAsync();
+            }
+
+            if (moduloConexion is not null)
+                await moduloConexion.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        referenciaDotNet?.Dispose();
+    }
+}
