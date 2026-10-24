@@ -52,6 +52,13 @@ public class EnviosApiHttp(HttpClient http) : IEnviosApi
 
         return await respuesta.Content.ReadFromJsonAsync<EnvioDetalleDto>(ct);
     }
+    
+    public async Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
+        CancellationToken ct = default)
+    {
+        return await http.GetFromJsonAsync<List<ActividadEnvioDto>>(
+            "api/envios/actividad-reciente", ct) ?? [];
+    }
 
     public static string ArmarUrlListado(FiltroEnvios filtro)
     {

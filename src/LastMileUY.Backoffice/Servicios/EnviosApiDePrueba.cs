@@ -136,6 +136,12 @@ public class EnviosApiDePrueba : IEnviosApi
     {
         Canal = e.Canal
     };
+    
+    public Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
+        CancellationToken ct = default)
+    {
+        return Task.FromResult(new List<ActividadEnvioDto>());
+    }
 
     // Siempre genera los mismos datos (semilla fija), así las pruebas y las capturas no cambian
     private static List<EnvioDetalleDto> GenerarEnvios()

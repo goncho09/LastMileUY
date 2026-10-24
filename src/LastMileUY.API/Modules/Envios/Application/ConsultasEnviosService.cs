@@ -189,6 +189,40 @@ public class ConsultasEnviosService(
     }
     
     
+    public async Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var comercioId = ObtenerComercioAutorizado();
+
+        var consulta =
+            from evento in db.EventosEnvio.AsNoTracking()
+            join envio in db.Envios.AsNoTracking()
+                on evento.EnvioId equals envio.Id
+            select new { Evento = evento, Envio = envio };
+
+        if (comercioId.HasValue)
+        {
+            consulta = consulta.Where(x =>
+                x.Envio.ComercioId == comercioId.Value);
+        }
+
+        return await consulta
+            .OrderByDescending(x => x.Evento.FechaHora)
+            .ThenByDescending(x => x.Evento.Id)
+            .Take(10)
+            .Select(x => new ActividadEnvioDto(
+                x.Evento.Id,
+                x.Envio.Id,
+                x.Envio.CodigoSeguimiento,
+                x.Evento.Tipo,
+                x.Evento.Descripcion,
+                x.Evento.Origen,
+                x.Evento.FechaHora))
+            .ToListAsync(cancellationToken);
+    }
+
+    
+    
     private int? ObtenerComercioAutorizado()
     {
         var usuario = httpContextAccessor.HttpContext?.User;

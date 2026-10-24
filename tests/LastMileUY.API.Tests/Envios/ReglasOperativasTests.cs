@@ -1,15 +1,16 @@
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Modules.Operadores.Application;
 using Microsoft.AspNetCore.Http;
 
 namespace LastMileUY.API.Tests.Envios;
 
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Domain;
-using LastMileUY.API.Tests.Multitenancy;
+using Multitenancy;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+using static Multitenancy.BaseConDosOperadores;
 
 // Cada operador trabaja con sus propias reglas operativas. En la base de prueba,
 // el operador A permite 1 intento de entrega fallido y el B permite 2.
@@ -144,18 +145,45 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
     }
 
     // Pasa el envío por los estados indicados, cada uno en su propio pedido (como desde el Backoffice)
-    private async Task LlevarAsync(int operadorId, int id, params string[] estados)
+    
+    private async Task LlevarAsync(
+        int operadorId,
+        int id,
+        params string[] estados)
     {
         foreach (var estado in estados)
         {
             await using var db = baseDeDatos.CrearContexto(operadorId);
-            await new CambiarEstadoEnvioService(db).EjecutarAsync(
-                id,
-                new CambiarEstadoRequest { Estado = estado },
-                "Backoffice",
-                CrearUsuarioOperador());
+
+            if (estado is "AsignadoARuta" or "EnTransito")
+            {
+                var envio = await db.Envios
+                    .Include(e => e.IntentosEntrega)
+                    .FirstAsync(e => e.Id == id);
+
+                var nuevoEstado = Enum.Parse<EstadoEnvio>(estado);
+
+                var regla = await db.ObtenerVigenteAsync(envio.Modalidad);
+
+                envio.CambiarEstado(
+                    nuevoEstado,
+                    "Sistema",
+                    regla: regla);
+
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                await new CambiarEstadoEnvioService(db)
+                    .EjecutarAsync(
+                        id,
+                        new CambiarEstadoRequest { Estado = estado },
+                        "Backoffice",
+                        CrearUsuarioOperador());
+            }
         }
     }
+
 
     private async Task<EnvioDetalleDto> DetalleAsync(int operadorId, int id)
     {
@@ -178,5 +206,26 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
 
         Assert.NotNull(detalle);
         return detalle;
+    }
+    
+    [Theory]
+    [InlineData("AsignadoARuta")]
+    [InlineData("EnTransito")]
+    public async Task No_se_puede_asignar_ni_despachar_manualmente(
+        string estado)
+    {
+        var id = await CrearEnvioAsync(OperadorA);
+
+        await LlevarAsync(OperadorA, id, "EnDeposito");
+
+        await using var db = baseDeDatos.CrearContexto(OperadorA);
+
+        await Assert.ThrowsAsync<TransicionInvalidaException>(
+            () => new CambiarEstadoEnvioService(db)
+                .EjecutarAsync(
+                    id,
+                    new CambiarEstadoRequest { Estado = estado },
+                    "Backoffice",
+                    CrearUsuarioOperador()));
     }
 }

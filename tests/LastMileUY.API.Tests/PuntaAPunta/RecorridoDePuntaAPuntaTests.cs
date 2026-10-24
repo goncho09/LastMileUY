@@ -1,3 +1,5 @@
+using LastMileUY.Contracts.Rutas;
+
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using System.Net;
@@ -307,14 +309,100 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         cliente.PatchAsJsonAsync($"api/envios/{id}/estado",
             new CambiarEstadoRequest { Estado = estado, Descripcion = descripcion });
 
-    private static async Task RecorrerAsync(HttpClient cliente, int id, params string[] estados)
+    
+private async Task RecorrerAsync(
+    HttpClient cliente,
+    int id,
+    params string[] estados)
+{
+    int? rutaId = null;
+    var numeroRuta = 0;
+
+    foreach (var estado in estados)
     {
-        foreach (var estado in estados)
+        if (estado == "AsignadoARuta")
         {
-            using var respuesta = await CambiarEstadoAsync(cliente, id, estado);
-            Assert.True(respuesta.IsSuccessStatusCode, $"No se pudo pasar a {estado}: {(int)respuesta.StatusCode}");
+            // Obtener los recursos disponibles del operador.
+            var opciones = await cliente.GetFromJsonAsync<OpcionesRutaDto>(
+                "api/rutas/opciones");
+
+            Assert.NotNull(opciones);
+            Assert.NotEmpty(opciones.Repartidores);
+            Assert.NotEmpty(opciones.Vehiculos);
+
+            Assert.Contains(opciones.Envios, envio => envio.Id == id);
+
+            numeroRuta++;
+
+            // Cada ruta de prueba utiliza una fecha diferente
+            // para no colisionar con otras rutas del fixture.
+            var fecha = DateOnly.FromDateTime(DateTime.UtcNow)
+                .AddDays(365 + id * 3 + numeroRuta);
+
+            var request = new CrearRutaRequest
+            {
+                Nombre = $"Ruta prueba envío {id} intento {numeroRuta}",
+                Fecha = fecha,
+                RepartidorId = opciones.Repartidores[0].Id,
+                VehiculoId = opciones.Vehiculos[0].Id,
+                EnvioIds = [id]
+            };
+
+            using var respuesta = await cliente.PostAsJsonAsync(
+                "api/rutas",
+                request);
+
+            var contenido = await respuesta.Content.ReadAsStringAsync();
+
+            Assert.True(
+                respuesta.IsSuccessStatusCode,
+                $"No se pudo crear la ruta: " +
+                $"{(int)respuesta.StatusCode} - {contenido}");
+
+            var ruta = await respuesta.Content
+                .ReadFromJsonAsync<RutaDetalleDto>();
+
+            Assert.NotNull(ruta);
+
+            rutaId = ruta.Id;
+        }
+        else if (estado == "EnTransito")
+        {
+            Assert.True(
+                rutaId.HasValue,
+                "No se puede despachar un envío sin crear su ruta.");
+
+            using var respuesta = await cliente.PostAsync(
+                $"api/rutas/{rutaId.Value}/despachar",
+                null);
+
+            var contenido = await respuesta.Content.ReadAsStringAsync();
+
+            Assert.True(
+                respuesta.IsSuccessStatusCode,
+                $"No se pudo despachar la ruta: " +
+                $"{(int)respuesta.StatusCode} - {contenido}");
+
+        }
+        else
+        {
+            // Los demás estados continúan usando
+            // el endpoint habitual del Backoffice.
+            using var respuesta = await CambiarEstadoAsync(
+                cliente,
+                id,
+                estado);
+
+            var contenido = await respuesta.Content.ReadAsStringAsync();
+
+            Assert.True(
+                respuesta.IsSuccessStatusCode,
+                $"No se pudo pasar a {estado}: " +
+                $"{(int)respuesta.StatusCode} - {contenido}");
         }
     }
+}
+
 
     private static async Task<PaginaDto<EnvioResumenDto>> ListarAsync(HttpClient cliente, string consulta) =>
         (await cliente.GetFromJsonAsync<PaginaDto<EnvioResumenDto>>($"api/envios?{consulta}"))!;

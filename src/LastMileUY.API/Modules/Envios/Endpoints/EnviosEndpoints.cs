@@ -176,7 +176,32 @@ public static class EnviosEndpoints
             })
             .RequireAuthorization(politica => politica.RequireRole("Operador", "Despachador"))
             .WithName("CambiarEstadoEnvio");
+        
+        
+        group.MapGet("/actividad-reciente", async (
+                ConsultasEnviosService consultas,
+                IContextoOperador contextoOperador,
+                CancellationToken cancellationToken) =>
+            {
+                if (contextoOperador.OperadorId is null)
+                    return Results.Forbid();
 
+                try
+                {
+                    var actividad = await consultas
+                        .ObtenerActividadRecienteAsync(cancellationToken);
+
+                    return Results.Ok(actividad);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
+            })
+            .RequireAuthorization(politica =>
+                politica.RequireRole("Operador", "Despachador"))
+            .WithName("ObtenerActividadReciente");
+        
         return app;
     }
 }

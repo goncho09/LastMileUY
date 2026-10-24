@@ -14,4 +14,7 @@ public static class TopologiaMensajeria
     // Encabezado HTTP con el que llega (o sale) el identificador de correlación de un pedido.
     // En el mensaje viaja en la propiedad CorrelationId de AMQP y en el propio evento.
     public const string EncabezadoCorrelacion = "X-Correlation-Id";
+    
+    // Cola del backoffice: recibe todos los eventos de envío ("envio.#")
+    public const string ColaBackoffice = "lastmileuy.backoffice.envios";
 }

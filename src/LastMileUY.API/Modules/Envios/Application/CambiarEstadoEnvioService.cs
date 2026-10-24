@@ -2,6 +2,7 @@ using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,6 +35,19 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             || !Enum.IsDefined(nuevoEstado))
         {
             throw new ArgumentException($"El estado '{request.Estado}' no existe.");
+        }
+        
+        // Estos estados no se pueden establecer manualmente.
+        if (nuevoEstado == EstadoEnvio.AsignadoARuta)
+        {
+            throw new TransicionInvalidaException(
+                "Para asignar un envío a una ruta, debés crear una ruta desde el módulo de rutas.");
+        }
+
+        if (nuevoEstado == EstadoEnvio.EnTransito)
+        {
+            throw new TransicionInvalidaException(
+                "Para poner un envío en tránsito, debés despachar la ruta a la que pertenece.");
         }
 
         var descripcion = string.IsNullOrWhiteSpace(request.Descripcion) ? null : request.Descripcion.Trim();
@@ -69,6 +83,39 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new TransicionInvalidaException(ex.Message);
         }
 
+        // Si el resultado de la entrega se registra manualmente,
+        // también debemos actualizar el estado de la ruta.
+        if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
+        {
+            var ruta = await db.Rutas
+                .Include(r => r.Paradas)
+                .Where(r =>
+                    (r.Estado == EstadoRuta.Despachada ||
+                     r.Estado == EstadoRuta.EnCurso) &&
+                    r.Paradas.Any(p => p.EnvioId == envio.Id))
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (ruta is not null)
+            {
+                ruta.RegistrarActividad(DateTime.UtcNow);
+
+                var otrosEnvioIds = ruta.Paradas
+                    .Where(p => p.EnvioId != envio.Id)
+                    .Select(p => p.EnvioId)
+                    .ToList();
+
+                var otrosEstados = await db.Envios
+                    .Where(e => otrosEnvioIds.Contains(e.Id))
+                    .Select(e => e.Estado)
+                    .ToListAsync(cancellationToken);
+
+                ruta.FinalizarSiTermino(
+                    otrosEstados.Append(envio.Estado));
+            }
+        }
+
+        // El estado del envío, el intento de entrega y la ruta
+        // se guardan juntos mediante el mismo DbContext.
         await db.SaveChangesAsync(cancellationToken);
 
         return true;
