@@ -31,31 +31,75 @@
         </a>
     </div>
 
+    @if (Model.Error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+
     <!-- Tarjetas de resumen -->
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
         <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
-            <p class="text-sm text-slate-400">Envíos totales</p>
-            <p class="mt-4 text-3xl font-bold text-white">—</p>
-            <p class="mt-3 text-xs text-slate-500">Resumen de operaciones</p>
+            <p class="text-sm text-slate-400">
+                Envíos totales
+            </p>
+
+            <p id="total-envios"
+               class="mt-4 text-3xl font-bold text-white">
+                @Model.TotalEnvios
+            </p>
+
+            <p class="mt-3 text-xs text-slate-500">
+                Resumen de operaciones
+            </p>
         </div>
 
         <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
-            <p class="text-sm text-slate-400">En tránsito</p>
-            <p class="mt-4 text-3xl font-bold text-white">—</p>
-            <p class="mt-3 text-xs text-slate-500">Envíos en distribución</p>
+            <p class="text-sm text-slate-400">
+                En tránsito
+            </p>
+
+            <p id="en-transito"
+               class="mt-4 text-3xl font-bold text-white">
+                @Model.EnTransito
+            </p>
+
+            <p class="mt-3 text-xs text-slate-500">
+                Envíos en distribución
+            </p>
         </div>
 
         <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
-            <p class="text-sm text-slate-400">Entregados</p>
-            <p class="mt-4 text-3xl font-bold text-white">—</p>
-            <p class="mt-3 text-xs text-slate-500">Entregas completadas</p>
+            <p class="text-sm text-slate-400">
+                Entregados
+            </p>
+
+            <p id="entregados"
+               class="mt-4 text-3xl font-bold text-white">
+                @Model.Entregados
+            </p>
+
+            <p class="mt-3 text-xs text-slate-500">
+                Entregas completadas
+            </p>
         </div>
 
         <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
-            <p class="text-sm text-slate-400">Incidencias</p>
-            <p class="mt-4 text-3xl font-bold text-white">—</p>
-            <p class="mt-3 text-xs text-slate-500">Envíos que requieren atención</p>
+            <p class="text-sm text-slate-400">
+                Incidencias
+            </p>
+
+            <p id="incidencias"
+               class="mt-4 text-3xl font-bold text-white">
+                @Model.Incidencias
+            </p>
+
+            <p class="mt-3 text-xs text-slate-500">
+                Envíos que requieren atención
+            </p>
         </div>
 
     </div>
@@ -63,26 +107,44 @@
     <!-- Sección inferior -->
     <div class="grid gap-5 lg:grid-cols-3">
 
-        <section class="rounded-2xl border border-white/10 bg-[#171923] p-6 lg:col-span-2">
-            <h2 class="text-lg font-semibold text-white">
-                Actividad reciente
-            </h2>
+        <!-- Actividad reciente -->
+        <section class="min-w-0 rounded-2xl border border-white/10 bg-[#171923] p-6 lg:col-span-2">
+
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold text-white">
+                    Actividad reciente
+                </h2>
+
+                <span id="estado-signalr"
+                      role="status"
+                      class="text-xs text-slate-400">
+                    Conectando...
+                </span>
+            </div>
 
             <p class="mt-1 text-sm text-slate-400">
-                Últimos movimientos de tus envíos.
+                Últimos 10 movimientos registrados en tus envíos.
             </p>
 
-            <div class="mt-8 flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-4 text-center">
-                <p class="text-sm font-medium text-slate-300">
-                    Próximamente, actividad en tiempo real
-                </p>
-
-                <p class="mt-2 max-w-sm text-xs text-slate-500">
-                    Acá mostraremos los últimos cambios de estado registrados en la plataforma.
+            <!-- Mensaje sin actividad -->
+            <div id="actividad-vacia"
+                 class="mt-6 flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-4 text-center">
+                <p class="text-sm text-slate-400">
+                    Cargando actividad...
                 </p>
             </div>
+
+            <!-- Historial con scroll -->
+            <div class="mt-4 max-h-[400px] overflow-y-auto overscroll-contain pr-2">
+                <ul id="actividad-reciente"
+                    aria-live="polite"
+                    class="space-y-3">
+                </ul>
+            </div>
+
         </section>
 
+        <!-- Accesos rápidos -->
         <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
             <h2 class="text-lg font-semibold text-white">
                 Accesos rápidos
@@ -103,3 +165,298 @@
 
     </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+
+    <script>
+        (() => {
+            const conexion = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/envios")
+                .withAutomaticReconnect()
+                .build();
+
+            const actividad = document.getElementById("actividad-reciente");
+            const vacio = document.getElementById("actividad-vacia");
+            const estadoSignalR = document.getElementById("estado-signalr");
+
+            let actualizando = false;
+            let actualizarDeNuevo = false;
+            let temporizador = null;
+            let temporizadorConexion = null;
+            let paginaActiva = true;
+
+            function establecerEstado(texto) {
+                estadoSignalR.textContent = texto;
+            }
+
+            function mostrarVacio(mensaje) {
+                vacio.querySelector("p").textContent = mensaje;
+                vacio.style.display = "flex";
+            }
+
+            function ocultarVacio() {
+                vacio.style.display = "none";
+            }
+
+            function crearElemento(evento) {
+                const item = document.createElement("li");
+
+                item.className =
+                    "rounded-xl border border-white/10 bg-white/5 p-4";
+
+                const cabecera = document.createElement("div");
+
+                cabecera.className =
+                    "flex flex-wrap items-center justify-between gap-2";
+
+                const codigo = document.createElement("p");
+
+                codigo.className =
+                    "break-all text-sm font-semibold text-white";
+
+                codigo.textContent =
+                    `Envío ${evento.codigoSeguimiento}`;
+
+                const origen = document.createElement("span");
+
+                origen.className =
+                    "rounded-full bg-violet-500/10 px-2.5 py-1 text-xs text-violet-300";
+
+                origen.textContent = evento.origen || "Sin origen";
+
+                cabecera.append(codigo, origen);
+
+                const detalle = document.createElement("p");
+
+                detalle.className =
+                    "mt-2 text-sm text-slate-300";
+
+                detalle.textContent =
+                    evento.descripcion ||
+                    evento.estado ||
+                    "Movimiento registrado";
+
+                const fecha = document.createElement("p");
+
+                fecha.className =
+                    "mt-2 text-xs text-slate-500";
+
+                const fechaEvento = new Date(evento.fechaHora);
+
+                fecha.textContent = Number.isNaN(fechaEvento.getTime())
+                    ? "Fecha no disponible"
+                    : fechaEvento.toLocaleString("es-UY");
+
+                item.append(cabecera, detalle, fecha);
+
+                return item;
+            }
+
+            async function cargarActividadReciente() {
+                const respuesta = await fetch(
+                    '@Url.Page("/Index", "Actividad")',
+                    {
+                        credentials: "same-origin",
+                        cache: "no-store"
+                    }
+                );
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        `Error cargando actividad: HTTP ${respuesta.status}`
+                    );
+                }
+
+                const datos = await respuesta.json();
+
+                // Los eventos de PostgreSQL son la fuente de verdad.
+                // Evitamos duplicados por ID y conservamos los últimos 10.
+                const ids = new Set();
+
+                const eventos = datos
+                    .filter(evento => {
+                        if (ids.has(evento.id)) {
+                            return false;
+                        }
+
+                        ids.add(evento.id);
+                        return true;
+                    })
+                    .slice(0, 10);
+
+                actividad.replaceChildren(
+                    ...eventos.map(crearElemento)
+                );
+
+                if (eventos.length === 0) {
+                    mostrarVacio(
+                        "Todavía no hay movimientos registrados."
+                    );
+                } else {
+                    ocultarVacio();
+                }
+            }
+
+            async function actualizarEstadisticas() {
+                const respuesta = await fetch(
+                    '@Url.Page("/Index", "Estadisticas")',
+                    {
+                        credentials: "same-origin",
+                        cache: "no-store"
+                    }
+                );
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        `Error cargando estadísticas: HTTP ${respuesta.status}`
+                    );
+                }
+
+                const datos = await respuesta.json();
+
+                document.getElementById("total-envios").textContent =
+                    datos.totalEnvios;
+
+                document.getElementById("en-transito").textContent =
+                    datos.enTransito;
+
+                document.getElementById("entregados").textContent =
+                    datos.entregados;
+
+                document.getElementById("incidencias").textContent =
+                    datos.incidencias;
+            }
+
+            async function refrescar() {
+                if (actualizando) {
+                    actualizarDeNuevo = true;
+                    return;
+                }
+
+                actualizando = true;
+
+                try {
+                    do {
+                        actualizarDeNuevo = false;
+
+                        const resultados = await Promise.allSettled([
+                            cargarActividadReciente(),
+                            actualizarEstadisticas()
+                        ]);
+
+                        for (const resultado of resultados) {
+                            if (resultado.status === "rejected") {
+                                console.error(
+                                    "Error actualizando tablero:",
+                                    resultado.reason
+                                );
+                            }
+                        }
+
+                    } while (actualizarDeNuevo);
+                } finally {
+                    actualizando = false;
+                }
+            }
+
+            // Agrupa notificaciones cercanas para no
+            // consultar repetidamente la API.
+            function programarActualizacion() {
+                clearTimeout(temporizador);
+
+                temporizador = setTimeout(() => {
+                    void refrescar();
+                }, 250);
+            }
+
+            // SignalR notifica; el historial se consulta desde PostgreSQL.
+            // Así evitamos duplicados con los eventos del navegador.
+            conexion.on("EnvioActualizado", evento => {
+
+                programarActualizacion();
+            });
+
+            conexion.onreconnecting(() => {
+                establecerEstado("Reconectando...");
+            });
+
+            conexion.onreconnected(() => {
+                establecerEstado("En vivo");
+
+                // Recupera movimientos y estadísticas que
+                // pudieron cambiar durante la desconexión.
+                void refrescar();
+            });
+
+            conexion.onclose(() => {
+                establecerEstado("Desconectado");
+
+                if (paginaActiva) {
+                    programarConexion();
+                }
+            });
+
+            function programarConexion() {
+                clearTimeout(temporizadorConexion);
+
+                temporizadorConexion = setTimeout(() => {
+                    void iniciarConexion();
+                }, 5000);
+            }
+
+            async function iniciarConexion() {
+                if (!paginaActiva ||
+                    conexion.state !==
+                    signalR.HubConnectionState.Disconnected) {
+                    return;
+                }
+
+                try {
+                    establecerEstado("Conectando...");
+
+                    await conexion.start();
+
+                    establecerEstado("En vivo");
+
+                    await refrescar();
+                } catch (error) {
+                    establecerEstado("Sin conexión");
+
+                    console.error(
+                        "Error conectando SignalR:",
+                        error
+                    );
+
+                    if (paginaActiva) {
+                        programarConexion();
+                    }
+                }
+            }
+
+            // Si el navegador estuvo en segundo plano,
+            // sincronizamos al volver a la pestaña.
+            document.addEventListener(
+                "visibilitychange",
+                () => {
+                    if (!document.hidden) {
+                        programarActualizacion();
+                    }
+                }
+            );
+
+            // Limpieza al abandonar la página.
+            window.addEventListener("pagehide", () => {
+                paginaActiva = false;
+                clearTimeout(temporizador);
+                clearTimeout(temporizadorConexion);
+            });
+
+            // La actividad inicial no depende de que SignalR
+            // consiga conectarse inmediatamente.
+            void refrescar();
+
+            void iniciarConexion();
+        })();
+    </script>
+}

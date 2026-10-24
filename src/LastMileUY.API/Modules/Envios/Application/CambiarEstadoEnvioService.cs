@@ -35,6 +35,19 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
         {
             throw new ArgumentException($"El estado '{request.Estado}' no existe.");
         }
+        
+        // Estos estados no se pueden establecer manualmente.
+        if (nuevoEstado == EstadoEnvio.AsignadoARuta)
+        {
+            throw new TransicionInvalidaException(
+                "Para asignar un envío a una ruta, debés crear una ruta desde el módulo de rutas.");
+        }
+
+        if (nuevoEstado == EstadoEnvio.EnTransito)
+        {
+            throw new TransicionInvalidaException(
+                "Para poner un envío en tránsito, debés despachar la ruta a la que pertenece.");
+        }
 
         var descripcion = string.IsNullOrWhiteSpace(request.Descripcion) ? null : request.Descripcion.Trim();
 

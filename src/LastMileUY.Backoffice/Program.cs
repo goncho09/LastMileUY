@@ -1,4 +1,5 @@
 using LastMileUY.Backoffice.Servicios;
+using LastMileUY.Backoffice.SignalR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -43,6 +44,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<ConsumidorEventosEnvio>();
 
 // Claves con las que se cifra la cookie de sesión. Si se guardan en una carpeta
 // (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
@@ -171,5 +174,7 @@ app.MapStaticAssets();
 
 app.MapRazorPages()
     .WithStaticAssets();
+
+app.MapHub<EnviosHub>("/hubs/envios");
 
 app.Run();

@@ -106,6 +106,7 @@
       Api__UsarDatosDePrueba: "false"
       Api__UrlBase: "http://lastmileuy.api:8080/"
       DataProtection__Directorio: /claves
+      ConnectionStrings__RabbitMQ: "amqp://lastmileuy:${RABBITMQ_PASSWORD:-lastmileuy_rabbit_dev}@rabbitmq:5672/"
     volumes:
       - claves_backoffice:/claves
       - type: bind
@@ -116,7 +117,10 @@
           create_host_path: false
       
     depends_on:
-      - lastmileuy.api
+      lastmileuy.api:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   lastmileuy.commerceportal:
     image: lastmileuy.commerceportal
