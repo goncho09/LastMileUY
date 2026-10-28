@@ -27,7 +27,8 @@ public static class DestinosAvisos
     // null si se puede usar; si no, el motivo
     public static string? Validar(string? url, bool permitirLocales)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        // IsFile: en Linux, "/avisos" se lee como una ruta de archivo (file:///avisos)
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.IsFile)
             return "La URL no es válida.";
 
         if (uri.Scheme != Uri.UriSchemeHttps && !(permitirLocales && uri.Scheme == Uri.UriSchemeHttp))
