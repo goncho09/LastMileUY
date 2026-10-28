@@ -9,11 +9,12 @@ Código:
 - Contrato: `src/LastMileUY.Contracts/Mensajeria` (lo comparten la API y el worker).
 - API: `src/LastMileUY.API/Infrastructure/Mensajeria` (outbox y publicador),
   `Infrastructure/Correlacion` y la migración `Outbox`.
-- Worker: `src/LastMileUY.Worker` (`ConsumidorEventosEnvio` y `ProcesadorAvisos`) y la migración
+- Worker: `src/LastMileUY.Worker` (`ConsumidorEventosEnvio`, `ProcesadorAvisos`, `DespachadorAvisos` y
+  `ClienteAvisos`), `src/LastMileUY.Contracts/Avisos` y la migración
   `MensajesProcesados`.
 
 Pruebas: `tests/LastMileUY.API.Tests/Mensajeria` (outbox y publicación) y `tests/LastMileUY.Worker.Tests`
-(procesamiento, repetidos y reintentos).
+(procesamiento, repetidos, reintentos y envío de avisos).
 
 ## El recorrido
 
@@ -81,8 +82,8 @@ descarta los repetidos por `EventoId` (ver abajo).
 
 `ProcesadorAvisos` deja un aviso pendiente (`EntregasAvisos`, estado Pendiente) por cada suscripción
 **activa** del comercio **a ese tipo de evento** (`SuscripcionesAvisos.TipoEvento` igual a `Tipo`). El
-contenido del aviso es el evento tal cual, sin datos personales. Mandar el aviso por HTTP al comercio es
-otro paso, que toma los pendientes.
+contenido del aviso es el evento tal cual, sin datos personales. Después los manda por HTTP (ver
+"Envío de los avisos a los comercios").
 
 Se conecta a la base con el **usuario de la aplicación** (`lastmileuy_app`) y, antes de nada, carga el
 operador del evento (`app.operador_id`, solo para la transacción). Le aplica el RLS del ADR-01 igual que
@@ -120,6 +121,80 @@ responde), el worker no lo descarta ni lo reintenta enseguida, sino que lo deja 
   mano. Un mensaje que no se puede leer (formato inválido o una versión más nueva del contrato) va
   directo ahí, porque reintentarlo no lo arregla.
 - Las esperas se configuran en `Mensajeria:EsperasReintento` (las pruebas usan esperas cortas).
+
+Ojo: estos son los reintentos de **procesar el evento** (RabbitMQ). Los de **mandar el aviso** al
+comercio son otros y van en la base (ver abajo).
+
+## Envío de los avisos a los comercios
+
+`DespachadorAvisos` (en el worker) toma los avisos pendientes y se los manda a cada comercio:
+`POST` a la `UrlDestino` de la suscripción, con el evento en JSON.
+
+| Encabezado | Qué es |
+|---|---|
+| `X-Aviso-Id` | Identificador único del aviso (`EntregasAvisos.EventoId`). Si llega dos veces, el comercio descarta el repetido. |
+| `X-Aviso-Tipo` | Tipo de evento: `envio.admitido` o `envio.estado_cambiado`. |
+| `X-Aviso-Intento` | Número de intento: 1 la primera vez. |
+| `X-Correlation-Id` | El del pedido HTTP que originó el cambio. |
+
+Los nombres están en `Contracts/Avisos/EncabezadosAvisos`.
+
+**Cómo los toma.**
+- Recorre los operadores y, para cada uno, carga su `app.operador_id` antes de leer, igual que
+  `ProcesadorAvisos`: el RLS del ADR-01 se le aplica, sin un usuario que lo saltee.
+- Toma los avisos de a uno (`FOR UPDATE SKIP LOCKED`): con varias instancias del worker, cada aviso lo
+  manda una sola. Primero los más viejos.
+- Toma los que están en estado Pendiente y cuya `FechaProximoIntento` ya pasó o está vacía.
+- Manda apenas `ProcesadorAvisos` registra avisos (le avisa) y, además, revisa cada 5 segundos.
+
+**Qué anota en `EntregasAvisos`.**
+- Respuesta 2xx: queda **Entregado** (2), con `FechaEntrega`.
+- Cualquier otra cosa queda **Fallido** (3), con el motivo en `UltimoError`: otro código, sin respuesta,
+  más de 10 segundos, o destino no permitido.
+- En los dos casos suma `CantidadIntentos` y anota `FechaUltimoIntento`.
+- Si el comercio desactivó la suscripción después de registrarse el aviso, no se manda y queda Fallido.
+- No sigue redirecciones.
+
+**URLs permitidas (que no sirva para entrar a la red interna, SSRF).** La URL la carga el comercio, pero
+la llama el worker desde adentro. Por eso `Contracts/Avisos/DestinosAvisos` solo acepta:
+- `https`, sin usuario ni contraseña en la URL;
+- direcciones públicas: ni `localhost`, ni redes privadas (10.x, 172.16–31.x, 192.168.x), ni
+  169.254.169.254, la dirección de metadatos de la nube.
+
+El worker lo revisa **al conectarse**, con la IP a la que resolvió el nombre. Revisar solo la URL no
+alcanza: `avisos.comercio.com` puede resolver a una IP interna.
+
+Para desarrollo, `Avisos:PermitirDestinosLocales` en `true` deja usar `http` y direcciones internas. Así
+se puede usar el receptor de prueba. En producción va en `false`, que es el valor por defecto.
+
+### Receptor de prueba
+
+`LastMileUY.ReceptorAvisos` hace de comercio. En compose está en http://localhost:8085 y el worker lo
+ve como `http://lastmileuy.receptoravisos:8080`.
+
+- `POST /avisos/...`: recibe el aviso y responde 200. La ruta después de `/avisos` es libre, para
+  distinguir suscripciones.
+- Para probar fallos: `?estado=503` responde ese código y `?demora=15` tarda esos segundos.
+- `GET /avisos`: lo recibido, con los encabezados y el contenido, el último primero (guarda hasta 200).
+- `DELETE /avisos`: lo borra.
+
+Para probarlo, cargá una suscripción con `UrlDestino`
+`http://lastmileuy.receptoravisos:8080/avisos/mi-comercio` y cambiale el estado a un envío de ese
+comercio.
+
+### Dónde sigue cada tarjeta
+
+- **Firmar los avisos:** `ClienteAvisos.ArmarPedido`, donde está el comentario. El receptor guarda todos
+  los encabezados `X-...`, así que se puede verificar la firma ahí.
+- **Historial de intentos:** `DespachadorAvisos.EnviarSiguienteAsync`, en la misma transacción en que se
+  anota el resultado. `ResultadoEnvio` trae el código HTTP, el error y la duración.
+- **Reintentos con espera creciente:** `DespachadorAvisos.ProximoIntento`. Hoy devuelve null, que
+  significa que el aviso no se reintenta y queda Fallido. Si devuelve una fecha, el aviso sigue
+  Pendiente y el despachador lo vuelve a tomar cuando llega esa fecha. Ya hay una prueba de eso.
+- **Portal (suscripciones y fallidos):**
+  - al guardar una suscripción, validar la URL con `DestinosAvisos.Validar(url, permitirLocales)`;
+  - los fallidos son `EntregasAvisos` con estado 3, y el motivo está en `UltimoError`;
+  - para reenviar uno, se vuelve a estado 1 con `FechaProximoIntento` vacía.
 
 ## El tablero en vivo del backoffice
 
@@ -166,5 +241,5 @@ Con ese valor se busca en los registros de la API y del worker todo lo que pasó
 | Dónde | Qué |
 |---|---|
 | API | `ConnectionStrings:RabbitMQ` y `ConnectionStrings:Outbox` (usuario `lastmileuy_publicador`). Sin `RabbitMQ` no se publica: los eventos quedan en el outbox y salen cuando lo haya. |
-| Worker | `ConnectionStrings:RabbitMQ`, `ConnectionStrings:DefaultConnection` (usuario `lastmileuy_app`) y, opcional, `Mensajeria:EsperasReintento`. |
-| compose | Servicio `rabbitmq` (panel en http://localhost:15672). Contraseña: `RABBITMQ_PASSWORD`, con una de desarrollo por defecto. |
+| Worker | `ConnectionStrings:RabbitMQ`, `ConnectionStrings:DefaultConnection` (usuario `lastmileuy_app`) y, opcionales, `Mensajeria:EsperasReintento` y `Avisos:PermitirDestinosLocales` (solo desarrollo). |
+| compose | Servicio `rabbitmq` (panel en http://localhost:15672). Contraseña: `RABBITMQ_PASSWORD`, con una de desarrollo por defecto. Servicio `lastmileuy.receptoravisos` (http://localhost:8085/avisos). |

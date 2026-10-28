@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.4"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1"/>
         <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0"/>
         <PackageReference Include="Testcontainers.RabbitMq" Version="4.16.0"/>
@@ -22,6 +23,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\LastMileUY.Worker\LastMileUY.Worker.csproj"/>
+        <!-- El receptor de avisos de prueba, levantado de verdad (Kestrel) para mandarle avisos -->
+        <ProjectReference Include="..\..\src\LastMileUY.ReceptorAvisos\LastMileUY.ReceptorAvisos.csproj"/>
         <!-- Solo para crear la base con las migraciones de la API -->
         <ProjectReference Include="..\..\src\LastMileUY.API\LastMileUY.API.csproj"/>
     </ItemGroup>
