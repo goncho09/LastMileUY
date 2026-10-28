@@ -12,6 +12,8 @@ public class ConsumidorEventosEnvio(
     IHubContext<EnviosHub> hub,
     ILogger<ConsumidorEventosEnvio> logger) : BackgroundService
 {
+    private const string ColaCompartidaAnterior = "lastmileuy.backoffice.envios";
+
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
@@ -44,15 +46,28 @@ public class ConsumidorEventosEnvio(
                     durable: true,
                     cancellationToken: stoppingToken);
 
-                await canal.QueueDeclareAsync(
-                    TopologiaMensajeria.ColaBackoffice,
-                    durable: true,
-                    exclusive: false,
-                    autoDelete: false,
+                // La cola compartida que se usaba antes: ya nadie la lee
+                // y, si queda, acumula eventos para siempre.
+                await canal.QueueDeleteAsync(
+                    ColaCompartidaAnterior,
+                    cancellationToken: stoppingToken);
+
+                // Una cola propia de esta instancia, con nombre que elige
+                // RabbitMQ, que se borra al cerrar la conexión:
+                // - con varias instancias, cada una recibe todos los eventos
+                //   (con una cola compartida se los repartirían);
+                // - con el backoffice apagado no se acumulan eventos viejos
+                //   que después llegarían como nuevos. Al reconectarse, la
+                //   pantalla vuelve a consultar la API.
+                var cola = await canal.QueueDeclareAsync(
+                    queue: "",
+                    durable: false,
+                    exclusive: true,
+                    autoDelete: true,
                     cancellationToken: stoppingToken);
 
                 await canal.QueueBindAsync(
-                    TopologiaMensajeria.ColaBackoffice,
+                    cola.QueueName,
                     TopologiaMensajeria.ExchangeEnvios,
                     TopologiaMensajeria.PatronEventosEnvio,
                     cancellationToken: stoppingToken);
@@ -103,23 +118,26 @@ public class ConsumidorEventosEnvio(
                             ex,
                             "Error notificando un evento de envío");
 
-                        await canal.BasicNackAsync(
+                        // Sin volverlo a la cola: si el error se repite,
+                        // quedaría dando vueltas sin pausa. Perder un aviso
+                        // no pierde datos: la pantalla lee el historial de
+                        // la API y se pone al día con el siguiente.
+                        await canal.BasicRejectAsync(
                             mensaje.DeliveryTag,
-                            multiple: false,
-                            requeue: true,
+                            requeue: false,
                             cancellationToken: stoppingToken);
                     }
                 };
 
                 await canal.BasicConsumeAsync(
-                    TopologiaMensajeria.ColaBackoffice,
+                    cola.QueueName,
                     autoAck: false,
                     consumer: consumidor,
                     cancellationToken: stoppingToken);
 
                 logger.LogInformation(
                     "SignalR escuchando eventos desde {Cola}",
-                    TopologiaMensajeria.ColaBackoffice);
+                    cola.QueueName);
 
                 await Task.Delay(Timeout.Infinite, stoppingToken);
             }
