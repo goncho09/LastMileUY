@@ -121,6 +121,19 @@ responde), el worker no lo descarta ni lo reintenta enseguida, sino que lo deja 
   directo ahí, porque reintentarlo no lo arregla.
 - Las esperas se configuran en `Mensajeria:EsperasReintento` (las pruebas usan esperas cortas).
 
+## El tablero en vivo del backoffice
+
+El backoffice también escucha los eventos (`SignalR/ConsumidorEventosEnvio`) y avisa por SignalR a
+las pantallas abiertas de ese operador (un grupo por operador en `EnviosHub`). El aviso no lleva los
+datos a mostrar: la pantalla vuelve a consultar la API, igual que al reconectarse.
+
+A diferencia del worker, no necesita que el mensaje llegue sí o sí:
+- Cada instancia del backoffice usa una **cola propia y temporal** (nombre que elige RabbitMQ, se
+  borra al cerrar la conexión). Con varias instancias, todas reciben todos los eventos; con el
+  backoffice apagado, no se acumulan eventos viejos.
+- Si no puede avisar un evento, lo descarta en vez de devolverlo a la cola: perderlo solo atrasa la
+  pantalla hasta el siguiente.
+
 ## Permisos en la base
 
 `MensajesOutbox` tiene eventos de todos los operadores y no lleva RLS. En cambio, cada usuario de la
