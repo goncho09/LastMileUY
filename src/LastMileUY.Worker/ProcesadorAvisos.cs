@@ -14,13 +14,13 @@ public interface IProcesadorEventos
 public record ResultadoProceso(bool Repetido, int AvisosRegistrados);
 
 // Por cada evento, deja un aviso pendiente (EntregasAvisos) para cada suscripción activa del comercio a
-// ese tipo de evento. Mandar el aviso por HTTP es otro paso, que toma los pendientes.
+// ese tipo de evento. Los manda DespachadorAvisos, al que le avisa apenas los registra.
 // - Usa el usuario de la aplicación (lastmileuy_app) y carga el operador del evento antes de nada: le
 //   aplica el RLS del ADR-01 como a la API, y solo ve las suscripciones de ese operador.
 // - Todo en una transacción: anota el evento en MensajesProcesados y registra los avisos. Si el evento
 //   ya estaba anotado (RabbitMQ lo entregó de nuevo), no hace nada. Si algo falla, no queda ni la
 //   anotación ni los avisos, y el reintento empieza de cero.
-public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos) : IProcesadorEventos
+public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos, SenalAvisos? senal = null) : IProcesadorEventos
 {
     public const string Consumidor = "avisos";
 
@@ -59,6 +59,10 @@ public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos) : IProcesadorEventos
             ("contenido", JsonSerializer.Serialize(evento)));
 
         await transaccion.CommitAsync(cancellationToken);
+
+        if (avisos > 0)
+            senal?.Avisar();
+
         return new ResultadoProceso(Repetido: false, AvisosRegistrados: avisos);
     }
 
