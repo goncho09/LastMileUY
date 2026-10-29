@@ -149,10 +149,28 @@ Los nombres están en `Contracts/Avisos/EncabezadosAvisos`.
 
 **Qué anota en `EntregasAvisos`.**
 - Respuesta 2xx: queda **Entregado** (2), con `FechaEntrega`.
-- Cualquier otra cosa queda **Fallido** (3), con el motivo en `UltimoError`: otro código, sin respuesta,
-  más de 10 segundos, o destino no permitido.
+- Cualquier otra cosa es un intento fallido, con el motivo en `UltimoError`: otro código, sin respuesta,
+  más de 10 segundos, o destino no permitido. El aviso sigue **Pendiente** (1) y se reintenta más tarde
+  (ver abajo); después del último intento queda **Fallido** (3).
 - En los dos casos suma `CantidadIntentos` y anota `FechaUltimoIntento`.
-- Si el comercio desactivó la suscripción después de registrarse el aviso, no se manda y queda Fallido.
+- Si el comercio desactivó la suscripción después de registrarse el aviso, no se manda y queda Fallido,
+  sin reintentos.
+
+**Reintentos con espera creciente.** Si un intento falla, `DespachadorAvisos.ProximoIntento` programa el
+siguiente en `FechaProximoIntento`, cada vez más espaciado para no saturar a un comercio con problemas:
+
+| Falló el intento | Se reintenta |
+|---|---|
+| 1 | a los 10 segundos |
+| 2 | 30 segundos después |
+| 3 | 1 minuto después |
+| 4 | 5 minutos después |
+| 5 | 15 minutos después |
+| 6 | no se reintenta: queda Fallido |
+
+En total, un aviso se intenta 6 veces durante casi 22 minutos (`DespachadorAvisos.EsperasReintento`).
+Así, si el receptor de un comercio se cae y vuelve dentro de ese tiempo, los avisos le llegan solos
+(escenario 6 de la defensa). `X-Aviso-Intento` le dice al comercio qué número de intento es.
 - No sigue redirecciones.
 
 **URLs permitidas (que no sirva para entrar a la red interna, SSRF).** La URL la carga el comercio, pero
@@ -188,9 +206,7 @@ comercio.
   los encabezados `X-...`, así que se puede verificar la firma ahí.
 - **Historial de intentos:** `DespachadorAvisos.EnviarSiguienteAsync`, en la misma transacción en que se
   anota el resultado. `ResultadoEnvio` trae el código HTTP, el error y la duración.
-- **Reintentos con espera creciente:** `DespachadorAvisos.ProximoIntento`. Hoy devuelve null, que
-  significa que el aviso no se reintenta y queda Fallido. Si devuelve una fecha, el aviso sigue
-  Pendiente y el despachador lo vuelve a tomar cuando llega esa fecha. Ya hay una prueba de eso.
+- **Reintentos con espera creciente:** hecho, en `DespachadorAvisos.ProximoIntento` (ver más arriba).
 - **Portal (suscripciones y fallidos):**
   - suscripciones: hecho. `GET`, `POST` y `PATCH /api/avisos/suscripciones` (rol Comercio) y la página
     **Avisos** del portal. La URL se valida con `DestinosAvisos.Validar`; en la API, `Avisos:PermitirDestinosLocales`
