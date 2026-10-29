@@ -101,7 +101,8 @@ public class DespachadorAvisos(
             ? await cliente.EnviarAsync(aviso, cancellationToken)
             : new ResultadoEnvio(false, null, "La suscripción está desactivada.", TimeSpan.Zero);
 
-        await RegistrarResultadoAsync(conexion, transaccion, aviso, resultado, cancellationToken);
+        // Si la suscripción está desactivada no se reintenta: queda Fallido
+        await RegistrarResultadoAsync(conexion, transaccion, aviso, resultado, reintentar: suscripcionActiva, cancellationToken);
 
         // Tarjeta "Registrar el historial de intentos": cada intento se anota acá, en la misma
         // transacción (aviso.Intento, resultado.CodigoHttp, resultado.Error, resultado.Duracion).
@@ -154,12 +155,12 @@ public class DespachadorAvisos(
         return (aviso, lector.GetBoolean(7));
     }
 
-    // Estado 2 = Entregado, 3 = Fallido
+    // Estado 2 = Entregado, 3 = Fallido; 1 = sigue Pendiente, con el próximo intento programado
     private static async Task RegistrarResultadoAsync(
         NpgsqlConnection conexion, NpgsqlTransaction transaccion, AvisoPendiente aviso, ResultadoEnvio resultado,
-        CancellationToken cancellationToken)
+        bool reintentar, CancellationToken cancellationToken)
     {
-        var proximo = resultado.Exitoso ? null : ProximoIntento(aviso.Intento);
+        var proximo = resultado.Exitoso || !reintentar ? null : ProximoIntento(aviso.Intento, DateTime.UtcNow);
 
         await using var comando = new NpgsqlCommand("""
             UPDATE "EntregasAvisos" SET
@@ -179,11 +180,27 @@ public class DespachadorAvisos(
         await comando.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    // Reintentos con espera creciente: cuánto esperar después de que falla cada intento (el 1.º, el 2.º...).
+    // Crece para no saturar a un comercio que ya tiene problemas. Después del último intento, Fallido.
+    // Con estas esperas, un aviso se sigue intentando casi 22 minutos.
+    public static readonly IReadOnlyList<TimeSpan> EsperasReintento =
+    [
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromSeconds(30),
+        TimeSpan.FromMinutes(1),
+        TimeSpan.FromMinutes(5),
+        TimeSpan.FromMinutes(15)
+    ];
+
+    // El primero más un reintento por cada espera
+    public static int MaximoIntentos => EsperasReintento.Count + 1;
+
     // Cuándo volver a intentar después de que falló el intento número "intento"; null: no se reintenta y
-    // el aviso queda Fallido. Por ahora no hay reintentos.
-    // Tarjeta "Reintentos de avisos con espera creciente": se decide acá (el aviso sigue Pendiente
-    // y este método lo vuelve a tomar cuando llega la fecha).
-    private static DateTime? ProximoIntento(int intento) => null;
+    // el aviso queda Fallido. Mientras tanto el aviso sigue Pendiente y se vuelve a tomar al llegar la fecha.
+    public static DateTime? ProximoIntento(int intento, DateTime ahora) =>
+        intento >= 1 && intento <= EsperasReintento.Count
+            ? ahora + EsperasReintento[intento - 1]
+            : null;
 }
 
 // Para que ProcesadorAvisos le avise al despachador que hay avisos nuevos, sin esperar a la revisión

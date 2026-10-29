@@ -76,17 +76,60 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Si_el_comercio_responde_con_error_queda_fallido_con_el_motivo()
+    public async Task Si_el_comercio_responde_con_error_queda_pendiente_para_reintentar()
     {
         var aviso = await RegistrarAvisoAsync(SuscripcionConErrorDeA, EnvioDeA);
 
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
 
         Assert.Single(await RecibidosAsync(aviso));
-        // Sin reintentos por ahora: queda Fallido (3), con el intento y el motivo anotados
+        // Sigue Pendiente (1), con el intento y el motivo anotados y el próximo intento programado
         Assert.Equal(1, await AvisosAsync(aviso, """
-            "Estado" = 3 AND "CantidadIntentos" = 1 AND "UltimoError" LIKE '%500%' AND "FechaEntrega" IS NULL
+            "Estado" = 1 AND "CantidadIntentos" = 1 AND "UltimoError" LIKE '%500%' AND "FechaEntrega" IS NULL
+            AND "FechaProximoIntento" > now()
             """));
+    }
+
+    [Fact]
+    public async Task Despues_del_ultimo_intento_queda_fallido()
+    {
+        var ultimo = DespachadorAvisos.MaximoIntentos;
+        var aviso = await RegistrarAvisoAsync(SuscripcionConErrorDeA, EnvioDeA, intentosPrevios: ultimo - 1);
+
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+
+        Assert.Equal(ultimo.ToString(), Assert.Single(await RecibidosAsync(aviso)).Encabezados[EncabezadosAvisos.Intento]);
+        Assert.Equal(1, await AvisosAsync(aviso, $"""
+            "Estado" = 3 AND "CantidadIntentos" = {ultimo} AND "UltimoError" LIKE '%500%' AND "FechaProximoIntento" IS NULL
+            """));
+    }
+
+    [Fact]
+    public async Task Cuando_el_comercio_se_recupera_el_reintento_se_entrega()
+    {
+        // Ya falló dos veces y le toca el tercer intento; ahora el comercio responde bien
+        var aviso = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA, intentosPrevios: 2);
+
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+
+        Assert.Equal("3", Assert.Single(await RecibidosAsync(aviso)).Encabezados[EncabezadosAvisos.Intento]);
+        Assert.Equal(1, await AvisosAsync(aviso, """
+            "Estado" = 2 AND "CantidadIntentos" = 3 AND "FechaEntrega" IS NOT NULL AND "FechaProximoIntento" IS NULL
+            """));
+    }
+
+    [Fact]
+    public void Las_esperas_entre_intentos_crecen_y_despues_del_ultimo_no_se_reintenta()
+    {
+        var ahora = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+
+        var esperas = Enumerable.Range(1, DespachadorAvisos.MaximoIntentos - 1)
+            .Select(intento => DespachadorAvisos.ProximoIntento(intento, ahora)!.Value - ahora)
+            .ToList();
+
+        Assert.Equal(TimeSpan.FromSeconds(10), esperas[0]);
+        Assert.All(esperas.Zip(esperas.Skip(1)), par => Assert.True(par.Second > par.First));
+        Assert.Null(DespachadorAvisos.ProximoIntento(DespachadorAvisos.MaximoIntentos, ahora));
     }
 
     [Fact]
@@ -97,7 +140,10 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
 
         Assert.Empty(await RecibidosAsync(aviso));
-        Assert.Equal(1, await AvisosAsync(aviso, """ "Estado" = 3 AND "UltimoError" LIKE '%desactivada%' """));
+        // Desactivada no se reintenta: queda Fallido sin próximo intento
+        Assert.Equal(1, await AvisosAsync(aviso, """
+            "Estado" = 3 AND "UltimoError" LIKE '%desactivada%' AND "FechaProximoIntento" IS NULL
+            """));
     }
 
     [Fact]
@@ -149,7 +195,9 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         NullLogger<DespachadorAvisos>.Instance);
 
     // Un aviso pendiente, como lo deja ProcesadorAvisos. Devuelve su identificador (X-Aviso-Id).
-    private async Task<Guid> RegistrarAvisoAsync(int suscripcion, int envio, DateTime? proximoIntento = null)
+    // intentosPrevios: como si ya hubiera fallado esa cantidad de veces (el próximo es el intento siguiente)
+    private async Task<Guid> RegistrarAvisoAsync(
+        int suscripcion, int envio, DateTime? proximoIntento = null, int intentosPrevios = 0)
     {
         var avisoId = Guid.NewGuid();
         var evento = Evento(envio == EnvioDeA ? OperadorA : OperadorB, envio);
@@ -162,7 +210,7 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         await using var comando = new NpgsqlCommand("""
             INSERT INTO "EntregasAvisos"("SuscripcionAvisosId", "EnvioId", "EventoId", "TipoEvento", "Contenido",
                     "Estado", "CantidadIntentos", "FechaCreacion", "FechaProximoIntento")
-            VALUES (@suscripcion, @envio, @aviso, @tipo, @contenido::jsonb, 1, 0, now(), @proximo)
+            VALUES (@suscripcion, @envio, @aviso, @tipo, @contenido::jsonb, 1, @intentos, now(), @proximo)
             """, conexion);
         comando.Parameters.AddWithValue("suscripcion", suscripcion);
         comando.Parameters.AddWithValue("envio", envio);
@@ -170,6 +218,7 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         comando.Parameters.AddWithValue("tipo", evento.Tipo);
         comando.Parameters.AddWithValue("contenido", contenido.ToJsonString());
         comando.Parameters.Add(new NpgsqlParameter<DateTime?>("proximo", proximoIntento));
+        comando.Parameters.AddWithValue("intentos", intentosPrevios);
         await comando.ExecuteNonQueryAsync();
 
         return avisoId;
