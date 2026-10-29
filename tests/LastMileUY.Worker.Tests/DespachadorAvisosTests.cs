@@ -116,6 +116,36 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         Assert.Equal(1, await AvisosAsync(aviso, """
             "Estado" = 2 AND "CantidadIntentos" = 3 AND "FechaEntrega" IS NOT NULL AND "FechaProximoIntento" IS NULL
             """));
+        Assert.Equal(1, await IntentosAsync(aviso, """ i."NumeroIntento" = 3 AND i."Exitoso" """));
+    }
+
+    [Fact]
+    public async Task Una_entrega_exitosa_queda_en_el_historial()
+    {
+        var aviso = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA);
+
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+
+        Assert.Equal(1, await IntentosAsync(aviso, """
+            i."NumeroIntento" = 1 AND i."Exitoso" AND i."CodigoHttp" = 200 AND i."Error" IS NULL AND i."DuracionMs" >= 0
+            """));
+    }
+
+    [Fact]
+    public async Task Cada_intento_fallido_queda_en_el_historial_con_su_motivo()
+    {
+        var aviso = await RegistrarAvisoAsync(SuscripcionConErrorDeA, EnvioDeA);
+
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+        await AdelantarProximoIntentoAsync(aviso);
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+
+        // Dos intentos, los dos fallidos con el código que respondió el comercio
+        Assert.Equal(2, await IntentosAsync(aviso, """
+            NOT i."Exitoso" AND i."CodigoHttp" = 500 AND i."Error" LIKE '%500%'
+            """));
+        Assert.Equal(1, await IntentosAsync(aviso, """ i."NumeroIntento" = 1 """));
+        Assert.Equal(1, await IntentosAsync(aviso, """ i."NumeroIntento" = 2 """));
     }
 
     [Fact]
@@ -228,6 +258,24 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         (await receptor.RecibidosAsync())
             .Where(r => r.Encabezados.GetValueOrDefault(EncabezadosAvisos.AvisoId) == aviso.ToString())
             .ToList();
+
+    // Filas del historial (IntentosAvisos) de un aviso que cumplen la condición
+    private Task<long> IntentosAsync(Guid aviso, string condicion) => entorno.ContarAsync($"""
+        SELECT count(*) FROM "IntentosAvisos" i JOIN "EntregasAvisos" a ON a."Id" = i."EntregaAvisoId"
+        WHERE a."EventoId" = @aviso AND {condicion}
+        """, ("aviso", aviso));
+
+    // Como si ya hubiera llegado la hora del próximo intento
+    private async Task AdelantarProximoIntentoAsync(Guid aviso)
+    {
+        await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);
+        await conexion.OpenAsync();
+        await using var comando = new NpgsqlCommand("""
+            UPDATE "EntregasAvisos" SET "FechaProximoIntento" = now() - interval '1 second' WHERE "EventoId" = @aviso
+            """, conexion);
+        comando.Parameters.AddWithValue("aviso", aviso);
+        await comando.ExecuteNonQueryAsync();
+    }
 
     private Task<long> AvisosAsync(Guid aviso, string condicion) => entorno.ContarAsync(
         $"""SELECT count(*) FROM "EntregasAvisos" WHERE "EventoId" = @aviso AND {condicion}""", ("aviso", aviso));

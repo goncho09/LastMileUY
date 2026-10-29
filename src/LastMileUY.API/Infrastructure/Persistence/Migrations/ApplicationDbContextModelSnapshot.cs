@@ -776,6 +776,44 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("EntregasAvisos", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.IntentoAviso", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CodigoHttp")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DuracionMs")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EntregaAvisoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("Exitoso")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NumeroIntento")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntregaAvisoId", "NumeroIntento")
+                        .IsUnique();
+
+                    b.ToTable("IntentosAvisos", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.Notificacion", b =>
                 {
                     b.Property<int>("Id")
@@ -1844,6 +1882,15 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.IntentoAviso", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Notificaciones.Domain.EntregaAviso", null)
+                        .WithMany("Intentos")
+                        .HasForeignKey("EntregaAvisoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.Notificacion", b =>
                 {
                     b.HasOne("LastMileUY.API.Modules.Envios.Domain.Envio", null)
@@ -2160,6 +2207,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Navigation("Notificaciones");
 
                     b.Navigation("Paradas");
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.EntregaAviso", b =>
+                {
+                    b.Navigation("Intentos");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.SuscripcionAvisos", b =>
