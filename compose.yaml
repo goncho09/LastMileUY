@@ -79,6 +79,9 @@
       Evidencias__Directorio: /evidencias
       # Caché distribuido: Redis del compose
       ConnectionStrings__Redis: "redis:6379"
+      # Deja suscribir avisos al receptor de prueba (http y dirección interna), igual que el worker.
+      # En producción va en false
+      Avisos__PermitirDestinosLocales: "true"
       # Eventos de envío: el publicador del outbox los manda a RabbitMQ.
       # Lee el outbox con su propio usuario (lo crea la migración Outbox, igual que lastmileuy_app)
       ConnectionStrings__RabbitMQ: "amqp://lastmileuy:${RABBITMQ_PASSWORD:-lastmileuy_rabbit_dev}@rabbitmq:5672/"

@@ -25,6 +25,8 @@ using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.API.Modules.Entregas.Infrastructure;
 using LastMileUY.API.Modules.Seguimiento.Application;
 using LastMileUY.API.Modules.Seguimiento.Endpoints;
+using LastMileUY.API.Modules.Notificaciones.Application;
+using LastMileUY.API.Modules.Notificaciones.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -208,6 +210,7 @@ builder.Services.AddScoped<ConsultasRutasService>();
 builder.Services.AddScoped<SincronizarEntregasService>();
 builder.Services.AddScoped<ConsultasSincronizacionService>();
 builder.Services.AddScoped<SeguimientoPublicoService>();
+builder.Services.AddScoped<SuscripcionesAvisosService>();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 
 builder.Services.AddMemoryCache();
@@ -299,6 +302,7 @@ app.MapDestinatariosEndpoints();
 app.MapRutasEndpoints();
 app.MapSincronizacionEndpoints();
 app.MapSeguimientoEndpoints();
+app.MapSuscripcionesAvisosEndpoints();
 app.MapCacheEndpoints();
 
 app.Run();
