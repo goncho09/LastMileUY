@@ -24,6 +24,9 @@ public static class DestinatariosEndpoints
 
                 return Results.Ok(await consultas.ListarAsync(comercioId, cancellationToken));
             })
+            // Trae nombre, email, teléfono y direcciones: solo para quien da de alta envíos
+            // (los mismos perfiles que POST /api/envios). El repartidor ve lo justo en su hoja de ruta.
+            .RequireAuthorization(politica => politica.RequireRole("Comercio", "Operador"))
             .WithName("ListarDestinatarios");
 
         return app;

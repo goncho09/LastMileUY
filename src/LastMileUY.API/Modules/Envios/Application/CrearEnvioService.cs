@@ -55,6 +55,14 @@ public class CrearEnvioService(
         
         ValidarBultos(request.Bultos);
 
+        // En blanco es "sin referencia": si no, dos envíos sin referencia chocarían en el índice único
+        var referencia = string.IsNullOrWhiteSpace(request.ReferenciaExterna) ? null : request.ReferenciaExterna.Trim();
+
+        if (referencia?.Length > 100)
+        {
+            throw new ArgumentException("La referencia externa no puede superar los 100 caracteres.");
+        }
+
         var comercioValido = await db.Set<OperadorComercio>()
             .AnyAsync(oc =>
                 oc.OperadorId == operadorId &&
@@ -94,7 +102,7 @@ public class CrearEnvioService(
         {
             ComercioId = request.ComercioId,
             DestinatarioId = request.DestinatarioId,
-            ReferenciaExterna = request.ReferenciaExterna,
+            ReferenciaExterna = referencia,
             Canal = canal
         };
 
@@ -136,7 +144,7 @@ public class CrearEnvioService(
         {
             // Índice único operador + comercio + referencia: el pedido ya se había cargado
             throw new EnvioDuplicadoException(
-                $"Ya existe un envío con la referencia '{request.ReferenciaExterna}' para ese comercio.");
+                $"Ya existe un envío con la referencia '{referencia}' para ese comercio.");
         }
 
         return new EnvioResponse

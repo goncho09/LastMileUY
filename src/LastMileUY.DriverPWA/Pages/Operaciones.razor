@@ -188,7 +188,6 @@
     private bool sincronizando;
     private bool componenteDestruido;
     private bool historialNoDisponible;
-    private bool historialCargado;
     
     protected override async Task OnInitializedAsync()
     {
@@ -360,7 +359,6 @@ private async Task CargarMasAsync(bool reemplazar = false)
         total = siguiente.Total;
 
         historialNoDisponible = false;
-        historialCargado = true;
     }
     catch (UnauthorizedAccessException)
     {

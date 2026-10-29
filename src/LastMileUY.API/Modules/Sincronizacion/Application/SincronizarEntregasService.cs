@@ -176,6 +176,15 @@ public class SincronizarEntregasService(
             return Rechazada("La ubicación no es válida.");
         }
 
+        // Lo que no entra en la base no se arregla reintentando: se rechaza, así la app deja de reenviarlo
+        // (mismos límites que OperacionRequest, que las minimal APIs no validan solas)
+        if (operacion.Observaciones?.Length > 1000
+            || operacion.NombreReceptor?.Length > 150
+            || operacion.DocumentoReceptor?.Length > 50)
+        {
+            return Rechazada("Las observaciones, el nombre o el documento de quien recibe son demasiado largos.");
+        }
+
         // Una ruta de otro operador no existe para este repartidor (EF + RLS)
         var ruta = await db.Rutas
             .Include(r => r.Paradas)
@@ -284,6 +293,12 @@ public class SincronizarEntregasService(
             var descripcion = string.IsNullOrWhiteSpace(operacion.Observaciones)
                 ? motivo.Nombre
                 : $"{motivo.Nombre}: {operacion.Observaciones.Trim()}";
+
+            // Con el motivo adelante, el texto del historial puede pasarse aunque las observaciones entren
+            if (descripcion.Length > 1000)
+            {
+                return Rechazada("Las observaciones son demasiado largas.");
+            }
 
             intento = envio.CambiarEstado(
                 EstadoEnvio.NoEntregado,
