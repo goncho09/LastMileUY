@@ -152,7 +152,8 @@ Los nombres están en `Contracts/Avisos/EncabezadosAvisos`.
 - Cualquier otra cosa es un intento fallido, con el motivo en `UltimoError`: otro código, sin respuesta,
   más de 10 segundos, o destino no permitido. El aviso sigue **Pendiente** (1) y se reintenta más tarde
   (ver abajo); después del último intento queda **Fallido** (3).
-- En los dos casos suma `CantidadIntentos` y anota `FechaUltimoIntento`.
+- En los dos casos suma `CantidadIntentos`, anota `FechaUltimoIntento` y agrega el intento al historial
+  (`IntentosAvisos`).
 - Si el comercio desactivó la suscripción después de registrarse el aviso, no se manda y queda Fallido,
   sin reintentos.
 
@@ -204,8 +205,10 @@ comercio.
 
 - **Firmar los avisos:** `ClienteAvisos.ArmarPedido`, donde está el comentario. El receptor guarda todos
   los encabezados `X-...`, así que se puede verificar la firma ahí.
-- **Historial de intentos:** `DespachadorAvisos.EnviarSiguienteAsync`, en la misma transacción en que se
-  anota el resultado. `ResultadoEnvio` trae el código HTTP, el error y la duración.
+- **Historial de intentos:** hecho. Cada intento queda en `IntentosAvisos` (número de intento, fecha, si fue
+  exitoso, código HTTP, error y duración en ms), en la misma transacción en que se anota el resultado
+  (`DespachadorAvisos.RegistrarIntentoAsync`). Es hija de `EntregasAvisos`, con su política RLS y su
+  filtro de EF: un intento se ve solo si se ve el aviso.
 - **Reintentos con espera creciente:** hecho, en `DespachadorAvisos.ProximoIntento` (ver más arriba).
 - **Portal (suscripciones y fallidos):**
   - suscripciones: hecho. `GET`, `POST` y `PATCH /api/avisos/suscripciones` (rol Comercio) y la página

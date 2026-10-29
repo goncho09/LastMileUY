@@ -104,8 +104,8 @@ public class DespachadorAvisos(
         // Si la suscripción está desactivada no se reintenta: queda Fallido
         await RegistrarResultadoAsync(conexion, transaccion, aviso, resultado, reintentar: suscripcionActiva, cancellationToken);
 
-        // Tarjeta "Registrar el historial de intentos": cada intento se anota acá, en la misma
-        // transacción (aviso.Intento, resultado.CodigoHttp, resultado.Error, resultado.Duracion).
+        // Historial: cada intento queda anotado, en la misma transacción que el resultado
+        await RegistrarIntentoAsync(conexion, transaccion, aviso, resultado, cancellationToken);
 
         await transaccion.CommitAsync(cancellationToken);
 
@@ -177,6 +177,24 @@ public class DespachadorAvisos(
         comando.Parameters.AddWithValue("exitoso", resultado.Exitoso);
         comando.Parameters.Add(new NpgsqlParameter<DateTime?>("proximo", proximo));
         comando.Parameters.Add(new NpgsqlParameter<string?>("error", resultado.Error));
+        await comando.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    // Una fila del historial de entregas (IntentosAvisos) por cada intento, con su resultado
+    private static async Task RegistrarIntentoAsync(
+        NpgsqlConnection conexion, NpgsqlTransaction transaccion, AvisoPendiente aviso, ResultadoEnvio resultado,
+        CancellationToken cancellationToken)
+    {
+        await using var comando = new NpgsqlCommand("""
+            INSERT INTO "IntentosAvisos"("EntregaAvisoId", "NumeroIntento", "Fecha", "Exitoso", "CodigoHttp", "Error", "DuracionMs")
+            VALUES (@id, @intento, clock_timestamp(), @exitoso, @codigo, left(@error, 1000), @duracion)
+            """, conexion, transaccion);
+        comando.Parameters.AddWithValue("id", aviso.Id);
+        comando.Parameters.AddWithValue("intento", aviso.Intento);
+        comando.Parameters.AddWithValue("exitoso", resultado.Exitoso);
+        comando.Parameters.Add(new NpgsqlParameter<int?>("codigo", resultado.CodigoHttp));
+        comando.Parameters.Add(new NpgsqlParameter<string?>("error", resultado.Error));
+        comando.Parameters.AddWithValue("duracion", (int)Math.Round(resultado.Duracion.TotalMilliseconds));
         await comando.ExecuteNonQueryAsync(cancellationToken);
     }
 

@@ -83,6 +83,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<SuscripcionAvisos> SuscripcionesAvisos => Set<SuscripcionAvisos>();
     public DbSet<EntregaAviso> EntregasAvisos => Set<EntregaAviso>();
+    public DbSet<IntentoAviso> IntentosAvisos => Set<IntentoAviso>();
 
     // Sincronización de la app del repartidor
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
@@ -188,6 +189,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<Devolucion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<Notificacion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<EntregaAviso>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
+        modelBuilder.Entity<IntentoAviso>().HasQueryFilter(x => EntregasAvisos.Any(a => a.Id == x.EntregaAvisoId));
         // La aplicación no puede leer el outbox (ver la migración Outbox); el filtro queda por coherencia
         modelBuilder.Entity<MensajeOutbox>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<PruebaEntrega>().HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));

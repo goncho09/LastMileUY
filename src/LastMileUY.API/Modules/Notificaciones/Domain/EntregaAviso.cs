@@ -28,4 +28,7 @@ public class EntregaAviso
     public DateTime? FechaProximoIntento { get; set; }
 
     public string? UltimoError { get; set; }
+
+    // Cada intento de entrega, con su resultado (historial)
+    public ICollection<IntentoAviso> Intentos { get; set; } = new List<IntentoAviso>();
 }
