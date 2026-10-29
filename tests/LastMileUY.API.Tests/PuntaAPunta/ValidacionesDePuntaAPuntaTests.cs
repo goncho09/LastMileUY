@@ -88,6 +88,16 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Empty((await respuesta.Content.ReadFromJsonAsync<Contracts.Comun.PaginaDto<EnvioResumenDto>>())!.Items);
     }
 
+    // También en las respuestas de error (acá, un 401 sin sesión)
+    [Fact]
+    public async Task Toda_respuesta_le_dice_al_navegador_que_no_adivine_el_tipo_de_contenido()
+    {
+        using var respuesta = await api.ClienteSinSesion().GetAsync("api/envios");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, respuesta.StatusCode);
+        Assert.Equal("nosniff", Assert.Single(respuesta.Headers.GetValues("X-Content-Type-Options")));
+    }
+
     [Fact]
     public async Task Una_url_de_aviso_demasiado_larga_es_un_400()
     {

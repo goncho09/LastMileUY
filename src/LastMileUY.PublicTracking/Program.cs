@@ -53,6 +53,17 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+// Encabezados de seguridad (ver docs/seguridad.md). La dirección lleva el código de seguimiento:
+// no se le manda a nadie (el logo del operador puede venir de otro sitio). La página no se deja
+// meter en un iframe ajeno y el navegador no adivina el tipo de contenido.
+app.Use((contexto, siguiente) =>
+{
+    contexto.Response.Headers.XContentTypeOptions = "nosniff";
+    contexto.Response.Headers["Referrer-Policy"] = "no-referrer";
+    contexto.Response.Headers.XFrameOptions = "DENY";
+    return siguiente(contexto);
+});
+
 app.UseRateLimiter();
 app.UseAntiforgery();
 
