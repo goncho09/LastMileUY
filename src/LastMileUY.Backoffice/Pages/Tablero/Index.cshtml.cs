@@ -13,8 +13,6 @@ public class IndexModel(ICacheApi cacheApi, ILogger<IndexModel> logger) : PageMo
 
     public string? Error { get; private set; }
 
-    public string? Mensaje { get; private set; }
-
     public long TotalAciertos => Metricas.Sum(m => m.Aciertos);
 
     public long TotalFallos => Metricas.Sum(m => m.Fallos);
@@ -23,24 +21,6 @@ public class IndexModel(ICacheApi cacheApi, ILogger<IndexModel> logger) : PageMo
         TotalAciertos + TotalFallos == 0 ? 0 : Math.Round(TotalAciertos * 100.0 / (TotalAciertos + TotalFallos), 1);
 
     public Task OnGetAsync(CancellationToken ct) => CargarAsync(ct);
-
-    // Pone los contadores en cero (por ejemplo, antes de una demostración)
-    public async Task<IActionResult> OnPostReiniciarAsync(CancellationToken ct)
-    {
-        try
-        {
-            await cacheApi.ReiniciarMetricasAsync(ct);
-            Mensaje = "Contadores reiniciados.";
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-        {
-            logger.LogError(ex, "No se pudieron reiniciar las métricas del caché");
-            Error = "No se pudieron reiniciar los contadores. Probá de nuevo en unos minutos.";
-        }
-
-        await CargarAsync(ct);
-        return Page();
-    }
 
     private async Task CargarAsync(CancellationToken ct)
     {

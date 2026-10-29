@@ -23,14 +23,9 @@
             </p>
         </div>
 
-        <div class="flex gap-2">
-            <form method="post" asp-page-handler="Reiniciar">
-                <button type="submit"
-                        class="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20">
-                    Reiniciar contadores
-                </button>
-            </form>
-        </div>
+        <p class="max-w-xs text-xs text-slate-500">
+            Los contadores son de toda la plataforma: los pone en cero un administrador.
+        </p>
     </div>
 
     @if (Model.Error is not null)
@@ -38,14 +33,6 @@
         <div role="alert"
              class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
             @Model.Error
-        </div>
-    }
-
-    @if (Model.Mensaje is not null)
-    {
-        <div role="status"
-             class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
-            @Model.Mensaje
         </div>
     }
 

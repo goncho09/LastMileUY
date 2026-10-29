@@ -6,6 +6,9 @@ Este documento junta en un solo lugar los controles de seguridad del sistema y p
 
 - **Usuarios y contraseñas:** ASP.NET Core Identity. La contraseña pide al menos 8 caracteres, con mayúscula, minúscula y número.
 - **Bloqueo por intentos:** el login usa `lockoutOnFailure: true`. Después de 5 contraseñas mal, la cuenta queda bloqueada 5 minutos (valores por defecto de Identity). La respuesta siempre es un `401` igual, sin decir si el email existe, si está bloqueada o si está inactiva.
+- **Tope de intentos por visitante:** el bloqueo por cuenta no frena que alguien pruebe una contraseña contra muchas cuentas. Por eso el Backoffice y el portal aceptan hasta 10 envíos del login por minuto y por IP (`Login:IntentosPorMinuto`). Al pasarse responden `429` con un mensaje. En el portal, la elección de operador comparte ese cupo, porque también inicia la sesión.
+  - El tope va en cada aplicación y no en la API porque a la API todos los intentos le llegan desde la IP del servidor del Backoffice o del portal.
+  - Detrás de un proxy inverso, todos los visitantes llegarían con la IP del proxy: habría que configurar `ForwardedHeaders` para tomar la IP real.
 - **Sesión:** cookie `LastMileUY.Auth` con estas propiedades:
   - `HttpOnly`: JavaScript no la puede leer.
   - `Secure`: solo viaja por https.
@@ -32,6 +35,8 @@ Además de mirar el perfil, también se controla de quién es cada recurso. La h
 **Minimización de datos personales:**
 - El repartidor recibe lo justo para entregar: nombre, teléfono y dirección, sin el email.
 - El listado de destinatarios es solo para quien da de alta envíos (Comercio y Operador).
+
+**Métricas del caché:** son de toda la plataforma. Las ve el perfil Operador en el tablero técnico, pero solo el Administrador las pone en cero (`POST /api/cache/metricas/reiniciar`). Si las reiniciara un operador, les borraría la medición a los demás.
 
 ## Aislamiento entre operadores
 
@@ -86,6 +91,4 @@ Detalle en [seguimiento-publico.md](seguimiento-publico.md).
 
 ## Pendientes conocidos
 
-- **Login sin límite de pedidos por IP.** El bloqueo por cuenta frena que alguien pruebe muchas contraseñas contra una cuenta, pero no que pruebe una contraseña contra muchas cuentas. Un límite por IP en la API no alcanza: el Backoffice y el portal llaman desde su servidor, una sola IP para todos sus usuarios. Tendría que ir en cada aplicación, por visitante, como en el seguimiento público.
-- **Métricas del caché.** Son de toda la plataforma: un usuario Operador de cualquier operador las ve y las puede reiniciar. No tienen datos de envíos, pero reiniciarlas afecta a todos.
 - **Despliegue:** las contraseñas de los usuarios de base y las variables que hay que cambiar están en la sección "Antes de desplegar" del README.

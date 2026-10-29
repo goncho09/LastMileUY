@@ -88,6 +88,28 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Empty((await respuesta.Content.ReadFromJsonAsync<Contracts.Comun.PaginaDto<EnvioResumenDto>>())!.Items);
     }
 
+    // Las métricas del caché son de toda la plataforma: un operador las ve, pero si las reiniciara
+    // les borraría la medición a los demás operadores
+    [Fact]
+    public async Task Las_metricas_del_cache_las_ve_un_operador_y_las_reinicia_solo_el_administrador()
+    {
+        var operador = await api.IniciarSesionAsync(Operador1);
+        var administrador = await api.IniciarSesionAsync("admin@prueba.test");
+
+        using (var ver = await operador.GetAsync("api/cache/metricas"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ver.StatusCode);
+        }
+
+        using (var reiniciarOperador = await operador.PostAsync("api/cache/metricas/reiniciar", null))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, reiniciarOperador.StatusCode);
+        }
+
+        using var reiniciarAdministrador = await administrador.PostAsync("api/cache/metricas/reiniciar", null);
+        Assert.Equal(HttpStatusCode.NoContent, reiniciarAdministrador.StatusCode);
+    }
+
     // También en las respuestas de error (acá, un 401 sin sesión)
     [Fact]
     public async Task Toda_respuesta_le_dice_al_navegador_que_no_adivine_el_tipo_de_contenido()

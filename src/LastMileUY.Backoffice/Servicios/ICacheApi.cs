@@ -6,6 +6,4 @@ namespace LastMileUY.Backoffice.Servicios;
 public interface ICacheApi
 {
     Task<List<MetricaCacheDto>> ObtenerMetricasAsync(CancellationToken ct = default);
-
-    Task ReiniciarMetricasAsync(CancellationToken ct = default);
 }
