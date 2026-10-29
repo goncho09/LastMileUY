@@ -214,8 +214,13 @@ comercio.
   - suscripciones: hecho. `GET`, `POST` y `PATCH /api/avisos/suscripciones` (rol Comercio) y la página
     **Avisos** del portal. La URL se valida con `DestinosAvisos.Validar`; en la API, `Avisos:PermitirDestinosLocales`
     deja usar el receptor de prueba (compose lo pone en `true`). No se borran: se desactivan;
-  - los fallidos son `EntregasAvisos` con estado 3, y el motivo está en `UltimoError`;
-  - para reenviar uno, se vuelve a estado 1 con `FechaProximoIntento` vacía.
+  - historial y reenvío: hecho. Pestaña **Historial de avisos** de la página Avisos, con
+    `GET /api/avisos` (filtro por estado), `GET /api/avisos/{id}` (el aviso con sus intentos) y
+    `POST /api/avisos/{id}/reenviar` (rol Comercio). Solo se reenvían los **Fallidos** (estado 3) cuya
+    suscripción está activa: vuelve a estado 1 con `FechaProximoIntento` vacía y el worker lo manda en
+    unos segundos, como un intento más del historial. Si ese intento falla, queda Fallido sin otra ronda
+    de reintentos automáticos (`ProximoIntento` no programa más allá del último), y se puede volver a
+    reenviar.
 
 ## El tablero en vivo del backoffice
 

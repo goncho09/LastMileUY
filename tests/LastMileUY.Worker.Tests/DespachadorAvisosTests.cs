@@ -105,6 +105,22 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Un_reenvio_manual_que_falla_queda_fallido_sin_otra_ronda_de_reintentos()
+    {
+        // Como lo deja el portal al reenviar un aviso que ya había agotado sus intentos
+        var aviso = await RegistrarAvisoAsync(SuscripcionConErrorDeA, EnvioDeA, intentosPrevios: DespachadorAvisos.MaximoIntentos);
+
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+
+        var intento = DespachadorAvisos.MaximoIntentos + 1;
+        Assert.Equal(intento.ToString(), Assert.Single(await RecibidosAsync(aviso)).Encabezados[EncabezadosAvisos.Intento]);
+        Assert.Equal(1, await AvisosAsync(aviso, $"""
+            "Estado" = 3 AND "CantidadIntentos" = {intento} AND "FechaProximoIntento" IS NULL
+            """));
+        Assert.Equal(1, await IntentosAsync(aviso, $""" i."NumeroIntento" = {intento} AND NOT i."Exitoso" """));
+    }
+
+    [Fact]
     public async Task Cuando_el_comercio_se_recupera_el_reintento_se_entrega()
     {
         // Ya falló dos veces y le toca el tercer intento; ahora el comercio responde bien

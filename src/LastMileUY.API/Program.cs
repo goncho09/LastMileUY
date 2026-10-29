@@ -211,6 +211,7 @@ builder.Services.AddScoped<SincronizarEntregasService>();
 builder.Services.AddScoped<ConsultasSincronizacionService>();
 builder.Services.AddScoped<SeguimientoPublicoService>();
 builder.Services.AddScoped<SuscripcionesAvisosService>();
+builder.Services.AddScoped<AvisosComercioService>();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 
 builder.Services.AddMemoryCache();
@@ -311,6 +312,7 @@ app.MapRutasEndpoints();
 app.MapSincronizacionEndpoints();
 app.MapSeguimientoEndpoints();
 app.MapSuscripcionesAvisosEndpoints();
+app.MapAvisosEndpoints();
 app.MapCacheEndpoints();
 
 app.Run();

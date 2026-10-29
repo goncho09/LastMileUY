@@ -1,0 +1,367 @@
+@using LastMileUY.CommercePortal.Servicios
+@using LastMileUY.Contracts.Avisos
+@using LastMileUY.Contracts.Comun
+@using LastMileUY.Contracts.Mensajeria
+@using Microsoft.AspNetCore.Components.Web
+
+@inject IAvisosApi AvisosApi
+@inject NavigationManager Navegacion
+@inject ILogger<HistorialAvisos> Logger
+
+@* Historial de entregas de los avisos del comercio y reenvío de los fallidos (letra 6.9) *@
+<div class="space-y-6">
+    <!-- Filtro -->
+    <div class="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-[#151927] p-4">
+        <label class="flex min-w-[220px] flex-col gap-1.5 text-xs font-medium text-slate-400">
+            Estado
+            <select @bind="estado" @bind:after="FiltrarAsync"
+                    class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20">
+                <option value="">Todos</option>
+                @foreach (var (valor, texto) in Estados)
+                {
+                    <option value="@valor">@texto</option>
+                }
+            </select>
+        </label>
+    </div>
+
+    @if (mensaje is not null)
+    {
+        <div role="status" class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-200">
+            @mensaje
+        </div>
+    }
+
+    @if (error is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">
+            @error
+        </div>
+    }
+
+    @if (pagina is null)
+    {
+        @if (errorCarga is null)
+        {
+            <p class="text-sm text-slate-400">Cargando avisos…</p>
+        }
+        else
+        {
+            <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">
+                @errorCarga
+            </div>
+        }
+    }
+    else if (pagina.Items.Count == 0)
+    {
+        <section class="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+            <h2 class="text-lg font-semibold text-white">
+                @(string.IsNullOrWhiteSpace(estado) ? "Todavía no hay avisos" : "No hay avisos en ese estado")
+            </h2>
+        </section>
+    }
+    else
+    {
+        <div class="overflow-x-auto rounded-2xl border border-white/10 bg-[#151927]">
+            <table class="w-full min-w-[760px] text-left text-sm">
+                <thead class="border-b border-white/10 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                        <th class="px-5 py-3 font-medium">Envío</th>
+                        <th class="px-5 py-3 font-medium">Evento</th>
+                        <th class="px-5 py-3 font-medium">Estado</th>
+                        <th class="px-5 py-3 text-right font-medium">Intentos</th>
+                        <th class="px-5 py-3 font-medium">Último intento</th>
+                        <th class="px-5 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    @foreach (var aviso in pagina.Items)
+                    {
+                        <tr class="transition hover:bg-white/[0.03]">
+                            <td class="px-5 py-3 font-semibold text-violet-300">@aviso.CodigoSeguimiento</td>
+                            <td class="px-5 py-3 text-slate-200">@TextoTipo(aviso.TipoEvento)</td>
+                            <td class="px-5 py-3">
+                                <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @ClaseEstado(aviso.Estado)">
+                                    @TextoEstado(aviso.Estado)
+                                </span>
+                                @if (aviso.Estado == "Pendiente" && aviso.FechaProximoIntento is { } proximo)
+                                {
+                                    <p class="mt-1 text-xs text-slate-500">Próximo intento: @Fecha(proximo, conSegundos: true)</p>
+                                }
+                            </td>
+                            <td class="px-5 py-3 text-right text-slate-200">@aviso.CantidadIntentos</td>
+                            <td class="px-5 py-3 text-slate-400">@(aviso.FechaUltimoIntento is { } ultimo ? Fecha(ultimo, conSegundos: true) : "—")</td>
+                            <td class="px-5 py-3">
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" @onclick="() => AlternarDetalleAsync(aviso.Id)"
+                                            class="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/5">
+                                        @(abierto == aviso.Id ? "Ocultar intentos" : "Ver intentos")
+                                    </button>
+                                    @if (aviso.Estado == "Fallido")
+                                    {
+                                        <button type="button" @onclick="() => ReenviarAsync(aviso)" disabled="@(reenviando == aviso.Id)"
+                                                class="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-violet-500 disabled:opacity-50">
+                                            @(reenviando == aviso.Id ? "Reenviando…" : "Reenviar")
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+
+                        @if (abierto == aviso.Id)
+                        {
+                            <tr>
+                                <td colspan="6" class="bg-black/20 px-5 py-4">
+                                    @if (detalle is null)
+                                    {
+                                        <p class="text-sm text-slate-400">Cargando intentos…</p>
+                                    }
+                                    else if (detalle.Intentos.Count == 0 && detalle.Aviso.CantidadIntentos == 0)
+                                    {
+                                        <p class="text-sm text-slate-400">Todavía no se intentó mandar.</p>
+                                    }
+                                    else if (detalle.Intentos.Count == 0)
+                                    {
+                                        @* Avisos anteriores al historial de intentos: solo se guardaba el último resultado *@
+                                        <p class="text-sm text-slate-400">
+                                            Se intentó mandar @detalle.Aviso.CantidadIntentos @(detalle.Aviso.CantidadIntentos == 1 ? "vez" : "veces")@(detalle.Aviso.FechaUltimoIntento is { } ultimaVez ? $"; la última, el {Fecha(ultimaVez, conSegundos: true)}" : "").
+                                            No hay detalle de cada intento.
+                                        </p>
+                                    }
+                                    else
+                                    {
+                                        <p class="mb-3 break-all text-xs text-slate-500">Destino: @detalle.Aviso.UrlDestino</p>
+                                        <table class="w-full text-left text-xs">
+                                            <thead class="text-slate-500">
+                                                <tr>
+                                                    <th class="py-2 pr-4 font-medium">#</th>
+                                                    <th class="py-2 pr-4 font-medium">Fecha</th>
+                                                    <th class="py-2 pr-4 font-medium">Resultado</th>
+                                                    <th class="py-2 font-medium">Detalle</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-white/5">
+                                                @foreach (var intento in detalle.Intentos)
+                                                {
+                                                    <tr>
+                                                        <td class="py-2 pr-4 text-slate-300">@intento.NumeroIntento</td>
+                                                        <td class="py-2 pr-4 text-slate-400">@Fecha(intento.Fecha, conSegundos: true)</td>
+                                                        <td class="py-2 pr-4">
+                                                            @if (intento.Exitoso)
+                                                            {
+                                                                <span class="font-semibold text-emerald-300">Entregado</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="font-semibold text-red-300">Falló</span>
+                                                            }
+                                                        </td>
+                                                        <td class="py-2 text-slate-400">@Detalle(intento)</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginado -->
+        <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+            <span>@pagina.Total @(pagina.Total == 1 ? "aviso" : "avisos") · página @pagina.Pagina de @Math.Max(1, pagina.TotalPaginas)</span>
+            <div class="flex gap-2">
+                <button type="button" @onclick="() => IrAPaginaAsync(numeroPagina - 1)"
+                        disabled="@(cargando || numeroPagina <= 1)"
+                        class="rounded-xl border border-white/10 px-4 py-2 font-medium text-slate-300 transition hover:bg-white/5 disabled:opacity-40">
+                    ← Anterior
+                </button>
+                <button type="button" @onclick="() => IrAPaginaAsync(numeroPagina + 1)"
+                        disabled="@(cargando || numeroPagina >= pagina.TotalPaginas)"
+                        class="rounded-xl border border-white/10 px-4 py-2 font-medium text-slate-300 transition hover:bg-white/5 disabled:opacity-40">
+                    Siguiente →
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private const int TamanioPagina = 20;
+
+    private static readonly (string Valor, string Texto)[] Estados =
+    [
+        ("Fallido", "Fallidos"),
+        ("Pendiente", "Pendientes"),
+        ("Entregado", "Entregados")
+    ];
+
+    private PaginaDto<AvisoResumenDto>? pagina;
+    private int numeroPagina = 1;
+    private string? estado;
+    private bool cargando;
+    private string? errorCarga;
+
+    private int? abierto;
+    private AvisoDetalleDto? detalle;
+
+    private int? reenviando;
+    private string? mensaje;
+    private string? error;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private Task FiltrarAsync() => IrAPaginaAsync(1);
+
+    private async Task IrAPaginaAsync(int numero)
+    {
+        numeroPagina = Math.Max(1, numero);
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        cargando = true;
+        errorCarga = null;
+
+        try
+        {
+            pagina = await AvisosApi.ListarAvisosAsync(numeroPagina, TamanioPagina, estado);
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudieron cargar los avisos");
+            errorCarga = "No se pudieron cargar los avisos. Probá recargar la página.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task AlternarDetalleAsync(int id)
+    {
+        if (abierto == id)
+        {
+            abierto = null;
+            detalle = null;
+            return;
+        }
+
+        abierto = id;
+        detalle = null;
+
+        try
+        {
+            var cargado = await AvisosApi.ObtenerAvisoAsync(id);
+
+            // Si mientras tanto se abrió otro, no se pisa
+            if (abierto == id)
+                detalle = cargado;
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudieron cargar los intentos del aviso {Id}", id);
+            abierto = null;
+            error = "No se pudieron cargar los intentos. Probá de nuevo.";
+        }
+    }
+
+    private async Task ReenviarAsync(AvisoResumenDto aviso)
+    {
+        mensaje = null;
+        error = null;
+        reenviando = aviso.Id;
+
+        try
+        {
+            var resultado = await AvisosApi.ReenviarAsync(aviso.Id);
+
+            if (resultado.Exito)
+            {
+                mensaje = $"Aviso del envío {aviso.CodigoSeguimiento} reenviado: se manda en unos segundos.";
+                abierto = null;
+                detalle = null;
+                await CargarAsync();
+            }
+            else
+            {
+                error = resultado.Error;
+            }
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo reenviar el aviso {Id}", aviso.Id);
+            error = "No se pudo reenviar el aviso. Probá de nuevo.";
+        }
+        finally
+        {
+            reenviando = null;
+        }
+    }
+
+    private void IrAlLogin() =>
+        Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+
+    private static string TextoTipo(string tipo) => tipo switch
+    {
+        TiposEvento.EnvioEstadoCambiado => "Cambio de estado del envío",
+        TiposEvento.EnvioAdmitido => "Envío admitido",
+        _ => tipo
+    };
+
+    private static string TextoEstado(string estado) => estado switch
+    {
+        "Pendiente" => "Pendiente",
+        "Entregado" => "Entregado",
+        "Fallido" => "Fallido",
+        _ => estado
+    };
+
+    // Sin datos técnicos: si el sistema del comercio contestó con un error, el código ayuda a
+    // encontrar el problema; si no contestó, alcanza con decirlo
+    private static string Detalle(IntentoAvisoDto intento) => intento switch
+    {
+        { Exitoso: true } => "—",
+        { CodigoHttp: { } codigo } => $"Respondió con error {codigo}",
+        _ => "Sin respuesta"
+    };
+
+    private static string ClaseEstado(string estado) => estado switch
+    {
+        "Entregado" => "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+        "Fallido" => "border-red-500/25 bg-red-500/10 text-red-300",
+        _ => "border-amber-500/25 bg-amber-500/10 text-amber-300"
+    };
+
+    // La API guarda las fechas en UTC; se muestran en hora de Uruguay
+    private static readonly TimeZoneInfo? ZonaUruguay = BuscarZona();
+
+    private static TimeZoneInfo? BuscarZona()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("America/Montevideo"); }
+        catch (Exception) { return null; }
+    }
+
+    private static string Fecha(DateTime fecha, bool conSegundos = false)
+    {
+        var utc = fecha.Kind == DateTimeKind.Local ? fecha.ToUniversalTime() : DateTime.SpecifyKind(fecha, DateTimeKind.Utc);
+        var local = ZonaUruguay is null ? utc : TimeZoneInfo.ConvertTimeFromUtc(utc, ZonaUruguay);
+        return local.ToString(conSegundos ? "dd/MM/yyyy HH:mm:ss" : "dd/MM/yyyy HH:mm");
+    }
+}
