@@ -178,7 +178,7 @@ ve como `http://lastmileuy.receptoravisos:8080`.
 - `GET /avisos`: lo recibido, con los encabezados y el contenido, el último primero (guarda hasta 200).
 - `DELETE /avisos`: lo borra.
 
-Para probarlo, cargá una suscripción con `UrlDestino`
+Para probarlo, en el portal del comercio (menú **Avisos**) cargá una suscripción con la URL
 `http://lastmileuy.receptoravisos:8080/avisos/mi-comercio` y cambiale el estado a un envío de ese
 comercio.
 
@@ -192,7 +192,9 @@ comercio.
   significa que el aviso no se reintenta y queda Fallido. Si devuelve una fecha, el aviso sigue
   Pendiente y el despachador lo vuelve a tomar cuando llega esa fecha. Ya hay una prueba de eso.
 - **Portal (suscripciones y fallidos):**
-  - al guardar una suscripción, validar la URL con `DestinosAvisos.Validar(url, permitirLocales)`;
+  - suscripciones: hecho. `GET`, `POST` y `PATCH /api/avisos/suscripciones` (rol Comercio) y la página
+    **Avisos** del portal. La URL se valida con `DestinosAvisos.Validar`; en la API, `Avisos:PermitirDestinosLocales`
+    deja usar el receptor de prueba (compose lo pone en `true`). No se borran: se desactivan;
   - los fallidos son `EntregasAvisos` con estado 3, y el motivo está en `UltimoError`;
   - para reenviar uno, se vuelve a estado 1 con `FechaProximoIntento` vacía.
 
