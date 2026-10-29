@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using LastMileUY.CommercePortal.Components;
 using LastMileUY.CommercePortal.Servicios;
 using Microsoft.AspNetCore.Authentication;
@@ -69,6 +70,38 @@ builder.Services.AddHttpClient<IAvisosApi, AvisosApiHttp>(ConfigurarCliente)
 builder.Services.AddSingleton<SeleccionOperadorCookie>();
 builder.Services.AddDataProtection();
 
+// Tope de intentos de inicio de sesión por visitante (429 al pasarlo). La API bloquea la cuenta después
+// de 5 contraseñas mal, pero eso no frena probar una contraseña contra muchas cuentas. Y a la API todos
+// los intentos le llegan desde la IP de este servidor: el freno por persona va acá (ver docs/seguridad.md).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Con texto, para que no lo tape la página de "no encontrado" (UseStatusCodePagesWithReExecute)
+    options.OnRejected = (contexto, cancellationToken) =>
+    {
+        contexto.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+        return new ValueTask(contexto.HttpContext.Response.WriteAsync(
+            "Hiciste muchos intentos de iniciar sesión seguidos. Probá de nuevo en un minuto.", cancellationToken));
+    };
+
+    var intentosPorMinuto = builder.Configuration.GetValue("Login:IntentosPorMinuto", 10);
+
+    // Solo cuenta los envíos del login y de la elección de operador (que también inicia la sesión)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(contexto =>
+        HttpMethods.IsPost(contexto.Request.Method)
+        && (contexto.Request.Path.Equals("/login", StringComparison.OrdinalIgnoreCase)
+            || contexto.Request.Path.Equals("/seleccionar-operador", StringComparison.OrdinalIgnoreCase))
+            ? RateLimitPartition.GetFixedWindowLimiter(
+                contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = intentosPorMinuto,
+                    Window = TimeSpan.FromMinutes(1)
+                })
+            : RateLimitPartition.GetNoLimiter("sin-tope"));
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -89,6 +122,8 @@ app.Use((contexto, siguiente) =>
     contexto.Response.Headers["Referrer-Policy"] = "same-origin";
     return siguiente(contexto);
 });
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

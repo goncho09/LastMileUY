@@ -11,6 +11,4 @@ public class CacheApiDePrueba : ICacheApi
             new("operador", "Configuración del operador", "Se lee seguido y casi nunca cambia", 3600, 950, 50, 95.0),
             new("seguimiento", "Seguimiento público", "Mucho tráfico y el estado cambia pocas veces", 120, 820, 180, 82.0)
         });
-
-    public Task ReiniciarMetricasAsync(CancellationToken ct = default) => Task.CompletedTask;
 }
