@@ -34,6 +34,17 @@ public class DestinosAvisosTests
         Assert.Contains(motivo, DestinosAvisos.Validar(url, permitirLocales: false));
     }
 
+    // Más larga que la columna: sin esto la base la cortaría con un error 500
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Rechaza_una_url_mas_larga_que_el_maximo(bool permitirLocales)
+    {
+        var url = "https://comercio.example/" + new string('a', DestinosAvisos.LargoMaximo);
+
+        Assert.Contains("superar", DestinosAvisos.Validar(url, permitirLocales));
+    }
+
     [Theory]
     [InlineData("http://localhost:5085/avisos")]
     [InlineData("http://lastmileuy.receptoravisos:8080/avisos")]

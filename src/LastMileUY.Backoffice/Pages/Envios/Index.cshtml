@@ -216,7 +216,7 @@
                                 <td class="px-4 py-4">
                                     <div class="flex flex-wrap items-center gap-1.5">
                                         @{
-                                            var estado = envio.Estado?.ToString() ?? "";
+                                            var estado = envio.Estado;
                                             var claseEstado = estado switch
                                             {
                                                 "Entregado" => "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",

@@ -24,9 +24,15 @@ public static class EncabezadosAvisos
 // permitirLocales: solo para desarrollo y pruebas, con el receptor de prueba en Docker o en la máquina.
 public static class DestinosAvisos
 {
+    // Lo que entra en la columna UrlDestino de SuscripcionesAvisos
+    public const int LargoMaximo = 2000;
+
     // null si se puede usar; si no, el motivo
     public static string? Validar(string? url, bool permitirLocales)
     {
+        if (url?.Length > LargoMaximo)
+            return $"La URL no puede superar los {LargoMaximo} caracteres.";
+
         // IsFile: en Linux, "/avisos" se lee como una ruta de archivo (file:///avisos)
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.IsFile)
             return "La URL no es válida.";
