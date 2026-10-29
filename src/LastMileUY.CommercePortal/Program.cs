@@ -81,6 +81,15 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+// Encabezados de seguridad (ver docs/seguridad.md): el navegador no adivina el tipo de contenido
+// y a otros sitios no les llega la dirección de la página que los enlaza
+app.Use((contexto, siguiente) =>
+{
+    contexto.Response.Headers.XContentTypeOptions = "nosniff";
+    contexto.Response.Headers["Referrer-Policy"] = "same-origin";
+    return siguiente(contexto);
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

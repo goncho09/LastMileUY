@@ -286,6 +286,14 @@ if (!app.Environment.IsDevelopment())
 // Primero, así todo lo que pase en el pedido (y sus registros) lleva el identificador
 app.UseCorrelacion();
 
+// Encabezados de seguridad (ver docs/seguridad.md): el navegador no adivina el tipo de contenido
+// (las imágenes de evidencia se sirven con su tipo real, revisado al guardarlas)
+app.Use((contexto, siguiente) =>
+{
+    contexto.Response.Headers.XContentTypeOptions = "nosniff";
+    return siguiente(contexto);
+});
+
 app.UseCors("DriverPWA");
 
 app.UseAuthentication();
