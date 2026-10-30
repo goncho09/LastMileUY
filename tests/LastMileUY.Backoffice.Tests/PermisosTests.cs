@@ -16,7 +16,7 @@ public class PermisosTests
     [InlineData("Despachador", true)]
     [InlineData("Repartidor", false)]
     [InlineData("Comercio", false)]
-    [InlineData("Administrador", false)]
+    [InlineData("Administrador", true)]
     public void Solo_los_perfiles_del_Backoffice_pueden_entrar(string rol, bool puede)
     {
         Assert.Equal(puede, Permisos.PuedeEntrar([rol]));
@@ -38,6 +38,18 @@ public class PermisosTests
 
         Assert.Equal(cambiaEstado, Permisos.PuedeCambiarEstado(usuario));
         Assert.Equal(veConfiguracion, Permisos.PuedeVerConfiguracion(usuario));
+    }
+    
+    [Fact]
+    public void El_administrador_solo_puede_administrar_mensajeria()
+    {
+        var usuario = Usuario("Administrador");
+
+        Assert.True(Permisos.PuedeEntrar(["Administrador"]));
+        Assert.True(Permisos.PuedeAdministrarMensajeria(usuario));
+
+        Assert.False(Permisos.PuedeCambiarEstado(usuario));
+        Assert.False(Permisos.PuedeVerConfiguracion(usuario));
     }
 
     [Fact]
