@@ -36,8 +36,8 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
 
         respuesta.EnsureSuccessStatusCode();
         var suscripcion = await respuesta.Content
-            .ReadFromJsonAsync<SuscripcionAvisosCreadaDto>(ct)
-            ?? throw new InvalidOperationException("La API no devolvió la suscripción creada.");
+                              .ReadFromJsonAsync<SuscripcionAvisosCreadaDto>(ct)
+                          ?? throw new InvalidOperationException("La API no devolvió la suscripción creada.");
 
         return new ResultadoCreacionSuscripcion(suscripcion, null);
     }
@@ -62,8 +62,9 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
 
         respuesta.EnsureSuccessStatusCode();
         var suscripcion = await respuesta.Content
-            .ReadFromJsonAsync<SuscripcionAvisosCreadaDto>(ct)
-            ?? throw new InvalidOperationException("La API no devolvió la nueva clave de la suscripción.");
+                              .ReadFromJsonAsync<SuscripcionAvisosCreadaDto>(ct)
+                          ?? throw new InvalidOperationException(
+                              "La API no devolvió la nueva clave de la suscripción.");
 
         return new ResultadoCreacionSuscripcion(suscripcion, null);
     }
@@ -79,7 +80,7 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
         using var respuesta = await EnviarAsync(pedido, ct);
         respuesta.EnsureSuccessStatusCode();
         return await respuesta.Content.ReadFromJsonAsync<PaginaDto<AvisoResumenDto>>(ct)
-            ?? throw new InvalidOperationException("La API no devolvió el listado de avisos.");
+               ?? throw new InvalidOperationException("La API no devolvió el listado de avisos.");
     }
 
     public async Task<AvisoDetalleDto?> ObtenerAvisoAsync(int id, CancellationToken ct = default)
@@ -104,7 +105,7 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
 
         respuesta.EnsureSuccessStatusCode();
         var aviso = await respuesta.Content.ReadFromJsonAsync<AvisoResumenDto>(ct)
-            ?? throw new InvalidOperationException("La API no devolvió el aviso.");
+                    ?? throw new InvalidOperationException("La API no devolvió el aviso.");
         return new ResultadoReenvio(aviso, null);
     }
 
@@ -122,7 +123,9 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
 
             respuesta.EnsureSuccessStatusCode();
             var suscripcion = await respuesta.Content
-                .ReadFromJsonAsync<SuscripcionAvisosDto>(ct)
-                ?? throw new InvalidOperationException("La API no devolvió la suscripción.");
+                                  .ReadFromJsonAsync<SuscripcionAvisosDto>(ct)
+                              ?? throw new InvalidOperationException("La API no devolvió la suscripción.");
             return new ResultadoSuscripcion(suscripcion, null);
         }
+    }
+}
