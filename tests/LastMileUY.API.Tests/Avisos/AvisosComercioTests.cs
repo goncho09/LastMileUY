@@ -43,6 +43,24 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
     }
 
     [Fact]
+    public async Task Cada_aviso_dice_a_que_estado_paso_el_envio()
+    {
+        var cambio = await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Entregado,
+            contenido: """{"Estado": "EnDeposito", "EstadoAnterior": "Admitido"}""");
+        var nuevo = await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Entregado,
+            contenido: """{"Estado": "Admitido", "EstadoAnterior": null}""");
+
+        await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido);
+        var avisos = (await Servicio(db, ComercioCompartido).ListarAsync(1, 100, null)).Items;
+
+        var deCambio = Assert.Single(avisos, a => a.Id == cambio);
+        Assert.Equal(("EnDeposito", "Admitido"), (deCambio.EstadoEnvio, deCambio.EstadoEnvioAnterior));
+
+        var deNuevo = Assert.Single(avisos, a => a.Id == nuevo);
+        Assert.Equal(("Admitido", (string?)null), (deNuevo.EstadoEnvio, deNuevo.EstadoEnvioAnterior));
+    }
+
+    [Fact]
     public async Task El_detalle_trae_los_intentos_en_orden()
     {
         var id = await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Fallido, intentos: 3);
@@ -126,7 +144,8 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
 
     // Un aviso de un envío del operador A, con su suscripción y "intentos" filas de historial
     private async Task<int> CrearAvisoAsync(
-        int comercioId, int envioId, EstadoEntregaAviso estado, int intentos = 1, bool suscripcionActiva = true)
+        int comercioId, int envioId, EstadoEntregaAviso estado, int intentos = 1, bool suscripcionActiva = true,
+        string contenido = "{}")
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA, comercioId);
 
@@ -146,7 +165,7 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
             SuscripcionAvisosId = suscripcion.Id,
             EnvioId = envioId,
             TipoEvento = TiposEvento.EnvioEstadoCambiado,
-            Contenido = "{}",
+            Contenido = contenido,
             Estado = estado,
             CantidadIntentos = intentos,
             FechaUltimoIntento = DateTime.UtcNow,

@@ -1,11 +1,16 @@
 namespace LastMileUY.Contracts.Avisos;
 
 // Un aviso mandado (o por mandar) al sistema del comercio (GET /api/avisos).
-// Estado: Pendiente (se está intentando), Entregado o Fallido (se agotaron los intentos).
+// Estado: el del aviso, no el del paquete. Pendiente (se está intentando), Entregado (le llegó al
+// sistema del comercio) o Fallido (se agotaron los intentos).
+// EstadoEnvio / EstadoEnvioAnterior: lo que el aviso le cuenta (el envío pasó de uno a otro);
+// el anterior es null cuando el envío se acaba de crear.
 public record AvisoResumenDto(
     int Id,
     string TipoEvento,
     string CodigoSeguimiento,
+    string? EstadoEnvio,
+    string? EstadoEnvioAnterior,
     string UrlDestino,
     string Estado,
     int CantidadIntentos,
