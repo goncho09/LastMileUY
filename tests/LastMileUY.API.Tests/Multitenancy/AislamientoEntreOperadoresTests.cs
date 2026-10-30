@@ -1,3 +1,5 @@
+using LastMileUY.API.Modules.Mensajeria.Domain;
+
 namespace LastMileUY.API.Tests.Multitenancy;
 
 using LastMileUY.API.Modules.Comercios.Domain;
@@ -169,7 +171,12 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         "Comercios",
         // MensajesOutbox: eventos de todos los operadores para publicar en RabbitMQ. En vez de RLS, la
         // aplicación solo puede insertar (no leer) y el publicador tiene su propio usuario (OutboxTests)
-        "MensajesOutbox"
+        "MensajesOutbox",
+        // MensajesFallidos: incidencias técnicas globales del Worker.
+// No pertenecen a un operador específico.
+// El acceso se restringe mediante permisos de PostgreSQL
+// y autorización de administrador en la API.
+        "MensajesFallidos"
     ];
 
     [Fact]
@@ -211,6 +218,8 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
             .Where(t => t.Namespace?.StartsWith("Microsoft.AspNetCore.Identity") != true)
             .Where(t => t != typeof(Usuario) && t != typeof(Rol))
             .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
+            .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
+            .Where(t => t != typeof(MensajeFallido))
             .Select(t => t.Name)
             .ToList();
 

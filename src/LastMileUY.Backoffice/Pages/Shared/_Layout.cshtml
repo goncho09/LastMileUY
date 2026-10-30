@@ -13,6 +13,9 @@
     var enSincronizacion = paginaActual.StartsWith("/Sincronizacion", StringComparison.OrdinalIgnoreCase);
     var enOperador = paginaActual.StartsWith("/Operador", StringComparison.OrdinalIgnoreCase);
     var enTablero = paginaActual.StartsWith("/Tablero", StringComparison.OrdinalIgnoreCase);
+    var enMensajesFallidos = paginaActual.StartsWith(
+        "/MensajesFallidos",
+        StringComparison.OrdinalIgnoreCase);
 
     var claseNavBase = "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium no-underline transition-colors";
     var claseNavActivo = "bg-violet-500/15 text-violet-300";
@@ -69,10 +72,15 @@
                 <span class="mb-4 px-4 text-[10px] font-semibold tracking-[0.2em] text-slate-500 uppercase">
                     Menú principal
                 </span>
+                
+                
 
+
+    @if (!User.IsInRole("Administrador"))
+                {
                 <a asp-page="/Index"
-                   aria-current="@(enInicio ? "page" : null)"
-                   class="@(claseNavBase) @(enInicio ? claseNavActivo : claseNavInactivo)">
+                       aria-current="@(enInicio ? "page" : null)"
+                       class="@(claseNavBase) @(enInicio ? claseNavActivo : claseNavInactivo)">
                     <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
                          stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -81,53 +89,57 @@
                     Inicio
                 </a>
 
-                <a asp-page="/Envios/Index"
-                   aria-current="@(enEnvios ? "page" : null)"
-                   class="@(claseNavBase) @(enEnvios ? claseNavActivo : claseNavInactivo)">
-                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
-                         stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M3 7h18v14H3zM3 7l4-4h10l4 4M3 12h18M9 16h6"/>
-                    </svg>
-                    Envíos
-                </a>
-
-                <a asp-page="/Rutas/Index"
-                   aria-current="@(enRutas ? "page" : null)"
-                   class="@(claseNavBase) @(enRutas ? claseNavActivo : claseNavInactivo)">
-                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
-                         stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>
-                    </svg>
-                    Hojas de ruta
-                </a>
-
-                <a asp-page="/Sincronizacion/Index"
-                   aria-current="@(enSincronizacion ? "page" : null)"
-                   class="@(claseNavBase) @(enSincronizacion ? claseNavActivo : claseNavInactivo)">
-                    <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
-                         stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5"/>
-                    </svg>
-                    Sincronización
-                </a>
-
-                @if (Permisos.PuedeVerConfiguracion(User))
-                {
-                    <a asp-page="/Operador/Index"
-                       aria-current="@(enOperador ? "page" : null)"
-                       class="@(claseNavBase) @(enOperador ? claseNavActivo : claseNavInactivo)">
+                    <a asp-page="/Envios/Index"
+                       aria-current="@(enEnvios ? "page" : null)"
+                       class="@(claseNavBase) @(enEnvios ? claseNavActivo : claseNavInactivo)">
                         <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
                              stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l-1.86 1.86A1.7 1.7 0 0 0 16 18.4a1.7 1.7 0 0 0-1.54 1.06L13.8 21h-3.6l-.66-1.54A1.7 1.7 0 0 0 8 18.4a1.7 1.7 0 0 0-1.88.34l-1.86-1.86A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.06-1.54L2 12.8V11.2l1.54-.66A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l1.86-1.86A1.7 1.7 0 0 0 8 5.6a1.7 1.7 0 0 0 1.54-1.06L10.2 3h3.6l.66 1.54A1.7 1.7 0 0 0 16 5.6a1.7 1.7 0 0 0 1.88-.34l1.86 1.86A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.06 1.54L22 11.2v1.6l-1.54.66A1.7 1.7 0 0 0 19.4 15z"/>
+                                  d="M3 7h18v14H3zM3 7l4-4h10l4 4M3 12h18M9 16h6"/>
                         </svg>
-                        Mi operador
+                        Envíos
                     </a>
+
+
+
+                    <a asp-page="/Rutas/Index"
+                       aria-current="@(enRutas ? "page" : null)"
+                       class="@(claseNavBase) @(enRutas ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>
+                        </svg>
+                        Hojas de ruta
+                    </a>
+
+
+                    <a asp-page="/Sincronizacion/Index"
+                       aria-current="@(enSincronizacion ? "page" : null)"
+                       class="@(claseNavBase) @(enSincronizacion ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M20 12a8 8 0 0 1-14 5.3L4 15M4 20v-5h5"/>
+                        </svg>
+                        Sincronización
+                    </a>
+                }
+
+                @if (Permisos.PuedeVerConfiguracion(User) || !User.IsInRole("Administrador"))
+                {
+                        <a asp-page="/Operador/Index"
+                           aria-current="@(enOperador ? "page" : null)"
+                           class="@(claseNavBase) @(enOperador ? claseNavActivo : claseNavInactivo)">
+                            <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                                 stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l-1.86 1.86A1.7 1.7 0 0 0 16 18.4a1.7 1.7 0 0 0-1.54 1.06L13.8 21h-3.6l-.66-1.54A1.7 1.7 0 0 0 8 18.4a1.7 1.7 0 0 0-1.88.34l-1.86-1.86A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.06-1.54L2 12.8V11.2l1.54-.66A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l1.86-1.86A1.7 1.7 0 0 0 8 5.6a1.7 1.7 0 0 0 1.54-1.06L10.2 3h3.6l.66 1.54A1.7 1.7 0 0 0 16 5.6a1.7 1.7 0 0 0 1.88-.34l1.86 1.86A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.06 1.54L22 11.2v1.6l-1.54.66A1.7 1.7 0 0 0 19.4 15z"/>
+                            </svg>
+                            Mi operador
+                        </a>
 
                     <a asp-page="/Tablero/Index"
                        aria-current="@(enTablero ? "page" : null)"
@@ -138,6 +150,26 @@
                                   d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>
                         </svg>
                         Tablero técnico
+                    </a>
+                }
+                
+                @if (Permisos.PuedeAdministrarMensajeria(User))
+                {
+                    <a asp-page="/MensajesFallidos/Index"
+                       aria-current="@(enMensajesFallidos ? "page" : null)"
+                       class="@(claseNavBase) @(enMensajesFallidos ? claseNavActivo : claseNavInactivo)">
+
+                        <svg class="h-5 w-5 shrink-0"
+                             fill="none"
+                             stroke="currentColor"
+                             stroke-width="1.7"
+                             viewBox="0 0 24 24"
+                             aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 9v4m0 4h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+                        </svg>
+
+                        Mensajes fallidos
                     </a>
                 }
             </nav>

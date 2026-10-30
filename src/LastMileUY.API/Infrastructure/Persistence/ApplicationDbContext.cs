@@ -13,6 +13,7 @@ using LastMileUY.API.Modules.Notificaciones.Domain;
 using System.Reflection;
 using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Modules.Mensajeria.Domain;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -84,6 +85,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<SuscripcionAvisos> SuscripcionesAvisos => Set<SuscripcionAvisos>();
     public DbSet<EntregaAviso> EntregasAvisos => Set<EntregaAviso>();
     public DbSet<IntentoAviso> IntentosAvisos => Set<IntentoAviso>();
+    
+    // Mensajeria
+    public DbSet<MensajeFallido> MensajesFallidos => Set<MensajeFallido>();
 
     // Sincronización de la app del repartidor
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();

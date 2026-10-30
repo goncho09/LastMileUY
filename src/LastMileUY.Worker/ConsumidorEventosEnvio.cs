@@ -17,6 +17,7 @@ namespace LastMileUY.Worker;
 public class ConsumidorEventosEnvio(
     OpcionesConsumidor opciones,
     IProcesadorEventos procesador,
+    RepositorioMensajesFallidos repositorioFallidos,
     ILogger<ConsumidorEventosEnvio> logger) : BackgroundService
 {
     // Encabezados que agrega el worker al reintentar
@@ -34,7 +35,25 @@ public class ConsumidorEventosEnvio(
     // Para mandar a reintento y a fallidos, con confirmación: el original se confirma recién cuando
     // RabbitMQ guardó la copia
     private IChannel? canalPublicacion;
+    
+    private async Task RegistrarFalloAsync(
+        BasicDeliverEventArgs mensaje,
+        int intentos,
+        string error,
+        CancellationToken ct)
+    {
+        var contenido = Encoding.UTF8.GetString(mensaje.Body.Span);
 
+        await repositorioFallidos.RegistrarAsync(
+            mensaje.BasicProperties.MessageId ?? string.Empty,
+            mensaje.BasicProperties.CorrelationId,
+            mensaje.BasicProperties.Type,
+            contenido,
+            error,
+            intentos,
+            ct);
+    }
+    
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await ConectarAsync(stoppingToken);
@@ -136,14 +155,38 @@ public class ConsumidorEventosEnvio(
         {
             var evento = Leer(mensaje);
 
+            
             if (evento is null)
             {
-                // Reintentarlo no lo arregla: directo a fallidos
-                logger.LogError("Mensaje con formato o versión que el worker no entiende");
-                await MoverAsync(mensaje, ColaFallidos, intentosPrevios, "Formato o versión desconocidos", null, cancellationToken);
+                logger.LogError(
+                    "Mensaje con formato o versión que el worker no entiende");
+
+                try
+                {
+                    await MoverAsync(
+                        mensaje,
+                        ColaFallidos,
+                        intentosPrevios,
+                        "Formato o versión desconocidos",
+                        null,
+                        cancellationToken);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    logger.LogError(
+                        ex,
+                        "No se pudo registrar o publicar el mensaje fallido");
+
+                    await canal!.BasicNackAsync(
+                        mensaje.DeliveryTag,
+                        multiple: false,
+                        requeue: true,
+                        cancellationToken);
+                }
+
                 return;
             }
-
+            
             var resultado = await procesador.ProcesarAsync(evento, cancellationToken);
 
             if (resultado.Repetido)
@@ -212,13 +255,30 @@ public class ConsumidorEventosEnvio(
             // Cuánto espera en la cola de reintento antes de volver a la principal
             Expiration = espera is null ? null : ((long)espera.Value.TotalMilliseconds).ToString()
         };
+        
+        if (cola == ColaFallidos)
+        {
+            await RegistrarFalloAsync(
+                mensaje,
+                intentos,
+                error,
+                cancellationToken);
+        }
 
-        // Exchange "" (el de RabbitMQ por defecto): la clave de ruteo es el nombre de la cola
+// Publicamos la copia antes de confirmar el mensaje original.
         await canalPublicacion!.BasicPublishAsync(
-            "", cola, mandatory: true, basicProperties: propiedades, body: mensaje.Body,
+            "",
+            cola,
+            mandatory: true,
+            basicProperties: propiedades,
+            body: mensaje.Body,
             cancellationToken: cancellationToken);
 
-        await canal!.BasicAckAsync(mensaje.DeliveryTag, multiple: false, cancellationToken);
+        await canal!.BasicAckAsync(
+            mensaje.DeliveryTag,
+            multiple: false,
+            cancellationToken);
+
     }
 
     // null si no se puede leer o es de una versión más nueva que la que conoce el worker

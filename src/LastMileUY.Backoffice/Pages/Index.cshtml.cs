@@ -18,8 +18,27 @@ public class IndexModel(
 
     public string? Error { get; private set; }
 
-    public async Task OnGetAsync(CancellationToken ct)
+    
+    public IActionResult OnGet()
     {
+        if (User.IsInRole("Administrador"))
+        {
+            return RedirectToPage("/MensajesFallidos/Index");
+        }
+
+        return Page();
+    }
+    
+    
+    public async Task<IActionResult> OnGetAsync(CancellationToken ct)
+    {
+        // Los administradores van directamente a Mensajes fallidos
+        if (User.IsInRole("Administrador"))
+        {
+            return RedirectToPage("/MensajesFallidos/Index");
+        }
+
+        // Los demás usuarios siguen viendo el inicio normal
         try
         {
             var datos = await ObtenerEstadisticasAsync(ct);
@@ -36,7 +55,10 @@ public class IndexModel(
 
             Error = "No se pudieron cargar las estadísticas.";
         }
+
+        return Page();
     }
+
 
     public async Task<IActionResult> OnGetEstadisticasAsync(
         CancellationToken ct)

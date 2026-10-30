@@ -23,6 +23,7 @@ using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.API.Modules.Entregas.Infrastructure;
+using LastMileUY.API.Modules.Mensajeria.Application;
 using LastMileUY.API.Modules.Seguimiento.Application;
 using LastMileUY.API.Modules.Seguimiento.Endpoints;
 using LastMileUY.API.Modules.Notificaciones.Application;
@@ -202,7 +203,6 @@ builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
 builder.Services.AddScoped<OperadorActualService>();
-builder.Services.AddSingleton<CacheDistribuido>();
 builder.Services.AddScoped<ConsultasDestinatariosService>();
 builder.Services.AddScoped<OperadoresDeComercioService>();
 builder.Services.AddScoped<PlanificarRutaService>();
@@ -212,10 +212,12 @@ builder.Services.AddScoped<ConsultasSincronizacionService>();
 builder.Services.AddScoped<SeguimientoPublicoService>();
 builder.Services.AddScoped<SuscripcionesAvisosService>();
 builder.Services.AddScoped<AvisosComercioService>();
-builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
+builder.Services.AddScoped<ConsultasMensajesFallidosService>();
 
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
 builder.Services.AddSingleton<SeleccionOperadorTemporalService>();
+builder.Services.AddSingleton<CacheDistribuido>();
 
 // Seguimiento público: es el único endpoint sin sesión que lee envíos, así que tiene un tope de
 // consultas por IP (429 al pasarlo). Probar códigos al azar no sirve igual (12 caracteres de 31
@@ -314,6 +316,9 @@ app.MapSeguimientoEndpoints();
 app.MapSuscripcionesAvisosEndpoints();
 app.MapAvisosEndpoints();
 app.MapCacheEndpoints();
+// Habilitar consulta de mensajes fallidos cuando RabbitMQ está configurado.
+if (!string.IsNullOrWhiteSpace(conexionRabbit))
+    app.MapMensajesFallidosEndpoints();
 
 app.Run();
 

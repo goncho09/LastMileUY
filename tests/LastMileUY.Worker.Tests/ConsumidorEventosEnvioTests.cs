@@ -1,3 +1,5 @@
+using Npgsql;
+
 namespace LastMileUY.Worker.Tests;
 
 using System.Collections.Concurrent;
@@ -21,19 +23,32 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
     private ConsumidorEventosEnvio consumidor = null!;
     private IConnection conexion = null!;
     private IChannel canal = null!;
+    private NpgsqlDataSource dataSource = null!;
+    
 
     public async Task InitializeAsync()
     {
+        dataSource = NpgsqlDataSource.Create(entorno.CadenaAplicacion);
+
+        var repositorio = new RepositorioMensajesFallidos(dataSource);
+
         consumidor = new ConsumidorEventosEnvio(
-            new OpcionesConsumidor(entorno.CadenaRabbit, Esperas), procesador,
+            new OpcionesConsumidor(entorno.CadenaRabbit, Esperas),
+            procesador,
+            repositorio,
             NullLogger<ConsumidorEventosEnvio>.Instance);
+
         await consumidor.StartAsync(CancellationToken.None);
 
-        conexion = await new ConnectionFactory { Uri = new Uri(entorno.CadenaRabbit) }.CreateConnectionAsync();
+        conexion = await new ConnectionFactory
+        {
+            Uri = new Uri(entorno.CadenaRabbit)
+        }.CreateConnectionAsync();
+
         canal = await conexion.CreateChannelAsync();
 
-        // Que el consumidor ya haya declarado sus colas antes de publicar
-        await EsperarAsync(async () => await ExisteAsync(ConsumidorEventosEnvio.ColaFallidos));
+        await EsperarAsync(async () =>
+            await ExisteAsync(ConsumidorEventosEnvio.ColaFallidos));
     }
 
     [Fact]
@@ -75,6 +90,19 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
             Encoding.UTF8.GetString((byte[])fallido.Headers[ConsumidorEventosEnvio.EncabezadoError]!));
         // Conserva la correlación del pedido original
         Assert.Equal(evento.CorrelacionId, fallido.CorrelationId);
+        var cantidad = await entorno.ContarAsync(
+            """
+            SELECT COUNT(*)
+            FROM "MensajesFallidos"
+            WHERE "MensajeId" = @mensajeId
+              AND "Estado" = 'Pendiente'
+              AND "Intentos" = @intentos
+            """,
+            ("mensajeId", evento.EventoId.ToString()),
+            ("intentos", 1 + Esperas.Length)
+        );
+
+        Assert.Equal(1, cantidad);
     }
 
     [Fact]
@@ -167,6 +195,7 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
         await consumidor.StopAsync(CancellationToken.None);
         await canal.DisposeAsync();
         await conexion.DisposeAsync();
+        await dataSource.DisposeAsync();
     }
 
     // Anota cada llamada y falla las veces que se le pidió para cada evento

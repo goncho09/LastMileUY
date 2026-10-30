@@ -66,15 +66,16 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             return Page();
         }
 
-        // El Backoffice es del operador: sin operador no vería ningún envío
-        if (sesion.OperadorId is null)
+        var roles = sesion.Roles ?? [];
+        var esAdministrador = roles.Contains(Permisos.Administrador);
+
+        // Los usuarios operativos necesitan pertenecer a un operador.
+        // El administrador global puede ingresar sin OperadorId.
+        if (!esAdministrador && sesion.OperadorId is null)
         {
             Error = "Este usuario no pertenece a ningún operador.";
             return Page();
         }
-
-        // Un repartidor o un comercio tienen su propia aplicación
-        var roles = sesion.Roles ?? [];
 
         if (!Permisos.PuedeEntrar(roles))
         {
@@ -85,9 +86,13 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, sesion.Nombre),
-            new(ClaimTypes.Email, sesion.Email),
-            new(ClaimOperadorId, sesion.OperadorId.Value.ToString())
+            new(ClaimTypes.Email, sesion.Email)
         };
+
+        if (sesion.OperadorId is int operadorId)
+        {
+            claims.Add(new Claim(ClaimOperadorId, operadorId.ToString()));
+        }
 
         claims.AddRange(roles.Select(rol => new Claim(ClaimTypes.Role, rol)));
 
@@ -118,10 +123,20 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(identidad));
 
-        return Volver();
+        return esAdministrador
+            ? RedirectToPage("/MensajesFallidos/Index")
+            : Volver();
     }
 
     // Solo vuelve a direcciones del propio Backoffice (evita redirigir a otro sitio)
-    private IActionResult Volver() =>
-        Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToPage("/Index");
+    private IActionResult Volver()
+    {
+        if (Url.IsLocalUrl(ReturnUrl))
+            return LocalRedirect(ReturnUrl);
+
+        if (User.IsInRole(Permisos.Administrador))
+            return RedirectToPage("/MensajesFallidos/Index");
+
+        return RedirectToPage("/Index");
+    }
 }
