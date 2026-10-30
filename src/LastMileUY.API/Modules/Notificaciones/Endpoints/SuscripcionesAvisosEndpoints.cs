@@ -58,6 +58,28 @@ public static class SuscripcionesAvisosEndpoints
                 }
             })
             .WithName("CambiarSuscripcionAvisos");
+        
+        
+        group.MapPost("/{id:int}/regenerar-clave", async (
+                int id,
+                SuscripcionesAvisosService servicio,
+                CancellationToken ct) =>
+            {
+                try
+                {
+                    var suscripcion = await servicio.RegenerarClaveAsync(id, ct);
+
+                    return suscripcion is null
+                        ? Results.NotFound()
+                        : Results.Ok(suscripcion);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
+            })
+            .WithName("RegenerarClaveSuscripcionAvisos");
+
 
         return app;
     }

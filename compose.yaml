@@ -191,7 +191,12 @@
       context: .
       dockerfile: src/LastMileUY.ReceptorAvisos/Dockerfile
     ports:
-      - "8085:8080"
+      - "127.0.0.1:8085:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Avisos__RutaClaves: /app/data/claves-avisos.json
+    volumes:
+      - receptor_avisos_data:/app/data
 
 volumes:
   postgres_data:
@@ -200,3 +205,4 @@ volumes:
   evidencias_api:
   claves_backoffice:
   claves_portal:
+  receptor_avisos_data:

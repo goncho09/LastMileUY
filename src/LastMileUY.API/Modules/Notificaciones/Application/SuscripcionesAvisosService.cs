@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Notificaciones.Domain;
@@ -29,7 +30,7 @@ public class SuscripcionesAvisosService(
             .ToListAsync(cancellationToken);
 
     // ArgumentException con el motivo si los datos no sirven
-    public async Task<SuscripcionAvisosDto> CrearAsync(
+    public async Task<SuscripcionAvisosCreadaDto> CrearAsync(
         CrearSuscripcionAvisosRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -55,14 +56,21 @@ public class SuscripcionesAvisosService(
             ComercioId = comercioId,
             TipoEvento = tipo,
             UrlDestino = url,
+            ClaveFirma = Convert.ToHexString(
+                RandomNumberGenerator.GetBytes(32)),
             Activa = true
         };
 
         db.SuscripcionesAvisos.Add(suscripcion);
         await db.SaveChangesAsync(cancellationToken);
 
-        return new SuscripcionAvisosDto(
-            suscripcion.Id, suscripcion.TipoEvento, suscripcion.UrlDestino, suscripcion.Activa, suscripcion.FechaCreacion);
+        return new SuscripcionAvisosCreadaDto(
+            suscripcion.Id,
+            suscripcion.TipoEvento,
+            suscripcion.UrlDestino,
+            suscripcion.Activa,
+            suscripcion.FechaCreacion,
+            suscripcion.ClaveFirma);
     }
 
     // null si no existe o es de otro comercio (para el que pregunta, es lo mismo)
@@ -92,6 +100,39 @@ public class SuscripcionesAvisosService(
         return new SuscripcionAvisosDto(
             suscripcion.Id, suscripcion.TipoEvento, suscripcion.UrlDestino, suscripcion.Activa, suscripcion.FechaCreacion);
     }
+    
+    
+    public async Task<SuscripcionAvisosCreadaDto?> RegenerarClaveAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        // Exigir un comercio autenticado con operador seleccionado.
+        ComercioActual();
+
+        // El filtro global de EF Core limita las suscripciones
+        // al comercio y operador actuales.
+        var suscripcion = await db.SuscripcionesAvisos
+            .SingleOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+        if (suscripcion is null)
+            return null;
+
+        // Reemplazar la clave anterior por una nueva.
+        suscripcion.ClaveFirma = Convert.ToHexString(
+            RandomNumberGenerator.GetBytes(32));
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        // La clave se devuelve únicamente en esta operación.
+        return new SuscripcionAvisosCreadaDto(
+            suscripcion.Id,
+            suscripcion.TipoEvento,
+            suscripcion.UrlDestino,
+            suscripcion.Activa,
+            suscripcion.FechaCreacion,
+            suscripcion.ClaveFirma);
+    }
+
 
     // Solo un usuario de comercio con un operador elegido
     private (int OperadorId, int ComercioId) ComercioActual() =>

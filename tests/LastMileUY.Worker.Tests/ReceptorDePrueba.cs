@@ -26,6 +26,13 @@ public sealed class ReceptorDePrueba : IAsyncDisposable
     }
 
     public Uri Direccion { get; }
+    
+    public void RegistrarClave(int suscripcionId, string claveFirma)
+    {
+        fabrica.Services
+            .GetRequiredService<RegistroClavesAvisos>()
+            .Registrar(suscripcionId, claveFirma);
+    }
 
     // Ruta (y consulta) del receptor, por ejemplo "avisos/comercio?estado=500"
     public string Url(string ruta) => new Uri(Direccion, ruta).ToString();

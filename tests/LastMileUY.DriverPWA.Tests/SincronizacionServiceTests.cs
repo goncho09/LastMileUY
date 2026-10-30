@@ -21,8 +21,7 @@ public class SincronizacionServiceTests
 
         Assert.False(estado.Pendiente);
         Assert.Equal("Aplicada", estado.Resultado!.Resultado);
-        var pedido = Assert.Single(
-            api.Pedidos.Where(p => p.Ruta == "/api/sincronizacion"));
+        var pedido = Assert.Single(api.Pedidos, p => p.Ruta == "/api/sincronizacion");
         Assert.Equal("/api/sincronizacion", pedido.Ruta);
         var operacion = Assert.Single(pedido.Cuerpo!.Operaciones);
         Assert.Equal(7, operacion.EnvioId);

@@ -14,6 +14,8 @@ public class SuscripcionAvisos : IPerteneceAOperador, IPerteneceAComercio
     public string TipoEvento { get; set; } = string.Empty;
 
     public string UrlDestino { get; set; } = string.Empty;
+    
+    public string ClaveFirma { get; set; } = string.Empty;
 
     public bool Activa { get; set; } = true;
 

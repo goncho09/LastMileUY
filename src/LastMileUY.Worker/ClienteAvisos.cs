@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
@@ -9,7 +11,15 @@ namespace LastMileUY.Worker;
 
 // Un aviso listo para mandar (lo arma DespachadorAvisos con lo que hay en EntregasAvisos)
 public record AvisoPendiente(
-    int Id, Guid AvisoId, string TipoEvento, string Contenido, int Intento, string UrlDestino, string? CorrelacionId);
+    int Id,
+    Guid AvisoId,
+    string TipoEvento,
+    string Contenido,
+    int Intento,
+    string UrlDestino,
+    string? CorrelacionId,
+    string ClaveFirma,
+    int SuscripcionId);
 
 // Exitoso: el comercio respondió 2xx. CodigoHttp es null si no llegó a responder.
 public record ResultadoEnvio(bool Exitoso, int? CodigoHttp, string? Error, TimeSpan Duracion);
@@ -22,7 +32,7 @@ public record ResultadoEnvio(bool Exitoso, int? CodigoHttp, string? Error, TimeS
 public class ClienteAvisos(HttpClient http)
 {
     public static readonly TimeSpan TiempoMaximo = TimeSpan.FromSeconds(10);
-
+    
     public async Task<ResultadoEnvio> EnviarAsync(AvisoPendiente aviso, CancellationToken cancellationToken)
     {
         var reloj = Stopwatch.StartNew();
@@ -57,7 +67,24 @@ public class ClienteAvisos(HttpClient http)
         if (!string.IsNullOrEmpty(aviso.CorrelacionId))
             pedido.Headers.Add(TopologiaMensajeria.EncabezadoCorrelacion, aviso.CorrelacionId);
 
-        // Tarjeta "Firmar los avisos": la firma va acá, sobre el contenido y estos encabezados.
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        pedido.Headers.Add(
+            FirmaAvisos.EncabezadoTimestamp,
+            timestamp.ToString(CultureInfo.InvariantCulture));
+        
+        pedido.Headers.Add(
+            FirmaAvisos.EncabezadoSuscripcionId,
+            aviso.SuscripcionId.ToString(CultureInfo.InvariantCulture));
+
+        pedido.Headers.Add(
+            FirmaAvisos.EncabezadoFirma,
+            FirmaAvisos.Generar(
+                aviso.ClaveFirma,
+                aviso.SuscripcionId,
+                aviso.AvisoId,
+                timestamp,
+                aviso.Contenido));
 
         return pedido;
     }
