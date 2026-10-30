@@ -56,34 +56,37 @@ public class IdentitySeeder
         Console.WriteLine("Roles inicializados correctamente");
     }
     
-    public static async Task SeedAdminAsync(IServiceProvider services)
+    
+public static async Task SeedAdminAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+
+    var userManager = scope.ServiceProvider
+        .GetRequiredService<UserManager<Usuario>>();
+
+    var configuration = scope.ServiceProvider
+        .GetRequiredService<IConfiguration>();
+
+    var environment = scope.ServiceProvider
+        .GetRequiredService<IHostEnvironment>();
+
+    if (!environment.IsDevelopment())
+        return;
+
+    var email = configuration["SeedAdmin:Email"];
+    var password = configuration["SeedAdmin:Password"];
+
+    if (string.IsNullOrWhiteSpace(email) ||
+        string.IsNullOrWhiteSpace(password))
     {
-        using var scope = services.CreateScope();
+        return;
+    }
 
-        var userManager = scope.ServiceProvider
-            .GetRequiredService<UserManager<Usuario>>();
+    var usuario = await userManager.FindByEmailAsync(email);
 
-        var configuration = scope.ServiceProvider
-            .GetRequiredService<IConfiguration>();
-
-        var email = configuration["SeedAdmin:Email"];
-        var password = configuration["SeedAdmin:Password"];
-
-        if (string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password))
-        {
-            return;
-        }
-
-        var usuarioExistente = await userManager.FindByEmailAsync(email);
-
-        if (usuarioExistente is not null)
-        {
-            Console.WriteLine($"El administrador {usuarioExistente.UserName} ya existe");
-            return;
-        }
-
-        var usuario = new Usuario
+    if (usuario is null)
+    {
+        usuario = new Usuario
         {
             UserName = email,
             Email = email,
@@ -97,30 +100,49 @@ public class IdentitySeeder
 
         if (!resultado.Succeeded)
         {
-            var errores = string.Join(
-                ", ",
-                resultado.Errors.Select(e => e.Description));
-
             throw new InvalidOperationException(
-                $"No se pudo crear el administrador: {errores}");
+                "No se pudo crear el administrador: " +
+                string.Join(", ", resultado.Errors.Select(e => e.Description)));
         }
 
+        Console.WriteLine($"Administrador {email} creado");
+    }
+    else
+    {
+        // Solo en Development: sincronizar la contraseña de prueba.
+        var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
+
+        var resultado = await userManager.ResetPasswordAsync(
+            usuario, token, password);
+
+        if (!resultado.Succeeded)
+        {
+            throw new InvalidOperationException(
+                "No se pudo actualizar la contraseña del administrador: " +
+                string.Join(", ", resultado.Errors.Select(e => e.Description)));
+        }
+
+        Console.WriteLine(
+            $"Contraseña del administrador {email} actualizada");
+    }
+
+    // Asegurar que tenga el rol Administrador.
+    if (!await userManager.IsInRoleAsync(usuario, "Administrador"))
+    {
         var resultadoRol = await userManager.AddToRoleAsync(
             usuario, "Administrador");
 
         if (!resultadoRol.Succeeded)
         {
-            var errores = string.Join(
-                ", ",
-                resultadoRol.Errors.Select(e => e.Description));
-
             throw new InvalidOperationException(
-                $"No se pudo asignar el rol Administrador: {errores}");
+                "No se pudo asignar el rol Administrador: " +
+                string.Join(", ", resultadoRol.Errors.Select(e => e.Description)));
         }
-        
-        Console.WriteLine("Admin inicializado correctamente");
-        
     }
+
+    Console.WriteLine("Admin inicializado correctamente");
+}
+
     
     // Crea dos operadores de prueba (si no existen) y devuelve sus Id.
     // Se buscan por nombre y el Id lo pone la base: si se fijara a mano,

@@ -23,11 +23,32 @@ builder.Services.AddRazorPages(opciones =>
     opciones.Conventions.AllowAnonymousToPage("/Logout");
     opciones.Conventions.AllowAnonymousToPage("/AccesoDenegado");
     opciones.Conventions.AllowAnonymousToPage("/Error");
+    
+    opciones.Conventions.AuthorizePage(
+        "/Index", Permisos.PoliticaOperacion);
+
+    opciones.Conventions.AuthorizeFolder(
+        "/Envios", Permisos.PoliticaOperacion);
+
+    opciones.Conventions.AuthorizeFolder(
+        "/Rutas", Permisos.PoliticaOperacion);
+
+    opciones.Conventions.AuthorizeFolder(
+        "/Sincronizacion", Permisos.PoliticaOperacion);
+
+    opciones.Conventions.AuthorizeFolder(
+        "/MensajesFallidos", Permisos.PoliticaAdministracionGlobal);
 });
 
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy(Permisos.PoliticaBackoffice, politica => politica.RequireRole(Permisos.RolesBackoffice))
-    .AddPolicy(Permisos.PoliticaConfiguracion, politica => politica.RequireRole(Permisos.RolesConfiguracion));
+    .AddPolicy(Permisos.PoliticaBackoffice,
+        politica => politica.RequireRole(Permisos.RolesBackoffice))
+    .AddPolicy(Permisos.PoliticaConfiguracion,
+        politica => politica.RequireRole(Permisos.RolesConfiguracion))
+    .AddPolicy(Permisos.PoliticaAdministracionGlobal,
+        politica => politica.RequireRole(Permisos.RolesAdministracionGlobal))
+    .AddPolicy(Permisos.PoliticaOperacion,
+        politica => politica.RequireRole(Permisos.RolesOperacion));
 
 // Sesión propia del Backoffice (cookie cifrada). Adentro va la cookie de la API,
 // que se reenvía en cada llamada (ver ReenviarCookieApi).
@@ -70,6 +91,9 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<ICacheApi, CacheApiDePrueba>();
     builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
     builder.Services.AddSingleton<ISincronizacionApi, SincronizacionApiDePrueba>();
+    builder.Services.AddSingleton<
+        IMensajesFallidosApi,
+        MensajesFallidosApiDePrueba>();
 }
 else
 {
@@ -128,6 +152,17 @@ else
             cliente.Timeout = TimeSpan.FromSeconds(10);
         })
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
+    
+    
+    builder.Services.AddHttpClient<IMensajesFallidosApi, MensajesFallidosApiHttp>(
+            cliente =>
+            {
+                cliente.BaseAddress = urlBase;
+                cliente.Timeout = TimeSpan.FromSeconds(10);
+            })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
 }
 
 builder.Services.Configure<RouteOptions>(options =>

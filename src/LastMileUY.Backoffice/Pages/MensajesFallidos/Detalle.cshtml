@@ -1,0 +1,163 @@
+﻿
+@page "{id:guid}"
+@model LastMileUY.Backoffice.Pages.MensajesFallidos.DetalleModel
+
+@{
+    ViewData["Title"] = "Detalle de mensaje fallido";
+}
+
+<div class="mx-auto max-w-[1200px] space-y-6 motion-safe:animate-lm-form-in">
+
+    <div>
+        <a asp-page="/MensajesFallidos/Index"
+           class="text-sm font-medium text-violet-300 no-underline hover:text-violet-200">
+            ← Volver a mensajes fallidos
+        </a>
+
+        <h1 class="mt-4 text-3xl font-bold tracking-tight text-white">
+            Detalle de mensaje fallido
+        </h1>
+
+        <p class="mt-2 text-sm text-slate-400">
+            Información registrada por el Worker cuando no pudo procesar un evento.
+        </p>
+    </div>
+
+    @if (Model.Error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+    else if (Model.Mensaje is not null)
+    {
+        var mensaje = Model.Mensaje;
+
+        var claseEstado = mensaje.Estado switch
+        {
+            "Pendiente" => "border-amber-500/20 bg-amber-500/10 text-amber-300",
+            "ReprocesamientoSolicitado" => "border-blue-500/20 bg-blue-500/10 text-blue-300",
+            "Reprocesando" => "border-violet-500/20 bg-violet-500/10 text-violet-300",
+            "Resuelto" => "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+            _ => "border-slate-500/20 bg-slate-500/10 text-slate-300"
+        };
+
+        <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+            <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold text-white">
+                    Información general
+                </h2>
+
+                <span class="rounded-full border px-3 py-1.5 text-xs font-semibold @claseEstado">
+                    @mensaje.Estado
+                </span>
+            </div>
+
+            <dl class="grid gap-6 md:grid-cols-2">
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        ID de incidencia
+                    </dt>
+                    <dd class="mt-2 break-all font-mono text-sm text-slate-200">
+                        @mensaje.Id
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        ID del mensaje
+                    </dt>
+                    <dd class="mt-2 break-all font-mono text-sm text-slate-200">
+                        @mensaje.MensajeId
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Correlación
+                    </dt>
+                    <dd class="mt-2 break-all font-mono text-sm text-slate-200">
+                        @(mensaje.CorrelacionId ?? "—")
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Tipo de evento
+                    </dt>
+                    <dd class="mt-2 text-sm text-slate-200">
+                        @(mensaje.Tipo ?? "—")
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Intentos
+                    </dt>
+                    <dd class="mt-2 text-sm text-slate-200">
+                        @mensaje.Intentos
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Fecha del fallo
+                    </dt>
+                    <dd class="mt-2 text-sm text-slate-200">
+                        @mensaje.FechaFallo.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Reprocesamiento solicitado
+                    </dt>
+                    <dd class="mt-2 text-sm text-slate-200">
+                        @(mensaje.FechaSolicitudReproceso?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "—")
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Solicitado por
+                    </dt>
+                    <dd class="mt-2 text-sm text-slate-200">
+                        @(mensaje.SolicitadoPorId ?? "—")
+                    </dd>
+                </div>
+
+                <div>
+                    <dt class="text-xs font-medium uppercase text-slate-500">
+                        Fecha de resolución
+                    </dt>
+                    <dd class="mt-2 text-sm text-slate-200">
+                        @(mensaje.FechaResolucion?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss") ?? "—")
+                    </dd>
+                </div>
+
+            </dl>
+        </section>
+
+        <section class="rounded-2xl border border-red-500/20 bg-[#171923] p-6">
+            <h2 class="text-lg font-semibold text-white">
+                Último error
+            </h2>
+
+            <pre class="mt-4 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[#10121a] p-5 font-mono text-xs leading-relaxed text-red-300">@(mensaje.UltimoError ?? "No se registró un error.")</pre>
+        </section>
+
+        <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+            <h2 class="text-lg font-semibold text-white">
+                Contenido original del mensaje
+            </h2>
+
+            <p class="mt-2 text-xs text-slate-500">
+                Datos originales recibidos por el Worker.
+            </p>
+
+            <pre class="mt-4 max-h-[500px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[#10121a] p-5 font-mono text-xs leading-relaxed text-slate-300">@mensaje.Contenido</pre>
+        </section>
+    }
+</div>

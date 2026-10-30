@@ -15,6 +15,7 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(
     builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Falta configurar ConnectionStrings:DefaultConnection.")));
 
+builder.Services.AddSingleton<RepositorioMensajesFallidos>();
 builder.Services.AddSingleton<SenalAvisos>();
 builder.Services.AddSingleton<IProcesadorEventos, ProcesadorAvisos>();
 builder.Services.AddHostedService<ConsumidorEventosEnvio>();

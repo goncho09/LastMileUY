@@ -1,0 +1,297 @@
+﻿
+@page
+@model LastMileUY.Backoffice.Pages.MensajesFallidos.IndexModel
+
+@{
+    ViewData["Title"] = "Mensajes fallidos";
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <p class="mb-2 text-sm font-medium text-violet-400">
+                Administración / Mensajería
+            </p>
+
+            <h1 class="text-3xl font-bold tracking-tight text-white">
+                Mensajes fallidos
+            </h1>
+
+            <p class="mt-2 max-w-3xl text-sm text-slate-400">
+                Supervisá los eventos que el Worker no pudo procesar
+                después de agotar los reintentos automáticos.
+            </p>
+        </div>
+
+        <a asp-page="/MensajesFallidos/Index"
+           class="inline-flex items-center justify-center rounded-xl
+                  border border-white/10 bg-white/5 px-5 py-3
+                  text-sm font-semibold text-slate-200 no-underline
+                  transition-colors hover:bg-white/10">
+            Actualizar
+        </a>
+    </div>
+
+    @if (Model.Error is not null)
+    {
+        <div role="alert"
+             class="rounded-xl border border-red-500/30
+                    bg-red-500/10 px-5 py-4 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+
+    <section class="grid gap-4 md:grid-cols-2">
+
+        <div class="rounded-2xl border border-white/10
+                    bg-[#171923] p-6">
+            <p class="text-sm font-medium text-slate-400">
+                Mensajes en cola de fallidos
+            </p>
+
+            @if (Model.Resumen is not null)
+            {
+                <p class="mt-3 text-4xl font-bold text-white">
+                    @Model.Resumen.CantidadPendientes
+                </p>
+
+                <p class="mt-3 text-xs text-slate-500">
+                    Pendientes de revisión administrativa
+                </p>
+            }
+            else
+            {
+                <p class="mt-3 text-3xl font-bold text-slate-500">
+                    —
+                </p>
+            }
+        </div>
+
+        <div class="rounded-2xl border border-white/10
+                    bg-[#171923] p-6">
+            <p class="text-sm font-medium text-slate-400">
+                Estado de la cola
+            </p>
+
+            @if (Model.Resumen is null)
+            {
+                <p class="mt-4 font-semibold text-red-300">
+                    No disponible
+                </p>
+            }
+            else if (Model.Resumen.CantidadPendientes == 0)
+            {
+                <p class="mt-4 font-semibold text-emerald-300">
+                    Sin mensajes fallidos
+                </p>
+            }
+            else
+            {
+                <p class="mt-4 font-semibold text-amber-300">
+                    Requiere revisión
+                </p>
+            }
+
+            <p class="mt-3 text-xs text-slate-500">
+                Cola: lastmileuy.worker.envios.fallidos
+            </p>
+        </div>
+    </section>
+
+    
+<section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+    <div class="border-b border-white/10 px-6 py-5">
+        <h2 class="text-base font-semibold text-white">
+            Mensajes para revisar
+        </h2>
+        <p class="mt-1 text-sm text-slate-400">
+            Historial de incidencias registradas por el Worker.
+        </p>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get"
+          class="grid items-end gap-4 border-b border-white/10 p-6 md:grid-cols-4">
+
+        <div>
+            <label for="estado"
+                   class="mb-2 block text-sm font-medium text-slate-300">
+                Estado
+            </label>
+
+            <select id="estado" name="estado"
+                    class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-sm text-white">
+                <option value="">Todos</option>
+                @foreach (var estado in new[]
+                {
+                    "Pendiente",
+                    "ReprocesamientoSolicitado",
+                    "Reprocesando",
+                    "Resuelto"
+                })
+                {
+                    <option value="@estado" selected="@(Model.Estado == estado)">
+                        @estado
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label for="desde"
+                   class="mb-2 block text-sm font-medium text-slate-300">
+                Desde
+            </label>
+            <input type="date" id="desde" name="desde"
+                   value="@Model.Desde?.ToString("yyyy-MM-dd")"
+                   class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-sm text-white" />
+        </div>
+
+        <div>
+            <label for="hasta"
+                   class="mb-2 block text-sm font-medium text-slate-300">
+                Hasta
+            </label>
+            <input type="date" id="hasta" name="hasta"
+                   value="@Model.Hasta?.ToString("yyyy-MM-dd")"
+                   class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-sm text-white" />
+        </div>
+
+        <div class="flex gap-2">
+            <button type="submit"
+                    class="flex-1 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500">
+                Filtrar
+            </button>
+
+            <a asp-page="/MensajesFallidos/Index"
+               class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 no-underline hover:bg-white/10">
+                Limpiar
+            </a>
+        </div>
+    </form>
+
+    <!-- Resultados -->
+    @if (Model.Error is not null)
+    {
+        <div role="alert" class="p-6 text-sm text-red-300">
+            @Model.Error
+        </div>
+    }
+    else if (Model.Resultado is null || Model.Resultado.Items.Count == 0)
+    {
+        <div class="px-6 py-12 text-center">
+            <p class="font-medium text-slate-300">
+                No hay mensajes fallidos para mostrar.
+            </p>
+            <p class="mt-2 text-sm text-slate-500">
+                Las incidencias aparecerán cuando el Worker registre un fallo.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="w-full overflow-x-auto">
+            <table class="w-full min-w-[900px] text-left text-sm">
+                <thead class="bg-[#11131b] text-xs uppercase tracking-wider text-slate-400">
+                    <tr>
+                        <th class="px-5 py-4">Fecha</th>
+                        <th class="px-5 py-4">Tipo</th>
+                        <th class="px-5 py-4">Intentos</th>
+                        <th class="px-5 py-4">Último error</th>
+                        <th class="px-5 py-4">Estado</th>
+                        <th class="px-5 py-4">Acción</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-white/5">
+                    @foreach (var mensaje in Model.Resultado.Items)
+                    {
+                        var claseEstado = mensaje.Estado switch
+                        {
+                            "Pendiente" => "text-amber-300 bg-amber-500/10",
+                            "ReprocesamientoSolicitado" => "text-blue-300 bg-blue-500/10",
+                            "Reprocesando" => "text-violet-300 bg-violet-500/10",
+                            "Resuelto" => "text-emerald-300 bg-emerald-500/10",
+                            _ => "text-slate-300 bg-slate-500/10"
+                        };
+
+                        <tr class="hover:bg-white/[0.035]">
+                            <td class="whitespace-nowrap px-5 py-4 text-slate-300">
+                                @mensaje.FechaFallo.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </td>
+
+                            <td class="px-5 py-4 text-slate-200">
+                                @(mensaje.Tipo ?? "—")
+                            </td>
+
+                            <td class="px-5 py-4 text-slate-300">
+                                @mensaje.Intentos
+                            </td>
+
+                            <td class="max-w-xs truncate px-5 py-4 text-slate-400"
+                                title="@mensaje.UltimoError">
+                                @(mensaje.UltimoError ?? "—")
+                            </td>
+
+                            <td class="px-5 py-4">
+                                <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium @claseEstado">
+                                    @mensaje.Estado
+                                </span>
+                            </td>
+
+                            <td class="px-5 py-4">
+                                <a asp-page="/MensajesFallidos/Detalle"
+                                   asp-route-id="@mensaje.Id"
+                                   class="text-sm font-semibold text-violet-300 no-underline hover:text-violet-200">
+                                    Ver detalle
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        @if (Model.Resultado.Total > Model.Resultado.TamanoPagina)
+        {
+            <nav aria-label="Paginación"
+                 class="flex items-center justify-between border-t border-white/10 px-6 py-4">
+
+                @if (Model.Pagina > 1)
+                {
+                    <a asp-page="/MensajesFallidos/Index"
+                       asp-all-route-data="Model.RutaPagina(Model.Pagina - 1)"
+                       class="text-sm text-violet-300">
+                        ← Anterior
+                    </a>
+                }
+                else
+                {
+                    <span></span>
+                }
+
+                <span class="text-sm text-slate-400">
+                    Página @Model.Pagina
+                </span>
+
+                @if ((long)Model.Pagina * Model.Resultado.TamanoPagina < Model.Resultado.Total)
+                {
+                    <a asp-page="/MensajesFallidos/Index"
+                       asp-all-route-data="Model.RutaPagina(Model.Pagina + 1)"
+                       class="text-sm text-violet-300">
+                        Siguiente →
+                    </a>
+                }
+                else
+                {
+                    <span></span>
+                }
+            </nav>
+        }
+    }
+</section>
+
+</div>

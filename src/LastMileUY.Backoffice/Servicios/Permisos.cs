@@ -9,13 +9,25 @@ public static class Permisos
 {
     public const string Operador = "Operador";
     public const string Despachador = "Despachador";
+    public const string Administrador = "Administrador";
 
     // Políticas de autorización (se registran en Program.cs)
     public const string PoliticaBackoffice = "Backoffice";
     public const string PoliticaConfiguracion = "ConfiguracionDelOperador";
+    public const string PoliticaAdministracionGlobal = "AdministracionGlobal";
+    public const string PoliticaOperacion = "OperacionLogistica";
 
     // Quién entra al Backoffice. El repartidor usa su app y el comercio su portal.
-    public static readonly string[] RolesBackoffice = [Operador, Despachador];
+    public static readonly string[] RolesBackoffice = [Administrador,Operador, Despachador];
+    
+    public static readonly string[] RolesAdministracionGlobal =
+        [Administrador];
+
+    public static readonly string[] RolesOperacion =
+        [Operador, Despachador];
+
+    public static bool PuedeAdministrarMensajeria(ClaimsPrincipal usuario) =>
+        usuario.IsInRole(Administrador);
 
     // Tiene que coincidir con la API: PATCH /api/envios/{id}/estado pide Operador o Despachador
     public static readonly string[] RolesCambiarEstado = [Operador, Despachador];

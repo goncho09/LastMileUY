@@ -714,6 +714,62 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.MensajeFallido", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Contenido")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CorrelacionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("FechaFallo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaResolucion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaSolicitudReproceso")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MensajeId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("SolicitadoPorId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Tipo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("UltimoError")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MensajeId");
+
+                    b.HasIndex("Estado", "FechaFallo");
+
+                    b.ToTable("MensajesFallidos", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.EntregaAviso", b =>
                 {
                     b.Property<int>("Id")
