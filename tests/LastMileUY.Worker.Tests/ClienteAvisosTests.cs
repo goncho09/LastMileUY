@@ -11,6 +11,9 @@ public class ClienteAvisosTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         receptor = new ReceptorDePrueba();
+
+        receptor.RegistrarClave(15, new string('A', 64));
+
         return Task.CompletedTask;
     }
 
@@ -96,7 +99,9 @@ public class ClienteAvisosTests : IAsyncLifetime
         Contenido: """{"EnvioId":101,"Estado":"EnDeposito"}""",
         Intento: 2,
         UrlDestino: url,
-        CorrelacionId: "prueba-avisos");
+        CorrelacionId: "prueba-avisos",
+        ClaveFirma: new string('A', 64),
+        SuscripcionId:15);
 
     public async Task DisposeAsync() => await receptor.DisposeAsync();
 }

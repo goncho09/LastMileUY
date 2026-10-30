@@ -34,6 +34,10 @@ public class SuscripcionAvisosConfiguration
         builder.Property(s => s.UrlDestino)
             .HasMaxLength(2000)
             .IsRequired();
+        
+        builder.Property(s => s.ClaveFirma)
+            .HasMaxLength(128)
+            .IsRequired();
 
         // Facilita buscar las suscripciones activas
         // de un comercio para un evento determinado.

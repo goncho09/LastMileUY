@@ -870,6 +870,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Activa")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ClaveFirma")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<int>("ComercioId")
                         .HasColumnType("integer");
 

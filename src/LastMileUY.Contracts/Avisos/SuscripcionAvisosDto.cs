@@ -18,3 +18,14 @@ public class CrearSuscripcionAvisosRequest
 
 // Activar o desactivar una suscripción (PATCH /api/avisos/suscripciones/{id})
 public record CambiarSuscripcionAvisosRequest(bool Activa);
+
+
+// Respuesta al crear una suscripción.
+// La clave secreta se entrega solamente en este momento.
+public record SuscripcionAvisosCreadaDto(
+    int Id,
+    string TipoEvento,
+    string UrlDestino,
+    bool Activa,
+    DateTime FechaCreacion,
+    string ClaveFirma);

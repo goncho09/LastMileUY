@@ -46,26 +46,55 @@ public class EntornoDelWorker : IAsyncLifetime
         var opciones = new DbContextOptionsBuilder<ApplicationDbContext>().UseNpgsql(CadenaAdministrador).Options;
         await using var db = new ApplicationDbContext(opciones, new ContextoOperadorFijo(null));
         await db.Database.MigrateAsync();
+        
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+                                                                               INSERT INTO "Operadores"("Id", "Nombre", "Activo", "FechaCreacion")
+                                                                               VALUES ({OperadorA}, 'Operador A', true, now()),
+                                                                                      ({OperadorB}, 'Operador B', true, now());
 
-        await db.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO "Operadores"("Id", "Nombre", "Activo", "FechaCreacion")
-                VALUES ({OperadorA}, 'Operador A', true, now()), ({OperadorB}, 'Operador B', true, now());
-            INSERT INTO "Comercios"("Id", "Nombre", "Activo", "FechaCreacion") VALUES ({Comercio}, 'Comercio', true, now());
-            INSERT INTO "OperadoresComercios"("OperadorId", "ComercioId", "FechaVinculacion", "Activo")
-                VALUES ({OperadorA}, {Comercio}, now(), true), ({OperadorB}, {Comercio}, now(), true);
-            INSERT INTO "Destinatarios"("Id", "ComercioId", "Nombre", "Apellido", "FechaCreacion")
-                VALUES (1, {Comercio}, 'Ana', 'Silva', now());
-            INSERT INTO "Envios"("Id", "OperadorId", "ComercioId", "DestinatarioId", "CodigoSeguimiento",
-                    "FechaCreacion", "Estado", "Modalidad", "DireccionEntrega_Calle", "DireccionEntrega_Numero",
-                    "DireccionEntrega_Ciudad", "DireccionEntrega_Departamento")
-                VALUES ({EnvioDeA}, {OperadorA}, {Comercio}, 1, 'CODIGOA', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo'),
-                       ({EnvioDeB}, {OperadorB}, {Comercio}, 1, 'CODIGOB', now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo');
-            INSERT INTO "SuscripcionesAvisos"("Id", "OperadorId", "ComercioId", "TipoEvento", "UrlDestino", "Activa", "FechaCreacion")
-                VALUES ({SuscripcionDeA}, {OperadorA}, {Comercio}, '{TiposEvento.EnvioEstadoCambiado}', 'https://comercio.test/a', true, now()),
-                       ({SuscripcionDeB}, {OperadorB}, {Comercio}, '{TiposEvento.EnvioEstadoCambiado}', 'https://comercio.test/b', true, now()),
-                       ({SuscripcionInactivaDeA}, {OperadorA}, {Comercio}, '{TiposEvento.EnvioEstadoCambiado}', 'https://comercio.test/vieja', false, now()),
-                       ({SuscripcionAlAltaDeA}, {OperadorA}, {Comercio}, '{TiposEvento.EnvioAdmitido}', 'https://comercio.test/altas', true, now());
-            """);
+                                                                               INSERT INTO "Comercios"("Id", "Nombre", "Activo", "FechaCreacion")
+                                                                               VALUES ({Comercio}, 'Comercio', true, now());
+
+                                                                               INSERT INTO "OperadoresComercios"
+                                                                                   ("OperadorId", "ComercioId", "FechaVinculacion", "Activo")
+                                                                               VALUES ({OperadorA}, {Comercio}, now(), true),
+                                                                                      ({OperadorB}, {Comercio}, now(), true);
+
+                                                                               INSERT INTO "Destinatarios"
+                                                                                   ("Id", "ComercioId", "Nombre", "Apellido", "FechaCreacion")
+                                                                               VALUES (1, {Comercio}, 'Ana', 'Silva', now());
+
+                                                                               INSERT INTO "Envios"
+                                                                                   ("Id", "OperadorId", "ComercioId", "DestinatarioId", "CodigoSeguimiento",
+                                                                                    "FechaCreacion", "Estado", "Modalidad", "DireccionEntrega_Calle",
+                                                                                    "DireccionEntrega_Numero", "DireccionEntrega_Ciudad",
+                                                                                    "DireccionEntrega_Departamento")
+                                                                               VALUES
+                                                                                   ({EnvioDeA}, {OperadorA}, {Comercio}, 1, 'CODIGOA',
+                                                                                    now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo'),
+                                                                                   ({EnvioDeB}, {OperadorB}, {Comercio}, 1, 'CODIGOB',
+                                                                                    now(), 1, 1, 'Rivera', '1234', 'Montevideo', 'Montevideo');
+
+                                                                               INSERT INTO "SuscripcionesAvisos"
+                                                                                   ("Id", "OperadorId", "ComercioId", "TipoEvento", "UrlDestino",
+                                                                                    "Activa", "FechaCreacion", "ClaveFirma")
+                                                                               VALUES
+                                                                                   ({SuscripcionDeA}, {OperadorA}, {Comercio},
+                                                                                    {TiposEvento.EnvioEstadoCambiado}, 'https://comercio.test/a',
+                                                                                    true, now(), encode(gen_random_bytes(32), 'hex')),
+
+                                                                                   ({SuscripcionDeB}, {OperadorB}, {Comercio},
+                                                                                    {TiposEvento.EnvioEstadoCambiado}, 'https://comercio.test/b',
+                                                                                    true, now(), encode(gen_random_bytes(32), 'hex')),
+
+                                                                                   ({SuscripcionInactivaDeA}, {OperadorA}, {Comercio},
+                                                                                    {TiposEvento.EnvioEstadoCambiado}, 'https://comercio.test/vieja',
+                                                                                    false, now(), encode(gen_random_bytes(32), 'hex')),
+
+                                                                                   ({SuscripcionAlAltaDeA}, {OperadorA}, {Comercio},
+                                                                                    {TiposEvento.EnvioAdmitido}, 'https://comercio.test/altas',
+                                                                                    true, now(), encode(gen_random_bytes(32), 'hex'));
+                                                                               """);
     }
 
     // Consulta con el superusuario (saltea RLS), para ver lo que quedó en la base

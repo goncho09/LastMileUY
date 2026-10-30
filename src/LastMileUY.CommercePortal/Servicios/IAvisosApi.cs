@@ -2,18 +2,39 @@ using LastMileUY.Contracts.Avisos;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// Suscripciones del comercio a avisos HTTP (api/avisos/suscripciones)
 public interface IAvisosApi
 {
-    Task<List<SuscripcionAvisosDto>> ListarSuscripcionesAsync(CancellationToken ct = default);
+    Task<List<SuscripcionAvisosDto>> ListarSuscripcionesAsync(
+        CancellationToken ct = default);
 
-    Task<ResultadoSuscripcion> CrearSuscripcionAsync(CrearSuscripcionAvisosRequest request, CancellationToken ct = default);
+    Task<ResultadoCreacionSuscripcion> CrearSuscripcionAsync(
+        CrearSuscripcionAvisosRequest request,
+        CancellationToken ct = default);
 
-    Task<ResultadoSuscripcion> CambiarActivaAsync(int id, bool activa, CancellationToken ct = default);
+    Task<ResultadoSuscripcion> CambiarActivaAsync(
+        int id,
+        bool activa,
+        CancellationToken ct = default);
+    
+    Task<ResultadoCreacionSuscripcion> RegenerarClaveAsync(
+        int id,
+        CancellationToken ct = default);
 }
 
-// O salió bien, o la API lo rechazó con un mensaje para mostrar
-public record ResultadoSuscripcion(SuscripcionAvisosDto? Suscripcion, string? Error)
+// Resultado de crear una suscripción.
+// Incluye la clave secreta que se muestra una sola vez.
+public record ResultadoCreacionSuscripcion(
+    SuscripcionAvisosCreadaDto? Suscripcion,
+    string? Error)
+{
+    public bool Exito => Suscripcion is not null;
+}
+
+// Resultado de modificar una suscripción.
+// No contiene la clave secreta.
+public record ResultadoSuscripcion(
+    SuscripcionAvisosDto? Suscripcion,
+    string? Error)
 {
     public bool Exito => Suscripcion is not null;
 }

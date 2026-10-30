@@ -18,6 +18,7 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     private const int SuscripcionConErrorDeA = 13;      // el receptor responde 500
     private const int SuscripcionInactivaDeA = 14;
     private const int SuscripcionLentaDeA = 15;         // el receptor tarda un segundo
+    private static readonly string ClaveDePrueba = new('A', 64);
 
     private readonly ReceptorDePrueba receptor = new();
 
@@ -25,22 +26,44 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     {
         await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);
         await conexion.OpenAsync();
+       
         await using var comando = new NpgsqlCommand($"""
-            INSERT INTO "SuscripcionesAvisos"("Id", "OperadorId", "ComercioId", "TipoEvento", "UrlDestino", "Activa", "FechaCreacion")
-            VALUES ({SuscripcionAlReceptorDeA}, {OperadorA}, {Comercio}, @tipo, @a, true, now()),
-                   ({SuscripcionAlReceptorDeB}, {OperadorB}, {Comercio}, @tipo, @b, true, now()),
-                   ({SuscripcionConErrorDeA}, {OperadorA}, {Comercio}, @tipo, @error, true, now()),
-                   ({SuscripcionInactivaDeA}, {OperadorA}, {Comercio}, @tipo, @inactiva, false, now()),
-                   ({SuscripcionLentaDeA}, {OperadorA}, {Comercio}, @tipo, @lenta, true, now())
-            ON CONFLICT ("Id") DO UPDATE SET "UrlDestino" = EXCLUDED."UrlDestino"
-            """, conexion);
+                                                     INSERT INTO "SuscripcionesAvisos"
+                                                         ("Id", "OperadorId", "ComercioId", "TipoEvento",
+                                                          "UrlDestino", "Activa", "FechaCreacion", "ClaveFirma")
+                                                     VALUES
+                                                         ({SuscripcionAlReceptorDeA}, {OperadorA}, {Comercio},
+                                                          @tipo, @a, true, now(), @clave),
+
+                                                         ({SuscripcionAlReceptorDeB}, {OperadorB}, {Comercio},
+                                                          @tipo, @b, true, now(), @clave),
+
+                                                         ({SuscripcionConErrorDeA}, {OperadorA}, {Comercio},
+                                                          @tipo, @error, true, now(), @clave),
+
+                                                         ({SuscripcionInactivaDeA}, {OperadorA}, {Comercio},
+                                                          @tipo, @inactiva, false, now(), @clave),
+
+                                                         ({SuscripcionLentaDeA}, {OperadorA}, {Comercio},
+                                                          @tipo, @lenta, true, now(), @clave)
+
+                                                     ON CONFLICT ("Id") DO UPDATE
+                                                     SET "UrlDestino" = EXCLUDED."UrlDestino",
+                                                         "ClaveFirma" = EXCLUDED."ClaveFirma"
+                                                     """, conexion);
         comando.Parameters.AddWithValue("tipo", TiposEvento.EnvioEstadoCambiado);
         comando.Parameters.AddWithValue("a", receptor.Url("avisos/a"));
         comando.Parameters.AddWithValue("b", receptor.Url("avisos/b"));
         comando.Parameters.AddWithValue("error", receptor.Url("avisos/error?estado=500"));
         comando.Parameters.AddWithValue("inactiva", receptor.Url("avisos/inactiva"));
         comando.Parameters.AddWithValue("lenta", receptor.Url("avisos/lenta?demora=1"));
+        comando.Parameters.AddWithValue("clave", ClaveDePrueba);
         await comando.ExecuteNonQueryAsync();
+        receptor.RegistrarClave(SuscripcionAlReceptorDeA, ClaveDePrueba);
+        receptor.RegistrarClave(SuscripcionAlReceptorDeB, ClaveDePrueba);
+        receptor.RegistrarClave(SuscripcionConErrorDeA, ClaveDePrueba);
+        receptor.RegistrarClave(SuscripcionInactivaDeA, ClaveDePrueba);
+        receptor.RegistrarClave(SuscripcionLentaDeA, ClaveDePrueba);
     }
 
     [Fact]

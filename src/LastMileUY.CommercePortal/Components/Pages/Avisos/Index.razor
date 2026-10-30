@@ -1,16 +1,13 @@
 @page "/avisos"
 @attribute [Authorize]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using LastMileUY.CommercePortal.Servicios
 @using LastMileUY.Contracts.Avisos
 @using LastMileUY.Contracts.Mensajeria
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Web
 
 @inject IAvisosApi AvisosApi
 @inject NavigationManager Navegacion
 @inject ILogger<Index> Logger
+@inject IJSRuntime JS
 
 <PageTitle>Avisos | LastMileUY</PageTitle>
 
@@ -65,6 +62,87 @@
             @error
         </div>
     }
+    
+    
+    @if (suscripcionCreada is not null)
+    {
+        <section class="rounded-2xl border border-emerald-500/25 bg-[#151927] p-6">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-emerald-300">
+                        Clave HMAC disponible
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-400">
+                        Suscripción #@suscripcionCreada.Id
+                    </p>
+                </div>
+
+                <button type="button"
+                        @onclick="CerrarClave"
+                        class="text-sm text-slate-400 hover:text-white">
+                    Cerrar
+                </button>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
+                <p class="text-sm font-semibold text-amber-200">
+                    Clave secreta HMAC
+                </p>
+                <p class="mt-1 text-xs text-slate-400">
+                    Guardá esta clave en el sistema que recibirá los avisos.
+                    No podrás volver a consultarla desde el Portal.
+                </p>
+
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <input type="text"
+                           readonly
+                           value="@suscripcionCreada.ClaveFirma"
+                           aria-label="Clave secreta HMAC"
+                           class="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 font-mono text-xs text-white" />
+
+                    <button type="button"
+                            @onclick="CopiarClaveAsync"
+                            class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-500">
+                        @(claveCopiada ? "Copiada" : "Copiar clave")
+                    </button>
+                </div>
+            </div>
+        </section>
+    }
+
+    
+    @if (suscripcionARegenerar is not null)
+    {
+        <section class="rounded-2xl border border-amber-500/30 bg-[#151927] p-5">
+            <h2 class="text-lg font-semibold text-amber-300">
+                ¿Regenerar clave HMAC?
+            </h2>
+
+            <p class="mt-2 text-sm text-slate-300">
+                Vas a reemplazar la clave de la suscripción
+                #@suscripcionARegenerar.Id.
+                La clave anterior dejará de ser válida y tendrás
+                que actualizarla en el sistema que recibe los avisos.
+            </p>
+
+            <div class="mt-4 flex flex-wrap gap-3">
+                <button type="button"
+                        @onclick="RegenerarClaveAsync"
+                        disabled="@(regenerando is not null)"
+                        class="rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
+                    @(regenerando is not null ? "Regenerando…" : "Confirmar regeneración")
+                </button>
+
+                <button type="button"
+                        @onclick="CancelarRegeneracion"
+                        disabled="@(regenerando is not null)"
+                        class="rounded-xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-50">
+                    Cancelar
+                </button>
+            </div>
+        </section>
+    }
+
 
     <!-- Suscripciones -->
     @if (suscripciones is null)
@@ -117,10 +195,23 @@
                             </td>
                             <td class="px-5 py-3 text-slate-400">@Fecha(s.FechaCreacion)</td>
                             <td class="px-5 py-3 text-right">
-                                <button type="button" @onclick="() => CambiarActivaAsync(s)" disabled="@(cambiando == s.Id)"
-                                        class="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50">
-                                    @(s.Activa ? "Desactivar" : "Activar")
-                                </button>
+                               
+                                <div class="flex items-center justify-end gap-2">
+                                    <button type="button"
+                                            @onclick="() => CambiarActivaAsync(s)"
+                                            disabled="@(cambiando == s.Id || regenerando == s.Id)"
+                                            class="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50">
+                                        @(s.Activa ? "Desactivar" : "Activar")
+                                    </button>
+
+                                    <button type="button"
+                                            @onclick="() => SolicitarRegeneracion(s)"
+                                            disabled="@(regenerando == s.Id || cambiando == s.Id)"
+                                            class="rounded-xl border border-amber-500/30 px-4 py-2 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/10 disabled:opacity-50">
+                                        @(regenerando == s.Id ? "Regenerando…" : "Regenerar clave")
+                                    </button>
+                                </div>
+
                             </td>
                         </tr>
                     }
@@ -149,6 +240,94 @@
     private bool guardando;
     private int? cambiando;
     private string? error;
+    private SuscripcionAvisosCreadaDto? suscripcionCreada;
+    private bool claveCopiada;
+    
+    private SuscripcionAvisosDto? suscripcionARegenerar;
+    private int? regenerando;
+
+    private void SolicitarRegeneracion(SuscripcionAvisosDto suscripcion)
+    {
+        error = null;
+        suscripcionARegenerar = suscripcion;
+    }
+
+    private void CancelarRegeneracion()
+    {
+        suscripcionARegenerar = null;
+    }
+
+    private async Task RegenerarClaveAsync()
+    {
+        if (suscripcionARegenerar is null || regenerando is not null)
+            return;
+
+        var id = suscripcionARegenerar.Id;
+
+        error = null;
+        regenerando = id;
+
+        try
+        {
+            var resultado = await AvisosApi.RegenerarClaveAsync(id);
+
+            if (resultado.Exito)
+            {
+                // Reutilizar el panel que muestra la clave una sola vez.
+                suscripcionCreada = resultado.Suscripcion;
+                claveCopiada = false;
+
+                suscripcionARegenerar = null;
+            }
+            else
+            {
+                error = resultado.Error;
+            }
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(
+                ex,
+                "No se pudo regenerar la clave de la suscripción {Id}",
+                id);
+
+            error = "No se pudo regenerar la clave. Probá de nuevo.";
+        }
+        finally
+        {
+            regenerando = null;
+        }
+    }
+
+
+    private async Task CopiarClaveAsync()
+    {
+        if (suscripcionCreada is null)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "navigator.clipboard.writeText",
+                suscripcionCreada.ClaveFirma);
+
+            claveCopiada = true;
+        }
+        catch (JSException)
+        {
+            error = "No se pudo copiar automáticamente. Seleccioná la clave y copiala manualmente.";
+        }
+    }
+
+    private void CerrarClave()
+    {
+        suscripcionCreada = null;
+        claveCopiada = false;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -173,6 +352,8 @@
     private async Task CrearAsync()
     {
         error = null;
+        suscripcionCreada = null;
+        claveCopiada = false;
         guardando = true;
 
         try
@@ -181,7 +362,18 @@
 
             if (resultado.Exito)
             {
-                suscripciones?.Insert(0, resultado.Suscripcion!);
+                var creada = resultado.Suscripcion!;
+
+                suscripcionCreada = creada;
+                claveCopiada = false;
+
+                suscripciones?.Insert(0, new SuscripcionAvisosDto(
+                    creada.Id,
+                    creada.TipoEvento,
+                    creada.UrlDestino,
+                    creada.Activa,
+                    creada.FechaCreacion));
+
                 nueva = new() { TipoEvento = nueva.TipoEvento };
             }
             else

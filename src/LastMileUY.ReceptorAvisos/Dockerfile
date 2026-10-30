@@ -1,6 +1,16 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-USER $APP_UID
+
 WORKDIR /app
+
+# Preparar el directorio persistente para las claves HMAC.
+# Un volumen Docker nuevo heredará estos permisos.
+RUN mkdir -p /app/data \
+    && chown -R $APP_UID:$APP_UID /app/data \
+    && chmod 700 /app/data
+
+# Ejecutar .NET sin privilegios de administrador.
+USER $APP_UID
+
 EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
