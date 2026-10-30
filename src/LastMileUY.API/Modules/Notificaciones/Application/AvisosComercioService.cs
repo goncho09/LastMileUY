@@ -1,3 +1,4 @@
+using System.Text.Json;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Notificaciones.Domain;
@@ -86,8 +87,8 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
 
         if (aviso.Estado != EstadoEntregaAviso.Fallido)
             throw new ArgumentException(aviso.Estado == EstadoEntregaAviso.Entregado
-                ? "El aviso ya se entregó."
-                : "El aviso todavía se está intentando entregar.");
+                ? "El aviso ya fue recibido."
+                : "El aviso todavía se está enviando.");
 
         if (!suscripcion.Activa)
             throw new ArgumentException("La suscripción del aviso está desactivada. Activala para poder reenviarlo.");
@@ -106,17 +107,45 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
         join e in db.Envios on a.EnvioId equals e.Id
         select new FilaAviso { Aviso = a, CodigoSeguimiento = e.CodigoSeguimiento, UrlDestino = s.UrlDestino };
 
-    private static AvisoResumenDto Resumen(FilaAviso x) => new(
-        x.Aviso.Id,
-        x.Aviso.TipoEvento,
-        x.CodigoSeguimiento,
-        x.UrlDestino,
-        x.Aviso.Estado.ToString(),
-        x.Aviso.CantidadIntentos,
-        x.Aviso.FechaCreacion,
-        x.Aviso.FechaUltimoIntento,
-        x.Aviso.FechaProximoIntento,
-        x.Aviso.UltimoError);
+    private static AvisoResumenDto Resumen(FilaAviso x)
+    {
+        var (estado, anterior) = EstadosDelEnvio(x.Aviso.Contenido);
+        return new(
+            x.Aviso.Id,
+            x.Aviso.TipoEvento,
+            x.CodigoSeguimiento,
+            estado,
+            anterior,
+            x.UrlDestino,
+            x.Aviso.Estado.ToString(),
+            x.Aviso.CantidadIntentos,
+            x.Aviso.FechaCreacion,
+            x.Aviso.FechaUltimoIntento,
+            x.Aviso.FechaProximoIntento,
+            x.Aviso.UltimoError);
+    }
+
+    // El contenido es el evento tal cual se le mandó al comercio (EstadoEnvioCambiado en JSON):
+    // de ahí sale a qué estado pasó el envío. Si no se puede leer, no se muestra.
+    private static (string? Estado, string? Anterior) EstadosDelEnvio(string contenido)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(contenido);
+            return (Texto(json.RootElement, "Estado"), Texto(json.RootElement, "EstadoAnterior"));
+        }
+        catch (JsonException)
+        {
+            return (null, null);
+        }
+
+        static string? Texto(JsonElement raiz, string nombre) =>
+            raiz.ValueKind == JsonValueKind.Object
+            && raiz.TryGetProperty(nombre, out var valor)
+            && valor.ValueKind == JsonValueKind.String
+                ? valor.GetString()
+                : null;
+    }
 
     // Solo un usuario de comercio con un operador elegido
     private void ComercioActual()

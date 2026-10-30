@@ -67,8 +67,8 @@
                 <thead class="border-b border-white/10 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                         <th class="px-5 py-3 font-medium">Envío</th>
-                        <th class="px-5 py-3 font-medium">Evento</th>
-                        <th class="px-5 py-3 font-medium">Estado</th>
+                        <th class="px-5 py-3 font-medium">Estado del envío</th>
+                        <th class="px-5 py-3 font-medium">Aviso</th>
                         <th class="px-5 py-3 text-right font-medium">Intentos</th>
                         <th class="px-5 py-3 font-medium">Último intento</th>
                         <th class="px-5 py-3"></th>
@@ -79,7 +79,20 @@
                     {
                         <tr class="transition hover:bg-white/[0.03]">
                             <td class="px-5 py-3 font-semibold text-violet-300">@aviso.CodigoSeguimiento</td>
-                            <td class="px-5 py-3 text-slate-200">@TextoTipo(aviso.TipoEvento)</td>
+                            <td class="px-5 py-3 text-slate-200">
+                                @if (aviso.EstadoEnvioAnterior is { } anterior && aviso.EstadoEnvio is { } nuevo)
+                                {
+                                    <span class="text-slate-400">@TextoEstadoEnvio(anterior) →</span> <span class="font-semibold">@TextoEstadoEnvio(nuevo)</span>
+                                }
+                                else if (aviso.EstadoEnvio is { } inicial)
+                                {
+                                    <span class="font-semibold">@TextoEstadoEnvio(inicial)</span>
+                                }
+                                else
+                                {
+                                    @TextoTipo(aviso.TipoEvento)
+                                }
+                            </td>
                             <td class="px-5 py-3">
                                 <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @ClaseEstado(aviso.Estado)">
                                     @TextoEstado(aviso.Estado)
@@ -149,7 +162,7 @@
                                                         <td class="py-2 pr-4">
                                                             @if (intento.Exitoso)
                                                             {
-                                                                <span class="font-semibold text-emerald-300">Entregado</span>
+                                                                <span class="font-semibold text-emerald-300">Recibido</span>
                                                             }
                                                             else
                                                             {
@@ -194,9 +207,9 @@
 
     private static readonly (string Valor, string Texto)[] Estados =
     [
-        ("Fallido", "Fallidos"),
-        ("Pendiente", "Pendientes"),
-        ("Entregado", "Entregados")
+        ("Fallido", "No recibidos"),
+        ("Pendiente", "Enviando"),
+        ("Entregado", "Recibidos")
     ];
 
     private PaginaDto<AvisoResumenDto>? pagina;
@@ -325,11 +338,23 @@
         _ => tipo
     };
 
+    // Estado del aviso (si le llegó al sistema del comercio), no del paquete
     private static string TextoEstado(string estado) => estado switch
     {
-        "Pendiente" => "Pendiente",
-        "Entregado" => "Entregado",
-        "Fallido" => "Fallido",
+        "Pendiente" => "Enviando…",
+        "Entregado" => "Recibido",
+        "Fallido" => "No recibido",
+        _ => estado
+    };
+
+    // Estado del envío, como lo muestra el resto del portal
+    private static string TextoEstadoEnvio(string estado) => estado switch
+    {
+        "EnDeposito" => "En depósito",
+        "AsignadoARuta" => "Asignado a ruta",
+        "EnTransito" => "En tránsito",
+        "NoEntregado" => "No entregado",
+        "EnDevolucion" => "En devolución",
         _ => estado
     };
 
