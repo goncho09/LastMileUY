@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Json;
 using LastMileUY.Contracts.Mensajeria;
 
 namespace LastMileUY.Backoffice.Servicios;
@@ -70,21 +71,4 @@ public class MensajesFallidosApiHttp(HttpClient http)
             .ReadFromJsonAsync<MensajeFallidoDetalleResponse>(
                 cancellationToken: ct);
     }
-    public async Task<bool> ReintentarAsync(
-        Guid id,
-        CancellationToken ct = default)
-    {
-        using var response = await http.PostAsync(
-            $"/api/mensajeria/fallidos/{id}/reintentar",
-            content: null,
-            cancellationToken: ct);
-
-        if (response.StatusCode == HttpStatusCode.Conflict)
-            return false;
-
-        response.EnsureSuccessStatusCode();
-
-        return true;
-    }
-    
 }

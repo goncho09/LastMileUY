@@ -17,6 +17,18 @@ public class IndexModel(
     public int Incidencias { get; private set; }
 
     public string? Error { get; private set; }
+
+    
+    public IActionResult OnGet()
+    {
+        if (User.IsInRole("Administrador"))
+        {
+            return RedirectToPage("/MensajesFallidos/Index");
+        }
+
+        return Page();
+    }
+    
     
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {

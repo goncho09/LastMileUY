@@ -79,7 +79,6 @@ if (!string.IsNullOrWhiteSpace(conexionRabbit))
         servicios.GetRequiredService<ConexionRabbitMq>(),
         servicios.GetRequiredService<SenalOutbox>(),
         servicios.GetRequiredService<ILogger<PublicadorOutbox>>()));
-    builder.Services.AddHostedService<PublicadorReintentosOutboxWorker>();
 }
 
 
@@ -214,8 +213,6 @@ builder.Services.AddScoped<SeguimientoPublicoService>();
 builder.Services.AddScoped<SuscripcionesAvisosService>();
 builder.Services.AddScoped<AvisosComercioService>();
 builder.Services.AddScoped<ConsultasMensajesFallidosService>();
-builder.Services.AddScoped<ReintentosMensajesFallidosService>();
-builder.Services.AddScoped<PublicadorReintentosFallidos>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();

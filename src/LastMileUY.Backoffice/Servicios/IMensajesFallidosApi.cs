@@ -14,10 +14,6 @@ public interface IMensajesFallidosApi
     Task<MensajeFallidoDetalleResponse?> ObtenerDetalleAsync(
         Guid id,
         CancellationToken ct = default);
-    
-    Task<bool> ReintentarAsync(
-        Guid id,
-        CancellationToken ct = default);
 }
 
 public record ResumenMensajesFallidosDto(
