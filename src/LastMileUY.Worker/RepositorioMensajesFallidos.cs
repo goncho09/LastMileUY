@@ -89,4 +89,65 @@ public sealed class RepositorioMensajesFallidos(
 
         return id;
     }
+    
+    
+    public async Task MarcarResueltoAsync(
+        Guid incidenciaId,
+        CancellationToken ct)
+    {
+        await using var conexion =
+            await dataSource.OpenConnectionAsync(ct);
+
+        await using var comando = new NpgsqlCommand(
+            """
+            UPDATE "MensajesFallidos"
+            SET "Estado" = 'Resuelto',
+                "FechaResolucion" = @fecha
+            WHERE "Id" = @id
+              AND "Estado" IN (
+                  'ReprocesamientoSolicitado',
+                  'Reprocesando'
+              )
+            """,
+            conexion);
+
+        comando.Parameters.AddWithValue("id", incidenciaId);
+        comando.Parameters.AddWithValue("fecha", DateTime.UtcNow);
+
+        await comando.ExecuteNonQueryAsync(ct);
+    }
+    
+    
+    public async Task MarcarFallidoNuevamenteAsync(
+        Guid incidenciaId,
+        string error,
+        int intentos,
+        CancellationToken ct)
+    {
+        await using var conexion =
+            await dataSource.OpenConnectionAsync(ct);
+
+        await using var comando = new NpgsqlCommand(
+            """
+            UPDATE "MensajesFallidos"
+            SET "Estado" = 'Pendiente',
+                "UltimoError" = @error,
+                "Intentos" = @intentos,
+                "FechaFallo" = @fecha,
+                "FechaResolucion" = NULL
+            WHERE "Id" = @id
+              AND "Estado" IN (
+                  'ReprocesamientoSolicitado',
+                  'Reprocesando'
+              )
+            """,
+            conexion);
+
+        comando.Parameters.AddWithValue("id", incidenciaId);
+        comando.Parameters.AddWithValue("error", error);
+        comando.Parameters.AddWithValue("intentos", intentos);
+        comando.Parameters.AddWithValue("fecha", DateTime.UtcNow);
+
+        await comando.ExecuteNonQueryAsync(ct);
+    }
 }
