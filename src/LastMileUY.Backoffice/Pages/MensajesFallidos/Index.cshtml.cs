@@ -79,41 +79,6 @@ public class IndexModel(
             Error = "No se pudo obtener el listado de mensajes fallidos.";
         }
     }
-    
-    
-    public async Task<IActionResult> OnPostReintentarAsync(
-        Guid id,
-        CancellationToken ct)
-    {
-        try
-        {
-            var solicitado = await mensajesApi.ReintentarAsync(id, ct);
-
-            TempData[solicitado ? "Exito" : "Error"] = solicitado
-                ? "Reprocesamiento solicitado correctamente."
-                : "El mensaje no existe o ya no está pendiente.";
-        }
-        catch (Exception ex) when (
-            ex is HttpRequestException
-                or TaskCanceledException
-                or InvalidOperationException)
-        {
-            logger.LogError(
-                ex,
-                "Error al reintentar el mensaje {Id}", id);
-
-            TempData["Error"] = "No se pudo solicitar el reintento.";
-        }
-
-        return RedirectToPage(new
-        {
-            estado = Estado,
-            desde = Desde?.ToString("yyyy-MM-dd"),
-            hasta = Hasta?.ToString("yyyy-MM-dd"),
-            pagina = Pagina
-        });
-    }
-
 
     // Conserva los filtros al cambiar de página
     public Dictionary<string, string?> RutaPagina(int pagina) => new()

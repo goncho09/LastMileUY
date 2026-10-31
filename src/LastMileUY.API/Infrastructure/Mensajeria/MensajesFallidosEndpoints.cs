@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using LastMileUY.API.Modules.Mensajeria.Application;
+﻿using LastMileUY.API.Modules.Mensajeria.Application;
 using LastMileUY.Contracts.Mensajeria;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
@@ -66,40 +65,6 @@ public static class MensajesFallidosEndpoints
                 }
             })
             .WithName("ResumenMensajesFallidos");
-        
-        
-        grupo.MapPost("/{id:guid}/reintentar", async (
-            Guid id,
-            ClaimsPrincipal usuario,
-            ReintentosMensajesFallidosService servicio,
-            CancellationToken ct) =>
-        {
-            var administradorId =
-                usuario.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrWhiteSpace(administradorId))
-                return Results.Unauthorized();
-
-            var solicitado = await servicio.SolicitarAsync(
-                id,
-                administradorId,
-                ct);
-
-            if (!solicitado)
-            {
-                return Results.Conflict(new
-                {
-                    mensaje = "El mensaje no existe o no está pendiente."
-                });
-            }
-
-            return Results.Accepted(
-                value: new
-                {
-                    mensaje = "Reprocesamiento solicitado correctamente."
-                });
-        });
-
         
         
 grupo.MapPost("/inspeccionar", async (

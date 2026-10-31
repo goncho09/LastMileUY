@@ -126,7 +126,7 @@
                     </a>
                 }
 
-                @if (Permisos.PuedeVerConfiguracion(User) || User.IsInRole("Operador"))
+                @if (Permisos.PuedeVerConfiguracion(User) || !User.IsInRole("Administrador"))
                 {
                         <a asp-page="/Operador/Index"
                            aria-current="@(enOperador ? "page" : null)"

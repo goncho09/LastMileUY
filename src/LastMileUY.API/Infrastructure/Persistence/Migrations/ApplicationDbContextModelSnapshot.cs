@@ -770,51 +770,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("MensajesFallidos", (string)null);
                 });
 
-            modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.MensajeReintentoOutbox", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Contenido")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("CorrelacionId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FechaPublicacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("IntentosPublicacion")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("MensajeFallidoId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("MensajeId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Tipo")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UltimoError")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FechaCreacion")
-                        .HasFilter("\"FechaPublicacion\" IS NULL");
-
-                    b.HasIndex("MensajeFallidoId");
-
-                    b.ToTable("MensajesReintentoOutbox", (string)null);
-                });
-
             modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.EntregaAviso", b =>
                 {
                     b.Property<int>("Id")
@@ -1971,17 +1926,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .WithMany("Usuarios")
                         .HasForeignKey("OperadorId")
                         .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.MensajeReintentoOutbox", b =>
-                {
-                    b.HasOne("LastMileUY.API.Modules.Mensajeria.Domain.MensajeFallido", "MensajeFallido")
-                        .WithMany()
-                        .HasForeignKey("MensajeFallidoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("MensajeFallido");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Notificaciones.Domain.EntregaAviso", b =>

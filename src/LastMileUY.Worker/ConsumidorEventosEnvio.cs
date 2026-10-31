@@ -23,7 +23,6 @@ public class ConsumidorEventosEnvio(
     // Encabezados que agrega el worker al reintentar
     public const string EncabezadoIntentos = "x-intentos";
     public const string EncabezadoError = "x-ultimo-error";
-    private const string EncabezadoIncidenciaOriginal = "x-incidencia-original-id";
 
     // Cuántos mensajes puede tener sin confirmar a la vez
     private const ushort MensajesEnParalelo = 10;
@@ -151,7 +150,6 @@ public class ConsumidorEventosEnvio(
             mensaje.BasicProperties.CorrelationId, mensaje.BasicProperties.MessageId);
 
         var intentosPrevios = LeerIntentos(mensaje.BasicProperties);
-        var incidenciaOriginalId = ObtenerIncidenciaOriginal(mensaje);
 
         try
         {
@@ -198,13 +196,6 @@ public class ConsumidorEventosEnvio(
                     "Evento {Tipo} del envío {EnvioId} (operador {OperadorId}): {EstadoAnterior} -> {Estado}, {Avisos} avisos",
                     evento.Tipo, evento.EnvioId, evento.OperadorId, evento.EstadoAnterior, evento.Estado,
                     resultado.AvisosRegistrados);
-            
-            if (incidenciaOriginalId.HasValue)
-            {
-                await repositorioFallidos.MarcarResueltoAsync(
-                    incidenciaOriginalId.Value,
-                    cancellationToken);
-            }
 
             await canal!.BasicAckAsync(mensaje.DeliveryTag, multiple: false, cancellationToken);
         }
@@ -247,15 +238,11 @@ public class ConsumidorEventosEnvio(
         CancellationToken cancellationToken)
     {
         var original = mensaje.BasicProperties;
-        
-        
-        var encabezados = original.Headers is null
-            ? new Dictionary<string, object?>()
-            : new Dictionary<string, object?>(original.Headers);
-
-        encabezados[EncabezadoIntentos] = intentos;
-        encabezados[EncabezadoError] =
-            error.Length > 500 ? error[..500] : error;
+        var encabezados = new Dictionary<string, object?>
+        {
+            [EncabezadoIntentos] = intentos,
+            [EncabezadoError] = error.Length > 500 ? error[..500] : error
+        };
 
         var propiedades = new BasicProperties
         {
@@ -269,9 +256,7 @@ public class ConsumidorEventosEnvio(
             Expiration = espera is null ? null : ((long)espera.Value.TotalMilliseconds).ToString()
         };
         
-        var incidenciaOriginalId = ObtenerIncidenciaOriginal(mensaje);
-
-        if (cola == ColaFallidos && !incidenciaOriginalId.HasValue)
+        if (cola == ColaFallidos)
         {
             await RegistrarFalloAsync(
                 mensaje,
@@ -279,7 +264,8 @@ public class ConsumidorEventosEnvio(
                 error,
                 cancellationToken);
         }
-        
+
+// Publicamos la copia antes de confirmar el mensaje original.
         await canalPublicacion!.BasicPublishAsync(
             "",
             cola,
@@ -288,61 +274,12 @@ public class ConsumidorEventosEnvio(
             body: mensaje.Body,
             cancellationToken: cancellationToken);
 
-        // Confirmamos el original solamente después de que
-        // RabbitMQ haya aceptado la copia.
         await canal!.BasicAckAsync(
             mensaje.DeliveryTag,
             multiple: false,
             cancellationToken);
-        
-        // La actualización del registro es posterior.
-        // Si falla PostgreSQL, NO debemos reencolar el mensaje
-        // que RabbitMQ ya aceptó.
-        if (cola == ColaFallidos && incidenciaOriginalId.HasValue)
-        {
-            try
-            {
-                await repositorioFallidos.MarcarFallidoNuevamenteAsync(
-                    incidenciaOriginalId.Value,
-                    error,
-                    intentos,
-                    cancellationToken);
-            }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
-            {
-                logger.LogError(
-                    ex,
-                    "No se pudo actualizar la incidencia {IncidenciaId} después de publicar el mensaje fallido",
-                    incidenciaOriginalId.Value);
-            }
-        }
 
     }
-    
-    private static Guid? ObtenerIncidenciaOriginal(
-        BasicDeliverEventArgs mensaje)
-    {
-        var encabezados = mensaje.BasicProperties.Headers;
-
-        if (encabezados is null ||
-            !encabezados.TryGetValue(
-                "x-incidencia-original-id", out var valor))
-            return null;
-
-        var texto = valor switch
-        {
-            byte[] bytes => Encoding.UTF8.GetString(bytes),
-            ReadOnlyMemory<byte> bytes =>
-                Encoding.UTF8.GetString(bytes.Span),
-            string cadena => cadena,
-            _ => null
-        };
-
-        return Guid.TryParse(texto, out var id)
-            ? id
-            : null;
-    }
-
 
     // null si no se puede leer o es de una versión más nueva que la que conoce el worker
     private static EstadoEnvioCambiado? Leer(BasicDeliverEventArgs mensaje)

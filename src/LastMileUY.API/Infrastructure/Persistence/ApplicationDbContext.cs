@@ -88,8 +88,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     
     // Mensajeria
     public DbSet<MensajeFallido> MensajesFallidos => Set<MensajeFallido>();
-    public DbSet<MensajeReintentoOutbox> MensajesReintentoOutbox
-        => Set<MensajeReintentoOutbox>();
 
     // Sincronización de la app del repartidor
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
@@ -154,33 +152,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
                     });
                 }
             );
-        
-        modelBuilder.Entity<MensajeReintentoOutbox>(entity =>
-        {
-            entity.ToTable("MensajesReintentoOutbox");
-
-            entity.HasKey(x => x.Id);
-
-            entity.Property(x => x.MensajeId)
-                .IsRequired();
-
-            entity.Property(x => x.Contenido)
-                .IsRequired();
-
-            entity.Property(x => x.FechaCreacion)
-                .IsRequired();
-
-            entity.HasOne(x => x.MensajeFallido)
-                .WithMany()
-                .HasForeignKey(x => x.MensajeFallidoId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(x => x.MensajeFallidoId);
-
-            entity.HasIndex(x => x.FechaCreacion)
-                .HasFilter("\"FechaPublicacion\" IS NULL");
-        });
-
     }
 
     private static readonly MethodInfo MetodoFiltroOperador =

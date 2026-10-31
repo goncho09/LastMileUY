@@ -24,6 +24,9 @@ builder.Services.AddRazorPages(opciones =>
     opciones.Conventions.AllowAnonymousToPage("/AccesoDenegado");
     opciones.Conventions.AllowAnonymousToPage("/Error");
     
+    opciones.Conventions.AuthorizePage(
+        "/Index", Permisos.PoliticaOperacion);
+
     opciones.Conventions.AuthorizeFolder(
         "/Envios", Permisos.PoliticaOperacion);
 
@@ -88,9 +91,9 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<ICacheApi, CacheApiDePrueba>();
     builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
     builder.Services.AddSingleton<ISincronizacionApi, SincronizacionApiDePrueba>();
-    builder.Services.AddScoped<
+    builder.Services.AddSingleton<
         IMensajesFallidosApi,
-        MensajesFallidosApiHttp>();
+        MensajesFallidosApiDePrueba>();
 }
 else
 {
