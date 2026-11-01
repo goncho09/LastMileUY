@@ -75,7 +75,8 @@
     </section>
 
     <!-- Resultados -->
-    <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+    <section id="resultados-rutas"
+         class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
 
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-5 sm:px-6">
             <h2 class="text-base font-semibold text-white">Listado de hojas de ruta</h2>
@@ -179,3 +180,93 @@
         }
     </section>
 </div>
+
+
+@section Scripts {
+    <script>
+        (() => {
+            const seccion = document.getElementById("resultados-rutas");
+            if (!seccion) return;
+
+            let temporizador = null;
+            let actualizando = false;
+            let actualizarDeNuevo = false;
+            let paginaActiva = true;
+
+            async function actualizarListado() {
+                if (actualizando) {
+                    actualizarDeNuevo = true;
+                    return;
+                }
+
+                actualizando = true;
+
+                try {
+                    do {
+                        actualizarDeNuevo = false;
+
+                        const respuesta = await fetch(window.location.href, {
+                            credentials: "same-origin",
+                            cache: "no-store"
+                        });
+
+                        if (!respuesta.ok) {
+                            throw new Error(
+                                `Error actualizando rutas: HTTP ${respuesta.status}`
+                            );
+                        }
+
+                        const html = await respuesta.text();
+                        const documento = new DOMParser().parseFromString(
+                            html,
+                            "text/html"
+                        );
+
+                        const nuevosResultados = documento.getElementById(
+                            "resultados-rutas"
+                        );
+
+                        if (!nuevosResultados) {
+                            throw new Error(
+                                "No se encontró el listado actualizado de rutas"
+                            );
+                        }
+
+                        if (!paginaActiva) return;
+
+                        seccion.innerHTML = nuevosResultados.innerHTML;
+
+                    } while (actualizarDeNuevo && paginaActiva);
+
+                } catch (error) {
+                    console.error("Error actualizando rutas:", error);
+                } finally {
+                    actualizando = false;
+                }
+            }
+
+            function programarActualizacion() {
+                clearTimeout(temporizador);
+
+                temporizador = setTimeout(() => {
+                    void actualizarListado();
+                }, 500);
+            }
+
+            window.addEventListener(
+                "lastmileuy:envio-actualizado",
+                programarActualizacion
+            );
+
+            window.addEventListener(
+                "lastmileuy:signalr-sincronizar",
+                programarActualizacion
+            );
+
+            window.addEventListener("pagehide", () => {
+                paginaActiva = false;
+                clearTimeout(temporizador);
+            });
+        })();
+    </script>
+}
