@@ -186,27 +186,6 @@ alcanza: `avisos.comercio.com` puede resolver a una IP interna.
 Para desarrollo, `Avisos:PermitirDestinosLocales` en `true` deja usar `http` y direcciones internas. Así
 se puede usar el receptor de prueba. En producción va en `false`, que es el valor por defecto.
 
-
-### Firma HMAC de los avisos
-
-**Implementada.** Cada suscripción tiene una clave secreta HMAC-SHA256 que el comercio obtiene al crearla o regenerarla desde el Portal.
-
-El worker firma el contenido JSON del aviso mediante `FirmaAvisos`, incluyendo el identificador de suscripción, el identificador del aviso y el timestamp.
-
-Encabezados adicionales:
-
-| Encabezado | Descripción |
-|---|---|
-| `X-Aviso-Suscripcion-Id` | Identifica la suscripción. |
-| `X-Aviso-Timestamp` | Fecha y hora del envío en formato Unix. |
-| `X-Aviso-Firma` | Firma HMAC-SHA256 del contenido. |
-
-El receptor verifica la firma utilizando la clave secreta correspondiente a la suscripción. También valida que el timestamp no tenga una diferencia superior a cinco minutos.
-
-Si la firma es incorrecta, faltan datos o el timestamp está fuera del intervalo permitido, responde HTTP 401.
-
-La firma permite comprobar el origen y la integridad del aviso, evitando aceptar mensajes modificados o enviados sin conocer la clave secreta.
-
 ### Receptor de prueba
 
 `LastMileUY.ReceptorAvisos` hace de comercio. En compose está en http://localhost:8085 y el worker lo
@@ -224,8 +203,8 @@ comercio.
 
 ### Dónde sigue cada tarjeta
 
-
-- **Firma HMAC-SHA256:** implementada en `FirmaAvisos`, `ClienteAvisos` y el receptor de prueba. Cada suscripción dispone de una clave secreta. El worker firma los avisos y el receptor verifica su autenticidad e integridad. Pendiente de validar en la demostración los escenarios de firma válida, firma incorrecta y timestamp vencido.
+- **Firmar los avisos:** `ClienteAvisos.ArmarPedido`, donde está el comentario. El receptor guarda todos
+  los encabezados `X-...`, así que se puede verificar la firma ahí.
 - **Historial de intentos:** hecho. Cada intento queda en `IntentosAvisos` (número de intento, fecha, si fue
   exitoso, código HTTP, error y duración en ms), en la misma transacción en que se anota el resultado
   (`DespachadorAvisos.RegistrarIntentoAsync`). Es hija de `EntregasAvisos`, con su política RLS y su
@@ -242,50 +221,6 @@ comercio.
     unos segundos, como un intento más del historial. Si ese intento falla, queda Fallido sin otra ronda
     de reintentos automáticos (`ProximoIntento` no programa más allá del último), y se puede volver a
     reenviar.
-
-
-## Reprocesamiento manual de mensajes fallidos
-
-El administrador puede consultar los mensajes fallidos desde Backoffice y solicitar su reprocesamiento.
-
-### Flujo
-
-1. El administrador selecciona una incidencia en estado `Pendiente` y presiona **Reintentar**.
-2. Backoffice llama a `POST /api/mensajeria/fallidos/{id}/reintentar`.
-3. La API cambia el estado a `ReprocesamientoSolicitado` y registra un mensaje en `MensajesReintentoOutbox`, dentro de la misma transacción.
-4. `PublicadorReintentosOutboxWorker` publica el mensaje original nuevamente en RabbitMQ.
-5. El worker identifica la incidencia original mediante el encabezado `x-incidencia-original-id`.
-6. Si el procesamiento termina correctamente, la incidencia pasa a `Resuelto`.
-7. Si vuelve a fallar, la incidencia regresa a `Pendiente`, actualizando el error y la cantidad de intentos.
-
-### Estados
-
-| Estado | Descripción |
-|---|---|
-| `Pendiente` | Incidencia fallida disponible para reintento. |
-| `ReprocesamientoSolicitado` | Reintento registrado y pendiente de procesamiento. |
-| `Reprocesando` | Estado previsto para identificar un reprocesamiento en curso. |
-| `Resuelto` | Mensaje reprocesado correctamente. |
-
-### Garantías
-
-- No se permiten solicitudes duplicadas mientras la incidencia no esté pendiente.
-- La solicitud y su registro en el Outbox se guardan en una única transacción.
-- Los mensajes ya procesados se reconocen mediante el mecanismo de idempotencia.
-- Los mensajes inválidos que vuelven a fallar quedan pendientes para revisión.
-
-### Pruebas
-
-Se verificaron manualmente los escenarios de reprocesamiento exitoso y fallido.
-
-Además, se agregaron cinco tests automatizados:
-
-- Solicitud de reintento y creación del Outbox.
-- Prevención de solicitudes duplicadas.
-- Rechazo del reintento de incidencias resueltas.
-- Actualización a `Resuelto` cuando el procesamiento es exitoso.
-- Retorno a `Pendiente` cuando el procesamiento falla.
-
 
 ## El tablero en vivo del backoffice
 

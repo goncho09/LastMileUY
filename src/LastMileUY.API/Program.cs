@@ -79,6 +79,11 @@ if (!string.IsNullOrWhiteSpace(conexionRabbit))
         servicios.GetRequiredService<ConexionRabbitMq>(),
         servicios.GetRequiredService<SenalOutbox>(),
         servicios.GetRequiredService<ILogger<PublicadorOutbox>>()));
+    builder.Services.AddHostedService(servicios =>
+        new PublicadorReintentosOutboxWorker(
+            NpgsqlDataSource.Create(conexionOutbox),
+            servicios.GetRequiredService<ConexionRabbitMq>(),
+            servicios.GetRequiredService<ILogger<PublicadorReintentosOutboxWorker>>()));
 }
 
 
