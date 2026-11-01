@@ -99,8 +99,6 @@ public static class MensajesFallidosEndpoints
                     mensaje = "Reprocesamiento solicitado correctamente."
                 });
         });
-
-        
         
 grupo.MapPost("/inspeccionar", async (
     int? limite,

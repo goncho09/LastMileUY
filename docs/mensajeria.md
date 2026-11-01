@@ -201,26 +201,71 @@ Para probarlo, en el portal del comercio (menú **Avisos**) cargá una suscripci
 `http://lastmileuy.receptoravisos:8080/avisos/mi-comercio` y cambiale el estado a un envío de ese
 comercio.
 
-### Dónde sigue cada tarjeta
+### Firma HMAC-SHA256 de avisos HTTP
 
-- **Firmar los avisos:** `ClienteAvisos.ArmarPedido`, donde está el comentario. El receptor guarda todos
-  los encabezados `X-...`, así que se puede verificar la firma ahí.
-- **Historial de intentos:** hecho. Cada intento queda en `IntentosAvisos` (número de intento, fecha, si fue
-  exitoso, código HTTP, error y duración en ms), en la misma transacción en que se anota el resultado
-  (`DespachadorAvisos.RegistrarIntentoAsync`). Es hija de `EntregasAvisos`, con su política RLS y su
-  filtro de EF: un intento se ve solo si se ve el aviso.
-- **Reintentos con espera creciente:** hecho, en `DespachadorAvisos.ProximoIntento` (ver más arriba).
-- **Portal (suscripciones y fallidos):**
-  - suscripciones: hecho. `GET`, `POST` y `PATCH /api/avisos/suscripciones` (rol Comercio) y la página
-    **Avisos** del portal. La URL se valida con `DestinosAvisos.Validar`; en la API, `Avisos:PermitirDestinosLocales`
-    deja usar el receptor de prueba (compose lo pone en `true`). No se borran: se desactivan;
-  - historial y reenvío: hecho. Pestaña **Historial de avisos** de la página Avisos, con
-    `GET /api/avisos` (filtro por estado), `GET /api/avisos/{id}` (el aviso con sus intentos) y
-    `POST /api/avisos/{id}/reenviar` (rol Comercio). Solo se reenvían los **Fallidos** (estado 3) cuya
-    suscripción está activa: vuelve a estado 1 con `FechaProximoIntento` vacía y el worker lo manda en
-    unos segundos, como un intento más del historial. Si ese intento falla, queda Fallido sin otra ronda
-    de reintentos automáticos (`ProximoIntento` no programa más allá del último), y se puede volver a
-    reenviar.
+**Estado: implementado.**
+
+Los avisos HTTP enviados a los comercios están firmados mediante HMAC-SHA256 para garantizar su autenticidad e integridad.
+
+Cada suscripción tiene una clave secreta (`ClaveFirma`) que utilizan tanto el Worker como el receptor del comercio.
+
+#### Generación de la firma
+
+El Worker genera la firma en `ClienteAvisos.ArmarPedido`, utilizando `FirmaAvisos.Generar`.
+
+La firma se calcula a partir de:
+
+- Clave secreta de la suscripción.
+- Identificador de la suscripción.
+- Identificador único del aviso.
+- Timestamp Unix en segundos (UTC).
+- Contenido JSON exacto del aviso.
+
+El Worker envía los siguientes encabezados adicionales:
+
+| Encabezado | Descripción |
+|---|---|
+| `X-Aviso-Firma` | Firma HMAC-SHA256 del aviso. |
+| `X-Aviso-Timestamp` | Momento en que se generó la firma, en segundos Unix. |
+| `X-Aviso-Suscripcion-Id` | Identificador de la suscripción correspondiente. |
+
+Los nombres exactos de los encabezados están definidos en `FirmaAvisos`.
+
+#### Verificación de la firma
+
+El proyecto `LastMileUY.ReceptorAvisos` simula el servidor HTTP de un comercio.
+
+Cuando recibe un aviso:
+
+1. Obtiene el identificador del aviso y de la suscripción.
+2. Busca la clave secreta registrada para esa suscripción.
+3. Comprueba que el timestamp no tenga más de cinco minutos de diferencia respecto de la hora actual.
+4. Lee el contenido JSON recibido.
+5. Verifica la firma mediante `FirmaAvisos.Verificar`.
+6. Si la firma es válida, registra el aviso y devuelve la respuesta HTTP configurada.
+
+El receptor devuelve HTTP `401 Unauthorized` cuando:
+
+- Falta algún dato necesario para verificar la firma.
+- No existe una clave registrada para la suscripción.
+- El timestamp está fuera del margen permitido.
+- La firma recibida es incorrecta.
+- El contenido fue modificado después de firmarse.
+
+#### Configuración del receptor de prueba
+
+El receptor permite registrar las claves de las suscripciones mediante:
+
+`POST /configuracion/suscripciones`
+
+Ejemplo del cuerpo JSON:
+
+```json
+{
+  "suscripcionId": 1,
+  "claveFirma": "clave-secreta-del-comercio"
+}
+```
 
 ## El tablero en vivo del backoffice
 
