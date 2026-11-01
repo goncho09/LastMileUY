@@ -105,4 +105,103 @@ public class RepositorioMensajesFallidosTests(
         Assert.Equal(3, resultado.Intentos);
         Assert.Null(resultado.FechaResolucion);
     }
+    
+    
+    [Fact]
+    public async Task Registrar_dos_veces_el_mismo_mensaje_no_duplica_incidencia()
+    {
+        await using var dataSource =
+            NpgsqlDataSource.Create(baseDeDatos.CadenaAdministrador);
+
+        var repositorio = new RepositorioMensajesFallidos(dataSource);
+
+        var mensajeId = Guid.NewGuid().ToString();
+
+        var primerId = await repositorio.RegistrarAsync(
+            mensajeId,
+            null,
+            "EnvioEstadoCambiado",
+            "{}",
+            "Error inicial",
+            3,
+            CancellationToken.None);
+
+        var segundoId = await repositorio.RegistrarAsync(
+            mensajeId,
+            null,
+            "EnvioEstadoCambiado",
+            "{}",
+            "Error repetido",
+            3,
+            CancellationToken.None);
+
+        Assert.Equal(primerId, segundoId);
+
+        await using var conexion =
+            new NpgsqlConnection(baseDeDatos.CadenaAdministrador);
+
+        await conexion.OpenAsync();
+
+        await using var comando = new NpgsqlCommand(
+            """
+            SELECT COUNT(*)
+            FROM "MensajesFallidos"
+            WHERE "Id" = @id
+            """,
+            conexion);
+
+        comando.Parameters.AddWithValue("id", primerId);
+
+        var cantidad = Convert.ToInt32(
+            await comando.ExecuteScalarAsync());
+
+        Assert.Equal(1, cantidad);
+
+        var incidencia = await ConsultarAsync(primerId);
+
+        // ON CONFLICT DO NOTHING conserva el registro original.
+        Assert.Equal("Pendiente", incidencia.Estado);
+        Assert.Equal("Error inicial", incidencia.Error);
+        Assert.Equal(3, incidencia.Intentos);
+    }
+    
+    
+    [Fact]
+    public async Task Registrar_mismo_mensaje_con_distintos_intentos_genera_ids_diferentes()
+    {
+        await using var dataSource =
+            NpgsqlDataSource.Create(baseDeDatos.CadenaAdministrador);
+
+        var repositorio = new RepositorioMensajesFallidos(dataSource);
+
+        var mensajeId = Guid.NewGuid().ToString();
+
+        var primerId = await repositorio.RegistrarAsync(
+            mensajeId,
+            null,
+            "EnvioEstadoCambiado",
+            "{}",
+            "Error intento 3",
+            3,
+            CancellationToken.None);
+
+        var segundoId = await repositorio.RegistrarAsync(
+            mensajeId,
+            null,
+            "EnvioEstadoCambiado",
+            "{}",
+            "Error intento 4",
+            4,
+            CancellationToken.None);
+
+        Assert.NotEqual(primerId, segundoId);
+
+        var primera = await ConsultarAsync(primerId);
+        var segunda = await ConsultarAsync(segundoId);
+
+        Assert.Equal(3, primera.Intentos);
+        Assert.Equal(4, segunda.Intentos);
+        Assert.Equal("Pendiente", primera.Estado);
+        Assert.Equal("Pendiente", segunda.Estado);
+    }
 }

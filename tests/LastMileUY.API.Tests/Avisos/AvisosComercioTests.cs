@@ -91,6 +91,74 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         // El historial no se pierde: el reenvío va a ser el intento 7
         Assert.Equal(6, aviso.CantidadIntentos);
     }
+    
+    
+    [Fact]
+    public async Task Dos_reenvios_concurrentes_solo_permiten_uno()
+    {
+        var id = await CrearAvisoAsync(
+            ComercioCompartido,
+            EnvioDeA,
+            EstadoEntregaAviso.Fallido,
+            intentos: 3);
+
+        // Cada solicitud usa su propio DbContext,
+        // como ocurre con dos peticiones HTTP independientes.
+        await using var db1 = baseDeDatos.CrearContexto(
+            OperadorA, ComercioCompartido);
+
+        await using var db2 = baseDeDatos.CrearContexto(
+            OperadorA, ComercioCompartido);
+
+        var servicio1 = Servicio(db1, ComercioCompartido);
+        var servicio2 = Servicio(db2, ComercioCompartido);
+
+        // La barrera hace que ambas tareas comiencen juntas.
+        var inicio = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task<bool> IntentarReenvioAsync(
+            AvisosComercioService servicio)
+        {
+            await inicio.Task;
+
+            try
+            {
+                return await servicio.ReenviarAsync(id) is not null;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+
+        var tarea1 = IntentarReenvioAsync(servicio1);
+        var tarea2 = IntentarReenvioAsync(servicio2);
+
+        inicio.SetResult(true);
+
+        var resultados = await Task.WhenAll(tarea1, tarea2);
+
+        // Exactamente una solicitud debe aceptar el reenvío.
+        Assert.Single(resultados.Where(x => x));
+
+        // La otra solicitud debe ser rechazada.
+        Assert.Single(resultados.Where(x => !x));
+
+        // Comprobamos el estado final en la base de datos.
+        await using var verificacion = baseDeDatos.CrearContexto(OperadorA);
+
+        var aviso = await verificacion.EntregasAvisos
+            .SingleAsync(a => a.Id == id);
+
+        Assert.Equal(EstadoEntregaAviso.Pendiente, aviso.Estado);
+        Assert.Null(aviso.FechaProximoIntento);
+
+        // El reenvío no crea todavía un intento de entrega.
+        // Ese intento lo registrará el worker.
+        Assert.Equal(3, aviso.CantidadIntentos);
+    }
+
 
     [Theory]
     [InlineData(EstadoEntregaAviso.Pendiente)]
