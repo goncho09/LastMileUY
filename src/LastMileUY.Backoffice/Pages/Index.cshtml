@@ -116,10 +116,16 @@
                 </h2>
 
                 <span id="estado-signalr"
-                      role="status"
-                      class="text-xs text-slate-400">
-                    Conectando...
-                </span>
+      role="status"
+      aria-live="polite"
+      class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 shadow-sm shadow-emerald-500/10">
+    <span id="punto-signalr"
+          class="relative flex h-2.5 w-2.5">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+        <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+    </span>
+    <span id="texto-signalr">Conectando...</span>
+</span>
             </div>
 
             <p class="mt-1 text-sm text-slate-400">
@@ -167,30 +173,34 @@
 </div>
 
 @section Scripts {
-    @* integrity: el navegador no ejecuta el archivo si el CDN lo sirve modificado *@
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"
-            integrity="sha512-7SRCYIJtR6F8ocwW7UxW6wGKqbSyqREDbfCORCbGLatU0iugBLwyOXpzhkPyHIFdBO0K2VCu57fvP2Twgx1o2A=="
-            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
     <script>
         (() => {
-            const conexion = new signalR.HubConnectionBuilder()
-                .withUrl("/hubs/envios")
-                .withAutomaticReconnect()
-                .build();
-
             const actividad = document.getElementById("actividad-reciente");
             const vacio = document.getElementById("actividad-vacia");
-            const estadoSignalR = document.getElementById("estado-signalr");
-
+            
             let actualizando = false;
             let actualizarDeNuevo = false;
             let temporizador = null;
-            let temporizadorConexion = null;
-            let paginaActiva = true;
 
             function establecerEstado(texto) {
-                estadoSignalR.textContent = texto;
+                const indicador = document.getElementById("estado-signalr");
+                const punto = document.getElementById("punto-signalr");
+                const textoEstado = document.getElementById("texto-signalr");
+
+                if (!indicador || !punto || !textoEstado) return;
+
+                const conectado = texto === "En vivo";
+
+                textoEstado.textContent = texto;
+
+                indicador.className = conectado
+                    ? "inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300"
+                    : "inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300";
+
+                punto.innerHTML = conectado
+                    ? `<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
+           <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400"></span>`
+                    : `<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-400"></span>`;
             }
 
             function mostrarVacio(mensaje) {
@@ -373,93 +383,40 @@
                 }, 250);
             }
 
-            // SignalR notifica; el historial se consulta desde PostgreSQL.
-            // Así evitamos duplicados con los eventos del navegador.
-            conexion.on("EnvioActualizado", evento => {
 
+            // SignalR notifica; los datos se consultan desde PostgreSQL.
+            window.addEventListener("lastmileuy:envio-actualizado", () => {
                 programarActualizacion();
             });
 
-            conexion.onreconnecting(() => {
-                establecerEstado("Reconectando...");
+            window.addEventListener("lastmileuy:signalr-estado", evento => {
+                establecerEstado(evento.detail.estado);
             });
 
-            conexion.onreconnected(() => {
-                establecerEstado("En vivo");
+            // Consultar el estado actual, aunque el evento ya haya ocurrido.
+            const conexionSignalR = window.LastMileUYSignalR?.conexion;
 
-                // Recupera movimientos y estadísticas que
-                // pudieron cambiar durante la desconexión.
-                void refrescar();
-            });
-
-            conexion.onclose(() => {
-                establecerEstado("Desconectado");
-
-                if (paginaActiva) {
-                    programarConexion();
-                }
-            });
-
-            function programarConexion() {
-                clearTimeout(temporizadorConexion);
-
-                temporizadorConexion = setTimeout(() => {
-                    void iniciarConexion();
-                }, 5000);
+            if (conexionSignalR) {
+                establecerEstado(
+                    conexionSignalR.state === signalR.HubConnectionState.Connected
+                        ? "En vivo"
+                        : "Conectando..."
+                );
             }
 
-            async function iniciarConexion() {
-                if (!paginaActiva ||
-                    conexion.state !==
-                    signalR.HubConnectionState.Disconnected) {
-                    return;
-                }
+            window.addEventListener("lastmileuy:signalr-sincronizar", () => {
+                programarActualizacion();
+            });
 
-                try {
-                    establecerEstado("Conectando...");
-
-                    await conexion.start();
-
-                    establecerEstado("En vivo");
-
-                    await refrescar();
-                } catch (error) {
-                    establecerEstado("Sin conexión");
-
-                    console.error(
-                        "Error conectando SignalR:",
-                        error
-                    );
-
-                    if (paginaActiva) {
-                        programarConexion();
-                    }
-                }
-            }
-
-            // Si el navegador estuvo en segundo plano,
-            // sincronizamos al volver a la pestaña.
-            document.addEventListener(
-                "visibilitychange",
-                () => {
-                    if (!document.hidden) {
-                        programarActualizacion();
-                    }
-                }
-            );
-
-            // Limpieza al abandonar la página.
+            // Limpiar el temporizador al abandonar la página.
             window.addEventListener("pagehide", () => {
-                paginaActiva = false;
                 clearTimeout(temporizador);
-                clearTimeout(temporizadorConexion);
             });
 
-            // La actividad inicial no depende de que SignalR
-            // consiga conectarse inmediatamente.
+            // La carga inicial no depende de SignalR.
             void refrescar();
 
-            void iniciarConexion();
+            // La conexión se administra desde envios-signalr.js.
         })();
     </script>
 }

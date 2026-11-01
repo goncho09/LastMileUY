@@ -110,7 +110,8 @@
     </section>
 
     <!-- Resultados -->
-    <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+<section id="resultados-envios"
+         class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
 
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-5 sm:px-6">
             <div>
@@ -119,6 +120,13 @@
                     Resultados de la consulta actual
                 </p>
             </div>
+
+            <span id="estado-actualizacion-envios"
+                  role="status"
+                  aria-live="polite"
+                  class="hidden rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+                Actualizando envíos...
+            </span>
 
             @if (Model.Error is null)
             {
@@ -303,3 +311,94 @@
         }
     </section>
 </div>
+
+
+
+@section Scripts {
+    <script>
+        (() => {
+            const seccion = document.getElementById("resultados-envios");
+
+            if (!seccion) return;
+
+            let temporizador = null;
+            let actualizando = false;
+            let actualizarDeNuevo = false;
+            let paginaActiva = true;
+
+            async function actualizarListado() {
+                if (actualizando) {
+                    actualizarDeNuevo = true;
+                    return;
+                }
+
+                actualizando = true;
+
+                try {
+                    do {
+                        actualizarDeNuevo = false;
+
+                        const respuesta = await fetch(window.location.href, {
+                            credentials: "same-origin",
+                            cache: "no-store"
+                        });
+
+                        if (!respuesta.ok) {
+                            throw new Error(
+                                `Error actualizando envíos: HTTP ${respuesta.status}`
+                            );
+                        }
+
+                        const html = await respuesta.text();
+                        const documento = new DOMParser().parseFromString(
+                            html,
+                            "text/html"
+                        );
+
+                        const nuevosResultados = documento.getElementById(
+                            "resultados-envios"
+                        );
+
+                        if (!nuevosResultados) {
+                            throw new Error(
+                                "No se encontró la sección de resultados"
+                            );
+                        }
+
+                        if (!paginaActiva) return;
+
+                        seccion.innerHTML = nuevosResultados.innerHTML;
+
+                    } while (actualizarDeNuevo && paginaActiva);
+                } catch (error) {
+                    console.error("Error actualizando listado:", error);
+                } finally {
+                    actualizando = false;
+                }
+            }
+
+            function programarActualizacion() {
+                clearTimeout(temporizador);
+
+                temporizador = setTimeout(() => {
+                    void actualizarListado();
+                }, 500);
+            }
+
+            window.addEventListener(
+                "lastmileuy:envio-actualizado",
+                programarActualizacion
+            );
+
+            window.addEventListener(
+                "lastmileuy:signalr-sincronizar",
+                programarActualizacion
+            );
+
+            window.addEventListener("pagehide", () => {
+                paginaActiva = false;
+                clearTimeout(temporizador);
+            });
+        })();
+    </script>
+}
