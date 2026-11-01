@@ -28,16 +28,31 @@ public class ConsultasMensajesFallidosService(
             consulta = consulta.Where(x => x.Estado == estado);
         }
 
+        var zonaUruguay = TimeZoneInfo.FindSystemTimeZoneById(
+            "America/Montevideo");
+
         if (filtro.Desde is not null)
         {
-            consulta = consulta.Where(
-                x => x.FechaFallo >= filtro.Desde.Value);
+            var fechaLocal = DateTime.SpecifyKind(
+                filtro.Desde.Value.Date,
+                DateTimeKind.Unspecified);
+
+            var desdeUtc = TimeZoneInfo.ConvertTimeToUtc(
+                fechaLocal, zonaUruguay);
+
+            consulta = consulta.Where(x => x.FechaFallo >= desdeUtc);
         }
 
         if (filtro.Hasta is not null)
         {
-            consulta = consulta.Where(
-                x => x.FechaFallo <= filtro.Hasta.Value);
+            var fechaLocal = DateTime.SpecifyKind(
+                filtro.Hasta.Value.Date.AddDays(1),
+                DateTimeKind.Unspecified);
+
+            var hastaUtc = TimeZoneInfo.ConvertTimeToUtc(
+                fechaLocal, zonaUruguay);
+
+            consulta = consulta.Where(x => x.FechaFallo < hastaUtc);
         }
 
         var total = await consulta.CountAsync(ct);

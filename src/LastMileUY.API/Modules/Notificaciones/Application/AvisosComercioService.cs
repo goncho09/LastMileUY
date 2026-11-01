@@ -71,34 +71,62 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
     // Vuelve a dejar Pendiente un aviso Fallido: el worker lo manda en unos segundos, como un intento más
     // (queda en el historial). Si ese intento también falla, vuelve a Fallido sin otra ronda de reintentos.
     // null si no existe o es de otro comercio; ArgumentException si no se puede reenviar.
-    public async Task<AvisoResumenDto?> ReenviarAsync(int id, CancellationToken cancellationToken = default)
+   
+    public async Task<AvisoResumenDto?> ReenviarAsync(
+        int id,
+        CancellationToken cancellationToken = default)
     {
         ComercioActual();
 
-        var aviso = await db.EntregasAvisos.SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+        var aviso = await db.EntregasAvisos
+            .AsNoTracking()
+            .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+
         if (aviso is null)
             return null;
 
         var suscripcion = await db.SuscripcionesAvisos
             .AsNoTracking()
-            .SingleOrDefaultAsync(s => s.Id == aviso.SuscripcionAvisosId, cancellationToken);
+            .SingleOrDefaultAsync(
+                s => s.Id == aviso.SuscripcionAvisosId,
+                cancellationToken);
+
         if (suscripcion is null)
             return null;
 
         if (aviso.Estado != EstadoEntregaAviso.Fallido)
-            throw new ArgumentException(aviso.Estado == EstadoEntregaAviso.Entregado
-                ? "El aviso ya fue recibido."
-                : "El aviso todavía se está enviando.");
+            throw new ArgumentException(
+                aviso.Estado == EstadoEntregaAviso.Entregado
+                    ? "El aviso ya fue recibido."
+                    : "El aviso todavía se está enviando.");
 
         if (!suscripcion.Activa)
-            throw new ArgumentException("La suscripción del aviso está desactivada. Activala para poder reenviarlo.");
+            throw new ArgumentException(
+                "La suscripción del aviso está desactivada. Activala para poder reenviarlo.");
 
-        aviso.Estado = EstadoEntregaAviso.Pendiente;
-        aviso.FechaProximoIntento = null;
-        await db.SaveChangesAsync(cancellationToken);
+        // Actualización atómica: solamente una solicitud puede
+        // cambiar el estado de Fallido a Pendiente.
+        var actualizados = await db.EntregasAvisos
+            .Where(a =>
+                a.Id == id &&
+                a.Estado == EstadoEntregaAviso.Fallido)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(
+                        a => a.Estado,
+                        EstadoEntregaAviso.Pendiente)
+                    .SetProperty(
+                        a => a.FechaProximoIntento,
+                        (DateTime?)null),
+                cancellationToken);
+
+        if (actualizados == 0)
+            throw new ArgumentException(
+                "El aviso ya fue reenviado o cambió de estado.");
 
         return (await ObtenerAsync(id, cancellationToken))?.Aviso;
     }
+
 
     // Avisos con el código del envío y la URL de la suscripción. Los tres pasan por el filtro de EF.
     private IQueryable<FilaAviso> Consulta() =>
