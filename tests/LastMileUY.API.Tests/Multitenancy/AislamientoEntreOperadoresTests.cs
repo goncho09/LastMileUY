@@ -2,9 +2,9 @@ using LastMileUY.API.Modules.Mensajeria.Domain;
 
 namespace LastMileUY.API.Tests.Multitenancy;
 
-using LastMileUY.API.Modules.Comercios.Domain;
+using Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Identidad.Domain;
-using LastMileUY.API.Modules.Operadores.Domain;
+using Modules.Operadores.Domain;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using static BaseConDosOperadores;
@@ -173,10 +173,13 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         // aplicación solo puede insertar (no leer) y el publicador tiene su propio usuario (OutboxTests)
         "MensajesOutbox",
         // MensajesFallidos: incidencias técnicas globales del Worker.
-// No pertenecen a un operador específico.
-// El acceso se restringe mediante permisos de PostgreSQL
-// y autorización de administrador en la API.
-        "MensajesFallidos"
+        // No pertenecen a un operador específico.
+        // El acceso se restringe mediante permisos de PostgreSQL
+        // y autorización de administrador en la API.
+        "MensajesFallidos",
+        // MensajesReintentoOutbox: solicitudes técnicas de reprocesamiento.
+        // Su acceso debe estar restringido mediante permisos de PostgreSQL.
+        "MensajesReintentoOutbox",
     ];
 
     [Fact]
@@ -220,6 +223,7 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
             .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
             .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
             .Where(t => t != typeof(MensajeFallido))
+            .Where(t => t != typeof(MensajeReintentoOutbox))
             .Select(t => t.Name)
             .ToList();
 

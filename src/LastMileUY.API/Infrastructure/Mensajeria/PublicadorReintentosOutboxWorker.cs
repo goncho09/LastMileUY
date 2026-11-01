@@ -3,12 +3,13 @@ using System.Text;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using RabbitMQ.Client;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
 public sealed class PublicadorReintentosOutboxWorker(
-    IServiceScopeFactory scopeFactory,
+    NpgsqlDataSource baseOutbox,
     ConexionRabbitMq rabbit,
     ILogger<PublicadorReintentosOutboxWorker> logger)
     : BackgroundService
@@ -40,74 +41,120 @@ public sealed class PublicadorReintentosOutboxWorker(
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private async Task ProcesarPendientesAsync(
-        CancellationToken ct)
+    
+private async Task ProcesarPendientesAsync(CancellationToken ct)
+{
+    await using var conexion = await baseOutbox.OpenConnectionAsync(ct);
+    await using var transaccion = await conexion.BeginTransactionAsync(ct);
+
+    var pendientes = new List<(
+        Guid Id,
+        Guid MensajeFallidoId,
+        string MensajeId,
+        string Contenido,
+        string? Tipo,
+        string? CorrelacionId)>();
+
+    await using (var comando = new NpgsqlCommand("""
+        SELECT "Id", "MensajeFallidoId", "MensajeId",
+               "Contenido", "Tipo", "CorrelacionId"
+        FROM "MensajesReintentoOutbox"
+        WHERE "FechaPublicacion" IS NULL
+        ORDER BY "FechaCreacion"
+        LIMIT 20
+        FOR UPDATE SKIP LOCKED
+        """, conexion, transaccion))
     {
-        using var scope = scopeFactory.CreateScope();
+        await using var lector = await comando.ExecuteReaderAsync(ct);
 
-        var db = scope.ServiceProvider
-            .GetRequiredService<ApplicationDbContext>();
-
-        var pendientes = await db.MensajesReintentoOutbox
-            .Where(x => x.FechaPublicacion == null)
-            .OrderBy(x => x.FechaCreacion)
-            .Take(20)
-            .ToListAsync(ct);
-
-        if (pendientes.Count == 0)
-            return;
-
-        await using var canal = await rabbit.CrearCanalAsync(ct);
-
-        foreach (var mensaje in pendientes)
+        while (await lector.ReadAsync(ct))
         {
-            try
-            {
-                var propiedades = new BasicProperties
-                {
-                    MessageId = mensaje.MensajeId,
-                    CorrelationId = mensaje.CorrelacionId,
-                    Type = mensaje.Tipo,
-                    ContentType = "application/json",
-                    DeliveryMode = DeliveryModes.Persistent,
-                    Headers = new Dictionary<string, object?>
-                    {
-                        ["x-incidencia-original-id"] =
-                            mensaje.MensajeFallidoId.ToString(),
-                        ["x-intentos"] = 0
-                    }
-                };
-
-                await canal.BasicPublishAsync(
-                    exchange: "",
-                    routingKey: TopologiaMensajeria.ColaWorker,
-                    mandatory: true,
-                    basicProperties: propiedades,
-                    body: Encoding.UTF8.GetBytes(mensaje.Contenido),
-                    cancellationToken: ct);
-
-                mensaje.FechaPublicacion = DateTime.UtcNow;
-                mensaje.IntentosPublicacion++;
-
-                await db.SaveChangesAsync(ct);
-
-                logger.LogInformation(
-                    "Reintento publicado: {Id}",
-                    mensaje.MensajeFallidoId);
-            }
-            catch (Exception ex)
-                when (!ct.IsCancellationRequested)
-            {
-                mensaje.IntentosPublicacion++;
-                mensaje.UltimoError = ex.Message;
-
-                await db.SaveChangesAsync(ct);
-
-                logger.LogError(
-                    ex,
-                    "Error publicando reintento {Id}",
-                    mensaje.MensajeFallidoId);
-            }
+            pendientes.Add((
+                lector.GetGuid(0),
+                lector.GetGuid(1),
+                lector.GetString(2),
+                lector.GetString(3),
+                lector.IsDBNull(4) ? null : lector.GetString(4),
+                lector.IsDBNull(5) ? null : lector.GetString(5)
+            ));
         }
     }
+
+    if (pendientes.Count == 0)
+    {
+        await transaccion.CommitAsync(ct);
+        return;
+    }
+
+    await using var canal = await rabbit.CrearCanalAsync(ct);
+
+    foreach (var mensaje in pendientes)
+    {
+        try
+        {
+            var propiedades = new BasicProperties
+            {
+                MessageId = mensaje.MensajeId,
+                CorrelationId = mensaje.CorrelacionId,
+                Type = mensaje.Tipo,
+                ContentType = "application/json",
+                DeliveryMode = DeliveryModes.Persistent,
+                Headers = new Dictionary<string, object?>
+                {
+                    ["x-incidencia-original-id"] =
+                        mensaje.MensajeFallidoId.ToString(),
+                    ["x-intentos"] = 0
+                }
+            };
+
+            await canal.BasicPublishAsync(
+                exchange: "",
+                routingKey: TopologiaMensajeria.ColaWorker,
+                mandatory: true,
+                basicProperties: propiedades,
+                body: Encoding.UTF8.GetBytes(mensaje.Contenido),
+                cancellationToken: ct);
+
+            await using var comando = new NpgsqlCommand("""
+                UPDATE "MensajesReintentoOutbox"
+                SET "FechaPublicacion" = now(),
+                    "IntentosPublicacion" = "IntentosPublicacion" + 1,
+                    "UltimoError" = NULL
+                WHERE "Id" = @id
+                """, conexion, transaccion);
+
+            comando.Parameters.AddWithValue("id", mensaje.Id);
+            await comando.ExecuteNonQueryAsync(ct);
+
+            logger.LogInformation(
+                "Reintento publicado: {Id}",
+                mensaje.MensajeFallidoId);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            await using var comando = new NpgsqlCommand("""
+                UPDATE "MensajesReintentoOutbox"
+                SET "IntentosPublicacion" = "IntentosPublicacion" + 1,
+                    "UltimoError" = left(@error, 1000)
+                WHERE "Id" = @id
+                """, conexion, transaccion);
+
+            comando.Parameters.AddWithValue("id", mensaje.Id);
+            comando.Parameters.AddWithValue("error", ex.Message);
+
+            await comando.ExecuteNonQueryAsync(ct);
+
+            logger.LogError(
+                ex,
+                "Error publicando reintento {Id}",
+                mensaje.MensajeFallidoId);
+
+            // No seguimos publicando si falló un mensaje.
+            break;
+        }
+    }
+
+    await transaccion.CommitAsync(ct);
+}
+
 }
