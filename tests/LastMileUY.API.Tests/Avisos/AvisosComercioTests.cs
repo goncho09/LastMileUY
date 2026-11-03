@@ -59,6 +59,18 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal(("Admitido", (string?)null), (deNuevo.EstadoEnvio, deNuevo.EstadoEnvioAnterior));
     }
 
+    // (pagina - 1) * tamanioPagina no tiene que desbordar: una página que no existe viene vacía, no es un error de la base
+    [Fact]
+    public async Task Una_pagina_enorme_devuelve_una_pagina_vacia()
+    {
+        await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Fallido);
+
+        await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido);
+        var pagina = await Servicio(db, ComercioCompartido).ListarAsync(int.MaxValue, 100, null);
+
+        Assert.Empty(pagina.Items);
+    }
+
     [Fact]
     public async Task El_detalle_trae_los_intentos_en_orden()
     {

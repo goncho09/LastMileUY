@@ -113,6 +113,17 @@ public class AutenticacionApiTests
         Assert.Null(await new AutenticacionApiDePrueba().IniciarSesionAsync(email, password));
     }
 
+    // Como en la API: el administrador es de toda la plataforma, no de un operador
+    [Fact]
+    public async Task Con_datos_de_prueba_un_email_de_administrador_entra_como_administrador_sin_operador()
+    {
+        var sesion = await new AutenticacionApiDePrueba().IniciarSesionAsync("administrador@prueba.test", "clave");
+
+        Assert.NotNull(sesion);
+        Assert.Equal([Permisos.Administrador], sesion.Roles);
+        Assert.Null(sesion.OperadorId);
+    }
+
     private static HttpClient Cliente(HttpMessageHandler handler) =>
         new(handler) { BaseAddress = new Uri("http://api.test/") };
 

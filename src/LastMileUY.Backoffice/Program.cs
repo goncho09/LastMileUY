@@ -64,7 +64,13 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSignalR();
-builder.Services.AddHostedService<ConsumidorEventosEnvio>();
+
+// Tablero en vivo: escucha los eventos de envío en RabbitMQ. Sin RabbitMQ (por ejemplo, con los datos
+// de prueba) el Backoffice funciona igual, sin las actualizaciones en vivo.
+if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("RabbitMQ")))
+{
+    builder.Services.AddHostedService<ConsumidorEventosEnvio>();
+}
 
 // Claves con las que se cifra la cookie de sesión. Si se guardan en una carpeta
 // (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
@@ -88,9 +94,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<ICacheApi, CacheApiDePrueba>();
     builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
     builder.Services.AddSingleton<ISincronizacionApi, SincronizacionApiDePrueba>();
-    builder.Services.AddScoped<
-        IMensajesFallidosApi,
-        MensajesFallidosApiHttp>();
+    builder.Services.AddSingleton<IMensajesFallidosApi, MensajesFallidosApiDePrueba>();
 }
 else
 {
