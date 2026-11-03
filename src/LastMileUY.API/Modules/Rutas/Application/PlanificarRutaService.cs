@@ -19,6 +19,10 @@ public class PlanificarRutaService(ApplicationDbContext db)
 
     private static readonly TimeZoneInfo HoraUruguay = TimeZoneInfo.FindSystemTimeZoneById("America/Montevideo");
 
+    // Un bulto que todavía hay que entregar: nunca salió o salió y no se entregó
+    private static bool EsPendiente(Bulto bulto) =>
+        bulto.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado;
+
     // Devuelve el Id de la ruta creada.
     // ArgumentException: algo del pedido no vale (400). AsignacionDuplicadaException: el repartidor,
     // el vehículo o un envío ya están en otra ruta abierta (409).
@@ -137,8 +141,7 @@ public class PlanificarRutaService(ApplicationDbContext db)
                     + "solo se pueden asignar envíos en depósito o reprogramados.");
             }
             
-            if (!envio.Bultos.Any(b =>
-                    b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado))
+            if (!envio.Bultos.Any(EsPendiente))
             {
                 throw new ArgumentException(
                     $"El envío {envio.CodigoSeguimiento} no tiene bultos pendientes de entrega.");
@@ -161,12 +164,26 @@ public class PlanificarRutaService(ApplicationDbContext db)
         {
             var envio = envios[envioIds[i]];
 
-            ruta.Paradas.Add(new Parada { EnvioId = envio.Id, Orden = i + 1 });
+            // La parada lleva solo los bultos que faltan entregar (después de una entrega parcial, no todos)
+            var pendientes = envio.Bultos.Where(EsPendiente).ToList();
+            var parada = new Parada { EnvioId = envio.Id, Orden = i + 1 };
+
+            foreach (var bulto in pendientes)
+            {
+                parada.Bultos.Add(new BultoParada { BultoId = bulto.Id });
+            }
+
+            ruta.Paradas.Add(parada);
+
+            var descripcion = pendientes.Count == envio.Bultos.Count
+                ? $"Asignado a la ruta \"{nombre}\" (parada {i + 1})."
+                : $"Asignado a la ruta \"{nombre}\" (parada {i + 1}) con los {pendientes.Count} bultos "
+                  + $"pendientes de {envio.Bultos.Count}.";
 
             envio.CambiarEstado(
                 EstadoEnvio.AsignadoARuta,
                 "Backoffice",
-                $"Asignado a la ruta \"{nombre}\" (parada {i + 1}).",
+                descripcion,
                 responsableId);
         }
 
@@ -238,7 +255,7 @@ public class PlanificarRutaService(ApplicationDbContext db)
     {
         var bultos = envios
             .SelectMany(e => e.Bultos)
-            .Where(b => b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado)
+            .Where(EsPendiente)
             .ToList();
 
         var peso = bultos.Sum(b => b.PesoKg);

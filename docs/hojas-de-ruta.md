@@ -50,10 +50,25 @@ Ejemplo, con las franjas Mañana (9 a 12) y Tarde (14 a 18):
 | Repartidor y vehículo activos y del operador | 400 (uno de otro operador "no existe") |
 | Envíos del operador, en depósito o reprogramados | 400 |
 | Las franjas de los envíos tienen que estar activas y en orden (ver arriba) | 400 |
-| El peso total de los bultos no supera la carga del vehículo; el volumen (largo × ancho × alto) tampoco | 400 |
+| Cada envío tiene al menos un bulto sin entregar | 400 |
+| El peso total de los bultos que salen no supera la carga del vehículo; el volumen (largo × ancho × alto) tampoco | 400 |
 | El repartidor no tiene otra ruta abierta ese día; el vehículo tampoco | 409 |
 | Ningún envío está ya en otra ruta abierta | 409 |
 | Otro usuario modificó un envío al mismo tiempo (concurrencia optimista) | 409 |
+
+### Qué bultos lleva cada parada
+
+Un envío que tuvo una entrega parcial y se reprogramó vuelve a salir **solo con los bultos que faltan**.
+Al armar la ruta, cada parada guarda sus bultos en `BultosParada`: los Pendientes y los No entregados.
+Ese es el manifiesto de la hoja de ruta:
+
+- La capacidad del vehículo, la hoja de ruta (cantidad, peso y volumen de cada parada) y la lista de
+  envíos para armar rutas cuentan esos bultos, no todo el envío.
+- Queda fijo: una ruta terminada sigue mostrando lo que llevó, aunque después esos bultos se entreguen
+  en otra.
+- La base no deja que una parada lleve un bulto de otro envío: la política RLS de `BultosParada` lo
+  exige además del aislamiento entre operadores.
+- Las rutas armadas antes del manifiesto no lo tienen; para esas se cuentan todos los bultos del envío.
 
 ## Despacho y descarga
 

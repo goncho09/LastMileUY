@@ -112,9 +112,25 @@ Qué se aplica hoy:
 - Cada operación sincronizada guarda con qué versión se evaluó (`OperacionesSincronizadas.ReglaEntregaParcialId`),
   y el historial del Backoffice la muestra.
 
-El destino de los bultos pendientes queda guardado en la versión, pero todavía no se aplica: es otra
-tarjeta ("Aplicar la política del operador a los bultos pendientes"). Para leerlo, la regla de una
-ruta está en `Ruta.ReglaEntregaParcial`.
+### Qué pasa con los bultos que quedan
+
+Si una operación deja el envío entregado parcialmente, en la misma transacción se aplica el destino de
+la versión de la ruta (`Envio.AplicarPoliticaBultosPendientes`):
+
+| Destino | El envío pasa a | Después |
+|---|---|---|
+| `NuevaHojaDeRuta` | Reprogramado | Puede salir en otra hoja de ruta, solo con los bultos pendientes (ver [hojas-de-ruta.md](hojas-de-ruta.md)) |
+| `NuevaHojaDeRuta`, sin intentos disponibles en la regla operativa | En devolución | Manda el límite de intentos que ya existía: no se reprograma sin fin |
+| `Devolucion` | En devolución | Al pasar a Devuelto, los bultos sin entregar quedan Devuelto; los entregados no cambian |
+
+- **Sin versión en la ruta:** el envío queda entregado parcialmente y lo decide el despachador.
+- **En el historial:** el cambio queda como evento con origen "Sistema" y la versión aplicada, por ejemplo
+  "Bultos pendientes: vuelven a salir en otra hoja de ruta (reglas de entrega parcial v3)". La respuesta
+  a la app también lo dice.
+- **Avisos:** el comercio se entera por los avisos de siempre (outbox).
+
+Una entrega parcial cuenta como intento sin éxito, porque no se entregó todo. Con la regla de prueba del
+operador 1, que permite un solo intento, lo pendiente siempre va a devolución.
 
 ## Política de conflictos: manda el servidor
 

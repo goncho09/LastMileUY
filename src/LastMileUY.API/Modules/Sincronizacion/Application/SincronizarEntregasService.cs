@@ -485,6 +485,18 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
             : "Intento fallido registrado.";
     }
 
+    // Si quedaron bultos sin entregar, se aplica la política de la versión con la que salió la ruta
+    // (reprogramar o devolver). Sin versión, el envío queda entregado parcialmente y lo decide el despachador.
+    if (envio.Estado == EstadoEnvio.EntregadoParcialmente && ruta.ReglaEntregaParcial is { } reglaDeLaRuta)
+    {
+        // Lo hace el sistema, no el repartidor: el evento queda con origen "Sistema" y sin responsable
+        envio.AplicarPoliticaBultosPendientes(reglaDeLaRuta, regla, ocurrido: fecha);
+
+        mensaje += envio.Estado == EstadoEnvio.Reprogramado
+            ? " Los bultos pendientes vuelven a salir en otra hoja de ruta."
+            : " Los bultos pendientes vuelven al comercio.";
+    }
+
     // Asociar el intento con la parada correspondiente.
     intento.ParadaId = parada.Id;
 

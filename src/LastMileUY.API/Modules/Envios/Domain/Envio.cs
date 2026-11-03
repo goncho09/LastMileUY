@@ -135,9 +135,63 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
             FechaEntrega = cuando;
         }
 
+        // Terminó la devolución: los bultos que no se entregaron volvieron al comercio.
+        // Los entregados no cambian (en una devolución de un envío entregado ya están Entregado).
+        // Para que se marquen hay que tener cargados los Bultos.
+        if (nuevoEstado == EstadoEnvio.Devuelto)
+        {
+            foreach (var bulto in Bultos.Where(b => b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado))
+            {
+                bulto.CambiarEstado(EstadoBulto.Devuelto);
+            }
+        }
+
         RegistrarEvento(origen, descripcion, responsableId, cuando, ubicacion);
 
         return intento;
+    }
+
+    // Después de una entrega parcial, qué pasa con los bultos que quedaron, según la política del operador
+    // (la versión de las reglas de entrega parcial con la que salió la hoja de ruta):
+    // - NuevaHojaDeRuta: el envío se reprograma y sus bultos pendientes pueden salir en otra ruta.
+    //   Si la regla operativa ya no permite más intentos, manda ese límite: va a devolución.
+    // - Devolucion: el envío pasa a devolución.
+    // No hace nada si el envío no quedó entregado parcialmente.
+    public void AplicarPoliticaBultosPendientes(
+        ReglaEntregaParcial reglaEntregaParcial,
+        ReglaOperativa? regla = null,
+        string? responsableId = null,
+        DateTime? ocurrido = null)
+    {
+        ArgumentNullException.ThrowIfNull(reglaEntregaParcial);
+
+        if (Estado != EstadoEnvio.EntregadoParcialmente)
+        {
+            return;
+        }
+
+        var version = $"reglas de entrega parcial v{reglaEntregaParcial.Version}";
+
+        if (reglaEntregaParcial.DestinoBultosPendientes == DestinoBultosPendientes.NuevaHojaDeRuta)
+        {
+            if (MotivoDeRechazo(EstadoEnvio.Reprogramado, regla) is null)
+            {
+                CambiarEstado(EstadoEnvio.Reprogramado, "Sistema",
+                    $"Bultos pendientes: vuelven a salir en otra hoja de ruta ({version}).",
+                    responsableId, regla, ocurrido);
+                return;
+            }
+
+            CambiarEstado(EstadoEnvio.EnDevolucion, "Sistema",
+                $"Bultos pendientes: iban a salir en otra hoja de ruta ({version}), pero se agotaron los "
+                + $"intentos de la regla \"{regla?.Nombre}\". Vuelven al comercio.",
+                responsableId, regla, ocurrido);
+            return;
+        }
+
+        CambiarEstado(EstadoEnvio.EnDevolucion, "Sistema",
+            $"Bultos pendientes: vuelven al comercio ({version}).",
+            responsableId, regla, ocurrido);
     }
 
     // null si se puede pasar a ese estado; si no, el motivo para mostrarle al usuario

@@ -1246,6 +1246,21 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("Zonas", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.BultoParada", b =>
+                {
+                    b.Property<int>("ParadaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BultoId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ParadaId", "BultoId");
+
+                    b.HasIndex("BultoId");
+
+                    b.ToTable("BultosParada", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.Incidencia", b =>
                 {
                     b.Property<int>("Id")
@@ -2179,6 +2194,21 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.BultoParada", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Envios.Domain.Bulto", null)
+                        .WithMany()
+                        .HasForeignKey("BultoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Rutas.Domain.Parada", null)
+                        .WithMany("Bultos")
+                        .HasForeignKey("ParadaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.Incidencia", b =>
                 {
                     b.HasOne("LastMileUY.API.Modules.Rutas.Domain.Ruta", null)
@@ -2505,6 +2535,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.Zona", b =>
                 {
                     b.Navigation("FranjasHorarias");
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.Parada", b =>
+                {
+                    b.Navigation("Bultos");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.Repartidor", b =>
