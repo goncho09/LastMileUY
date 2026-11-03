@@ -23,8 +23,9 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
     {
         ComercioActual();
 
-        pagina = Math.Max(1, pagina);
         tamanioPagina = Math.Clamp(tamanioPagina, 1, TamanioPaginaMaximo);
+        // Con tope: (pagina - 1) * tamanioPagina no puede pasarse de un int. Más allá, la página viene vacía
+        pagina = Math.Clamp(pagina, 1, int.MaxValue / tamanioPagina);
 
         var consulta = Consulta();
 

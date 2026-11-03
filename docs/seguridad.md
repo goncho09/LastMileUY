@@ -24,6 +24,7 @@ Cada endpoint declara qué perfiles lo pueden usar (`RequireRole`). Los perfiles
 
 | Perfil | Qué hace |
 |---|---|
+| Administrador | Es de toda la plataforma, no de un operador: revisa y reprocesa los mensajes fallidos y reinicia las métricas del caché. En el Backoffice solo ve esa parte; no entra a envíos, rutas ni sincronización |
 | Operador | Todo lo del operador, incluida su configuración |
 | Despachador | Envíos y hojas de ruta; no ve la configuración |
 | OperarioDeposito | Consulta envíos |
@@ -60,6 +61,11 @@ La URL de un aviso la escribe el comercio, pero la llama nuestro servidor desde 
 - solo se aceptan direcciones públicas. La IP se revisa también **al conectarse**, porque un dominio público puede resolver a una IP interna;
 - no se siguen redirecciones y hay un tiempo máximo de 10 segundos.
 
+Del otro lado, el comercio tiene que poder saber que el aviso es nuestro y que nadie lo cambió en el camino. Por eso cada aviso va **firmado con HMAC-SHA256**:
+- cada suscripción tiene su propia clave, de 32 bytes al azar. Se muestra una sola vez, al crear la suscripción o al regenerarla;
+- la firma cubre la suscripción, el aviso, la hora y el contenido. Con la hora, el receptor puede rechazar un aviso viejo que alguien reenvía (el de prueba acepta hasta 5 minutos de diferencia);
+- la comparación de firmas es de tiempo constante (`FixedTimeEquals`), para que no se pueda adivinar la firma midiendo cuánto tarda en fallar.
+
 `Avisos:PermitirDestinosLocales` saca estos controles y es **solo para desarrollo**. Detalle en [mensajeria.md](mensajeria.md).
 
 ## Endpoint público de seguimiento
@@ -92,3 +98,4 @@ Detalle en [seguimiento-publico.md](seguimiento-publico.md).
 ## Pendientes conocidos
 
 - **Despliegue:** las contraseñas de los usuarios de base y las variables que hay que cambiar están en la sección "Antes de desplegar" del README.
+- **Primer administrador fuera de desarrollo:** el usuario Administrador se crea automáticamente únicamente en desarrollo (`SeedAdmin`). Para desplegar hay que definir cómo se crea el primero.

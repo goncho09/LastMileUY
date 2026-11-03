@@ -106,4 +106,16 @@ public async Task Filtro_de_fechas_respeta_el_dia_de_Uruguay()
     Assert.DoesNotContain(mensajes[4].Id, idsObtenidos);
 }
 
+
+    // (pagina - 1) * tamanoPagina no tiene que desbordar: una página que no existe viene vacía, no es un error de la base
+    [Fact]
+    public async Task Una_pagina_enorme_devuelve_una_pagina_vacia()
+    {
+        await using var db = CrearContexto();
+
+        var resultado = await new ConsultasMensajesFallidosService(db).ListarAsync(
+            new FiltroMensajesFallidos { Pagina = int.MaxValue, TamanoPagina = 100 });
+
+        Assert.Empty(resultado.Items);
+    }
 }
