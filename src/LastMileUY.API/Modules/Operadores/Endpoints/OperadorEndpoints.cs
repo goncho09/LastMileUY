@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.API.Modules.Operadores.Endpoints;
 
@@ -32,6 +34,43 @@ public static class OperadorEndpoints
             .WithTags("Operador")
             .WithName("ObtenerOperadorActual")
             .RequireAuthorization();
+
+        // Reglas de entrega parcial: el historial de versiones y publicar una nueva.
+        // Es configuración del operador: solo el perfil Operador (como "Mi operador" en el Backoffice).
+        var reglas = app.MapGroup("/api/operador/reglas-entrega-parcial")
+            .WithTags("Operador")
+            .RequireAuthorization(politica => politica.RequireRole("Operador"));
+
+        reglas.MapGet("/", async (ReglasEntregaParcialService servicio, CancellationToken cancellationToken) =>
+                Results.Ok(await servicio.ListarAsync(cancellationToken)))
+            .WithName("ListarReglasEntregaParcial");
+
+        reglas.MapPost("/", async (
+                PublicarReglaEntregaParcialRequest request,
+                ClaimsPrincipal usuario,
+                ReglasEntregaParcialService servicio,
+                CancellationToken cancellationToken) =>
+            {
+                var usuarioId = usuario.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (usuarioId is null)
+                    return Results.Unauthorized();
+
+                try
+                {
+                    var regla = await servicio.PublicarAsync(request, usuarioId, cancellationToken);
+                    return Results.Created("/api/operador/reglas-entrega-parcial", regla);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
+            })
+            .WithName("PublicarReglaEntregaParcial");
 
         return app;
     }

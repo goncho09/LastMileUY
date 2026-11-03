@@ -27,6 +27,7 @@ public static class ResultadosSincronizacion
     {
         "Entrega" => "Entrega",
         "IntentoFallido" => "Intento fallido",
+        "EntregaParcial" => "Entrega parcial",
         _ => tipo
     };
 }

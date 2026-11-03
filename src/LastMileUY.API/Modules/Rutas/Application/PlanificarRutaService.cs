@@ -1,5 +1,6 @@
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
@@ -197,9 +198,12 @@ public class PlanificarRutaService(ApplicationDbContext db)
             .Where(e => envioIds.Contains(e.Id))
             .ToListAsync(cancellationToken);
 
+        // La ruta sale con las reglas de entrega parcial vigentes y las conserva hasta el final
+        var reglaEntregaParcial = await db.ObtenerReglaEntregaParcialVigenteAsync(cancellationToken);
+
         try
         {
-            ruta.Despachar();
+            ruta.Despachar(reglaEntregaParcial);
 
             // Si un envío se sacó de la ruta a mano (por ejemplo, volvió al depósito), no sale
             var desasignado = envios.FirstOrDefault(e => e.Estado != EstadoEnvio.AsignadoARuta);

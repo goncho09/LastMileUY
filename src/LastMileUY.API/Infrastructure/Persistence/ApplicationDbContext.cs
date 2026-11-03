@@ -40,6 +40,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     // Operadores
     public DbSet<Operador> Operadores => Set<Operador>();
     public DbSet<ReglaOperativa> ReglasOperativas => Set<ReglaOperativa>();
+    public DbSet<ReglaEntregaParcial> ReglasEntregaParcial => Set<ReglaEntregaParcial>();
     public DbSet<Zona> Zonas => Set<Zona>();
     public DbSet<FranjaHoraria> FranjasHorarias => Set<FranjaHoraria>();
 

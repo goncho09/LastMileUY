@@ -137,6 +137,12 @@ public class SincronizarEntregasService(
             (resultado, mensaje, intento) = Conflicto(ex.Message);
         }
 
+        // Queda anotado con qué versión de las reglas de entrega parcial se evaluó (la de la hoja de ruta)
+        var reglaEntregaParcialId = await db.Rutas.AsNoTracking()
+            .Where(r => r.Id == operacion.RutaId)
+            .Select(r => r.ReglaEntregaParcialId)
+            .FirstOrDefaultAsync(cancellationToken);
+
         db.OperacionesSincronizadas.Add(new OperacionSincronizada
         {
             IdOperacion = operacion.IdOperacion,
@@ -147,7 +153,8 @@ public class SincronizarEntregasService(
             Resultado = resultado,
             Mensaje = mensaje,
             FechaHoraDispositivo = fecha,
-            IntentoEntrega = intento
+            IntentoEntrega = intento,
+            ReglaEntregaParcialId = reglaEntregaParcialId
         });
 
         // El cambio del envío, la ruta, el intento con su prueba y el registro de la operación van juntos
@@ -194,6 +201,7 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
     // Comprobar que la ruta existe y pertenece al repartidor.
     var ruta = await db.Rutas
         .Include(r => r.Paradas)
+        .Include(r => r.ReglaEntregaParcial)
         .FirstOrDefaultAsync(
             r => r.Id == operacion.RutaId,
             cancellationToken);
@@ -260,6 +268,16 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
     // Validar los resultados enviados por la PWA.
     if (tipo == TipoOperacion.EntregaParcial)
     {
+        // Vale la versión con la que salió la hoja de ruta, no la que esté vigente al sincronizar:
+        // el repartidor trabajó con esas reglas, aunque el operador haya publicado otras después.
+        // Sin versión (la ruta salió antes de que el operador publicara alguna) se permite, como antes.
+        if (ruta.ReglaEntregaParcial is { PermiteEntregaParcial: false } reglaParcial)
+        {
+            return Rechazada(
+                $"La hoja de ruta salió con la versión {reglaParcial.Version} de las reglas de entrega parcial, " +
+                "que no permite entregas parciales.");
+        }
+
         var resultados = operacion.ResultadosBultos;
 
         if (resultados is null || resultados.Count == 0)

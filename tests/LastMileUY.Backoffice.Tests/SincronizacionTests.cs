@@ -139,6 +139,7 @@ public class SincronizacionTests
         Assert.Equal("Conflicto", ResultadosSincronizacion.Texto("Conflicto"));
         Assert.Contains("amber", ResultadosSincronizacion.ClaseCss("Conflicto"));
         Assert.Equal("Intento fallido", ResultadosSincronizacion.TipoOperacion("IntentoFallido"));
+        Assert.Equal("Entrega parcial", ResultadosSincronizacion.TipoOperacion("EntregaParcial"));
         // Uno desconocido se muestra tal cual, en gris
         Assert.Equal("Otro", ResultadosSincronizacion.Texto("Otro"));
         Assert.Contains("slate", ResultadosSincronizacion.ClaseCss("Otro"));

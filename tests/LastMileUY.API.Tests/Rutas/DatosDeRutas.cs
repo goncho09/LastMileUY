@@ -14,15 +14,19 @@ public static class DatosDeRutas
 {
     public static readonly DateOnly Manana = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
 
-    // Un envío del comercio compartido con un bulto de 2 kg y 10x10x10 cm
+    // Un envío del comercio compartido con bultos de 2 kg y 10x10x10 cm (uno, salvo que se pidan más)
     public static async Task<int> CrearEnvioAsync(
-        BaseConDosOperadores baseDeDatos, int operadorId, bool enDeposito = true, int? franjaId = null)
+        BaseConDosOperadores baseDeDatos, int operadorId, bool enDeposito = true, int? franjaId = null, int bultos = 1)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
         var envio = new Envio { ComercioId = ComercioCompartido, DestinatarioId = 1, FranjaHorariaId = franjaId };
         envio.AsignarDireccionEntrega(new DireccionEntrega(
             "Rivera", "1234", null, "Montevideo", "Montevideo", null, null));
-        envio.Bultos.Add(new Bulto { Codigo = "B1", PesoKg = 2, LargoCm = 10, AnchoCm = 10, AltoCm = 10 });
+
+        for (var i = 1; i <= bultos; i++)
+        {
+            envio.Bultos.Add(new Bulto { Codigo = $"B{i}", PesoKg = 2, LargoCm = 10, AnchoCm = 10, AltoCm = 10 });
+        }
 
         if (enDeposito)
         {
@@ -74,14 +78,14 @@ public static class DatosDeRutas
 
     // Una ruta ya despachada con envíos nuevos (en tránsito), lista para que el repartidor sincronice
     public static async Task<(int RutaId, string UsuarioId, int[] Envios)> CrearRutaDespachadaAsync(
-        BaseConDosOperadores baseDeDatos, int operadorId, int cantidadEnvios = 1)
+        BaseConDosOperadores baseDeDatos, int operadorId, int cantidadEnvios = 1, int bultosPorEnvio = 1)
     {
         var (repartidor, vehiculo, usuario) = await CrearRepartidorYVehiculoAsync(baseDeDatos, operadorId);
         var envios = new int[cantidadEnvios];
 
         for (var i = 0; i < cantidadEnvios; i++)
         {
-            envios[i] = await CrearEnvioAsync(baseDeDatos, operadorId);
+            envios[i] = await CrearEnvioAsync(baseDeDatos, operadorId, bultos: bultosPorEnvio);
         }
 
         await using var db = baseDeDatos.CrearContexto(operadorId);

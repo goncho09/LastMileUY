@@ -17,4 +17,13 @@ public static class ReglasOperativasConsultas
         db.ReglasOperativas
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Activa && r.Modalidad == modalidad, cancellationToken);
+
+    // La versión más nueva de las reglas de entrega parcial. null si el operador todavía no publicó ninguna.
+    // Se lee con seguimiento: la ruta que se despacha la referencia.
+    public static Task<ReglaEntregaParcial?> ObtenerReglaEntregaParcialVigenteAsync(
+        this ApplicationDbContext db,
+        CancellationToken cancellationToken = default) =>
+        db.ReglasEntregaParcial
+            .OrderByDescending(r => r.Version)
+            .FirstOrDefaultAsync(cancellationToken);
 }

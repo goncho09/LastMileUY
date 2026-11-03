@@ -37,6 +37,8 @@ Además de mirar el perfil, también se controla de quién es cada recurso. La h
 - El repartidor recibe lo justo para entregar: nombre, teléfono y dirección, sin el email.
 - El listado de destinatarios es solo para quien da de alta envíos (Comercio y Operador).
 
+**Reglas de entrega parcial:** las publica el perfil Operador y son versionadas. Las versiones ya publicadas no se pueden modificar ni borrar, y no lo frena solo el código: el usuario de base de la aplicación no tiene permiso de `UPDATE` ni `DELETE` sobre esa tabla. Detalle en [sincronizacion.md](sincronizacion.md).
+
 **Métricas del caché:** son de toda la plataforma. Las ve el perfil Operador en el tablero técnico, pero solo el Administrador las pone en cero (`POST /api/cache/metricas/reiniciar`). Si las reiniciara un operador, les borraría la medición a los demás.
 
 ## Aislamiento entre operadores

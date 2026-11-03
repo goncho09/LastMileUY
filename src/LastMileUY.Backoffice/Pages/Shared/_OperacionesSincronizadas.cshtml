@@ -26,7 +26,16 @@
                 <tr class="align-top transition-colors hover:bg-white/[0.035]">
                     <td class="whitespace-nowrap px-5 py-4 text-slate-300">@Formato.Fecha(operacion.FechaHoraDispositivo)</td>
                     <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">@Formato.Fecha(operacion.FechaRecepcion)</td>
-                    <td class="whitespace-nowrap px-4 py-4 text-slate-200">@ResultadosSincronizacion.TipoOperacion(operacion.Tipo)</td>
+                    <td class="whitespace-nowrap px-4 py-4 text-slate-200">
+                        @ResultadosSincronizacion.TipoOperacion(operacion.Tipo)
+                        @* Con qué versión de las reglas de entrega parcial se evaluó (la de la hoja de ruta) *@
+                        @if (operacion.VersionReglasEntregaParcial is { } version)
+                        {
+                            <p class="mt-1 text-xs text-slate-500" title="Versión de las reglas de entrega parcial con la que salió la hoja de ruta">
+                                Reglas v@(version)
+                            </p>
+                        }
+                    </td>
                     <td class="whitespace-nowrap px-4 py-4">
                         @if (operacion.CodigoSeguimiento is not null)
                         {

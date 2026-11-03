@@ -74,6 +74,8 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
                 from e in envios.DefaultIfEmpty()
                 join p in db.PruebasEntrega on o.IntentoEntregaId equals p.IntentoEntregaId into pruebas
                 from p in pruebas.DefaultIfEmpty()
+                join r in db.ReglasEntregaParcial on o.ReglaEntregaParcialId equals r.Id into reglas
+                from r in reglas.DefaultIfEmpty()
                 orderby o.FechaRecepcion descending, o.Id descending
                 select new
                 {
@@ -81,7 +83,8 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
                     Repartidor = u == null ? "—" : u.Nombre + " " + u.Apellido,
                     Codigo = e == null ? null : e.CodigoSeguimiento,
                     TieneFirma = p != null && p.FirmaArchivoKey != null,
-                    TieneFoto = p != null && p.FotoArchivoKey != null
+                    TieneFoto = p != null && p.FotoArchivoKey != null,
+                    VersionReglas = r == null ? (int?)null : r.Version
                 })
             .ToListAsync(cancellationToken);
 
@@ -99,7 +102,8 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
                 x.Operacion.FechaRecepcion,
                 x.Operacion.IntentoEntregaId,
                 x.TieneFirma,
-                x.TieneFoto))
+                x.TieneFoto,
+                x.VersionReglas))
             .ToList();
 
         return new PaginaDto<OperacionSincronizadaDto>(items, total, pagina, tamanioPagina);
