@@ -34,5 +34,11 @@ public class RutaConfiguration : IEntityTypeConfiguration<Ruta>
         builder.Property(r => r.Nombre)
             .HasMaxLength(150)
             .IsRequired();
+
+        // La versión de las reglas de entrega parcial con la que salió (las versiones no se borran)
+        builder.HasOne(r => r.ReglaEntregaParcial)
+            .WithMany()
+            .HasForeignKey(r => r.ReglaEntregaParcialId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

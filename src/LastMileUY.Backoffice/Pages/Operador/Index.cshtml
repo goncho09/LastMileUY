@@ -20,7 +20,7 @@
         </h1>
 
         <p class="mt-2 text-sm text-slate-400">
-            Consultá la identidad y las reglas operativas de tu organización.
+            Consultá la identidad y las reglas operativas de tu organización, y configurá las entregas parciales.
         </p>
     </div>
 
@@ -259,6 +259,169 @@
                     </table>
                 </div>
             }
+        </section>
+
+        <!-- Reglas de entrega parcial (versionadas) -->
+        var vigente = Model.ReglasEntregaParcial.FirstOrDefault();
+
+        <section id="entrega-parcial" class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+                <div>
+                    <h2 class="text-base font-semibold text-white">
+                        Reglas de entrega parcial
+                    </h2>
+
+                    <p class="mt-1 max-w-2xl text-xs leading-relaxed text-slate-400">
+                        Cada cambio publica una versión nueva; las anteriores no se modifican.
+                        Cada hoja de ruta usa la versión vigente al despacharse, aunque después se publique otra.
+                    </p>
+                </div>
+
+                <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                    @(vigente is null ? "Sin versiones" : $"Versión {vigente.Version} vigente")
+                </span>
+            </div>
+
+            <div class="space-y-6 p-6">
+
+                @if (Model.Aviso is not null)
+                {
+                    <div role="status"
+                         class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
+                        @Model.Aviso
+                    </div>
+                }
+
+                @if (Model.ErrorPublicacion is not null)
+                {
+                    <div role="alert"
+                         class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+                        @Model.ErrorPublicacion
+                    </div>
+                }
+
+                @if (Model.ErrorReglasEntregaParcial is not null)
+                {
+                    <div role="alert"
+                         class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+                        @Model.ErrorReglasEntregaParcial
+                    </div>
+                }
+                else
+                {
+                    <div class="grid gap-6 lg:grid-cols-5">
+
+                        <!-- Publicar una versión nueva (parte de la vigente) -->
+                        <form method="post" asp-page-handler="PublicarReglaEntregaParcial"
+                              class="space-y-5 rounded-xl border border-white/10 bg-[#11131b] p-5 lg:col-span-2">
+
+                            <h3 class="text-sm font-semibold text-white">
+                                Publicar una versión nueva
+                            </h3>
+
+                            <label for="permiteEntregaParcial" class="flex items-start gap-3 text-sm text-slate-300">
+                                <input type="checkbox" id="permiteEntregaParcial" name="permiteEntregaParcial" value="true"
+                                       class="mt-0.5 h-4 w-4 accent-violet-500"
+                                       checked="@(vigente?.PermiteEntregaParcial ?? true)" />
+                                <span>
+                                    Permitir entregas parciales
+                                    <span class="mt-1 block text-xs text-slate-500">
+                                        El repartidor puede entregar algunos bultos y dejar otros, con su motivo.
+                                    </span>
+                                </span>
+                            </label>
+
+                            <div>
+                                <label for="destinoBultosPendientes" class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">
+                                    Bultos que quedan sin entregar
+                                </label>
+                                <select id="destinoBultosPendientes" name="destinoBultosPendientes"
+                                        class="w-full rounded-lg border border-white/10 bg-[#171923] px-3 py-2 text-sm text-slate-200">
+                                    @foreach (var destino in new[] { "NuevaHojaDeRuta", "Devolucion" })
+                                    {
+                                        <option value="@destino" selected="@(vigente?.DestinoBultosPendientes == destino)">
+                                            @IndexModel.TextoDestino(destino)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="motivo" class="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">
+                                    Motivo del cambio
+                                </label>
+                                <textarea id="motivo" name="motivo" rows="3" maxlength="500" required
+                                          placeholder="Por ejemplo: los bultos que quedan se devuelven al comercio"
+                                          class="w-full rounded-lg border border-white/10 bg-[#171923] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600"></textarea>
+                                <p class="mt-1 text-xs text-slate-500">Queda en el historial.</p>
+                            </div>
+
+                            <button type="submit"
+                                    class="w-full rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+                                Publicar versión @((vigente?.Version ?? 0) + 1)
+                            </button>
+                        </form>
+
+                        <!-- Historial de versiones -->
+                        <div class="lg:col-span-3">
+                            @if (Model.ReglasEntregaParcial.Count == 0)
+                            {
+                                <p class="rounded-xl border border-white/10 bg-white/[0.025] p-5 text-sm leading-relaxed text-slate-400">
+                                    Todavía no hay versiones publicadas: las entregas parciales se permiten
+                                    y los bultos que quedan vuelven a salir.
+                                </p>
+                            }
+                            else
+                            {
+                                <div class="w-full overflow-x-auto">
+                                    <table class="w-full min-w-[640px] text-left text-sm">
+                                        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                            <tr>
+                                                <th scope="col" class="px-4 py-3">Versión</th>
+                                                <th scope="col" class="px-4 py-3">Parciales</th>
+                                                <th scope="col" class="px-4 py-3">Bultos sin entregar</th>
+                                                <th scope="col" class="px-4 py-3">Motivo</th>
+                                                <th scope="col" class="px-4 py-3">Publicada</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody class="divide-y divide-white/5">
+                                            @foreach (var regla in Model.ReglasEntregaParcial)
+                                            {
+                                                <tr class="align-top">
+                                                    <td class="px-4 py-4 font-semibold text-slate-200">
+                                                        @regla.Version
+                                                        @if (regla.Id == vigente!.Id)
+                                                        {
+                                                            <span class="ml-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                                                                Vigente
+                                                            </span>
+                                                        }
+                                                    </td>
+                                                    <td class="px-4 py-4 text-slate-300">
+                                                        @(regla.PermiteEntregaParcial ? "Permitidas" : "No permitidas")
+                                                    </td>
+                                                    <td class="px-4 py-4 text-slate-300">
+                                                        @IndexModel.TextoDestino(regla.DestinoBultosPendientes)
+                                                    </td>
+                                                    <td class="max-w-xs px-4 py-4 text-xs leading-relaxed text-slate-400">
+                                                        @(regla.Motivo ?? "—")
+                                                    </td>
+                                                    <td class="px-4 py-4 text-xs text-slate-400">
+                                                        <p>@Formato.Fecha(regla.FechaPublicacion)</p>
+                                                        <p class="mt-1 text-slate-500">@regla.PublicadaPor</p>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
         </section>
     }
     else

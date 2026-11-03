@@ -1116,6 +1116,46 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.ReglaEntregaParcial", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DestinoBultosPendientes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaPublicacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("PermiteEntregaParcial")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PublicadaPorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("ReglasEntregaParcial", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.ReglaOperativa", b =>
                 {
                     b.Property<int>("Id")
@@ -1413,6 +1453,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<int>("OperadorId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ReglaEntregaParcialId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("RepartidorId")
                         .HasColumnType("integer");
 
@@ -1422,6 +1465,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OperadorId");
+
+                    b.HasIndex("ReglaEntregaParcialId");
 
                     b.HasIndex("RepartidorId");
 
@@ -1554,6 +1599,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<int>("OperadorId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ReglaEntregaParcialId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Resultado")
                         .HasColumnType("integer");
 
@@ -1571,6 +1619,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("IntentoEntregaId");
+
+                    b.HasIndex("ReglaEntregaParcialId");
 
                     b.HasIndex("RutaId");
 
@@ -2102,6 +2152,15 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.ReglaEntregaParcial", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.ReglaOperativa", b =>
                 {
                     b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
@@ -2185,6 +2244,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.ReglaEntregaParcial", "ReglaEntregaParcial")
+                        .WithMany()
+                        .HasForeignKey("ReglaEntregaParcialId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("LastMileUY.API.Modules.Rutas.Domain.Repartidor", null)
                         .WithMany("Rutas")
                         .HasForeignKey("RepartidorId")
@@ -2196,6 +2260,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasForeignKey("VehiculoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ReglaEntregaParcial");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.Vehiculo", b =>
@@ -2229,7 +2295,14 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.ReglaEntregaParcial", "ReglaEntregaParcial")
+                        .WithMany()
+                        .HasForeignKey("ReglaEntregaParcialId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("IntentoEntrega");
+
+                    b.Navigation("ReglaEntregaParcial");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Tarifas.Domain.AjusteTarifa", b =>

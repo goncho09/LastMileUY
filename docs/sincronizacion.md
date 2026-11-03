@@ -79,6 +79,43 @@ Son las mismas que en el Backoffice, porque el cambio de estado pasa por `Envio.
 Una entrega aplicada genera el intento de entrega (con su número), la prueba de entrega con la
 evidencia, y el evento en el historial con la **hora y la ubicación del celular**, no las de llegada.
 
+## Reglas de entrega parcial: qué versión vale
+
+Cada operador define si permite entregas parciales y qué pasa con los bultos que quedan sin entregar:
+vuelven a salir en otra hoja de ruta o vuelven al comercio. Lo configura el perfil Operador en
+"Mi operador" del Backoffice.
+
+**Las reglas son versionadas.** Cada cambio publica una versión nueva (1, 2, 3...) con quién la
+publicó, cuándo y por qué. Las anteriores no se modifican. Lo hace cumplir la base: el usuario de la
+aplicación (`lastmileuy_app`) solo puede leer e insertar en `ReglasEntregaParcial`, no actualizar ni
+borrar. Por eso siempre se puede saber con qué reglas se evaluó una entrega.
+
+**Regla: vale la versión con la que salió la hoja de ruta.** Al despachar, la ruta guarda la versión
+vigente (`Rutas.ReglaEntregaParcialId`) y la conserva hasta el final. Si el operador publica otra
+mientras el repartidor está en la calle, esa ruta sigue con la suya; las rutas que se despachen
+después usan la nueva.
+
+Por qué esta y no "la vigente al sincronizar" o "la vigente según la hora del celular":
+
+- **Es justa con el repartidor:** se lo evalúa con las reglas que descargó con su hoja de ruta, no con
+  unas que se publicaron mientras estaba sin conexión.
+- **No depende del reloj del celular:** si valiera la hora del dispositivo, atrasarla alcanzaría para
+  caer en una versión más permisiva.
+- **Es una sola respuesta para toda la ruta:** todas sus paradas se evalúan igual.
+
+Qué se aplica hoy:
+
+- Una `EntregaParcial` se **rechaza** si la versión de la ruta no permite entregas parciales. No se
+  reintenta: con esas reglas nunca va a valer.
+- Si la ruta salió sin versión (el operador todavía no había publicado ninguna), se permite, como antes
+  de que existieran las versiones.
+- Cada operación sincronizada guarda con qué versión se evaluó (`OperacionesSincronizadas.ReglaEntregaParcialId`),
+  y el historial del Backoffice la muestra.
+
+El destino de los bultos pendientes queda guardado en la versión, pero todavía no se aplica: es otra
+tarjeta ("Aplicar la política del operador a los bultos pendientes"). Para leerlo, la regla de una
+ruta está en `Ruta.ReglaEntregaParcial`.
+
 ## Política de conflictos: manda el servidor
 
 Mientras el repartidor está sin conexión, alguien puede cambiar el mismo envío desde el Backoffice
@@ -120,3 +157,5 @@ primeros bytes.
 | `GET /api/sincronizacion/operaciones?rutaId=&resultado=&pagina=` (historial) | Operador, Despachador |
 | `GET /api/sincronizacion/mias?resultado=&pagina=` (las propias, para "Mis operaciones" de la app) | Repartidor |
 | `GET /api/sincronizacion/evidencias/{intentoId}/{firma\|foto}` | Operador, Despachador |
+| `GET /api/operador/reglas-entrega-parcial` (todas las versiones, la más nueva primero) | Operador |
+| `POST /api/operador/reglas-entrega-parcial` (publicar una versión nueva) | Operador |

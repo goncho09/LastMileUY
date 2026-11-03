@@ -25,6 +25,12 @@ public class OperacionSincronizadaConfiguration : IEntityTypeConfiguration<Opera
             .HasForeignKey(o => o.IntentoEntregaId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // La versión de las reglas de entrega parcial con la que se evaluó
+        builder.HasOne(o => o.ReglaEntregaParcial)
+            .WithMany()
+            .HasForeignKey(o => o.ReglaEntregaParcialId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Property(o => o.UsuarioId)
             .HasMaxLength(450)
             .IsRequired();

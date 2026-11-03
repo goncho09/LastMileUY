@@ -39,6 +39,12 @@ public class OperacionSincronizada : IPerteneceAOperador
     public int? IntentoEntregaId { get; set; }
 
     public IntentoEntrega? IntentoEntrega { get; set; }
+
+    // Versión de las reglas de entrega parcial con la que se evaluó: la de la hoja de ruta.
+    // null si la ruta salió sin versión o la operación se rechazó antes de llegar a la ruta.
+    public int? ReglaEntregaParcialId { get; set; }
+
+    public ReglaEntregaParcial? ReglaEntregaParcial { get; set; }
 }
 
 public enum TipoOperacion

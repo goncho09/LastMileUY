@@ -208,6 +208,7 @@ builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
 builder.Services.AddScoped<OperadorActualService>();
+builder.Services.AddScoped<ReglasEntregaParcialService>();
 builder.Services.AddScoped<ConsultasDestinatariosService>();
 builder.Services.AddScoped<OperadoresDeComercioService>();
 builder.Services.AddScoped<PlanificarRutaService>();

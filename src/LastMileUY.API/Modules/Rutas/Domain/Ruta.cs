@@ -24,7 +24,14 @@ public class Ruta : IPerteneceAOperador
     public DateTime? FechaInicio { get; set; }
 
     public DateTime? FechaFin { get; set; }
-    
+
+    // Versión de las reglas de entrega parcial con la que salió la ruta: se fija al despachar y no cambia,
+    // aunque el operador publique otra mientras el repartidor está en la calle. null: el operador no tenía
+    // ninguna publicada (se permite la entrega parcial, como antes de que existieran las versiones).
+    public int? ReglaEntregaParcialId { get; set; }
+
+    public ReglaEntregaParcial? ReglaEntregaParcial { get; set; }
+
     public Rendicion? Rendicion { get; set; }
     
     public ICollection<Parada> Paradas { get; set; }
@@ -46,7 +53,8 @@ public class Ruta : IPerteneceAOperador
 
     // Despachar: la ruta queda lista para que el repartidor la descargue y salga.
     // Los envíos se pasan a En tránsito desde el servicio (ver PlanificarRutaService).
-    public void Despachar()
+    // reglaEntregaParcial: la versión vigente del operador; queda fija para toda la ruta.
+    public void Despachar(ReglaEntregaParcial? reglaEntregaParcial = null)
     {
         if (Estado != EstadoRuta.Planificada)
         {
@@ -60,6 +68,8 @@ public class Ruta : IPerteneceAOperador
         }
 
         Estado = EstadoRuta.Despachada;
+        ReglaEntregaParcialId = reglaEntregaParcial?.Id;
+        ReglaEntregaParcial = reglaEntregaParcial;
     }
 
     // La primera entrega o intento que sincroniza el repartidor pone la ruta en curso.

@@ -26,17 +26,35 @@ public static class ReglasOperativasSeeder
 
             await using var db = new ApplicationDbContext(opciones, contexto);
 
-            if (await db.ReglasOperativas.AnyAsync())
+            if (!await db.ReglasOperativas.AnyAsync())
             {
-                continue;
+                db.ReglasOperativas.AddRange(i == 0 ? ReglasOperador1() : ReglasOperador2());
+                await db.SaveChangesAsync();
+
+                Console.WriteLine($"Reglas operativas del operador {operadoresId[i]} inicializadas");
             }
 
-            db.ReglasOperativas.AddRange(i == 0 ? ReglasOperador1() : ReglasOperador2());
-            await db.SaveChangesAsync();
+            // Por separado: una base que ya tenía las reglas operativas igual recibe la versión 1
+            if (!await db.ReglasEntregaParcial.AnyAsync())
+            {
+                db.ReglasEntregaParcial.Add(ReglaEntregaParcialInicial(operadoresId[i]));
+                await db.SaveChangesAsync();
 
-            Console.WriteLine($"Reglas operativas del operador {operadoresId[i]} inicializadas");
+                Console.WriteLine($"Reglas de entrega parcial del operador {operadoresId[i]} inicializadas");
+            }
         }
     }
+
+    // Versión 1: lo que ya hacía el sistema antes de las versiones (se permite y lo pendiente vuelve a salir)
+    private static ReglaEntregaParcial ReglaEntregaParcialInicial(int operadorId) => new()
+    {
+        OperadorId = operadorId,
+        Version = 1,
+        PermiteEntregaParcial = true,
+        DestinoBultosPendientes = DestinoBultosPendientes.NuevaHojaDeRuta,
+        Motivo = "Versión inicial de los datos de prueba",
+        PublicadaPorId = "datos-de-prueba"
+    };
 
     // Operador 1: más exigente con los plazos, pocos reintentos y firma obligatoria
     private static ReglaOperativa[] ReglasOperador1() =>
