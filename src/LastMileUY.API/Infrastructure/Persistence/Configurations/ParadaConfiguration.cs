@@ -31,5 +31,26 @@ public class ParadaConfiguration : IEntityTypeConfiguration<Parada>
             p.RutaId,
             p.Orden
         }).IsUnique();
+
+        // Los bultos que lleva la parada (el manifiesto de la hoja de ruta)
+        builder.HasMany(p => p.Bultos)
+            .WithOne()
+            .HasForeignKey(b => b.ParadaId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class BultoParadaConfiguration : IEntityTypeConfiguration<BultoParada>
+{
+    public void Configure(EntityTypeBuilder<BultoParada> builder)
+    {
+        builder.ToTable("BultosParada");
+
+        builder.HasKey(b => new { b.ParadaId, b.BultoId });
+
+        builder.HasOne<Bulto>()
+            .WithMany()
+            .HasForeignKey(b => b.BultoId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

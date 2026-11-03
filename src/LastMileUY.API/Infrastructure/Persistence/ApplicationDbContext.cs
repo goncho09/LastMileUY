@@ -68,6 +68,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<Ruta> Rutas => Set<Ruta>();
     public DbSet<Parada> Paradas => Set<Parada>();
+    public DbSet<BultoParada> BultosParada => Set<BultoParada>();
     public DbSet<Posicion> Posiciones => Set<Posicion>();
     public DbSet<Incidencia> Incidencias => Set<Incidencia>();
     public DbSet<Rendicion> Rendiciones => Set<Rendicion>();
@@ -237,6 +238,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<Incidencia>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
         modelBuilder.Entity<Posicion>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
         modelBuilder.Entity<Rendicion>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
+        modelBuilder.Entity<BultoParada>().HasQueryFilter(x => Paradas.Any(p => p.Id == x.ParadaId));
 
         // Tarifas y liquidaciones
         modelBuilder.Entity<Tarifa>().HasQueryFilter(x => CuadrosTarifarios.Any(c => c.Id == x.CuadroTarifarioId));

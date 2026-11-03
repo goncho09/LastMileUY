@@ -2,12 +2,16 @@ namespace LastMileUY.API.Tests.Sincronizacion;
 
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Entregas.Domain;
+using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.API.Modules.Rutas.Application;
+using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.API.Tests.Rutas;
 using LastMileUY.Contracts.Operadores;
+using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -116,7 +120,8 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             var resultado = await SincronizarAsync(repartidor, await EntregaParcialAsync(ruta, envios[0]));
 
             Assert.Equal("Aplicada", resultado.Resultado);
-            Assert.Equal("EntregadoParcialmente", resultado.EstadoEnvio);
+            // La regla del operador A permite un solo intento: lo pendiente no puede volver a salir
+            Assert.Equal("EnDevolucion", resultado.EstadoEnvio);
             Assert.Equal(conParciales.Id, await VersionAplicadaAsync(resultado.IdOperacion));
 
             // Una ruta nueva ya sale con la versión que no las permite
@@ -130,6 +135,153 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         {
             await PublicarAsync(OperadorA, permite: true);
         }
+    }
+
+    // --- Política para los bultos pendientes y manifiesto de la hoja de ruta ---
+
+    // El ciclo completo: entrega parcial, el envío se reprograma, sale en otra ruta solo con lo que faltaba
+    // y ahí se termina de entregar. El operador B permite dos intentos.
+    [Fact]
+    public async Task Con_nueva_hoja_de_ruta_lo_pendiente_sale_en_otra_ruta_con_solo_esos_bultos()
+    {
+        await PublicarAsync(OperadorB, permite: true, destino: "NuevaHojaDeRuta");
+        var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(
+            baseDeDatos, OperadorB, bultosPorEnvio: 2);
+
+        var parcial = await SincronizarAsync(repartidor, await EntregaParcialAsync(ruta, envios[0], OperadorB), OperadorB);
+
+        Assert.Equal("Aplicada", parcial.Resultado);
+        Assert.Equal("Reprogramado", parcial.EstadoEnvio);
+        Assert.Contains("vuelven a salir", parcial.Mensaje);
+
+        // La ruta nueva lleva solo el bulto que no se entregó
+        int rutaNueva;
+        int pendiente;
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            pendiente = await db.Bultos
+                .Where(b => b.EnvioId == envios[0] && b.Estado == EstadoBulto.NoEntregado)
+                .Select(b => b.Id)
+                .SingleAsync();
+
+            var (repartidorNuevo, vehiculoNuevo, _) = await DatosDeRutas.CrearRepartidorYVehiculoAsync(baseDeDatos, OperadorB);
+            rutaNueva = await new PlanificarRutaService(db).CrearAsync(new CrearRutaRequest
+            {
+                Nombre = "Lo que faltaba",
+                Fecha = DatosDeRutas.Manana,
+                RepartidorId = repartidorNuevo,
+                VehiculoId = vehiculoNuevo,
+                EnvioIds = [envios[0]]
+            }, "usuario-1");
+        }
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var manifiesto = await db.BultosParada
+                .Where(b => db.Paradas.Any(p => p.Id == b.ParadaId && p.RutaId == rutaNueva))
+                .Select(b => b.BultoId)
+                .ToListAsync();
+            Assert.Equal([pendiente], manifiesto);
+
+            // La hoja muestra lo que lleva la parada, no todo el envío (cada bulto pesa 2 kg)
+            var hoja = await new ConsultasRutasService(db).ObtenerDetalleAsync(rutaNueva);
+            var parada = Assert.Single(hoja!.Paradas);
+            Assert.Equal(1, parada.CantidadBultos);
+            Assert.Equal(2, parada.PesoKg);
+
+            // La ruta vieja sigue mostrando los dos bultos con los que salió
+            var hojaVieja = await new ConsultasRutasService(db).ObtenerDetalleAsync(ruta);
+            Assert.Equal(2, Assert.Single(hojaVieja!.Paradas).CantidadBultos);
+        }
+
+        // Sale la ruta nueva y se entrega lo que faltaba: el envío queda entregado completo
+        string repartidorDeLaNueva;
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            await new PlanificarRutaService(db).DespacharAsync(rutaNueva, "usuario-1");
+            repartidorDeLaNueva = await db.Rutas.Where(r => r.Id == rutaNueva)
+                .Join(db.Repartidores, r => r.RepartidorId, rep => rep.Id, (_, rep) => rep.UsuarioId)
+                .SingleAsync();
+        }
+
+        var entrega = await EntregaParcialAsync(rutaNueva, envios[0], OperadorB);
+        entrega.Tipo = "Entrega";
+        entrega.ResultadosBultos = null;
+
+        var final = await SincronizarAsync(repartidorDeLaNueva, entrega, OperadorB);
+
+        Assert.Equal("Aplicada", final.Resultado);
+        Assert.Equal("Entregado", final.EstadoEnvio);
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            Assert.All(await db.Bultos.Where(b => b.EnvioId == envios[0]).ToListAsync(),
+                b => Assert.Equal(EstadoBulto.Entregado, b.Estado));
+        }
+    }
+
+    [Fact]
+    public async Task Con_devolucion_lo_pendiente_vuelve_al_comercio()
+    {
+        try
+        {
+            await PublicarAsync(OperadorA, permite: true, destino: "Devolucion");
+            var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(
+                baseDeDatos, OperadorA, bultosPorEnvio: 2);
+
+            var resultado = await SincronizarAsync(repartidor, await EntregaParcialAsync(ruta, envios[0]));
+
+            Assert.Equal("EnDevolucion", resultado.EstadoEnvio);
+            Assert.Contains("vuelven al comercio", resultado.Mensaje);
+        }
+        finally
+        {
+            await PublicarAsync(OperadorA, permite: true);
+        }
+    }
+
+    // Una ruta que salió antes de que el operador publicara reglas: lo decide el despachador
+    [Fact]
+    public async Task Si_la_ruta_salio_sin_version_el_envio_queda_entregado_parcialmente()
+    {
+        var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(
+            baseDeDatos, OperadorA, bultosPorEnvio: 2);
+        await SinVersionAsync(ruta);
+
+        var resultado = await SincronizarAsync(repartidor, await EntregaParcialAsync(ruta, envios[0]));
+
+        Assert.Equal("Aplicada", resultado.Resultado);
+        Assert.Equal("EntregadoParcialmente", resultado.EstadoEnvio);
+        Assert.Null(await VersionAplicadaAsync(resultado.IdOperacion));
+    }
+
+    // La base no deja que una parada lleve un bulto de otro envío
+    [Fact]
+    public async Task Una_parada_no_puede_llevar_un_bulto_de_otro_envio()
+    {
+        var (ruta, _, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorA, cantidadEnvios: 2);
+
+        await using var db = baseDeDatos.CrearContexto(OperadorA);
+        var paradaDelPrimero = await db.Paradas.Where(p => p.RutaId == ruta && p.EnvioId == envios[0]).Select(p => p.Id).SingleAsync();
+        var bultoDelSegundo = await db.Bultos.Where(b => b.EnvioId == envios[1]).Select(b => b.Id).FirstAsync();
+
+        db.BultosParada.Add(new BultoParada { ParadaId = paradaDelPrimero, BultoId = bultoDelSegundo });
+        var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.InsufficientPrivilege, Assert.IsType<PostgresException>(error.InnerException).SqlState);
+    }
+
+    // Como si la ruta se hubiera despachado antes de que existieran las versiones
+    private async Task SinVersionAsync(int rutaId)
+    {
+        await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);
+        await conexion.OpenAsync();
+        await using var comando = new NpgsqlCommand(
+            """UPDATE "Rutas" SET "ReglaEntregaParcialId" = NULL WHERE "Id" = @id""", conexion);
+        comando.Parameters.AddWithValue("id", rutaId);
+        await comando.ExecuteNonQueryAsync();
     }
 
     private async Task<ReglaEntregaParcialDto> PublicarAsync(
@@ -151,20 +303,22 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         API.Infrastructure.Persistence.ApplicationDbContext db, int operadorId) =>
         new(db, new ContextoOperadorFijo(operadorId));
 
-    private async Task<ResultadoOperacionDto> SincronizarAsync(string usuarioRepartidor, OperacionRequest operacion)
+    private async Task<ResultadoOperacionDto> SincronizarAsync(
+        string usuarioRepartidor, OperacionRequest operacion, int operadorId = OperadorA)
     {
-        await using var db = baseDeDatos.CrearContexto(OperadorA);
+        await using var db = baseDeDatos.CrearContexto(operadorId);
         var servicio = new SincronizarEntregasService(
-            db, new ContextoOperadorFijo(OperadorA), new SinAlmacen(), NullLogger<SincronizarEntregasService>.Instance);
+            db, new ContextoOperadorFijo(operadorId), new SinAlmacen(), NullLogger<SincronizarEntregasService>.Instance);
 
         var respuesta = await servicio.EjecutarAsync(new SincronizarRequest { Operaciones = [operacion] }, usuarioRepartidor);
         return Assert.Single(respuesta.Resultados);
     }
 
-    // Entrega el primer bulto y deja el otro sin entregar, con la firma que pide la regla del operador A
-    private async Task<OperacionRequest> EntregaParcialAsync(int rutaId, int envioId)
+    // Entrega el primer bulto y deja el otro sin entregar, con toda la evidencia que pueden pedir
+    // las reglas de prueba (A pide firma; B, foto y documento)
+    private async Task<OperacionRequest> EntregaParcialAsync(int rutaId, int envioId, int operadorId = OperadorA)
     {
-        await using var db = baseDeDatos.CrearContexto(OperadorA);
+        await using var db = baseDeDatos.CrearContexto(operadorId);
         var bultos = await db.Bultos.Where(b => b.EnvioId == envioId).OrderBy(b => b.Id).Select(b => b.Id).ToListAsync();
         var motivo = await MotivoAsync(db);
 
@@ -178,7 +332,9 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             Latitud = -34.9m,
             Longitud = -56.16m,
             NombreReceptor = "Ana Silva",
+            DocumentoReceptor = "1.234.567-8",
             FirmaBase64 = Png,
+            FotoBase64 = Png,
             ResultadosBultos =
             [
                 new ResultadoBultoRequest(bultos[0], Entregado: true),

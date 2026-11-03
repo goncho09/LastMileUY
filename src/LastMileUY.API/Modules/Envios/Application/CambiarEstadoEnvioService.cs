@@ -63,9 +63,11 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new ArgumentException("El comentario no puede superar los 1000 caracteres.");
         }
 
-        // Los intentos hacen falta para numerar el próximo y para contar los fallidos
+        // Los intentos hacen falta para numerar el próximo y para contar los fallidos;
+        // los bultos, para marcar como devueltos los que no se entregaron (al pasar a Devuelto)
         var envio = await db.Envios
             .Include(e => e.IntentosEntrega)
+            .Include(e => e.Bultos)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
         if (envio is null)

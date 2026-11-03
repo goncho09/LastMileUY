@@ -107,9 +107,15 @@ public class ConsultasRutasService(ApplicationDbContext db)
                     Envio = e,
                     Destinatario = new DestinatarioDto(d.Nombre, d.Apellido, d.Telefono, d.Email),
                     Franja = f == null ? null : new FranjaHorariaDto(f.Nombre, f.HoraInicio, f.HoraFin),
-                    CantidadBultos = e.Bultos.Count(),
-                    PesoKg = e.Bultos.Sum(b => (decimal?)b.PesoKg) ?? 0,
-                    VolumenM3 = e.Bultos.Sum(b => (decimal?)(b.LargoCm * b.AnchoCm * b.AltoCm)) ?? 0
+                    // Los bultos que lleva la parada (su manifiesto). Las rutas armadas antes del manifiesto
+                    // no lo tienen: para esas, todos los del envío.
+                    CantidadBultos = e.Bultos.Count(b => !p.Bultos.Any() || p.Bultos.Any(x => x.BultoId == b.Id)),
+                    PesoKg = e.Bultos
+                        .Where(b => !p.Bultos.Any() || p.Bultos.Any(x => x.BultoId == b.Id))
+                        .Sum(b => (decimal?)b.PesoKg) ?? 0,
+                    VolumenM3 = e.Bultos
+                        .Where(b => !p.Bultos.Any() || p.Bultos.Any(x => x.BultoId == b.Id))
+                        .Sum(b => (decimal?)(b.LargoCm * b.AnchoCm * b.AltoCm)) ?? 0
                 })
             .ToListAsync(cancellationToken);
 
@@ -219,8 +225,14 @@ public class ConsultasRutasService(ApplicationDbContext db)
                     Envio = e,
                     Destinatario = d.Nombre + " " + d.Apellido,
                     Franja = f == null ? null : new FranjaHorariaDto(f.Nombre, f.HoraInicio, f.HoraFin),
-                    PesoKg = e.Bultos.Sum(b => (decimal?)b.PesoKg) ?? 0,
-                    VolumenM3 = e.Bultos.Sum(b => (decimal?)(b.LargoCm * b.AnchoCm * b.AltoCm)) ?? 0
+                    // Solo lo que falta entregar: es lo que va a cargar el vehículo (un envío reprogramado
+                    // después de una entrega parcial ya no lleva los bultos entregados)
+                    PesoKg = e.Bultos
+                        .Where(b => b.Estado == EstadoBulto.Pendiente || b.Estado == EstadoBulto.NoEntregado)
+                        .Sum(b => (decimal?)b.PesoKg) ?? 0,
+                    VolumenM3 = e.Bultos
+                        .Where(b => b.Estado == EstadoBulto.Pendiente || b.Estado == EstadoBulto.NoEntregado)
+                        .Sum(b => (decimal?)(b.LargoCm * b.AnchoCm * b.AltoCm)) ?? 0
                 })
             .ToListAsync(cancellationToken);
 
