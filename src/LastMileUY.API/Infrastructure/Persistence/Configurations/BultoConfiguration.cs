@@ -24,6 +24,13 @@ public class BultoConfiguration : IEntityTypeConfiguration<Bulto>
 
         builder.Property(b => b.Descripcion)
             .HasMaxLength(500);
+        
+        // Estado individual del bulto.
+        builder.Property(b => b.Estado)
+            .HasConversion<string>()
+            .HasMaxLength(30)
+            .IsRequired()
+            .HasDefaultValue(EstadoBulto.Pendiente);
 
         // Peso en kilogramos.
         builder.Property(b => b.PesoKg)

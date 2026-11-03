@@ -339,6 +339,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<int?>("ParadaId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("Parcial")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.HasKey("Id");
 
                     b.HasIndex("MotivoNoEntregaId");
@@ -435,6 +440,36 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("PruebasEntrega", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Entregas.Domain.ResultadoBultoIntento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BultoId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Entregado")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("IntentoEntregaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MotivoNoEntregaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BultoId");
+
+                    b.HasIndex("IntentoEntregaId", "BultoId")
+                        .IsUnique();
+
+                    b.ToTable("ResultadosBultosIntentos", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Envios.Domain.Bulto", b =>
                 {
                     b.Property<int>("Id")
@@ -462,6 +497,13 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("EnvioId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Pendiente");
 
                     b.Property<decimal>("LargoCm")
                         .HasPrecision(10, 2)
@@ -1921,6 +1963,25 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Entregas.Domain.ResultadoBultoIntento", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Envios.Domain.Bulto", "Bulto")
+                        .WithMany()
+                        .HasForeignKey("BultoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Entregas.Domain.IntentoEntrega", "IntentoEntrega")
+                        .WithMany("ResultadosBultos")
+                        .HasForeignKey("IntentoEntregaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bulto");
+
+                    b.Navigation("IntentoEntrega");
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Envios.Domain.Bulto", b =>
                 {
                     b.HasOne("LastMileUY.API.Modules.Envios.Domain.Envio", null)
@@ -2300,6 +2361,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LastMileUY.API.Modules.Entregas.Domain.IntentoEntrega", b =>
                 {
                     b.Navigation("PruebaEntrega");
+
+                    b.Navigation("ResultadosBultos");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Entregas.Domain.MotivoNoEntrega", b =>

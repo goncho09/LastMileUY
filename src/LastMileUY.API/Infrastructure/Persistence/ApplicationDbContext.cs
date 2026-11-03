@@ -76,6 +76,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<MotivoNoEntrega> MotivosNoEntrega => Set<MotivoNoEntrega>();
     public DbSet<PruebaEntrega> PruebasEntrega => Set<PruebaEntrega>();
     public DbSet<Devolucion> Devoluciones => Set<Devolucion>();
+    
+    public DbSet<ResultadoBultoIntento> ResultadosBultosIntentos
+        => Set<ResultadoBultoIntento>();
 
     // Seguimiento
     public DbSet<EventoEnvio> EventosEnvio => Set<EventoEnvio>();
@@ -226,6 +229,8 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         // La aplicación no puede leer el outbox (ver la migración Outbox); el filtro queda por coherencia
         modelBuilder.Entity<MensajeOutbox>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<PruebaEntrega>().HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));
+        modelBuilder.Entity<ResultadoBultoIntento>()
+            .HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));
 
         // Hijas de la ruta
         modelBuilder.Entity<Incidencia>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));

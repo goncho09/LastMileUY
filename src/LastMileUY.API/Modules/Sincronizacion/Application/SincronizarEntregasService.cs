@@ -98,8 +98,12 @@ public class SincronizarEntregasService(
 
         if (!Enum.TryParse<TipoOperacion>(operacion.Tipo, ignoreCase: true, out var tipo) || !Enum.IsDefined(tipo))
         {
-            return SinRegistrar(operacion, $"El tipo '{operacion.Tipo}' no existe: tiene que ser Entrega o IntentoFallido.");
+            return SinRegistrar(
+                operacion,
+                $"El tipo '{operacion.Tipo}' no existe: tiene que ser Entrega, IntentoFallido o EntregaParcial.");
         }
+        
+        
 
         // ¿Ya llegó antes? Se contesta lo mismo que la primera vez, sin volver a aplicarla
         var anterior = await db.OperacionesSincronizadas.AsNoTracking()
@@ -158,177 +162,334 @@ public class SincronizarEntregasService(
             await EstadoDelEnvioAsync(operacion.EnvioId, cancellationToken));
     }
 
-    private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
-        OperacionRequest operacion,
-        TipoOperacion tipo,
-        DateTime fecha,
-        string usuarioId,
-        int operadorId,
-        CancellationToken cancellationToken)
+    
+private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
+    OperacionRequest operacion,
+    TipoOperacion tipo,
+    DateTime fecha,
+    string usuarioId,
+    int operadorId,
+    CancellationToken cancellationToken)
+{
+    if (fecha > DateTime.UtcNow + ToleranciaReloj)
     {
-        if (fecha > DateTime.UtcNow + ToleranciaReloj)
+        return Rechazada(
+            "La fecha del dispositivo está en el futuro: revisá la hora del celular.");
+    }
+
+    if (operacion.Latitud is < -90 or > 90 ||
+        operacion.Longitud is < -180 or > 180)
+    {
+        return Rechazada("La ubicación no es válida.");
+    }
+
+    if (operacion.Observaciones?.Length > 1000
+        || operacion.NombreReceptor?.Length > 150
+        || operacion.DocumentoReceptor?.Length > 50)
+    {
+        return Rechazada(
+            "Las observaciones, el nombre o el documento de quien recibe son demasiado largos.");
+    }
+
+    // Comprobar que la ruta existe y pertenece al repartidor.
+    var ruta = await db.Rutas
+        .Include(r => r.Paradas)
+        .FirstOrDefaultAsync(
+            r => r.Id == operacion.RutaId,
+            cancellationToken);
+
+    if (ruta is null)
+        return Rechazada("La ruta no existe.");
+
+    var duenio = await db.Repartidores
+        .Where(r => r.Id == ruta.RepartidorId)
+        .Select(r => r.UsuarioId)
+        .FirstAsync(cancellationToken);
+
+    if (duenio != usuarioId)
+        return Rechazada("La ruta es de otro repartidor.");
+
+    var parada = ruta.Paradas
+        .FirstOrDefault(p => p.EnvioId == operacion.EnvioId);
+
+    if (parada is null)
+        return Rechazada("El envío no está en esta ruta.");
+
+    if (!Ruta.EstadosParaElRepartidor.Contains(ruta.Estado))
+    {
+        return Conflicto(
+            $"La ruta está {ruta.Estado}: ya no recibe entregas.");
+    }
+
+    // Cargar el envío con sus bultos e intentos anteriores.
+    var envio = await db.Envios
+        .Include(e => e.IntentosEntrega)
+        .Include(e => e.Bultos)
+        .FirstOrDefaultAsync(
+            e => e.Id == operacion.EnvioId,
+            cancellationToken);
+
+    if (envio is null)
+        return Rechazada("El envío no existe o no está disponible.");
+
+    if (envio.Estado != EstadoEnvio.EnTransito)
+    {
+        return Conflicto(
+            $"El envío ya está {envio.Estado} en el servidor: " +
+            "no se aplicó. Lo resuelve el despachador.");
+    }
+
+    var regla = await db.ObtenerVigenteAsync(
+        envio.Modalidad,
+        cancellationToken);
+
+    var ubicacion = (operacion.Latitud, operacion.Longitud);
+
+    // Solo los bultos que todavía requieren entrega.
+    var bultosPorEntregar = envio.Bultos
+        .Where(b => b.Estado is EstadoBulto.Pendiente
+            or EstadoBulto.NoEntregado)
+        .ToList();
+
+    if (bultosPorEntregar.Count == 0)
+    {
+        return Conflicto(
+            "El envío no tiene bultos pendientes de entrega.");
+    }
+
+    // Validar los resultados enviados por la PWA.
+    if (tipo == TipoOperacion.EntregaParcial)
+    {
+        var resultados = operacion.ResultadosBultos;
+
+        if (resultados is null || resultados.Count == 0)
         {
-            return Rechazada("La fecha del dispositivo está en el futuro: revisá la hora del celular.");
+            return Rechazada(
+                "La entrega parcial requiere resultados de bultos.");
         }
 
-        if (operacion.Latitud is < -90 or > 90 || operacion.Longitud is < -180 or > 180)
+        if (resultados.Count != bultosPorEntregar.Count)
         {
-            return Rechazada("La ubicación no es válida.");
+            return Rechazada(
+                "Se debe informar el resultado de todos los bultos pendientes.");
         }
 
-        // Lo que no entra en la base no se arregla reintentando: se rechaza, así la app deja de reenviarlo
-        // (mismos límites que OperacionRequest, que las minimal APIs no validan solas)
-        if (operacion.Observaciones?.Length > 1000
-            || operacion.NombreReceptor?.Length > 150
-            || operacion.DocumentoReceptor?.Length > 50)
+        var ids = resultados.Select(r => r.BultoId).ToList();
+
+        if (ids.Distinct().Count() != ids.Count)
+            return Rechazada("Hay bultos duplicados.");
+
+        if (ids.Any(id => bultosPorEntregar.All(b => b.Id != id)))
         {
-            return Rechazada("Las observaciones, el nombre o el documento de quien recibe son demasiado largos.");
+            return Rechazada(
+                "La operación contiene bultos que no corresponden a esta entrega.");
         }
 
-        // Una ruta de otro operador no existe para este repartidor (EF + RLS)
-        var ruta = await db.Rutas
-            .Include(r => r.Paradas)
-            .FirstOrDefaultAsync(r => r.Id == operacion.RutaId, cancellationToken);
-
-        if (ruta is null)
+        if (resultados.Any(r =>
+                (r.Entregado && r.MotivoNoEntregaId is not null) ||
+                (!r.Entregado && r.MotivoNoEntregaId is null)))
         {
-            return Rechazada("La ruta no existe.");
+            return Rechazada(
+                "Los motivos de no entrega de los bultos no son válidos.");
         }
 
-        var duenio = await db.Repartidores
-            .Where(r => r.Id == ruta.RepartidorId)
-            .Select(r => r.UsuarioId)
-            .FirstAsync(cancellationToken);
+        var motivosIds = resultados
+            .Where(r => !r.Entregado)
+            .Select(r => r.MotivoNoEntregaId!.Value)
+            .Distinct()
+            .ToList();
 
-        if (duenio != usuarioId)
+        var motivosValidos = await db.MotivosNoEntrega
+            .CountAsync(
+                m => motivosIds.Contains(m.Id) && m.Activo,
+                cancellationToken);
+
+        if (motivosValidos != motivosIds.Count)
         {
-            return Rechazada("La ruta es de otro repartidor.");
+            return Rechazada(
+                "Hay motivos de no entrega inexistentes o inactivos.");
         }
 
-        var parada = ruta.Paradas.FirstOrDefault(p => p.EnvioId == operacion.EnvioId);
+        var entregadosAnteriormente = envio.Bultos.Count(
+            b => b.Estado == EstadoBulto.Entregado);
 
-        if (parada is null)
+        var entregadosAhora = resultados.Count(r => r.Entregado);
+
+        // Si termina todo entregado, corresponde Entrega.
+        if (entregadosAnteriormente + entregadosAhora == envio.Bultos.Count)
         {
-            return Rechazada("El envío no está en esta ruta.");
+            return Rechazada(
+                "Todos los bultos quedarían entregados. Usá Entrega.");
         }
 
-        if (!Ruta.EstadosParaElRepartidor.Contains(ruta.Estado))
+        // Si nunca se entregó ninguno, corresponde IntentoFallido.
+        if (entregadosAnteriormente == 0 && entregadosAhora == 0)
         {
-            return Conflicto($"La ruta está {ruta.Estado}: ya no recibe entregas.");
+            return Rechazada(
+                "No se entregó ningún bulto. Usá IntentoFallido.");
+        }
+    }
+
+    IntentoEntrega intento;
+    string mensaje;
+
+    if (tipo is TipoOperacion.Entrega or TipoOperacion.EntregaParcial)
+    {
+        // Validar evidencia obligatoria.
+        var faltante = EvidenciaFaltante(operacion, regla);
+
+        if (faltante is not null)
+            return Rechazada(faltante);
+
+        var firma = LeerImagen(operacion.FirmaBase64);
+        var foto = LeerImagen(operacion.FotoBase64);
+
+        if (firma.Invalida || foto.Invalida)
+        {
+            return Rechazada(
+                $"La {(firma.Invalida ? "firma" : "foto")} " +
+                "no es una imagen PNG o JPEG de hasta 1 MB.");
         }
 
-        var envio = await db.Envios
-            .Include(e => e.IntentosEntrega)
-            .FirstAsync(e => e.Id == operacion.EnvioId, cancellationToken);
+        var receptor = string.IsNullOrWhiteSpace(operacion.NombreReceptor)
+            ? null
+            : operacion.NombreReceptor.Trim();
 
-        // Política de conflictos: manda el servidor. Si mientras el repartidor estaba sin conexión
-        // alguien cambió el envío (lo devolvió al depósito, lo marcó extraviado, otra operación
-        // ya lo entregó), la operación no se aplica y lo resuelve el despachador.
-        if (envio.Estado != EstadoEnvio.EnTransito)
+        List<ResultadoBultoIntento> resultados;
+
+        if (tipo == TipoOperacion.EntregaParcial)
         {
-            return Conflicto(
-                $"El envío ya está {envio.Estado} en el servidor: no se aplicó. Lo resuelve el despachador.");
-        }
-
-        var regla = await db.ObtenerVigenteAsync(envio.Modalidad, cancellationToken);
-        var ubicacion = (operacion.Latitud, operacion.Longitud);
-
-        IntentoEntrega intento;
-        string mensaje;
-
-        if (tipo == TipoOperacion.Entrega)
-        {
-            var faltante = EvidenciaFaltante(operacion, regla);
-
-            if (faltante is not null)
-            {
-                return Rechazada(faltante);
-            }
-
-            var firma = LeerImagen(operacion.FirmaBase64);
-            var foto = LeerImagen(operacion.FotoBase64);
-
-            if (firma.Invalida || foto.Invalida)
-            {
-                return Rechazada($"La {(firma.Invalida ? "firma" : "foto")} no es una imagen PNG o JPEG de hasta 1 MB.");
-            }
-
-            var receptor = string.IsNullOrWhiteSpace(operacion.NombreReceptor) ? null : operacion.NombreReceptor.Trim();
-
-            intento = envio.CambiarEstado(
-                EstadoEnvio.Entregado,
-                "Repartidor",
-                receptor is null ? "Entregado." : $"Entregado a {receptor}.",
-                usuarioId,
-                regla,
-                fecha,
-                ubicacion)!;
-
-            // Si después falla el guardado en la base, el archivo queda huérfano: no se ve en ningún lado
-            intento.PruebaEntrega = new PruebaEntrega
-            {
-                FirmaArchivoKey = firma.Imagen is null ? null : await almacen.GuardarAsync(operadorId, firma.Imagen, cancellationToken),
-                FotoArchivoKey = foto.Imagen is null ? null : await almacen.GuardarAsync(operadorId, foto.Imagen, cancellationToken),
-                NombreReceptor = receptor,
-                DocumentoReceptor = string.IsNullOrWhiteSpace(operacion.DocumentoReceptor) ? null : operacion.DocumentoReceptor.Trim(),
-                Observaciones = operacion.Observaciones,
-                Latitud = operacion.Latitud,
-                Longitud = operacion.Longitud,
-                FechaHoraDispositivo = fecha
-            };
-
-            mensaje = "Entrega registrada.";
+            // Resultado individual enviado desde la PWA.
+            resultados = operacion.ResultadosBultos!
+                .Select(r => new ResultadoBultoIntento
+                {
+                    BultoId = r.BultoId,
+                    Entregado = r.Entregado,
+                    MotivoNoEntregaId = r.MotivoNoEntregaId
+                })
+                .ToList();
         }
         else
         {
-            var motivo = operacion.MotivoNoEntregaId is { } motivoId
-                ? await db.MotivosNoEntrega.FirstOrDefaultAsync(m => m.Id == motivoId && m.Activo, cancellationToken)
-                : null;
-
-            if (motivo is null)
-            {
-                return Rechazada("Falta el motivo por el que no se pudo entregar (o no existe).");
-            }
-
-            var descripcion = string.IsNullOrWhiteSpace(operacion.Observaciones)
-                ? motivo.Nombre
-                : $"{motivo.Nombre}: {operacion.Observaciones.Trim()}";
-
-            // Con el motivo adelante, el texto del historial puede pasarse aunque las observaciones entren
-            if (descripcion.Length > 1000)
-            {
-                return Rechazada("Las observaciones son demasiado largas.");
-            }
-
-            intento = envio.CambiarEstado(
-                EstadoEnvio.NoEntregado,
-                "Repartidor",
-                descripcion,
-                usuarioId,
-                regla,
-                fecha,
-                ubicacion)!;
-
-            intento.MotivoNoEntregaId = motivo.Id;
-            mensaje = "Intento fallido registrado.";
+            // Entrega completa de todos los bultos restantes.
+            resultados = bultosPorEntregar
+                .Select(b => new ResultadoBultoIntento
+                {
+                    BultoId = b.Id,
+                    Entregado = true
+                })
+                .ToList();
         }
 
-        intento.ParadaId = parada.Id;
-        parada.FechaLlegada ??= fecha;
+        intento = envio.RegistrarResultadoBultos(
+            resultados,
+            "Repartidor",
+            usuarioId,
+            regla,
+            fecha,
+            ubicacion);
 
-        // La ruta pasa a En curso con la primera operación y termina cuando no le queda nada en tránsito
-        ruta.RegistrarActividad(fecha);
+        // La evidencia corresponde al intento actual.
+        intento.PruebaEntrega = new PruebaEntrega
+        {
+            FirmaArchivoKey = firma.Imagen is null
+                ? null
+                : await almacen.GuardarAsync(
+                    operadorId, firma.Imagen, cancellationToken),
 
-        var otrosEnvios = ruta.Paradas.Select(p => p.EnvioId).Where(id => id != envio.Id).ToList();
-        var estados = await db.Envios
-            .Where(e => otrosEnvios.Contains(e.Id))
-            .Select(e => e.Estado)
-            .ToListAsync(cancellationToken);
+            FotoArchivoKey = foto.Imagen is null
+                ? null
+                : await almacen.GuardarAsync(
+                    operadorId, foto.Imagen, cancellationToken),
 
-        ruta.FinalizarSiTermino(estados.Append(envio.Estado));
+            NombreReceptor = receptor,
 
-        return (ResultadoOperacion.Aplicada, mensaje, intento);
+            DocumentoReceptor = string.IsNullOrWhiteSpace(
+                operacion.DocumentoReceptor)
+                ? null
+                : operacion.DocumentoReceptor.Trim(),
+
+            Observaciones = operacion.Observaciones,
+            Latitud = operacion.Latitud,
+            Longitud = operacion.Longitud,
+            FechaHoraDispositivo = fecha
+        };
+
+        mensaje = tipo == TipoOperacion.Entrega
+            ? "Entrega registrada."
+            : "Entrega parcial registrada.";
     }
+    else
+    {
+        // Intento fallido: ningún bulto restante fue entregado.
+        var motivo = operacion.MotivoNoEntregaId is { } motivoId
+            ? await db.MotivosNoEntrega
+                .FirstOrDefaultAsync(
+                    m => m.Id == motivoId && m.Activo,
+                    cancellationToken)
+            : null;
+
+        if (motivo is null)
+        {
+            return Rechazada(
+                "Falta el motivo por el que no se pudo entregar (o no existe).");
+        }
+
+        var descripcion = string.IsNullOrWhiteSpace(operacion.Observaciones)
+            ? motivo.Nombre
+            : $"{motivo.Nombre}: {operacion.Observaciones.Trim()}";
+
+        if (descripcion.Length > 1000)
+            return Rechazada("Las observaciones son demasiado largas.");
+
+        var resultados = bultosPorEntregar
+            .Select(b => new ResultadoBultoIntento
+            {
+                BultoId = b.Id,
+                Entregado = false,
+                MotivoNoEntregaId = motivo.Id
+            })
+            .ToList();
+
+        intento = envio.RegistrarResultadoBultos(
+            resultados,
+            "Repartidor",
+            usuarioId,
+            regla,
+            fecha,
+            ubicacion);
+
+        intento.MotivoNoEntregaId = motivo.Id;
+        intento.Observaciones = descripcion;
+
+        mensaje = envio.Estado == EstadoEnvio.EntregadoParcialmente
+            ? "Intento fallido registrado. El envío continúa parcialmente entregado."
+            : "Intento fallido registrado.";
+    }
+
+    // Asociar el intento con la parada correspondiente.
+    intento.ParadaId = parada.Id;
+
+    parada.FechaLlegada ??= fecha;
+
+    // Registrar actividad y actualizar el estado de la ruta.
+    ruta.RegistrarActividad(fecha);
+
+    var otrosEnvios = ruta.Paradas
+        .Select(p => p.EnvioId)
+        .Where(id => id != envio.Id)
+        .ToList();
+
+    var estados = await db.Envios
+        .Where(e => otrosEnvios.Contains(e.Id))
+        .Select(e => e.Estado)
+        .ToListAsync(cancellationToken);
+
+    ruta.FinalizarSiTermino(estados.Append(envio.Estado));
+
+    return (ResultadoOperacion.Aplicada, mensaje, intento);
+}
+
 
     // La regla operativa dice qué evidencia es obligatoria para entregar
     private static string? EvidenciaFaltante(OperacionRequest operacion, ReglaOperativa? regla)

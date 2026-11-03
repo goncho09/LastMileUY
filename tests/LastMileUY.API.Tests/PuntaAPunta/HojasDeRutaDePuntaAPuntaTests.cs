@@ -95,7 +95,18 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         {
             ComercioId = api.IdComercio1,
             DestinatarioId = destinatario,
-            DireccionId = direccion
+            DireccionId = direccion,
+            Bultos =
+            [
+                new CrearBultoRequest
+                {
+                    PesoKg = 1,
+                    LargoCm = 20,
+                    AnchoCm = 15,
+                    AltoCm = 10,
+                    Descripcion = "Bulto de prueba"
+                }
+            ]
         });
         Assert.Equal(HttpStatusCode.Created, alta.StatusCode);
         var id = (await alta.Content.ReadFromJsonAsync<EnvioResponse>())!.Id;

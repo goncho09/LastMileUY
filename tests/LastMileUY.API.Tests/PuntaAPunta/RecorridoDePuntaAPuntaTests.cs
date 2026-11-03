@@ -297,7 +297,18 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         {
             ComercioId = comercioId,
             DestinatarioId = destinatario,
-            DireccionId = direccion
+            DireccionId = direccion,
+            Bultos =
+            [
+                new CrearBultoRequest
+                {
+                    PesoKg = 1,
+                    LargoCm = 20,
+                    AnchoCm = 15,
+                    AltoCm = 10,
+                    Descripcion = "Bulto de prueba"
+                }
+            ]
         });
 
         Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);

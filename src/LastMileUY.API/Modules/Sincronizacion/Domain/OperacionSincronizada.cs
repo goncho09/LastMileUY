@@ -44,7 +44,8 @@ public class OperacionSincronizada : IPerteneceAOperador
 public enum TipoOperacion
 {
     Entrega = 1,
-    IntentoFallido = 2
+    IntentoFallido = 2,
+    EntregaParcial = 3
 }
 
 public enum ResultadoOperacion
