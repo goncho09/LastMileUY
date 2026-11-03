@@ -18,8 +18,13 @@ public static class RutasDePuntaAPunta
         return (rutaId, envioIds[0]);
     }
 
+    
     public static async Task<(int RutaId, int[] EnvioIds)> RutaConEnviosAsync(
-        ApiDePuntaAPunta api, HttpClient operador, HttpClient despachador, int diasAdelante, int cantidadEnvios)
+        ApiDePuntaAPunta api,
+        HttpClient operador,
+        HttpClient despachador,
+        int diasAdelante,
+        int cantidadEnvios)
     {
         var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
         var envioIds = new int[cantidadEnvios];
@@ -30,16 +35,33 @@ public static class RutasDePuntaAPunta
             {
                 ComercioId = api.IdComercio1,
                 DestinatarioId = destinatario,
-                DireccionId = direccion
+                DireccionId = direccion,
+                Bultos =
+                [
+                    new CrearBultoRequest
+                    {
+                        PesoKg = 1,
+                        LargoCm = 20,
+                        AnchoCm = 15,
+                        AltoCm = 10,
+                        Descripcion = "Bulto de prueba"
+                    }
+                ]
             });
+
+            Assert.Equal(HttpStatusCode.Created, alta.StatusCode);
+
             envioIds[i] = (await alta.Content.ReadFromJsonAsync<EnvioResponse>())!.Id;
 
-            using var deposito = await operador.PatchAsJsonAsync($"api/envios/{envioIds[i]}/estado",
+            using var deposito = await operador.PatchAsJsonAsync(
+                $"api/envios/{envioIds[i]}/estado",
                 new CambiarEstadoRequest { Estado = "EnDeposito" });
+
             Assert.True(deposito.IsSuccessStatusCode);
         }
 
-        var opciones = (await despachador.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
+        var opciones = (await despachador.GetFromJsonAsync<OpcionesRutaDto>(
+            "api/rutas/opciones"))!;
 
         using var ruta = await despachador.PostAsJsonAsync("api/rutas", new CrearRutaRequest
         {
@@ -49,10 +71,12 @@ public static class RutasDePuntaAPunta
             VehiculoId = opciones.Vehiculos[0].Id,
             EnvioIds = [.. envioIds]
         });
+
         Assert.Equal(HttpStatusCode.Created, ruta.StatusCode);
 
         return ((await ruta.Content.ReadFromJsonAsync<RutaDetalleDto>())!.Id, envioIds);
     }
+
 
     // La misma ruta, ya despachada: los envíos quedan en tránsito y el repartidor la puede descargar
     public static async Task<(int RutaId, int EnvioId)> RutaDespachadaAsync(

@@ -211,6 +211,83 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
                 new ContextoOperadorFijo(OperadorA)
             ).EjecutarAsync(request, usuario));
     }
+    
+    
+    [Theory]
+    [InlineData("Entregado")]
+    [InlineData("NoEntregado")]
+    public async Task No_se_puede_registrar_manualmente_el_resultado_de_un_envio_con_bultos(
+        string estado)
+    {
+        await VincularOperadorConComercioAsync();
+
+        int envioId;
+
+        // Crear un envío real con un bulto.
+        await using (var db = baseDeDatos.CrearContexto(OperadorA))
+        {
+            var request = new CrearEnvioRequest
+            {
+                ComercioId = 1,
+                DestinatarioId = 1,
+                DireccionId = 1,
+                Bultos =
+                [
+                    new CrearBultoRequest
+                    {
+                        PesoKg = 1,
+                        LargoCm = 20,
+                        AnchoCm = 15,
+                        AltoCm = 10,
+                        Descripcion = "Bulto de prueba"
+                    }
+                ]
+            };
+
+            var creado = await new CrearEnvioService(
+                db,
+                new ContextoOperadorFijo(OperadorA)
+            ).EjecutarAsync(request, CrearUsuarioOperador());
+
+            envioId = creado.Id;
+            
+            // Preparar el envío en estado EnTransito
+            var envioPreparado = await db.Envios
+                .SingleAsync(e => e.Id == envioId);
+
+            envioPreparado.CambiarEstado(EstadoEnvio.EnDeposito);
+            envioPreparado.CambiarEstado(EstadoEnvio.AsignadoARuta);
+            envioPreparado.CambiarEstado(EstadoEnvio.EnTransito);
+
+            await db.SaveChangesAsync();
+        }
+
+        await using var contexto = baseDeDatos.CrearContexto(OperadorA);
+
+        var excepcion = await Assert.ThrowsAsync<TransicionInvalidaException>(
+            () => new CambiarEstadoEnvioService(contexto).EjecutarAsync(
+                envioId,
+                new CambiarEstadoRequest { Estado = estado },
+                "Backoffice",
+                CrearUsuarioOperador()));
+
+        Assert.Contains(
+            "debe registrarse por bulto",
+            excepcion.Message);
+
+        // Comprobar que el rechazo no modificó el envío ni sus bultos.
+        await using var verificacion = baseDeDatos.CrearContexto(OperadorA);
+
+        var envio = await verificacion.Envios
+            .Include(e => e.Bultos)
+            .SingleAsync(e => e.Id == envioId);
+
+        Assert.Equal(EstadoEnvio.EnTransito, envio.Estado);
+        Assert.Single(envio.Bultos);
+        Assert.All(envio.Bultos,
+            b => Assert.Equal(EstadoBulto.Pendiente, b.Estado));
+    }
+
 
     private async Task<int> CrearEnvioAsync(int operadorId)
     {

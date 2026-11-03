@@ -18,8 +18,45 @@ public class Bulto
 
     public string? Descripcion { get; set; }
 
+    // Cada bulto tiene su propio estado de entrega.
+    public EstadoBulto Estado { get; private set; } = EstadoBulto.Pendiente;
+
     public const decimal CentimetrosCubicosPorMetroCubico = 1_000_000m;
 
-    // Lo que ocupa en el vehículo (no es columna: sale de las medidas)
-    public decimal VolumenM3 => LargoCm * AnchoCm * AltoCm / CentimetrosCubicosPorMetroCubico;
+    public decimal VolumenM3 =>
+        LargoCm * AnchoCm * AltoCm / CentimetrosCubicosPorMetroCubico;
+
+    public void CambiarEstado(EstadoBulto nuevoEstado)
+    {
+        if (Estado == nuevoEstado)
+        {
+            throw new InvalidOperationException(
+                $"El bulto ya está en estado {nuevoEstado}.");
+        }
+
+        if (!EsTransicionValida(nuevoEstado))
+        {
+            throw new InvalidOperationException(
+                $"No se puede pasar el bulto de {Estado} a {nuevoEstado}.");
+        }
+
+        Estado = nuevoEstado;
+    }
+
+    private bool EsTransicionValida(EstadoBulto nuevoEstado) =>
+        Estado switch
+        {
+            EstadoBulto.Pendiente =>
+                nuevoEstado is EstadoBulto.Entregado
+                    or EstadoBulto.NoEntregado
+                    or EstadoBulto.Devuelto
+                    or EstadoBulto.Extraviado,
+
+            EstadoBulto.NoEntregado =>
+                nuevoEstado is EstadoBulto.Pendiente
+                    or EstadoBulto.Devuelto
+                    or EstadoBulto.Extraviado,
+
+            _ => false
+        };
 }

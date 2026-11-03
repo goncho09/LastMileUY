@@ -1,14 +1,13 @@
 namespace LastMileUY.API.Tests.Avisos;
 
 using LastMileUY.API.Infrastructure.Multitenancy;
-using LastMileUY.API.Infrastructure.Persistence;
-using LastMileUY.API.Modules.Notificaciones.Application;
-using LastMileUY.API.Modules.Notificaciones.Domain;
-using LastMileUY.API.Tests.Multitenancy;
-using LastMileUY.Contracts.Avisos;
+using Infrastructure.Persistence;
+using Modules.Notificaciones.Application;
+using Modules.Notificaciones.Domain;
+using Multitenancy;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+using static Multitenancy.BaseConDosOperadores;
 
 // Panel de avisos del comercio (historial y reenvío de fallidos), contra la base real con RLS.
 // La base es compartida entre los tests: cada uno crea sus propios avisos.
@@ -140,10 +139,10 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         var resultados = await Task.WhenAll(tarea1, tarea2);
 
         // Exactamente una solicitud debe aceptar el reenvío.
-        Assert.Single(resultados.Where(x => x));
+        Assert.Single(resultados, x => x);
 
-        // La otra solicitud debe ser rechazada.
-        Assert.Single(resultados.Where(x => !x));
+// La otra solicitud debe ser rechazada.
+        Assert.Single(resultados, x => !x);
 
         // Comprobamos el estado final en la base de datos.
         await using var verificacion = baseDeDatos.CrearContexto(OperadorA);

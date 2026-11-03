@@ -42,5 +42,9 @@ public class IntentoEntregaConfiguration
             i.EnvioId,
             i.NumeroIntento
         }).IsUnique();
+        
+        builder.Property(i => i.Parcial)
+            .IsRequired()
+            .HasDefaultValue(false);
     }
 }

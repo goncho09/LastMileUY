@@ -135,6 +135,13 @@ public class PlanificarRutaService(ApplicationDbContext db)
                     $"El envío {envio.CodigoSeguimiento} está {envio.Estado}: "
                     + "solo se pueden asignar envíos en depósito o reprogramados.");
             }
+            
+            if (!envio.Bultos.Any(b =>
+                    b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado))
+            {
+                throw new ArgumentException(
+                    $"El envío {envio.CodigoSeguimiento} no tiene bultos pendientes de entrega.");
+            }
         }
 
         ValidarCapacidad(vehiculo, envios.Values);
@@ -225,7 +232,11 @@ public class PlanificarRutaService(ApplicationDbContext db)
     // Lo que llevan los envíos no puede pasar lo que carga el vehículo (peso y volumen)
     private static void ValidarCapacidad(Vehiculo vehiculo, IEnumerable<Envio> envios)
     {
-        var bultos = envios.SelectMany(e => e.Bultos).ToList();
+        var bultos = envios
+            .SelectMany(e => e.Bultos)
+            .Where(b => b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado)
+            .ToList();
+
         var peso = bultos.Sum(b => b.PesoKg);
         var volumen = bultos.Sum(b => b.VolumenM3);
 

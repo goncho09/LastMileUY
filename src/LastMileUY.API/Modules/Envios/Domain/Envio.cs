@@ -77,7 +77,8 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
     public uint Version { get; private set; }
 
     // Intentos de entrega que fallaron (necesita IntentosEntrega cargados)
-    public int IntentosFallidos => IntentosEntrega.Count(i => !i.Exitoso);
+    public int IntentosFallidos =>
+        IntentosEntrega.Count(i => !i.Exitoso);
 
     // Estados a los que se puede pasar desde el actual: la tabla de transiciones,
     // recortada por la regla operativa del operador (si tiene una para la modalidad del envío).
@@ -113,13 +114,14 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
         IntentoEntrega? intento = null;
 
         // Llegar a Entregado o NoEntregado es el resultado de un intento de entrega
-        if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
+        if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado  or EstadoEnvio.EntregadoParcialmente)
         {
             intento = new IntentoEntrega
             {
                 NumeroIntento = IntentosEntrega.Count + 1,
                 FechaHora = cuando,
                 Exitoso = nuevoEstado == EstadoEnvio.Entregado,
+                Parcial = nuevoEstado == EstadoEnvio.EntregadoParcialmente,
                 Observaciones = descripcion
             };
 
@@ -178,6 +180,126 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
             Latitud = ubicacion?.Latitud,
             Longitud = ubicacion?.Longitud
         });
+    
+    public EstadoEnvio? CalcularEstadoEntregaPorBultos()
+    {
+        if (Bultos.Count == 0)
+            return null;
+
+        var entregados = Bultos.Count(
+            b => b.Estado == EstadoBulto.Entregado);
+
+        if (entregados == Bultos.Count)
+            return EstadoEnvio.Entregado;
+
+        if (entregados > 0)
+            return EstadoEnvio.EntregadoParcialmente;
+
+        return null;
+    }
+    
+    public IntentoEntrega RegistrarResultadoBultos(
+    IReadOnlyCollection<ResultadoBultoIntento> resultados,
+    string origen = "Repartidor",
+    string? responsableId = null,
+    ReglaOperativa? regla = null,
+    DateTime? ocurrido = null,
+    (decimal Latitud, decimal Longitud)? ubicacion = null)
+{
+    ArgumentNullException.ThrowIfNull(resultados);
+
+    if (Estado != EstadoEnvio.EnTransito)
+        throw new InvalidOperationException(
+            "El envío debe estar en tránsito para registrar resultados de bultos.");
+
+    if (Bultos.Count == 0)
+        throw new InvalidOperationException("El envío no tiene bultos.");
+
+    // Solo participan los bultos que todavía requieren entrega.
+    var bultosPorEntregar = Bultos
+        .Where(b => b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado)
+        .ToList();
+
+    if (bultosPorEntregar.Count == 0)
+        throw new InvalidOperationException(
+            "El envío no tiene bultos pendientes de entrega.");
+
+    if (resultados.Count != bultosPorEntregar.Count)
+        throw new InvalidOperationException(
+            "Se debe informar el resultado de todos los bultos pendientes de entrega.");
+
+    var ids = resultados.Select(r => r.BultoId).ToList();
+
+    if (ids.Distinct().Count() != ids.Count ||
+        ids.Any(id => bultosPorEntregar.All(b => b.Id != id)))
+    {
+        throw new InvalidOperationException(
+            "Hay bultos duplicados o que no corresponden a esta entrega.");
+    }
+
+    // Validar antes de modificar el estado.
+    foreach (var resultado in resultados)
+    {
+        if (resultado.Entregado && resultado.MotivoNoEntregaId is not null)
+            throw new InvalidOperationException(
+                "Un bulto entregado no puede tener motivo de no entrega.");
+
+        if (!resultado.Entregado && resultado.MotivoNoEntregaId is null)
+            throw new InvalidOperationException(
+                "Los bultos no entregados deben tener un motivo.");
+    }
+
+    var entregadosEnEsteIntento = resultados.Count(r => r.Entregado);
+
+    // Contamos también los bultos entregados anteriormente.
+    var entregadosAnteriormente = Bultos.Count(
+        b => b.Estado == EstadoBulto.Entregado);
+
+    var totalEntregados = entregadosAnteriormente + entregadosEnEsteIntento;
+
+    var nuevoEstado = totalEntregados switch
+    {
+        0 => EstadoEnvio.NoEntregado,
+        _ when totalEntregados == Bultos.Count => EstadoEnvio.Entregado,
+        _ => EstadoEnvio.EntregadoParcialmente
+    };
+
+    var motivo = MotivoDeRechazo(nuevoEstado, regla);
+
+    if (motivo is not null)
+        throw new InvalidOperationException(motivo);
+
+    // Actualizar únicamente los bultos incluidos en el intento.
+    foreach (var resultado in resultados)
+    {
+        var bulto = bultosPorEntregar.Single(b => b.Id == resultado.BultoId);
+
+        // Un bulto previamente no entregado vuelve a quedar pendiente
+        // antes de registrar el nuevo resultado.
+        if (bulto.Estado == EstadoBulto.NoEntregado)
+            bulto.CambiarEstado(EstadoBulto.Pendiente);
+
+        bulto.CambiarEstado(
+            resultado.Entregado
+                ? EstadoBulto.Entregado
+                : EstadoBulto.NoEntregado);
+    }
+
+    var intento = CambiarEstado(
+        nuevoEstado,
+        origen,
+        $"Resultado por bultos: {entregadosEnEsteIntento} de {bultosPorEntregar.Count} entregados en este intento. " +
+        $"Total entregados: {totalEntregados} de {Bultos.Count}.",
+        responsableId,
+        regla,
+        ocurrido,
+        ubicacion)!;
+
+    foreach (var resultado in resultados)
+        intento.ResultadosBultos.Add(resultado);
+
+    return intento;
+}
 
     public void AsignarDireccionEntrega(DireccionEntrega direccion)
     {
