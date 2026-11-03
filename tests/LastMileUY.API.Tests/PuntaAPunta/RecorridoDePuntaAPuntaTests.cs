@@ -1,4 +1,6 @@
+using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Rutas;
+using LastMileUY.Contracts.Sincronizacion;
 
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
@@ -17,6 +19,84 @@ using static ApiDePuntaAPunta;
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
+    private static readonly string FirmaPng = Convert.ToBase64String(
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
+
+    private async Task RegistrarResultadoAsync(
+        HttpClient repartidor,
+        int rutaId,
+        int envioId,
+        string tipo,
+        int? motivoId = null)
+    {
+        var operacion = new OperacionRequest()
+        {
+            IdOperacion = Guid.NewGuid(),
+            Tipo = tipo,
+            RutaId = rutaId,
+            EnvioId = envioId,
+            FechaHoraDispositivo = DateTime.UtcNow,
+            Latitud = -34.9m,
+            Longitud = -56.16m,
+            NombreReceptor = tipo == "Entrega" ? "Ana Silva" : null,
+            DocumentoReceptor = tipo == "Entrega" ? "1.234.567-8" : null,
+            FirmaBase64 = tipo == "Entrega" ? FirmaPng : null,
+            FotoBase64 = tipo == "Entrega" ? FirmaPng : null,
+            MotivoNoEntregaId = motivoId
+        };
+
+        using var respuesta = await repartidor.PostAsJsonAsync(
+            "api/sincronizacion/",
+            new SincronizarRequest
+            {
+                Operaciones = [operacion]
+            });
+
+        var contenido = await respuesta.Content.ReadAsStringAsync();
+
+        Assert.True(
+            respuesta.IsSuccessStatusCode,
+            $"Error HTTP al sincronizar: {(int)respuesta.StatusCode} - {contenido}");
+
+        var resultado = await respuesta.Content.ReadFromJsonAsync<SincronizarResponse>();
+
+        Assert.NotNull(resultado);
+
+        var operacionProcesada = Assert.Single(resultado.Resultados);
+
+        Assert.True(
+            operacionProcesada.Resultado == "Aplicada",
+            $"La sincronización no se aplicó: {operacionProcesada.Resultado} - {operacionProcesada.Mensaje}");
+    }
+    
+    private async Task RegistrarIntentoFallidoAsync(
+        HttpClient operador,
+        HttpClient repartidor,
+        int envioId)
+    {
+        var rutaId = await RecorrerAsync(
+            operador,
+            envioId,
+            "AsignadoARuta",
+            "EnTransito");
+
+        Assert.NotNull(rutaId);
+
+        var motivos = await repartidor.GetFromJsonAsync<List<MotivoNoEntregaDto>>(
+            "api/sincronizacion/motivos");
+
+        Assert.NotNull(motivos);
+        Assert.NotEmpty(motivos);
+        var motivo = motivos.First(m => m.Nombre == "Destinatario ausente");
+
+        await RegistrarResultadoAsync(
+            repartidor,
+            rutaId.Value,
+            envioId,
+            "IntentoFallido",
+            motivo.Id);
+    }
+    
     // --- 1. Permisos con usuarios reales de cada perfil ---
 
     [Theory]
@@ -131,35 +211,56 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     // --- 3. Reglas distintas para los dos operadores ---
 
     [Fact]
-    public async Task Con_el_mismo_recorrido_el_operador_1_bloquea_y_el_operador_2_permite_reprogramar()
-    {
-        // Seeders: el operador 1 permite 2 intentos fallidos (Estándar) y el operador 2 permite 3
-        var operador1 = await api.IniciarSesionAsync(Operador1);
-        var operador2 = await api.IniciarSesionAsync(Operador2);
-        var envioDe1 = await CrearEnvioAsync(operador1, api.IdComercio1);
-        var envioDe2 = await CrearEnvioAsync(operador2, api.IdComercio2);
+public async Task Con_el_mismo_recorrido_el_operador_1_bloquea_y_el_operador_2_permite_reprogramar()
+{
+    // Operador 1 permite 2 intentos fallidos; operador 2 permite 3.
+    var operador1 = await api.IniciarSesionAsync(Operador1);
+    var operador2 = await api.IniciarSesionAsync(Operador2);
 
-        string[] dosIntentosFallidos =
-        [
-            "EnDeposito", "AsignadoARuta", "EnTransito", "NoEntregado",
-            "Reprogramado", "AsignadoARuta", "EnTransito", "NoEntregado"
-        ];
+    var repartidor1 = await api.IniciarSesionAsync(Repartidor1);
+    var repartidor2 = await api.IniciarSesionAsync(Repartidor2);
 
-        await RecorrerAsync(operador1, envioDe1, dosIntentosFallidos);
-        await RecorrerAsync(operador2, envioDe2, dosIntentosFallidos);
+    var envioDe1 = await CrearEnvioAsync(operador1, api.IdComercio1);
+    var envioDe2 = await CrearEnvioAsync(operador2, api.IdComercio2);
 
-        using var reprogramar1 = await CambiarEstadoAsync(operador1, envioDe1, "Reprogramado");
-        using var reprogramar2 = await CambiarEstadoAsync(operador2, envioDe2, "Reprogramado");
-        var detalle1 = await operador1.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envioDe1}");
+    // Primer intento: ambos envíos pasan a depósito.
+    await RecorrerAsync(operador1, envioDe1, "EnDeposito");
+    await RecorrerAsync(operador2, envioDe2, "EnDeposito");
 
-        Assert.Equal(HttpStatusCode.BadRequest, reprogramar1.StatusCode);
-        Assert.Contains("tiene que pasar a devolución", await reprogramar1.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.OK, reprogramar2.StatusCode);
+    // Primer intento fallido registrado desde la PWA.
+    await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
+    await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
 
-        Assert.Equal(2, detalle1?.IntentosFallidos);
-        Assert.Equal(2, detalle1?.Regla?.MaximoIntentosEntrega);
-        Assert.Equal(["EnDevolucion"], detalle1?.EstadosSiguientes);
-    }
+    // Ambos operadores todavía permiten reprogramar.
+    await RecorrerAsync(operador1, envioDe1, "Reprogramado");
+    await RecorrerAsync(operador2, envioDe2, "Reprogramado");
+
+    // Segundo intento fallido registrado desde la PWA.
+    await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
+    await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
+
+    // El operador 1 alcanzó el máximo; el operador 2 todavía no.
+    using var reprogramar1 =
+        await CambiarEstadoAsync(operador1, envioDe1, "Reprogramado");
+
+    using var reprogramar2 =
+        await CambiarEstadoAsync(operador2, envioDe2, "Reprogramado");
+
+    var detalle1 = await operador1.GetFromJsonAsync<EnvioDetalleDto>(
+        $"api/envios/{envioDe1}");
+
+    Assert.Equal(HttpStatusCode.BadRequest, reprogramar1.StatusCode);
+
+    Assert.Contains(
+        "tiene que pasar a devolución",
+        await reprogramar1.Content.ReadAsStringAsync());
+
+    Assert.Equal(HttpStatusCode.OK, reprogramar2.StatusCode);
+
+    Assert.Equal(2, detalle1?.IntentosFallidos);
+    Assert.Equal(2, detalle1?.Regla?.MaximoIntentosEntrega);
+    Assert.Equal(["EnDevolucion"], detalle1?.EstadosSiguientes);
+}
 
     [Fact]
     public async Task Cada_operador_ve_su_propia_configuracion()
@@ -269,50 +370,35 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     public async Task El_historial_registra_el_recorrido_completo_hasta_la_entrega()
     {
         var id = await CrearEnvioComoOperador1Async();
+
         var operador = await api.IniciarSesionAsync(Operador1);
         var despachador = await api.IniciarSesionAsync(Despachador1);
+        var repartidor = await api.IniciarSesionAsync(Repartidor1);
 
-        await RecorrerAsync(despachador, id, "EnDeposito", "AsignadoARuta", "EnTransito");
-        await RecorrerAsync(operador, id, "Entregado");
+        var rutaId = await RecorrerAsync(
+            despachador,
+            id,
+            "EnDeposito",
+            "AsignadoARuta",
+            "EnTransito");
 
-        var detalle = await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{id}");
+        Assert.NotNull(rutaId);
+
+        await RegistrarResultadoAsync(
+            repartidor,
+            rutaId.Value,
+            id,
+            "Entrega");
+
+        var detalle = await operador.GetFromJsonAsync<EnvioDetalleDto>(
+            $"api/envios/{id}");
 
         Assert.Equal(
             ["Admitido", "EnDeposito", "AsignadoARuta", "EnTransito", "Entregado"],
             detalle?.Eventos.Select(e => e.Tipo));
+
         Assert.NotNull(detalle?.FechaEntrega);
         Assert.Equal(["EnDevolucion"], detalle?.EstadosSiguientes);
-    }
-
-    // --- Ayudas ---
-
-    private async Task<int> CrearEnvioComoOperador1Async() =>
-        await CrearEnvioAsync(await api.IniciarSesionAsync(Operador1), api.IdComercio1);
-
-    private async Task<int> CrearEnvioAsync(HttpClient cliente, int comercioId)
-    {
-        var (destinatario, direccion) = await api.DestinatarioDeAsync(comercioId);
-
-        using var respuesta = await cliente.PostAsJsonAsync("api/envios", new CrearEnvioRequest
-        {
-            ComercioId = comercioId,
-            DestinatarioId = destinatario,
-            DireccionId = direccion,
-            Bultos =
-            [
-                new CrearBultoRequest
-                {
-                    PesoKg = 1,
-                    LargoCm = 20,
-                    AnchoCm = 15,
-                    AltoCm = 10,
-                    Descripcion = "Bulto de prueba"
-                }
-            ]
-        });
-
-        Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
-        return (await respuesta.Content.ReadFromJsonAsync<EnvioResponse>())!.Id;
     }
 
     private static Task<HttpResponseMessage> CambiarEstadoAsync(
@@ -321,7 +407,7 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
             new CambiarEstadoRequest { Estado = estado, Descripcion = descripcion });
 
     
-private async Task RecorrerAsync(
+private async Task<int?> RecorrerAsync(
     HttpClient cliente,
     int id,
     params string[] estados)
@@ -412,8 +498,48 @@ private async Task RecorrerAsync(
                 $"{(int)respuesta.StatusCode} - {contenido}");
         }
     }
+
+    return rutaId;
 }
 
+private async Task<int> CrearEnvioComoOperador1Async() =>
+    await CrearEnvioAsync(
+        await api.IniciarSesionAsync(Operador1),
+        api.IdComercio1);
+
+private async Task<int> CrearEnvioAsync(HttpClient cliente, int comercioId)
+{
+    var (destinatario, direccion) =
+        await api.DestinatarioDeAsync(comercioId);
+
+    using var respuesta = await cliente.PostAsJsonAsync(
+        "api/envios",
+        new CrearEnvioRequest
+        {
+            ComercioId = comercioId,
+            DestinatarioId = destinatario,
+            DireccionId = direccion,
+            Bultos =
+            [
+                new CrearBultoRequest
+                {
+                    PesoKg = 1,
+                    LargoCm = 20,
+                    AnchoCm = 15,
+                    AltoCm = 10,
+                    Descripcion = "Bulto de prueba"
+                }
+            ]
+        });
+
+    Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
+
+    var envio = await respuesta.Content.ReadFromJsonAsync<EnvioResponse>();
+
+    Assert.NotNull(envio);
+
+    return envio.Id;
+}
 
     private static async Task<PaginaDto<EnvioResumenDto>> ListarAsync(HttpClient cliente, string consulta) =>
         (await cliente.GetFromJsonAsync<PaginaDto<EnvioResumenDto>>($"api/envios?{consulta}"))!;

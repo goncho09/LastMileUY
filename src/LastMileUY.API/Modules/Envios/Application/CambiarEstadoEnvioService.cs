@@ -73,8 +73,18 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             return false;
         }
         
+        
         if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
         {
+            // Primero respetamos la tabla de transiciones del dominio.
+            if (!TransicionesEnvio.EsValida(envio.Estado, nuevoEstado))
+            {
+                throw new TransicionInvalidaException(
+                    $"No se puede pasar el envío de {envio.Estado} a {nuevoEstado}.");
+            }
+
+            // Si la transición es válida, comprobamos que no se saltee
+            // el registro individual de los bultos.
             var tieneBultos = await db.Bultos
                 .AnyAsync(b => b.EnvioId == envio.Id, cancellationToken);
 

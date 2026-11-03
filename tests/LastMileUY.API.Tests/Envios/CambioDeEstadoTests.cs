@@ -250,6 +250,16 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
             ).EjecutarAsync(request, CrearUsuarioOperador());
 
             envioId = creado.Id;
+            
+            // Preparar el envío en estado EnTransito
+            var envioPreparado = await db.Envios
+                .SingleAsync(e => e.Id == envioId);
+
+            envioPreparado.CambiarEstado(EstadoEnvio.EnDeposito);
+            envioPreparado.CambiarEstado(EstadoEnvio.AsignadoARuta);
+            envioPreparado.CambiarEstado(EstadoEnvio.EnTransito);
+
+            await db.SaveChangesAsync();
         }
 
         await using var contexto = baseDeDatos.CrearContexto(OperadorA);
@@ -272,7 +282,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
             .Include(e => e.Bultos)
             .SingleAsync(e => e.Id == envioId);
 
-        Assert.Equal(EstadoEnvio.Admitido, envio.Estado);
+        Assert.Equal(EstadoEnvio.EnTransito, envio.Estado);
         Assert.Single(envio.Bultos);
         Assert.All(envio.Bultos,
             b => Assert.Equal(EstadoBulto.Pendiente, b.Estado));
