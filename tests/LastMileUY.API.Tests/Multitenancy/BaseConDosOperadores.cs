@@ -100,6 +100,13 @@ public class BaseConDosOperadores : IAsyncLifetime
                         "RequiereFirma", "RequiereFotografia", "RequiereDocumentoReceptor", "Activa", "FechaCreacion")
                     VALUES ({OperadorA}, '{ReglaDeA}', 1, {MaximoIntentosDeA}, 24, {PlazoHorasDeA}, 72, true, false, false, true, now()),
                            ({OperadorB}, '{ReglaDeB}', 1, {MaximoIntentosDeB}, 48, 96, 168, false, true, true, true, now());
+                -- Lo cargado arriba lleva Id fijo: el contador sigue después, así lo que creen los tests
+                -- no choca con esos Id (con más de 100 envíos creados, el siguiente era el 101)
+                SELECT setval(pg_get_serial_sequence('"Operadores"', 'Id'), (SELECT max("Id") FROM "Operadores"));
+                SELECT setval(pg_get_serial_sequence('"Comercios"', 'Id'), (SELECT max("Id") FROM "Comercios"));
+                SELECT setval(pg_get_serial_sequence('"Destinatarios"', 'Id'), (SELECT max("Id") FROM "Destinatarios"));
+                SELECT setval(pg_get_serial_sequence('"Direcciones"', 'Id'), (SELECT max("Id") FROM "Direcciones"));
+                SELECT setval(pg_get_serial_sequence('"Envios"', 'Id'), (SELECT max("Id") FROM "Envios"));
                 """);
         }
 
