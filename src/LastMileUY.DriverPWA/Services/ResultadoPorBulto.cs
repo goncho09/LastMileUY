@@ -32,12 +32,14 @@ public static class ResultadoPorBulto
         IEnumerable<BultoRutaDto> bultos,
         IReadOnlyCollection<int> identificados)
     {
-        var porEntregar = bultos.Where(PorEntregar).ToList();
-        var escaneoAlguno = porEntregar.Any(b => identificados.Contains(b.Id));
-
-        return porEntregar.ToDictionary(
-            b => b.Id,
-            b => new Marca { Entregado = !escaneoAlguno || identificados.Contains(b.Id) });
+        return bultos
+            .Where(PorEntregar)
+            .ToDictionary(
+                b => b.Id,
+                b => new Marca
+                {
+                    Entregado = identificados.Contains(b.Id)
+                });
     }
 
     public static Decision Decidir(

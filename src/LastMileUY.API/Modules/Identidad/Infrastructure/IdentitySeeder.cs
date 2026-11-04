@@ -121,9 +121,6 @@ public static async Task SeedAdminAsync(IServiceProvider services)
                 "No se pudo actualizar la contraseña del administrador: " +
                 string.Join(", ", resultado.Errors.Select(e => e.Description)));
         }
-
-        Console.WriteLine(
-            $"Contraseña del administrador {email} actualizada");
     }
 
     // Asegurar que tenga el rol Administrador.
