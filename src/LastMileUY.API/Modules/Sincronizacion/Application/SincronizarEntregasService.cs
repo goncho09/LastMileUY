@@ -23,6 +23,7 @@ namespace LastMileUY.API.Modules.Sincronizacion.Application;
 // - Las transiciones y la regla operativa del operador son las mismas que en el Backoffice
 //   (Envio.CambiarEstado); la evidencia obligatoria sale de la regla.
 // - Conflicto: si el envío ya no está en tránsito, manda el servidor y no se aplica.
+//   Lo mismo bulto por bulto: si alguno no está como lo vio el celular (CompararBultos).
 public class SincronizarEntregasService(
     ApplicationDbContext db,
     IContextoOperador contextoOperador,
@@ -291,38 +292,61 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
                 "que no permite entregas parciales.");
         }
 
-        var resultados = operacion.ResultadosBultos;
-
-        if (resultados is null || resultados.Count == 0)
+        if (operacion.ResultadosBultos is null || operacion.ResultadosBultos.Count == 0)
         {
             return Rechazada(
                 "La entrega parcial requiere resultados de bultos.");
         }
+    }
 
-        if (resultados.Count != bultosPorEntregar.Count)
-        {
-            return Rechazada(
-                "Se debe informar el resultado de todos los bultos pendientes.");
-        }
+    // Lo que el celular dice de cada bulto, contra lo que tiene el servidor (docs/sincronizacion.md).
+    // Una entrega sin la lista (la mandaba la app antes de conocer los bultos) entrega los que falten.
+    List<ResultadoBultoRequest>? resultadosAAplicar = null;
 
-        var ids = resultados.Select(r => r.BultoId).ToList();
+    if (tipo is TipoOperacion.Entrega or TipoOperacion.EntregaParcial
+        && operacion.ResultadosBultos is { Count: > 0 } informados)
+    {
+        var ids = informados.Select(r => r.BultoId).ToList();
 
         if (ids.Distinct().Count() != ids.Count)
             return Rechazada("Hay bultos duplicados.");
 
-        if (ids.Any(id => bultosPorEntregar.All(b => b.Id != id)))
+        if (ids.Any(id => envio.Bultos.All(b => b.Id != id)))
         {
             return Rechazada(
                 "La operación contiene bultos que no corresponden a esta entrega.");
         }
 
-        if (resultados.Any(r =>
+        if (informados.Any(r =>
                 (r.Entregado && r.MotivoNoEntregaId is not null) ||
                 (!r.Entregado && r.MotivoNoEntregaId is null)))
         {
             return Rechazada(
                 "Los motivos de no entrega de los bultos no son válidos.");
         }
+
+        if (tipo == TipoOperacion.Entrega && informados.Any(r => !r.Entregado))
+        {
+            return Rechazada(
+                "En una entrega todos los bultos van como entregados. Usá EntregaParcial.");
+        }
+
+        var (aplicar, conflictos) = CompararBultos(envio, informados);
+
+        if (conflictos.Count > 0)
+        {
+            return Conflicto(
+                "No se aplicó: los bultos no están como los vio el celular. " +
+                string.Join(" ", conflictos) +
+                " Lo resuelve el despachador.");
+        }
+
+        resultadosAAplicar = aplicar;
+    }
+
+    if (tipo == TipoOperacion.EntregaParcial)
+    {
+        var resultados = resultadosAAplicar!;
 
         var motivosIds = resultados
             .Where(r => !r.Entregado)
@@ -388,10 +412,10 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
 
         List<ResultadoBultoIntento> resultados;
 
-        if (tipo == TipoOperacion.EntregaParcial)
+        if (resultadosAAplicar is not null)
         {
-            // Resultado individual enviado desde la PWA.
-            resultados = operacion.ResultadosBultos!
+            // Resultado individual enviado desde la PWA (sin los bultos que ya estaban así en el servidor)
+            resultados = resultadosAAplicar
                 .Select(r => new ResultadoBultoIntento
                 {
                     BultoId = r.BultoId,
@@ -402,7 +426,7 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
         }
         else
         {
-            // Entrega completa de todos los bultos restantes.
+            // Entrega completa de todos los bultos restantes (la app no mandó la lista).
             resultados = bultosPorEntregar
                 .Select(b => new ResultadoBultoIntento
                 {
@@ -533,6 +557,54 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
     return (ResultadoOperacion.Aplicada, mensaje, intento);
 }
 
+
+    // Bulto por bulto, lo que informó el celular contra lo que tiene el servidor. Manda el servidor:
+    // - si el bulto todavía falta entregar (Pendiente o No entregado), se aplica lo del celular;
+    // - si ya está entregado y el celular también lo entregó, ya está hecho: no se vuelve a aplicar;
+    // - cualquier otra diferencia es un conflicto: el celular lo da por no entregado pero ya está
+    //   entregado, el bulto está devuelto o extraviado, o falta entregar uno que el celular no informó
+    //   (no estaba en su hoja). Con un conflicto no se aplica nada de la operación.
+    private static (List<ResultadoBultoRequest> Aplicar, List<string> Conflictos) CompararBultos(
+        Envio envio,
+        IReadOnlyCollection<ResultadoBultoRequest> informados)
+    {
+        var aplicar = new List<ResultadoBultoRequest>();
+        var conflictos = new List<string>();
+
+        foreach (var bulto in envio.Bultos.OrderBy(b => b.Id))
+        {
+            var informado = informados.FirstOrDefault(r => r.BultoId == bulto.Id);
+            var porEntregar = bulto.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado;
+
+            if (informado is null)
+            {
+                if (porEntregar)
+                {
+                    conflictos.Add($"{bulto.Codigo}: falta entregarlo y el celular no informó qué pasó con él.");
+                }
+
+                continue;
+            }
+
+            if (porEntregar)
+            {
+                aplicar.Add(informado);
+            }
+            else if (bulto.Estado == EstadoBulto.Entregado)
+            {
+                if (!informado.Entregado)
+                {
+                    conflictos.Add($"{bulto.Codigo}: el celular lo informó como no entregado y ya está entregado.");
+                }
+            }
+            else
+            {
+                conflictos.Add($"{bulto.Codigo}: está {bulto.Estado} en el servidor.");
+            }
+        }
+
+        return (aplicar, conflictos);
+    }
 
     // La regla operativa dice qué evidencia es obligatoria para entregar
     private static string? EvidenciaFaltante(OperacionRequest operacion, ReglaOperativa? regla)
