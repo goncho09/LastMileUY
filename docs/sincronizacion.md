@@ -27,7 +27,7 @@ que pasaron. Cada operación lleva:
 | `RutaId`, `EnvioId` | Qué parada de qué ruta. |
 | `FechaHoraDispositivo`, `Latitud`, `Longitud` | Cuándo y dónde pasó, según el celular. |
 | `MotivoNoEntregaId`, `Observaciones` | Intento fallido: el motivo (de `GET /api/sincronizacion/motivos`) y un comentario. |
-| `ResultadosBultos` | Entrega parcial: el resultado de **cada** bulto que faltaba entregar (`BultoId`, `Entregado` y, si no se entregó, `MotivoNoEntregaId`). |
+| `ResultadosBultos` | Entrega parcial: el resultado de **cada** bulto que faltaba entregar (`BultoId`, `Entregado` y, si no se entregó, `MotivoNoEntregaId`). Entrega: los bultos entregados que vio el repartidor (todos con `Entregado`); si no viene, se entregan los que falten. La API los compara con los suyos (ver "Conflictos por bulto"). |
 | `NombreReceptor`, `DocumentoReceptor`, `FirmaBase64`, `FotoBase64` | Entrega: la evidencia. Las imágenes son PNG o JPEG de hasta 1 MB. |
 
 ## Qué responde
@@ -152,7 +152,7 @@ bultos para marcar cuáles se entregaron (`Services/ResultadoPorBulto.cs`):
   escaneó ninguno, todos entregados. Los puede cambiar a mano.
 - **Cada bulto no entregado necesita su motivo** (los mismos del intento fallido; sin conexión salen de
   los guardados en el celular).
-- **Qué se manda:** todos entregados es una `Entrega` común; algunos, una `EntregaParcial` con el
+- **Qué se manda:** todos entregados es una `Entrega` con la lista de esos bultos; algunos, una `EntregaParcial` con el
   resultado de cada bulto que faltaba entregar (también los `NoEntregado` de una ruta anterior);
   ninguno no es una entrega (se usa "No se pudo entregar").
 - **Antes de guardar** avisa si la versión de las reglas de la hoja de ruta no permite entregas
@@ -161,6 +161,15 @@ bultos para marcar cuáles se entregaron (`Services/ResultadoPorBulto.cs`):
 La operación queda en la cola del celular con su `IdOperacion` y sus resultados por bulto, y se reenvía
 igual aunque se cierre la app. Una entrega parcial no deja el envío como entregado en el celular: los
 bultos que faltan pueden volver a salir.
+
+Sin conexión, y también después de cerrar y volver a abrir la app:
+
+- **La hoja muestra qué se guardó de cada bulto** mientras la operación espera en la cola ("B1:
+  entregado", "B2: no entregado (Bulto dañado)"), y no deja registrar otra cosa sobre esa parada.
+- **Lo escaneado no se pierde:** los bultos identificados en cada parada se guardan en el celular
+  (`Services/BultosIdentificadosService.cs`, cifrado y con el vencimiento de siempre, ver
+  [datos-locales.md](datos-locales.md)), así el formulario arranca con los mismos bultos marcados. Van
+  por hoja de ruta: si un bulto vuelve a salir en otra, se escanea de nuevo.
 
 ## Política de conflictos: manda el servidor
 
@@ -178,6 +187,29 @@ Por qué esta política y no "gana el último":
 - Un envío entregado no puede "desentregarse" por una operación que llegó tarde.
 - Los conflictos son raros y quedan visibles en el Backoffice con su motivo, para que el despachador
   decida (por ejemplo, volver a asignar el envío a una ruta).
+
+### Conflictos por bulto
+
+Aunque el envío siga En tránsito, sus bultos pueden no estar como los vio el celular. La API compara
+bulto por bulto lo que manda la app (`ResultadosBultos`) con lo que tiene (`CompararBultos` en
+`SincronizarEntregasService`):
+
+| En el servidor | Lo que dice el celular | Qué pasa |
+|---|---|---|
+| Pendiente o No entregado | cualquier resultado | Se aplica. |
+| Entregado | entregado | Ya está hecho: se saltea y se aplica el resto. |
+| Entregado | no entregado | **Conflicto**: un bulto entregado no se "desentrega". |
+| Devuelto o Extraviado | cualquier resultado | **Conflicto**. |
+| Pendiente o No entregado | no lo informa (no estaba en su hoja) | **Conflicto**: no se da por entregado algo que el repartidor no vio. |
+
+Con un conflicto no se aplica nada de la operación: queda registrada como `Conflicto` y el mensaje
+nombra cada bulto (por su código) y qué pasa con él, para que el despachador sepa qué revisar. Un
+bulto que no es del envío, repetido o con el motivo mal no es un conflicto sino un error de la app:
+`Rechazada`.
+
+Por eso la app manda la lista de bultos también en una `Entrega`: sin ella, la API entregaría todos
+los que falten, aunque el celular no conociera alguno. Una `Entrega` sin la lista (de una versión
+anterior de la app que quedó en la cola) se sigue aceptando como antes.
 
 ## La ruta avanza sola
 

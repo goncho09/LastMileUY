@@ -48,6 +48,7 @@ Pruebas: `tests/LastMileUY.DriverPWA.Tests/AlmacenLocalTests.cs`.
 |---|---|---|
 | Mis rutas y el detalle de cada una (`driver:mis-rutas`, `driver:ruta:{id}`) | `RutasService` | 24 horas |
 | Motivos de no entrega (`driver:motivos`) | `SincronizacionService` | 24 horas |
+| Bultos identificados con el escáner en cada parada (`driver:bultos-identificados:{rutaId}`) | `BultosIdentificadosService` | 24 horas |
 | Operaciones sin enviar, con su `IdOperacion` (`driver:operaciones-pendientes`) | `ColaOperacionesService` | No: salen con un resultado final de la API |
 | Dueño de lo guardado (`dueno`) | `AlmacenLocal` | No |
 

@@ -93,6 +93,14 @@ public class SincronizacionService(
 
         return pendientes.Any(x => x.EnvioId == envioId);
     }
+
+    // La operación de ese envío que todavía no llegó a la API, con lo que se guardó de cada bulto
+    public async Task<OperacionRequest?> ObtenerPendienteAsync(int envioId)
+    {
+        var pendientes = await cola.ObtenerPendientesAsync();
+
+        return pendientes.FirstOrDefault(x => x.EnvioId == envioId);
+    }
     
     public async Task<List<MotivoNoEntregaDto>> ObtenerMotivosAsync()
     {

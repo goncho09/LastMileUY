@@ -1,6 +1,8 @@
 namespace LastMileUY.DriverPWA.Tests;
 
+using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Rutas;
+using LastMileUY.Contracts.Sincronizacion;
 using LastMileUY.DriverPWA.Services;
 using static LastMileUY.DriverPWA.Services.ResultadoPorBulto;
 
@@ -39,13 +41,14 @@ public class ResultadoPorBultoTests
     }
 
     [Fact]
-    public void Todos_entregados_es_una_entrega_comun()
+    public void Todos_entregados_es_una_entrega_con_la_lista_de_los_bultos_que_vio_el_repartidor()
     {
         var decision = Decidir(Bultos, MarcasIniciales(Bultos, []), regla: null);
 
         Assert.Null(decision.Error);
         Assert.Equal("Entrega", decision.Tipo);
-        Assert.Null(decision.Resultados);
+        // El ya entregado no va: la API compara esta lista con los bultos que faltan entregar
+        Assert.Equal([new(1, true, null), new(2, true, null), new(3, true, null)], decision.Resultados!);
     }
 
     [Fact]
@@ -55,6 +58,7 @@ public class ResultadoPorBultoTests
 
         Assert.Null(decision.Error);
         Assert.Equal("Entrega", decision.Tipo);
+        Assert.Null(decision.Resultados);
     }
 
     [Fact]
@@ -123,5 +127,26 @@ public class ResultadoPorBultoTests
 
         Assert.Equal("EntregaParcial", decision.Tipo);
         Assert.Contains("motivo", decision.Error);
+    }
+
+    [Fact]
+    public void El_resumen_de_una_pendiente_dice_que_paso_con_cada_bulto()
+    {
+        var operacion = new OperacionRequest
+        {
+            Tipo = "EntregaParcial",
+            ResultadosBultos = [new(1, true), new(2, false, Danado), new(3, false, 99)]
+        };
+
+        var resumen = Resumen(operacion, Bultos, [new MotivoNoEntregaDto(Danado, "Bulto dañado", null)]);
+
+        // Un motivo que el celular no tiene guardado no se inventa
+        Assert.Equal(["B1: entregado", "B2: no entregado (Bulto dañado)", "B3: no entregado"], resumen);
+    }
+
+    [Fact]
+    public void Una_pendiente_sin_resultados_por_bulto_no_tiene_resumen()
+    {
+        Assert.Empty(Resumen(new OperacionRequest { Tipo = "IntentoFallido" }, Bultos, []));
     }
 }
