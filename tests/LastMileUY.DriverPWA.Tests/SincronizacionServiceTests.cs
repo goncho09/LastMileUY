@@ -198,6 +198,41 @@ public class SincronizacionServiceTests
         Assert.Equal(url, Assert.Single(api.Pedidos).RutaYConsulta);
     }
 
+    [Fact]
+    public async Task Una_entrega_parcial_sin_conexion_se_reenvia_igual_aunque_se_cierre_la_app()
+    {
+        var sinRed = new ApiFalsa(_ => throw new HttpRequestException("Sin conexión"));
+        var (servicio, navegador) = Servicio(sinRed);
+
+        var parcial = Entrega(envioId: 7);
+        parcial.Tipo = "EntregaParcial";
+        parcial.ResultadosBultos =
+        [
+            new ResultadoBultoRequest(501, Entregado: true),
+            new ResultadoBultoRequest(502, Entregado: false, MotivoNoEntregaId: 3)
+        ];
+
+        Assert.True((await servicio.GuardarOperacionAsync(parcial)).Pendiente);
+        var id = Assert.Single(sinRed.Pedidos).Cuerpo!.Operaciones[0].IdOperacion;
+
+        // Se cierra la app y vuelve la conexión: lo guardado se manda con el mismo id y los mismos
+        // resultados, así la API lo reconoce si ya le había llegado
+        var conRed = new ApiFalsa(_ => Resultado("Aplicada"));
+        var (despues, _) = Servicio(conRed, navegador);
+
+        Assert.Equal((1, 0), await despues.SincronizarPendientesAsync());
+
+        var reenviada = Assert.Single(conRed.Pedidos, p => p.Ruta == "/api/sincronizacion").Cuerpo!.Operaciones[0];
+        Assert.Equal(id, reenviada.IdOperacion);
+        Assert.Equal("EntregaParcial", reenviada.Tipo);
+        Assert.Equal(parcial.ResultadosBultos, reenviada.ResultadosBultos!);
+
+        // Una entrega parcial no deja el envío como entregado en el celular: los bultos que
+        // faltan pueden volver a salir
+        Assert.False(await new OperacionesConfirmadasService(new AlmacenLocal(navegador, TimeProvider.System))
+            .EstaConfirmadoAsync(7));
+    }
+
     // navegador: lo guardado en el celular; si se pasa uno, es como volver a abrir la app
     
     private static (SincronizacionService Servicio, NavegadorFalso Navegador) Servicio(

@@ -1,3 +1,4 @@
+@using LastMileUY.Contracts.Entregas
 @using LastMileUY.Contracts.Rutas
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
@@ -12,6 +13,60 @@
     <p class="small mb-3" style="color:#7c3aed">
         @(PideAlgo ? "La regla del operador pide lo marcado como obligatorio." : "La regla del operador no pide evidencia para este envío.")
     </p>
+
+    @if (BultosPorEntregar.Count > 1)
+    {
+        <fieldset class="mb-3">
+            <legend class="form-label fw-semibold small mb-1">Bultos entregados</legend>
+            <p class="small text-muted mb-2">
+                Desmarcá los que no entregaste y elegí por qué.
+                @if (Regla is { PermiteEntregaParcial: false })
+                {
+                    <span>Las reglas de esta hoja de ruta no permiten entregas parciales.</span>
+                }
+            </p>
+
+            @foreach (var bulto in BultosPorEntregar)
+            {
+                var marca = marcas[bulto.Id];
+
+                <div class="rounded-3 bg-white p-2 mb-2" style="border:1px solid #ddd6fe" @key="bulto.Id">
+                    <div class="form-check mb-0">
+                        <input id="bulto-@bulto.Id" type="checkbox" class="form-check-input"
+                               checked="@marca.Entregado" disabled="@enviando"
+                               @onchange="e => CambiarEntregado(bulto.Id, e)" />
+                        <label class="form-check-label small fw-semibold" for="bulto-@bulto.Id"
+                               style="overflow-wrap:anywhere">
+                            @bulto.Codigo
+                            @if (!string.IsNullOrWhiteSpace(bulto.Descripcion))
+                            {
+                                <span class="fw-normal text-muted"> · @bulto.Descripcion</span>
+                            }
+                        </label>
+                    </div>
+
+                    @if (!marca.Entregado)
+                    {
+                        <label class="visually-hidden" for="motivo-bulto-@bulto.Id">Por qué no se entregó @bulto.Codigo</label>
+                        <select id="motivo-bulto-@bulto.Id" class="form-select form-select-sm rounded-3 mt-2"
+                                style="border-color:#ddd6fe" disabled="@enviando"
+                                value="@(marca.MotivoNoEntregaId?.ToString() ?? "")"
+                                @onchange="e => CambiarMotivo(bulto.Id, e)">
+                            <option value="">¿Por qué no se entregó?</option>
+                            @foreach (var motivo in motivos)
+                            {
+                                <option value="@motivo.Id">@motivo.Nombre</option>
+                            }
+                        </select>
+                        @if (motivosCargados && motivos.Count == 0)
+                        {
+                            <div class="small mt-1 text-danger">No hay motivos disponibles sin conexión.</div>
+                        }
+                    }
+                </div>
+            }
+        </fieldset>
+    }
 
     <label class="form-label fw-semibold small" for="receptor-@Parada.EnvioId">
         Quién recibe
@@ -64,7 +119,7 @@
         <button type="button" class="btn text-white rounded-3 py-2 fw-semibold" style="background:#6d28d9"
                 disabled="@(enviando || comprobandoPendiente || operacionPendiente || entregaConfirmada || EstadoFinalizado)"
                 @onclick="Enviar">
-            @(enviando ? "Guardando..." : "Confirmar entrega")
+            @(enviando ? "Guardando..." : EsParcial ? "Confirmar entrega parcial" : "Confirmar entrega")
         </button>
         <button type="button" class="btn rounded-3 py-2"
                 style="background:white;color:#6d28d9;border:1px solid #ddd6fe"
@@ -80,6 +135,21 @@
     [Parameter] public EventCallback<ResultadoOperacionDto> OnTerminado { get; set; }
     [Parameter] public EventCallback OnGuardadoPendiente { get; set; }
     [Parameter] public EventCallback OnCancelar { get; set; }
+
+    // Los bultos que el repartidor identificó con el escáner (arrancan como entregados)
+    [Parameter] public IReadOnlyList<int> Identificados { get; set; } = [];
+
+    // La versión de las reglas de entrega parcial con la que salió la hoja de ruta
+    [Parameter] public ReglaEntregaParcialRutaDto? Regla { get; set; }
+
+    private Dictionary<int, ResultadoPorBulto.Marca> marcas = [];
+    private List<MotivoNoEntregaDto> motivos = [];
+    private bool motivosCargados;
+
+    private List<BultoRutaDto> BultosPorEntregar =>
+        (Parada.Bultos ?? []).Where(b => marcas.ContainsKey(b.Id)).ToList();
+
+    private bool EsParcial => marcas.Values.Any(m => !m.Entregado) && marcas.Values.Any(m => m.Entregado);
 
     private ElementReference lienzoFirma;
     private string? nombreReceptor;
@@ -100,6 +170,41 @@
         if (firstRender && !operacionPendiente && !entregaConfirmada && !EstadoFinalizado)
             await JS.InvokeVoidAsync("lastMileEntrega.iniciarFirma", lienzoFirma);
     }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Una sola vez: después las marcas las cambia el repartidor
+        marcas = ResultadoPorBulto.MarcasIniciales(Parada.Bultos ?? [], Identificados);
+
+        if (marcas.Count > 1)
+        {
+            try
+            {
+                // Sin conexión vienen de los guardados en el celular
+                motivos = await Sincronizacion.ObtenerMotivosAsync();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                error = ex.Message;
+            }
+            finally
+            {
+                motivosCargados = true;
+            }
+        }
+    }
+
+    private void CambiarEntregado(int bultoId, ChangeEventArgs e)
+    {
+        var marca = marcas[bultoId];
+        marca.Entregado = e.Value is true;
+
+        if (marca.Entregado)
+            marca.MotivoNoEntregaId = null;
+    }
+
+    private void CambiarMotivo(int bultoId, ChangeEventArgs e) =>
+        marcas[bultoId].MotivoNoEntregaId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -159,6 +264,14 @@
                 return;
             }
 
+            // Qué bultos se entregaron: decide si es una entrega o una entrega parcial
+            var decision = ResultadoPorBulto.Decidir(Parada.Bultos ?? [], marcas, Regla);
+            if (decision.Error is not null)
+            {
+                error = decision.Error;
+                return;
+            }
+
             var ubicacion = await Ubicacion.ObtenerAsync(JS);
             if (ubicacion is null)
             {
@@ -168,7 +281,8 @@
 
             var operacion = new OperacionRequest
             {
-                Tipo = "Entrega",
+                Tipo = decision.Tipo,
+                ResultadosBultos = decision.Resultados,
                 RutaId = RutaId,
                 EnvioId = Parada.EnvioId,
                 FechaHoraDispositivo = DateTime.UtcNow,

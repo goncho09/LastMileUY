@@ -1600,6 +1600,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("FechaRecepcion")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Huella")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
                     b.Property<Guid>("IdOperacion")
                         .HasColumnType("uuid");
 

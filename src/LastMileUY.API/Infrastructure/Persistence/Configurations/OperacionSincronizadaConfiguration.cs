@@ -35,6 +35,11 @@ public class OperacionSincronizadaConfiguration : IEntityTypeConfiguration<Opera
             .HasMaxLength(450)
             .IsRequired();
 
+        // SHA-256 en hexadecimal
+        builder.Property(o => o.Huella)
+            .HasMaxLength(64)
+            .IsFixedLength();
+
         builder.Property(o => o.Mensaje)
             .HasMaxLength(500)
             .IsRequired();

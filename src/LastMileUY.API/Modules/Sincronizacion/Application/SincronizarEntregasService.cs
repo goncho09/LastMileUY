@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Entregas.Domain;
@@ -103,7 +105,7 @@ public class SincronizarEntregasService(
                 $"El tipo '{operacion.Tipo}' no existe: tiene que ser Entrega, IntentoFallido o EntregaParcial.");
         }
         
-        
+        var huella = Huella(operacion, tipo);
 
         // ¿Ya llegó antes? Se contesta lo mismo que la primera vez, sin volver a aplicarla
         var anterior = await db.OperacionesSincronizadas.AsNoTracking()
@@ -111,6 +113,16 @@ public class SincronizarEntregasService(
 
         if (anterior is not null)
         {
+            // Un reenvío trae exactamente lo mismo. Si trae otra cosa (otro envío, otro motivo u otro
+            // resultado para algún bulto) no es un reenvío: no se aplica ni pisa lo que ya quedó.
+            if (anterior.Huella is not null && anterior.Huella != huella)
+            {
+                return SinRegistrar(
+                    operacion,
+                    "Ya llegó otra operación con este IdOperacion y con otro contenido: esta no se aplicó. " +
+                    "Una operación nueva tiene que llevar un IdOperacion nuevo.");
+            }
+
             return new ResultadoOperacionDto(
                 operacion.IdOperacion,
                 anterior.Resultado.ToString(),
@@ -146,6 +158,7 @@ public class SincronizarEntregasService(
         db.OperacionesSincronizadas.Add(new OperacionSincronizada
         {
             IdOperacion = operacion.IdOperacion,
+            Huella = huella,
             UsuarioId = usuarioId,
             Tipo = tipo,
             RutaId = operacion.RutaId,
@@ -586,6 +599,28 @@ private async Task<(ResultadoOperacion, string, IntentoEntrega?)> AplicarAsync(
 
     private static (ResultadoOperacion, string, IntentoEntrega?) Conflicto(string mensaje) =>
         (ResultadoOperacion.Conflicto, mensaje, null);
+
+    // Lo que decide la operación, en un orden fijo: los bultos ordenados por Id, para que el mismo
+    // resultado dé la misma huella aunque la app los mande en otro orden. La evidencia (firma, foto,
+    // receptor) no entra: no cambia qué se aplica.
+    private static string Huella(OperacionRequest operacion, TipoOperacion tipo)
+    {
+        var bultos = (operacion.ResultadosBultos ?? [])
+            .OrderBy(r => r.BultoId)
+            .ThenBy(r => r.Entregado)
+            .ThenBy(r => r.MotivoNoEntregaId)
+            .Select(r => r.Entregado ? $"{r.BultoId}:E" : $"{r.BultoId}:N:{r.MotivoNoEntregaId}");
+
+        var texto = string.Join(
+            "|",
+            tipo,
+            operacion.RutaId,
+            operacion.EnvioId,
+            operacion.MotivoNoEntregaId?.ToString() ?? "-",
+            string.Join(",", bultos));
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(texto))).ToLowerInvariant();
+    }
 
     private static ResultadoOperacionDto SinRegistrar(OperacionRequest operacion, string mensaje) =>
         new(operacion.IdOperacion, ResultadoOperacion.Rechazada.ToString(), mensaje, false, false, null);

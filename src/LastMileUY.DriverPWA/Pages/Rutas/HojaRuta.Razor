@@ -187,6 +187,8 @@
                                     {
                                         <FormularioEntrega RutaId="Id"
                                                            Parada="parada"
+                                                           Identificados="ObtenerBultosIdentificados(parada.EnvioId)"
+                                                           Regla="ruta.ReglaEntregaParcial"
                                                            OnTerminado="Registrado"
                                                            OnGuardadoPendiente="OperacionGuardadaPendiente"
                                                            OnCancelar="CerrarFormulario" />
