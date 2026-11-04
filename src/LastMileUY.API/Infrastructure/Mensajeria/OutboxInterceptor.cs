@@ -1,4 +1,5 @@
 using LastMileUY.API.Infrastructure.Correlacion;
+using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.Contracts.Mensajeria;
@@ -8,7 +9,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
 // Al guardar cambios, cada evento nuevo del historial de un envío (alta o cambio de estado, ver
-// Envio.CambiarEstado) suma un MensajeOutbox al mismo guardado. Así el evento queda en la misma
+// Envio.CambiarEstado) y cada bulto que cambió de estado (Bulto.CambiosSinPublicar, entrega parcial)
+// suman un MensajeOutbox al mismo guardado. Así el evento queda en la misma
 // transacción que el cambio, sin importar desde dónde se hizo (Backoffice, portal, app del repartidor...).
 // Se crea uno por pedido (con su DbContext): la correlación es la de ese pedido.
 public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox senal) : SaveChangesInterceptor
@@ -63,6 +65,9 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
         var ahora = DateTime.UtcNow;
         var mensajes = new List<MensajeOutbox>();
 
+        // De dónde y cuándo vino el último cambio de cada envío: lo heredan los eventos de sus bultos
+        var origenPorEnvio = new Dictionary<Envio, EventoEnvio>(ReferenceEqualityComparer.Instance);
+
         foreach (var entrada in db.ChangeTracker.Entries<Envio>().ToList())
         {
             if (entrada.State == EntityState.Deleted)
@@ -79,6 +84,9 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
             var eventosNuevos = envio.Eventos
                 .Where(evento => db.Entry(evento).State == EntityState.Added)
                 .ToList();
+
+            if (eventosNuevos.Count > 0)
+                origenPorEnvio[envio] = eventosNuevos[^1];
 
             foreach (var evento in eventosNuevos)
             {
@@ -110,8 +118,95 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
             }
         }
 
+        AgregarMensajesDeBultos(db, mensajes, origenPorEnvio, ahora);
+
         db.AddRange(mensajes);
         agregoMensajes |= mensajes.Count > 0;
+    }
+
+    // Un mensaje por bulto que cambió de estado en este guardado (entrega parcial: entregado, no
+    // entregado, devuelto...). Si cambió más de una vez (no entregado → pendiente → no entregado en
+    // una segunda visita), sale uno solo: del primer estado al último. Van después de los del envío.
+    private void AgregarMensajesDeBultos(
+        DbContext db,
+        List<MensajeOutbox> mensajes,
+        Dictionary<Envio, EventoEnvio> origenPorEnvio,
+        DateTime ahora)
+    {
+        var bultos = db.ChangeTracker.Entries<Bulto>()
+            .Where(b => b.State != EntityState.Deleted && b.Entity.CambiosSinPublicar.Count > 0)
+            .Select(b => b.Entity)
+            .ToList();
+
+        if (bultos.Count == 0)
+            return;
+
+        var motivos = bultos
+            .Select(b => b.CambiosSinPublicar[^1].MotivoNoEntregaId)
+            .OfType<int>()
+            .Distinct()
+            .ToList();
+        var nombres = motivos.Count == 0 ? new Dictionary<int, string>() : NombresDeMotivos(db, motivos);
+
+        foreach (var bulto in bultos.OrderBy(b => b.EnvioId).ThenBy(b => b.Id))
+        {
+            // Normalmente el envío ya está cargado (los bultos cambian a través de él: entrega,
+            // devolución...). Si se cambió el bulto solo, se trae el envío para los datos del evento.
+            var envio = db.Set<Envio>().Local.FirstOrDefault(e => e.Id == bulto.EnvioId)
+                ?? db.Set<Envio>().FirstOrDefault(e => e.Id == bulto.EnvioId)
+                ?? throw new InvalidOperationException(
+                    $"No se encontró el envío del bulto {bulto.Codigo} para publicar su cambio.");
+
+            var cambios = bulto.CambiosSinPublicar;
+            var ultimo = cambios[^1];
+            origenPorEnvio.TryGetValue(envio, out var origen);
+
+            mensajes.Add(new MensajeOutbox
+            {
+                Tipo = TiposEvento.BultoEstadoCambiado,
+                Envio = envio,
+                OperadorId = envio.OperadorId,
+                ComercioId = envio.ComercioId,
+                CodigoSeguimiento = envio.CodigoSeguimiento,
+                CodigoBulto = bulto.Codigo,
+                Estado = ultimo.Nuevo.ToString(),
+                EstadoAnterior = cambios[0].Anterior.ToString(),
+                MotivoNoEntrega = ultimo.MotivoNoEntregaId is { } motivo ? nombres.GetValueOrDefault(motivo) : null,
+                Origen = origen?.Origen ?? "Sistema",
+                EsPublico = origen?.EsPublico ?? true,
+                OcurridoEn = origen?.FechaHora ?? ahora,
+                CorrelacionId = correlacion.Id,
+                FechaCreacion = ahora.AddTicks(mensajes.Count * 10)
+            });
+
+            // Ya está en el outbox: si el guardado falla y se reintenta, no se agrega de nuevo
+            bulto.MarcarCambiosPublicados();
+        }
+    }
+
+    // Los nombres de los motivos de no entrega (del catálogo del operador) para el evento del bulto.
+    // Primero los que ya están cargados; los demás, con una consulta (pocas filas, y el RLS del
+    // operador que se está guardando ya está cargado en la conexión).
+    private static Dictionary<int, string> NombresDeMotivos(DbContext db, IReadOnlyCollection<int> ids)
+    {
+        var nombres = db.Set<MotivoNoEntrega>().Local
+            .Where(m => ids.Contains(m.Id))
+            .ToDictionary(m => m.Id, m => m.Nombre);
+
+        var faltan = ids.Where(id => !nombres.ContainsKey(id)).ToList();
+
+        if (faltan.Count > 0)
+        {
+            foreach (var motivo in db.Set<MotivoNoEntrega>().AsNoTracking()
+                         .Where(m => faltan.Contains(m.Id))
+                         .Select(m => new { m.Id, m.Nombre })
+                         .ToList())
+            {
+                nombres[motivo.Id] = motivo.Nombre;
+            }
+        }
+
+        return nombres;
     }
 
     private void AvisarSiCorresponde()

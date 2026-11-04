@@ -336,7 +336,8 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
         bulto.CambiarEstado(
             resultado.Entregado
                 ? EstadoBulto.Entregado
-                : EstadoBulto.NoEntregado);
+                : EstadoBulto.NoEntregado,
+            resultado.MotivoNoEntregaId);
     }
 
     var intento = CambiarEstado(

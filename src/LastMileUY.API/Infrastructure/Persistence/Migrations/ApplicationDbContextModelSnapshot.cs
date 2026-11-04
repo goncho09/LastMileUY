@@ -28,6 +28,10 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CodigoBulto")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("CodigoSeguimiento")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -63,6 +67,10 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Intentos")
                         .HasColumnType("integer");
+
+                    b.Property<string>("MotivoNoEntrega")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<DateTime>("OcurridoEn")
                         .HasColumnType("timestamp with time zone");

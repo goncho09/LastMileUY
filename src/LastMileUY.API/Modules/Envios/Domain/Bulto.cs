@@ -26,7 +26,14 @@ public class Bulto
     public decimal VolumenM3 =>
         LargoCm * AnchoCm * AltoCm / CentimetrosCubicosPorMetroCubico;
 
-    public void CambiarEstado(EstadoBulto nuevoEstado)
+    // Cambios de estado todavía sin evento publicado (no se guarda en la base). El OutboxInterceptor
+    // los toma al guardar y deja un mensaje por bulto en el outbox, en la misma transacción.
+    private readonly List<CambioEstadoBulto> cambiosSinPublicar = [];
+
+    public IReadOnlyList<CambioEstadoBulto> CambiosSinPublicar => cambiosSinPublicar;
+
+    // motivoNoEntregaId: el motivo del catálogo del operador, cuando el bulto no se entregó
+    public void CambiarEstado(EstadoBulto nuevoEstado, int? motivoNoEntregaId = null)
     {
         if (Estado == nuevoEstado)
         {
@@ -40,8 +47,12 @@ public class Bulto
                 $"No se puede pasar el bulto de {Estado} a {nuevoEstado}.");
         }
 
+        cambiosSinPublicar.Add(new CambioEstadoBulto(Estado, nuevoEstado, motivoNoEntregaId));
         Estado = nuevoEstado;
     }
+
+    // Ya quedaron en el outbox
+    public void MarcarCambiosPublicados() => cambiosSinPublicar.Clear();
 
     private bool EsTransicionValida(EstadoBulto nuevoEstado) =>
         Estado switch
@@ -60,3 +71,6 @@ public class Bulto
             _ => false
         };
 }
+
+// Un cambio de estado de un bulto, para publicar su evento (ver Bulto.CambiosSinPublicar)
+public readonly record struct CambioEstadoBulto(EstadoBulto Anterior, EstadoBulto Nuevo, int? MotivoNoEntregaId);
