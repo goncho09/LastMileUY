@@ -6,6 +6,38 @@ public class EnviosApiDePruebaTests
 {
     private readonly EnviosApiDePrueba api = new();
 
+    // Los datos de prueba tienen que ser coherentes con lo que muestra el detalle: el estado de cada
+    // bulto coincide con su último resultado, y la prueba respalda solo los bultos entregados
+    [Fact]
+    public async Task Los_intentos_de_prueba_son_coherentes_con_el_estado_de_cada_bulto()
+    {
+        var envios = new List<Contracts.Envios.EnvioDetalleDto>();
+        for (var id = 1; id <= 45; id++)
+            envios.Add((await api.ObtenerAsync(id))!);
+
+        Assert.Contains(envios, e => e.Intentos.Any(i => i.Resultado == "Parcial"));
+        Assert.Contains(envios, e => e.Intentos.Any(i => i.Resultado == "NoEntregado"));
+
+        foreach (var envio in envios)
+        {
+            foreach (var intento in envio.Intentos)
+            {
+                var entregados = intento.Bultos.Where(b => b.Entregado).Select(b => b.Codigo).ToList();
+
+                if (intento.Prueba is not null)
+                    Assert.Equal(entregados, intento.Prueba.BultosEntregados);
+
+                Assert.All(intento.Bultos.Where(b => !b.Entregado), b => Assert.NotNull(b.Motivo));
+            }
+
+            if (envio.Intentos.LastOrDefault() is { } ultimo)
+            {
+                Assert.All(ultimo.Bultos.Where(b => b.Entregado),
+                    b => Assert.Equal("Entregado", envio.Bultos.Single(x => x.Codigo == b.Codigo).Estado));
+            }
+        }
+    }
+
     [Fact]
     public async Task Sin_filtro_devuelve_la_primera_pagina_y_el_total()
     {

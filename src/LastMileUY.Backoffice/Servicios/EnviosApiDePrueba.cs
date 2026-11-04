@@ -178,6 +178,8 @@ public class EnviosApiDePrueba : IEnviosApi
                     n == 1 ? "Caja" : null))
                 .ToList();
 
+            var (bultosConEstado, intentos) = Intentos(id, estado, bultos, creado);
+
             lista.Add(new EnvioDetalleDto(
                 Id: id,
                 CodigoSeguimiento: $"PRB{id:000}{(char)('A' + id % 26)}XK7M2Q",
@@ -201,18 +203,66 @@ public class EnviosApiDePrueba : IEnviosApi
                     lugar.Departamento,
                     null,
                     id % 3 == 0 ? "Portón verde" : null),
-                Bultos: bultos,
+                Bultos: bultosConEstado,
                 Eventos: GenerarEventos(estado, creado))
             {
                 EstadosSiguientes = Siguientes(estado),
                 Regla = regla,
                 FechaLimiteEntrega = creado.AddHours(regla.PlazoEntregaHoras),
                 // Uno de cada tres entró por el portal del comercio
-                Canal = id % 3 == 0 ? "Portal" : "Api"
+                Canal = id % 3 == 0 ? "Portal" : "Api",
+                Intentos = intentos
             });
         }
 
         return lista;
+    }
+
+    // Intentos coherentes con el estado, con el resultado de cada bulto: entregado (todos con su
+    // prueba), y en los que no se entregó, una entrega parcial si tiene varios bultos (uno de cada dos)
+    // o un intento fallido. La prueba respalda solo los bultos entregados en ese intento.
+    private static (List<BultoDto>, List<IntentoEntregaDto>) Intentos(
+        int id, string estado, List<BultoDto> bultos, DateTime creado)
+    {
+        var cuando = creado.AddHours(24);
+        var receptor = "Ana Pereira";
+
+        if (estado == "Entregado")
+        {
+            var entregados = bultos.Select(b => b with { Estado = "Entregado" }).ToList();
+            return (entregados,
+            [
+                new IntentoEntregaDto(id * 10 + 1, 1, cuando, "Entregado", null, null,
+                    bultos.Select(b => new ResultadoBultoDto(b.Codigo, true, null)).ToList(),
+                    new PruebaEntregaDto(receptor, false, false, bultos.Select(b => b.Codigo).ToList()))
+            ]);
+        }
+
+        if (estado is not ("NoEntregado" or "Reprogramado" or "EnDevolucion" or "Devuelto"))
+        {
+            return (estado == "Extraviado" ? bultos.Select(b => b with { Estado = "Extraviado" }).ToList() : bultos, []);
+        }
+
+        // Los que no se entregaron: devueltos al comercio si el envío ya volvió
+        var restantes = estado == "Devuelto" ? "Devuelto" : "NoEntregado";
+
+        if (bultos.Count > 1 && id % 2 == 0)
+        {
+            var parcial = bultos.Select((b, i) => b with { Estado = i == 0 ? "Entregado" : restantes }).ToList();
+            return (parcial,
+            [
+                new IntentoEntregaDto(id * 10 + 1, 1, cuando, "Parcial", null, null,
+                    bultos.Select((b, i) => new ResultadoBultoDto(b.Codigo, i == 0, i == 0 ? null : "Bulto dañado")).ToList(),
+                    new PruebaEntregaDto(receptor, false, false, [bultos[0].Codigo]))
+            ]);
+        }
+
+        return (bultos.Select(b => b with { Estado = restantes }).ToList(),
+        [
+            new IntentoEntregaDto(id * 10 + 1, 1, cuando, "NoEntregado", "Destinatario ausente", null,
+                bultos.Select(b => new ResultadoBultoDto(b.Codigo, false, "Destinatario ausente")).ToList(),
+                null)
+        ]);
     }
 
     // Arma un historial coherente: los estados por los que pasó hasta llegar al actual

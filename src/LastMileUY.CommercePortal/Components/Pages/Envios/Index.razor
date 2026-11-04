@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
+@using static LastMileUY.CommercePortal.Servicios.PresentacionEnvios
 
 @inject IEnviosApi EnviosApi
 @inject NavigationManager Navegacion
@@ -101,7 +102,7 @@
                     {
                         <tr class="transition hover:bg-white/[0.03]">
                             <td class="px-5 py-3">
-                                <p class="font-semibold text-violet-300">@envio.CodigoSeguimiento</p>
+                                <a href="/envios/@envio.Id" class="font-semibold text-violet-300 hover:text-violet-200">@envio.CodigoSeguimiento</a>
                                 @if (!string.IsNullOrWhiteSpace(envio.ReferenciaExterna))
                                 {
                                     <p class="text-xs text-slate-500">Ref. @envio.ReferenciaExterna</p>
@@ -143,21 +144,6 @@
 
 @code {
     private const int TamanioPagina = 20;
-
-    // Los estados del envío (los nombres son los que devuelve la API) con su texto para mostrar
-    private static readonly (string Valor, string Texto)[] Estados =
-    [
-        ("Admitido", "Admitido"),
-        ("EnDeposito", "En depósito"),
-        ("AsignadoARuta", "Asignado a ruta"),
-        ("EnTransito", "En tránsito"),
-        ("Entregado", "Entregado"),
-        ("NoEntregado", "No entregado"),
-        ("Reprogramado", "Reprogramado"),
-        ("EnDevolucion", "En devolución"),
-        ("Devuelto", "Devuelto"),
-        ("Extraviado", "Extraviado")
-    ];
 
     [CascadingParameter]
     private Task<AuthenticationState> EstadoAutenticacion { get; set; } = default!;
@@ -252,32 +238,4 @@
 
     private void IrAlLogin() =>
         Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
-
-    private static string TextoEstado(string estado) =>
-        Estados.FirstOrDefault(e => e.Valor == estado).Texto ?? estado;
-
-    private static string ClaseEstado(string estado) => estado switch
-    {
-        "Entregado" => "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-        "EnTransito" or "AsignadoARuta" => "border-blue-500/25 bg-blue-500/10 text-blue-300",
-        "NoEntregado" or "Extraviado" => "border-red-500/25 bg-red-500/10 text-red-300",
-        "Reprogramado" or "EnDevolucion" or "Devuelto" => "border-amber-500/25 bg-amber-500/10 text-amber-300",
-        _ => "border-white/15 bg-white/5 text-slate-300"
-    };
-
-    // La API guarda las fechas en UTC; se muestran en hora de Uruguay
-    private static readonly TimeZoneInfo? ZonaUruguay = BuscarZona();
-
-    private static TimeZoneInfo? BuscarZona()
-    {
-        try { return TimeZoneInfo.FindSystemTimeZoneById("America/Montevideo"); }
-        catch (Exception) { return null; }
-    }
-
-    private static string Fecha(DateTime fecha)
-    {
-        var utc = fecha.Kind == DateTimeKind.Local ? fecha.ToUniversalTime() : DateTime.SpecifyKind(fecha, DateTimeKind.Utc);
-        var local = ZonaUruguay is null ? utc : TimeZoneInfo.ConvertTimeFromUtc(utc, ZonaUruguay);
-        return local.ToString("dd/MM/yyyy HH:mm");
-    }
 }
