@@ -68,7 +68,10 @@ Ese es el manifiesto de la hoja de ruta:
   en otra.
 - La base no deja que una parada lleve un bulto de otro envío: la política RLS de `BultosParada` lo
   exige además del aislamiento entre operadores.
-- Las rutas armadas antes del manifiesto no lo tienen; para esas se cuentan todos los bultos del envío.
+- La hoja que descarga el repartidor trae la lista de esos bultos (código, estado, descripción y peso),
+  siempre en el mismo orden, para identificarlos con el escáner.
+- Las rutas armadas antes del manifiesto no lo tienen; para esas se cuentan y se listan todos los
+  bultos del envío.
 
 ## Despacho y descarga
 

@@ -225,7 +225,7 @@
                 idEscaner,
                 referenciaDotNet);
         }
-        catch (JSException ex)
+        catch (JSException)
         {
             await CerrarCamara();
 
@@ -241,7 +241,7 @@
 
         try
         {
-            await JS.InvokeVoidAsync("lastMileEscaner.detener");
+            await JS.InvokeVoidAsync("lastMileEscaner.detener", idEscaner);
         }
         catch (JSException)
         {
@@ -250,6 +250,16 @@
 
         camaraActiva = false;
     }
+
+    // Otra parada abrió la cámara (hay una sola): esta deja de mostrarla.
+    [JSInvokable]
+    public Task EscanerCerrado() =>
+        InvokeAsync(() =>
+        {
+            iniciarCamaraPendiente = false;
+            camaraActiva = false;
+            StateHasChanged();
+        });
 
     [JSInvokable]
     public async Task CodigoEscaneado(string valor)
@@ -265,9 +275,10 @@
 
     public async ValueTask DisposeAsync()
     {
+        // Solo apaga la cámara si es de esta parada: puede estar usándola otra
         try
         {
-            await JS.InvokeVoidAsync("lastMileEscaner.detener");
+            await JS.InvokeVoidAsync("lastMileEscaner.detener", idEscaner);
         }
         catch (JSDisconnectedException)
         {

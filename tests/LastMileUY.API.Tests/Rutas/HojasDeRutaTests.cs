@@ -7,6 +7,7 @@ using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 
 // Hojas de ruta contra la base real: armado, validaciones (capacidad, franjas, duplicados),
@@ -316,6 +317,39 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         Assert.DoesNotContain(opciones.Envios, e => e.Id == admitido);
         Assert.Contains(opciones.Repartidores, r => r.Id == repartidor);
         Assert.Contains(opciones.Vehiculos, v => v.Id == vehiculo);
+    }
+
+    [Fact]
+    public async Task La_hoja_lista_los_bultos_de_cada_parada_en_orden_aunque_la_ruta_no_tenga_manifiesto()
+    {
+        var (repartidor, vehiculo, _) = await CrearRepartidorYVehiculoAsync(OperadorA);
+        var envio = await DatosDeRutas.CrearEnvioAsync(baseDeDatos, OperadorA, bultos: 3);
+        var id = await CrearRutaAsync(OperadorA, repartidor, vehiculo, envio);
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorA))
+        {
+            var parada = Assert.Single((await new ConsultasRutasService(db).ObtenerDetalleAsync(id))!.Paradas);
+            Assert.Equal(["B1", "B2", "B3"], parada.Bultos!.Select(b => b.Codigo));
+        }
+
+        // Como si la ruta se hubiera armado antes de que existiera el manifiesto:
+        // la parada lleva todos los bultos del envío, igual que lo que cuenta la hoja
+        await using (var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador))
+        {
+            await conexion.OpenAsync();
+            await using var comando = new NpgsqlCommand(
+                """DELETE FROM "BultosParada" WHERE "ParadaId" IN (SELECT "Id" FROM "Paradas" WHERE "RutaId" = @id)""",
+                conexion);
+            comando.Parameters.AddWithValue("id", id);
+            Assert.Equal(3, await comando.ExecuteNonQueryAsync());
+        }
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorA))
+        {
+            var parada = Assert.Single((await new ConsultasRutasService(db).ObtenerDetalleAsync(id))!.Paradas);
+            Assert.Equal(3, parada.CantidadBultos);
+            Assert.Equal(["B1", "B2", "B3"], parada.Bultos!.Select(b => b.Codigo));
+        }
     }
 
     private async Task<int> CrearRutaAsync(
