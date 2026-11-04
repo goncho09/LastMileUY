@@ -33,22 +33,34 @@ public class ResultadoPorBultoTests
     }
 
     [Fact]
-    public void Si_no_escaneo_ninguno_arrancan_todos_entregados()
+    public void Si_no_escaneo_ninguno_arrancan_todos_sin_entregar()
     {
         var marcas = MarcasIniciales(Bultos, []);
 
-        Assert.All(marcas.Values, m => Assert.True(m.Entregado));
+        Assert.Equal(3, marcas.Count);
+        Assert.All(marcas.Values, m => Assert.False(m.Entregado));
     }
 
     [Fact]
     public void Todos_entregados_es_una_entrega_con_la_lista_de_los_bultos_que_vio_el_repartidor()
     {
-        var decision = Decidir(Bultos, MarcasIniciales(Bultos, []), regla: null);
+        var marcas = MarcasIniciales(
+            Bultos,
+            [Uno.Id, Dos.Id, Tres.Id]);
+
+        var decision = Decidir(Bultos, marcas, regla: null);
 
         Assert.Null(decision.Error);
         Assert.Equal("Entrega", decision.Tipo);
-        // El ya entregado no va: la API compara esta lista con los bultos que faltan entregar
-        Assert.Equal([new(1, true, null), new(2, true, null), new(3, true, null)], decision.Resultados!);
+
+        // El bulto ya entregado no participa.
+        Assert.Equal(
+            [
+                new(1, true, null),
+                new(2, true, null),
+                new(3, true, null)
+            ],
+            decision.Resultados!);
     }
 
     [Fact]
@@ -120,13 +132,28 @@ public class ResultadoPorBultoTests
     [Fact]
     public void Un_bulto_sin_marca_nunca_se_da_por_entregado()
     {
-        var marcas = MarcasIniciales(Bultos, []);
+        var marcas = MarcasIniciales(Bultos, [Uno.Id, Dos.Id]);
+
+        // Simulamos que falta la marca del tercer bulto.
         marcas.Remove(Tres.Id);
 
         var decision = Decidir(Bultos, marcas, regla: null);
 
         Assert.Equal("EntregaParcial", decision.Tipo);
         Assert.Contains("motivo", decision.Error);
+        Assert.Null(decision.Resultados);
+    }
+    
+    [Fact]
+    public void Sin_bultos_identificados_no_se_puede_confirmar_una_entrega()
+    {
+        var marcas = MarcasIniciales(Bultos, []);
+
+        var decision = Decidir(Bultos, marcas, regla: null);
+
+        Assert.NotNull(decision.Error);
+        Assert.Contains("No marcaste ningún bulto", decision.Error);
+        Assert.Null(decision.Resultados);
     }
 
     [Fact]
