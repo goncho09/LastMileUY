@@ -119,13 +119,15 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 })
             .ToListAsync(cancellationToken);
         
+        // Los bultos de cada parada, con el mismo criterio que la cantidad de arriba: su manifiesto o,
+        // en las rutas armadas antes del manifiesto, todos los del envío. Siempre en el mismo orden.
         var bultosRuta = await (
-            from bp in db.BultosParada.AsNoTracking()
-            join p in db.Paradas.AsNoTracking()
-                on bp.ParadaId equals p.Id
+            from p in db.Paradas.AsNoTracking()
             join b in db.Bultos.AsNoTracking()
-                on bp.BultoId equals b.Id
-            where p.RutaId == id
+                on p.EnvioId equals b.EnvioId
+            where p.RutaId == id &&
+                  (!p.Bultos.Any() || p.Bultos.Any(x => x.BultoId == b.Id))
+            orderby p.Orden, b.Id
             select new
             {
                 p.EnvioId,

@@ -189,6 +189,7 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             var parada = Assert.Single(hoja!.Paradas);
             Assert.Equal(1, parada.CantidadBultos);
             Assert.Equal(2, parada.PesoKg);
+            Assert.Equal([pendiente], parada.Bultos!.Select(b => b.Id));
 
             // La ruta vieja sigue mostrando los dos bultos con los que salió
             var hojaVieja = await new ConsultasRutasService(db).ObtenerDetalleAsync(ruta);

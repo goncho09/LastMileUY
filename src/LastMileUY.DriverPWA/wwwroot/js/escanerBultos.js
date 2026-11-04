@@ -1,27 +1,41 @@
 ﻿
+// La cámara es una sola para toda la hoja de ruta, aunque cada parada tenga su botón de escanear.
+// Por eso el escáner recuerda qué parada la está usando (su "dueño"): si otra parada la abre,
+// se le avisa a la anterior para que deje de mostrar la cámara, y una parada que se cierra
+// solo apaga la cámara si es suya.
 window.lastMileEscaner = (() => {
     let lector = null;
-    let activo = false;
-    let iniciando = false;
+    let duenoId = null;
+    let duenoRef = null;
+    let inicio = null;
+    let pedido = null;
     let detectado = false;
 
-    async function detener() {
-        activo = false;
-        detectado = true;
-
+    // Apaga la cámara, sea de quien sea. Si todavía está arrancando, espera a que termine para
+    // poder apagarla (si no, quedaría prendida).
+    async function apagar() {
         const actual = lector;
+        const arrancando = inicio;
+
         lector = null;
+        duenoId = null;
+        duenoRef = null;
+        inicio = null;
 
         if (!actual) return;
 
-        try {
-            if (iniciando) {
-                // El inicio todavía debe finalizar antes de detenerse.
-                return;
+        if (arrancando) {
+            try {
+                await arrancando;
+            } catch {
+                // Si no llegó a arrancar, no hay nada que apagar.
             }
+        }
 
+        try {
             await actual.stop();
-        } catch (e) {
+        } catch {
+            // Puede no haber llegado a arrancar.
         }
 
         try {
@@ -31,8 +45,32 @@ window.lastMileEscaner = (() => {
         }
     }
 
+    // Con elementoId, apaga la cámara solo si la tiene (o la está pidiendo) esa parada.
+    async function detener(elementoId) {
+        if (elementoId && elementoId !== duenoId && elementoId !== pedido?.id) return;
+
+        pedido = null;
+        await apagar();
+    }
+
     async function iniciar(elementoId, referenciaDotNet) {
-        await detener();
+        // Se anota el pedido antes de esperar nada: si mientras tanto se cancela o lo pide
+        // otra parada, este ya no sigue.
+        const anteriores = [
+            duenoId !== elementoId ? duenoRef : null,
+            pedido && pedido.id !== elementoId ? pedido.ref : null
+        ];
+        const mio = { id: elementoId, ref: referenciaDotNet };
+        pedido = mio;
+
+        await apagar();
+
+        for (const anterior of new Set(anteriores)) {
+            anterior?.invokeMethodAsync("EscanerCerrado").catch(() => {});
+        }
+
+        if (pedido !== mio) return;
+        pedido = null;
 
         if (!window.Html5Qrcode) {
             throw new Error("No se pudo cargar el lector de códigos.");
@@ -53,56 +91,45 @@ window.lastMileEscaner = (() => {
         });
 
         lector = actual;
+        duenoId = elementoId;
+        duenoRef = referenciaDotNet;
         detectado = false;
-        iniciando = true;
+
+        inicio = actual.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: (ancho, alto) => {
+                    const lado = Math.min(250, ancho * 0.8, alto * 0.8);
+                    return { width: Math.floor(lado), height: Math.floor(lado) };
+                }
+            },
+            async (codigo) => {
+                if (lector !== actual || detectado) return;
+
+                detectado = true;
+                await apagar();
+
+                try {
+                    await referenciaDotNet.invokeMethodAsync("CodigoEscaneado", codigo);
+                } catch {
+                    // La parada pudo haberse cerrado mientras tanto.
+                }
+            },
+            () => {
+                // No detectar un código en un fotograma es normal.
+            }
+        );
 
         try {
-            await actual.start(
-                { facingMode: "environment" },
-                {
-                    fps: 10,
-                    qrbox: (ancho, alto) => {
-                        const lado = Math.min(250, ancho * 0.8, alto * 0.8);
-                        return { width: Math.floor(lado), height: Math.floor(lado) };
-                    }
-                },
-                async (codigo) => {
-                    if (!activo || detectado) return;
+            await inicio;
 
-                    detectado = true;
-                    await detener();
-
-                    try {
-                        await referenciaDotNet.invokeMethodAsync(
-                            "CodigoEscaneado",
-                            codigo
-                        );
-                    } catch (e) {
-                    }
-                },
-                () => {
-                    // No detectar un código en un fotograma es normal.
-                }
-            );
-
-            iniciando = false;
-
-            if (lector !== actual) {
-                await actual.stop().catch(() => {});
-                actual.clear();
-                return;
-            }
-
-            activo = true;
+            if (lector === actual) inicio = null;
         } catch (e) {
-            iniciando = false;
+            // Si otra parada ya tomó la cámara, ese aviso es el que vale.
+            if (lector !== actual) return;
 
-            try {
-                await detener();
-            } catch {
-                // Ignorar errores al detener el escáner.
-            }
-
+            await apagar();
             throw e;
         }
     }
