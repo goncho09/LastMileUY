@@ -1,0 +1,281 @@
+﻿
+@using LastMileUY.Contracts.Rutas
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="mt-4 w-full min-w-0 max-w-2xl rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+
+    <div class="mb-4 flex min-w-0 items-start justify-between gap-2">
+        <div class="min-w-0 flex-1">
+            <h3 class="text-base font-bold leading-tight text-slate-900 sm:text-lg">
+                Identificar bultos
+            </h3>
+
+            <p class="mt-1 text-xs leading-relaxed text-slate-500 sm:text-sm">
+                Escaneá o ingresá el código de cada bulto.
+            </p>
+        </div>
+
+        <span class="shrink-0 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
+            @identificados.Count / @Bultos.Count
+        </span>
+    </div>
+
+    <div class="space-y-3">
+
+        <div class="flex min-w-0 flex-col gap-2 sm:flex-row">
+            <input type="text"
+                   class="block w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 sm:flex-1 sm:text-sm"
+                   placeholder="Código del bulto"
+                   @bind="codigo"
+                   @bind:event="oninput"
+                   @onkeydown="AlPresionarTecla" />
+
+            <button type="button"
+                    class="w-full shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 sm:w-auto"
+                    @onclick="Identificar">
+                Buscar
+            </button>
+        </div>
+
+        @if (!camaraActiva)
+        {
+            <button type="button"
+                    class="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100"
+                    @onclick="AbrirCamara">
+                <span>📷</span>
+                Escanear con cámara
+            </button>
+        }
+        else
+        {
+            <div class="w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-violet-200 bg-slate-950 p-1 sm:p-2">
+                <div id="@idEscaner" class="w-full min-w-0 max-w-full overflow-hidden"></div>
+            </div>
+
+            <button type="button"
+                    class="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+                    @onclick="CerrarCamara">
+                Cancelar escaneo
+            </button>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <div role="alert"
+                 class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                @error
+            </div>
+        }
+    </div>
+
+    <div class="my-4 border-t border-slate-100"></div>
+
+    <div class="space-y-2">
+        @foreach (var bulto in Bultos)
+        {
+            var identificado = identificados.Contains(bulto.Id);
+            var pendiente = bulto.Estado == "Pendiente";
+
+            <div @key="bulto.Id"
+                 class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border p-3 @(identificado ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50")">
+
+                <div class="flex min-w-0 items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl @(identificado ? "bg-emerald-100" : "bg-violet-100")">
+                        <span class="text-lg">📦</span>
+                    </div>
+
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold text-slate-900"
+                             style="overflow-wrap:anywhere">
+                            @bulto.Codigo
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(bulto.Descripcion))
+                        {
+                            <div class="mt-0.5 text-xs text-slate-500">
+                                @bulto.Descripcion
+                            </div>
+                        }
+
+                        <div class="mt-1 text-xs @(pendiente ? "text-amber-700" : "text-slate-500")">
+                            @bulto.Estado
+                        </div>
+                    </div>
+                </div>
+
+                @if (identificado)
+                {
+                    <span class="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
+                        ✓ Identificado
+                    </span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mt-4">
+        <div class="mb-2 flex justify-between text-xs font-medium text-slate-500">
+            <span>Progreso de identificación</span>
+            <span>@identificados.Count de @Bultos.Count</span>
+        </div>
+
+        <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div class="h-full rounded-full bg-violet-600 transition-all"
+                 style="width:@(Bultos.Count == 0 ? 0 : identificados.Count * 100 / Bultos.Count)%">
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<BultoRutaDto> Bultos { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<int>> OnCambio { get; set; }
+    
+    [Parameter]
+    public IReadOnlyList<int> Identificados { get; set; } = [];
+
+    private readonly string idEscaner = $"escaner-{Guid.NewGuid():N}";
+
+    private string codigo = "";
+    private string? error;
+    private bool camaraActiva;
+    private bool iniciarCamaraPendiente;
+
+    private readonly HashSet<int> identificados = [];
+    private DotNetObjectReference<SelectorBultos>? referenciaDotNet;
+    
+    protected override void OnParametersSet()
+    {
+        var idsValidos = Bultos
+            .Where(b => b.Estado == "Pendiente")
+            .Select(b => b.Id)
+            .ToHashSet();
+
+        identificados.Clear();
+
+        foreach (var id in Identificados)
+        {
+            if (idsValidos.Contains(id))
+                identificados.Add(id);
+        }
+    }
+
+    private async Task AlPresionarTecla(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await Identificar();
+    }
+
+    private async Task Identificar()
+    {
+        error = null;
+
+        var bulto = Bultos.FirstOrDefault(b =>
+            string.Equals(
+                b.Codigo,
+                codigo.Trim(),
+                StringComparison.OrdinalIgnoreCase));
+
+        if (bulto is null)
+        {
+            error = "No se encontró ese bulto en esta parada.";
+            return;
+        }
+
+        if (bulto.Estado != "Pendiente")
+        {
+            error = "Este bulto no está pendiente de entrega.";
+            return;
+        }
+
+        if (!identificados.Add(bulto.Id))
+        {
+            error = "Este bulto ya fue identificado.";
+            return;
+        }
+
+        codigo = "";
+        await OnCambio.InvokeAsync(identificados.ToArray());
+    }
+
+    private Task AbrirCamara()
+    {
+        error = null;
+        camaraActiva = true;
+        iniciarCamaraPendiente = true;
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!iniciarCamaraPendiente || !camaraActiva)
+            return;
+
+        iniciarCamaraPendiente = false;
+        referenciaDotNet ??= DotNetObjectReference.Create(this);
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "lastMileEscaner.iniciar",
+                idEscaner,
+                referenciaDotNet);
+        }
+        catch (JSException ex)
+        {
+            await CerrarCamara();
+
+            error = "No se pudo abrir la cámara. Revisá los permisos o ingresá el código manualmente.";
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task CerrarCamara()
+    {
+        iniciarCamaraPendiente = false;
+
+        try
+        {
+            await JS.InvokeVoidAsync("lastMileEscaner.detener");
+        }
+        catch (JSException)
+        {
+            // El escáner puede no haberse iniciado.
+        }
+
+        camaraActiva = false;
+    }
+
+    [JSInvokable]
+    public async Task CodigoEscaneado(string valor)
+    {
+        await InvokeAsync(async () =>
+        {
+            camaraActiva = false;
+            codigo = valor;
+            await Identificar();
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("lastMileEscaner.detener");
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (JSException)
+        {
+        }
+
+        referenciaDotNet?.Dispose();
+    }
+}

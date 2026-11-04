@@ -12,7 +12,8 @@ public record RutaDetalleDto(
     VehiculoDto Vehiculo,
     decimal PesoTotalKg,
     decimal VolumenTotalM3,
-    IReadOnlyList<ParadaDto> Paradas);
+    IReadOnlyList<ParadaDto> Paradas,
+    ReglaEntregaParcialRutaDto? ReglaEntregaParcial = null);
 
 public record RepartidorDto(
     int Id,
@@ -38,7 +39,8 @@ public record ParadaDto(
     decimal PesoKg,
     decimal VolumenM3,
     string Modalidad,
-    EvidenciaRequeridaDto Evidencia);
+    EvidenciaRequeridaDto Evidencia,
+    IReadOnlyList<BultoRutaDto>? Bultos = null);
 
 // Qué tiene que juntar el repartidor para entregar, según la regla operativa vigente
 // para la modalidad del envío (sin regla, nada es obligatorio)
@@ -54,3 +56,15 @@ public record FranjaHorariaDto(
     string Nombre,
     TimeOnly HoraInicio,
     TimeOnly HoraFin);
+
+public record BultoRutaDto(
+    int Id,
+    string Codigo,
+    string Estado,
+    string? Descripcion,
+    decimal PesoKg);
+
+public record ReglaEntregaParcialRutaDto(
+    int Version,
+    bool PermiteEntregaParcial,
+    string DestinoBultosPendientes);

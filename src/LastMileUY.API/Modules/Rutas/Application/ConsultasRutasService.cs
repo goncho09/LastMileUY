@@ -118,6 +118,33 @@ public class ConsultasRutasService(ApplicationDbContext db)
                         .Sum(b => (decimal?)(b.LargoCm * b.AnchoCm * b.AltoCm)) ?? 0
                 })
             .ToListAsync(cancellationToken);
+        
+        var bultosRuta = await (
+            from bp in db.BultosParada.AsNoTracking()
+            join p in db.Paradas.AsNoTracking()
+                on bp.ParadaId equals p.Id
+            join b in db.Bultos.AsNoTracking()
+                on bp.BultoId equals b.Id
+            where p.RutaId == id
+            select new
+            {
+                p.EnvioId,
+                Bulto = new BultoRutaDto(
+                    b.Id,
+                    b.Codigo,
+                    b.Estado.ToString(),
+                    b.Descripcion,
+                    b.PesoKg)
+            }
+        ).ToListAsync(cancellationToken);
+
+        var bultosPorEnvio = bultosRuta
+            .GroupBy(x => x.EnvioId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<BultoRutaDto>)g
+                    .Select(x => x.Bulto)
+                    .ToList());
 
         // La evidencia que pide cada parada sale de la regla vigente para la modalidad de su envío
         var evidencias = await db.ReglasOperativas.AsNoTracking()
@@ -140,10 +167,27 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 x.PesoKg,
                 x.VolumenM3 / Bulto.CentimetrosCubicosPorMetroCubico,
                 x.Envio.Modalidad.ToString(),
-                evidencias.GetValueOrDefault(x.Envio.Modalidad, EvidenciaRequeridaDto.Ninguna)))
+                evidencias.GetValueOrDefault(x.Envio.Modalidad, EvidenciaRequeridaDto.Ninguna),
+                bultosPorEnvio.GetValueOrDefault(
+                    x.Envio.Id,
+                    Array.Empty<BultoRutaDto>())))
             .ToList();
 
         var ruta = cabecera.Ruta;
+        
+        ReglaEntregaParcialRutaDto? reglaDto = null;
+
+        if (cabecera.Ruta.ReglaEntregaParcialId is int reglaId)
+        {
+            reglaDto = await db.ReglasEntregaParcial
+                .AsNoTracking()
+                .Where(r => r.Id == reglaId)
+                .Select(r => new ReglaEntregaParcialRutaDto(
+                    r.Version,
+                    r.PermiteEntregaParcial,
+                    r.DestinoBultosPendientes.ToString()))
+                .SingleOrDefaultAsync(cancellationToken);
+        }
 
         return new RutaDetalleDto(
             ruta.Id,
@@ -154,7 +198,8 @@ public class ConsultasRutasService(ApplicationDbContext db)
             cabecera.Vehiculo,
             paradas.Sum(p => p.PesoKg),
             paradas.Sum(p => p.VolumenM3),
-            paradas);
+            paradas,
+            reglaDto);
     }
 
     // La hoja de ruta para la app del repartidor: solo la del repartidor asignado y solo

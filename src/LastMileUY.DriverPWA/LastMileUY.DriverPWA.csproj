@@ -26,6 +26,10 @@
                        PublishedContent="wwwroot/service-worker.published.js" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="wwwroot\js\vendor\" />
+    </ItemGroup>
+
     <Target Name="UsarServiceWorkerProduccion"
             AfterTargets="Publish">
         <Copy SourceFiles="$(MSBuildProjectDirectory)/wwwroot/service-worker.published.js"
