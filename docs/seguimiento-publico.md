@@ -20,9 +20,16 @@ y `tests/LastMileUY.API.Tests/PuntaAPunta/SeguimientoPublicoDePuntaAPuntaTests.c
 | Estado actual y el historial de estados, con la hora | El destinatario (nombre, teléfono, email) |
 | Ciudad y departamento de destino | La calle, el número y la referencia |
 | Fecha de despacho y de entrega | Las observaciones de cada cambio de estado (pueden ser notas internas) |
-| Nombre, color y logo del operador que entrega | El Id del envío, el comercio, los bultos, el costo, la firma y la foto |
+| Nombre, color y logo del operador que entrega | El Id del envío, el comercio, el costo, la firma y la foto |
+| Avance de la entrega por bultos: cuántos se entregaron de cuántos, y cuántos volvieron al comercio | Los códigos e ids de los bultos, y los motivos de los que no se entregaron |
 
 Del historial solo van los eventos marcados como públicos (`EventoEnvio.EsPublico`).
+
+**Avance por bultos (entrega parcial).** El seguimiento cuenta los bultos por estado (`AvanceBultosDto`:
+total, entregados, devueltos) y la página muestra, por ejemplo, "2 de 3 bultos entregados" con una barra,
+solo si el envío tiene más de un bulto. Los bultos se leen con la misma política RLS que los eventos: se
+ven solo los del envío del código cargado. Como el seguimiento está en el caché, `InvalidacionCacheInterceptor`
+lo borra también cuando cambia un bulto, aunque no cambie el envío.
 
 ## Cómo se consulta sin operador
 

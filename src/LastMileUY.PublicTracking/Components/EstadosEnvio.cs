@@ -13,6 +13,7 @@ public static class EstadosEnvio
         "AsignadoARuta" => "Se prepara para salir",
         "EnTransito" => "Va en camino",
         "Entregado" => "Entregado",
+        "EntregadoParcialmente" => "Entregado en parte",
         "NoEntregado" => "No se pudo entregar",
         "Reprogramado" => "Entrega reprogramada",
         "EnDevolucion" => "Vuelve al comercio",
@@ -28,6 +29,7 @@ public static class EstadosEnvio
         "AsignadoARuta" => "Ya tiene lugar en el recorrido de un repartidor.",
         "EnTransito" => "El repartidor lo lleva hacia la dirección de entrega.",
         "Entregado" => "El envío llegó a destino.",
+        "EntregadoParcialmente" => "Llegó una parte de los bultos. El resto todavía no se entregó.",
         "NoEntregado" => "El repartidor pasó pero no pudo entregarlo. Se va a volver a intentar.",
         "Reprogramado" => "Se va a intentar de nuevo en otro recorrido.",
         "EnDevolucion" => "No se pudo entregar y está volviendo al comercio. Consultá con el comercio.",
@@ -41,7 +43,7 @@ public static class EstadosEnvio
     {
         "Admitido" => 0,
         "EnDeposito" or "AsignadoARuta" or "Reprogramado" => 1,
-        "EnTransito" or "NoEntregado" => 2,
+        "EnTransito" or "NoEntregado" or "EntregadoParcialmente" => 2,
         "Entregado" => 3,
         _ => null
     };

@@ -249,6 +249,42 @@ p {
     font-weight: 700;
 }
 
+/* Avance de la entrega por bultos (entrega parcial) */
+.bultos {
+    margin: 0 0 1.25rem;
+}
+
+.bultos p {
+    margin: 0 0 .4rem;
+}
+
+.bultos progress {
+    width: 100%;
+    height: .6rem;
+    border: 0;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--borde);
+    accent-color: var(--color-operador);
+}
+
+.bultos progress::-webkit-progress-bar {
+    background: var(--borde);
+}
+
+.bultos progress::-webkit-progress-value {
+    background: var(--color-operador);
+}
+
+.bultos progress::-moz-progress-bar {
+    background: var(--color-operador);
+}
+
+.bultos-nota {
+    font-size: .85rem;
+    color: var(--texto-suave);
+}
+
 .datos {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));

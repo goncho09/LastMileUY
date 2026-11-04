@@ -56,6 +56,25 @@ else
                 </ol>
             }
 
+            @if (envio.Bultos is { Total: > 1 } bultos)
+            {
+                @* Avance por bultos (entrega parcial): solo cantidades, sin códigos ni ids *@
+                <div class="bultos">
+                    <p>
+                        <strong>@bultos.Entregados de @bultos.Total</strong>
+                        @(bultos.Total == 1 ? "bulto entregado" : "bultos entregados")
+                    </p>
+                    <progress value="@bultos.Entregados" max="@bultos.Total"
+                              aria-label="@($"{bultos.Entregados} de {bultos.Total} bultos entregados")"></progress>
+                    @if (bultos.Devueltos > 0)
+                    {
+                        <p class="bultos-nota">
+                            @bultos.Devueltos @(bultos.Devueltos == 1 ? "volvió" : "volvieron") al comercio.
+                        </p>
+                    }
+                </div>
+            }
+
             <dl class="datos">
                 <div>
                     <dt>Destino</dt>
