@@ -65,7 +65,9 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
         var ahora = DateTime.UtcNow;
         var mensajes = new List<MensajeOutbox>();
 
-        // De dónde y cuándo vino el último cambio de cada envío: lo heredan los eventos de sus bultos
+        // De dónde y cuándo vino el primer cambio de cada envío en este guardado: lo heredan los eventos de
+        // sus bultos. Es el que los causó (la entrega del repartidor); los que siguen son consecuencias que
+        // agrega el sistema (por ejemplo, la reprogramación de la regla de entrega parcial).
         var origenPorEnvio = new Dictionary<Envio, EventoEnvio>(ReferenceEqualityComparer.Instance);
 
         foreach (var entrada in db.ChangeTracker.Entries<Envio>().ToList())
@@ -86,7 +88,7 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
                 .ToList();
 
             if (eventosNuevos.Count > 0)
-                origenPorEnvio[envio] = eventosNuevos[^1];
+                origenPorEnvio[envio] = eventosNuevos[0];
 
             foreach (var evento in eventosNuevos)
             {

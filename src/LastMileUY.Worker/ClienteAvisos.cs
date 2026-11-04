@@ -19,13 +19,16 @@ public record AvisoPendiente(
     string UrlDestino,
     string? CorrelacionId,
     string ClaveFirma,
-    int SuscripcionId);
+    int SuscripcionId,
+    // Versión del contrato de la suscripción (VersionesAvisos)
+    int Version = VersionesAvisos.V1);
 
 // Exitoso: el comercio respondió 2xx. CodigoHttp es null si no llegó a responder.
 public record ResultadoEnvio(bool Exitoso, int? CodigoHttp, string? Error, TimeSpan Duracion);
 
 // Manda un aviso por HTTP al comercio: POST a la URL de la suscripción, con el evento en JSON.
-// - Encabezados: X-Aviso-Id (para descartar repetidos), X-Aviso-Tipo, X-Aviso-Intento y X-Correlation-Id.
+// - Encabezados: X-Aviso-Id (para descartar repetidos), X-Aviso-Tipo, X-Aviso-Intento, X-Aviso-Version y
+//   X-Correlation-Id.
 // - Cuenta como entregado solo una respuesta 2xx. Cualquier otra cosa (otro código, sin respuesta,
 //   tiempo agotado, destino no permitido) es un fallo con su motivo, y nunca una excepción.
 // - No sigue redirecciones: podrían llevar a una dirección interna.
@@ -63,6 +66,7 @@ public class ClienteAvisos(HttpClient http)
         pedido.Headers.Add(EncabezadosAvisos.AvisoId, aviso.AvisoId.ToString());
         pedido.Headers.Add(EncabezadosAvisos.Tipo, aviso.TipoEvento);
         pedido.Headers.Add(EncabezadosAvisos.Intento, aviso.Intento.ToString());
+        pedido.Headers.Add(EncabezadosAvisos.Version, aviso.Version.ToString(CultureInfo.InvariantCulture));
 
         if (!string.IsNullOrEmpty(aviso.CorrelacionId))
             pedido.Headers.Add(TopologiaMensajeria.EncabezadoCorrelacion, aviso.CorrelacionId);

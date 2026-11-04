@@ -129,11 +129,20 @@
                 <h2 class="text-lg font-semibold text-white">Nueva suscripción</h2>
 
                 <div class="mt-4 flex flex-wrap items-end gap-3">
+                    <label class="flex min-w-[200px] flex-col gap-1.5 text-xs font-medium text-slate-400">
+                        Versión
+                        <select @bind="nueva.Version" @bind:after="AlCambiarVersion"
+                                class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20">
+                            <option value="@VersionesAvisos.V1">v1 · formato actual</option>
+                            <option value="@VersionesAvisos.V2">v2 · con eventos de bulto</option>
+                        </select>
+                    </label>
+
                     <label class="flex min-w-[220px] flex-col gap-1.5 text-xs font-medium text-slate-400">
                         Evento
                         <select @bind="nueva.TipoEvento"
                                 class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20">
-                            @foreach (var (valor, texto) in Tipos)
+                            @foreach (var (valor, texto) in TiposDe(nueva.Version))
                             {
                                 <option value="@valor">@texto</option>
                             }
@@ -187,6 +196,7 @@
                         <thead class="border-b border-white/10 text-xs uppercase tracking-wide text-slate-500">
                             <tr>
                                 <th class="px-5 py-3 font-medium">Evento</th>
+                                <th class="px-5 py-3 font-medium">Versión</th>
                                 <th class="px-5 py-3 font-medium">URL</th>
                                 <th class="px-5 py-3 font-medium">Estado</th>
                                 <th class="px-5 py-3 font-medium">Creada</th>
@@ -198,6 +208,7 @@
                             {
                                 <tr class="transition hover:bg-white/[0.03]">
                                     <td class="px-5 py-3 text-slate-200">@TextoTipo(s.TipoEvento)</td>
+                                    <td class="px-5 py-3 text-slate-400">v@(s.Version)</td>
                                     <td class="max-w-[320px] break-all px-5 py-3 text-slate-400">@s.UrlDestino</td>
                                     <td class="px-5 py-3">
                                         @if (s.Activa)
@@ -247,8 +258,20 @@
     private static readonly (string Valor, string Texto)[] Tipos =
     [
         (TiposEvento.EnvioEstadoCambiado, "Cambio de estado del envío"),
-        (TiposEvento.EnvioAdmitido, "Envío admitido")
+        (TiposEvento.EnvioAdmitido, "Envío admitido"),
+        (TiposEvento.BultoEstadoCambiado, "Cambio de estado de un bulto")
     ];
+
+    // Los eventos de bulto solo están en la versión 2 (VersionesAvisos)
+    private static IEnumerable<(string Valor, string Texto)> TiposDe(int version) =>
+        Tipos.Where(t => VersionesAvisos.Permite(version, t.Valor));
+
+    // Si el evento elegido no está en la versión nueva, vuelve al primero de esa versión
+    private void AlCambiarVersion()
+    {
+        if (!VersionesAvisos.Permite(nueva.Version, nueva.TipoEvento))
+            nueva.TipoEvento = TiposDe(nueva.Version).First().Valor;
+    }
 
     [CascadingParameter]
     private Task<AuthenticationState> EstadoAutenticacion { get; set; } = default!;
@@ -393,9 +416,10 @@
                     creada.TipoEvento,
                     creada.UrlDestino,
                     creada.Activa,
-                    creada.FechaCreacion));
+                    creada.FechaCreacion,
+                    creada.Version));
 
-                nueva = new() { TipoEvento = nueva.TipoEvento };
+                nueva = new() { TipoEvento = nueva.TipoEvento, Version = nueva.Version };
             }
             else
             {

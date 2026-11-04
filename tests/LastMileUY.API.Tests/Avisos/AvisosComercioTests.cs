@@ -72,6 +72,26 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
     }
 
     [Fact]
+    public async Task Lee_los_avisos_v2_de_envio_y_de_bulto()
+    {
+        var deEnvio = await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Entregado,
+            contenido: """{"version": 2, "envio": {"codigoSeguimiento": "CODIGOA", "estado": "EntregadoParcialmente", "estadoAnterior": "EnTransito"}}""");
+        var deBulto = await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Entregado,
+            contenido: """{"version": 2, "envio": {"codigoSeguimiento": "CODIGOA"}, "bulto": {"codigo": "B3", "estado": "NoEntregado", "estadoAnterior": "Pendiente", "motivoNoEntrega": "Bulto dañado"}}""");
+
+        await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido);
+        var avisos = (await Servicio(db, ComercioCompartido).ListarAsync(1, 100, null)).Items;
+
+        var envio = Assert.Single(avisos, a => a.Id == deEnvio);
+        Assert.Equal(("EntregadoParcialmente", "EnTransito", (string?)null, 2),
+            (envio.EstadoEnvio, envio.EstadoEnvioAnterior, envio.CodigoBulto, envio.Version));
+
+        var bulto = Assert.Single(avisos, a => a.Id == deBulto);
+        Assert.Equal(("NoEntregado", "Pendiente", "B3", "Bulto dañado", 2),
+            (bulto.EstadoEnvio, bulto.EstadoEnvioAnterior, bulto.CodigoBulto, bulto.MotivoNoEntrega, bulto.Version));
+    }
+
+    [Fact]
     public async Task El_detalle_trae_los_intentos_en_orden()
     {
         var id = await CrearAvisoAsync(ComercioCompartido, EnvioDeA, EstadoEntregaAviso.Fallido, intentos: 3);

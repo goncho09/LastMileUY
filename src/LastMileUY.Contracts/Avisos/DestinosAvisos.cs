@@ -9,11 +9,14 @@ public static class EncabezadosAvisos
     // Identificador único del aviso: el comercio lo usa para descartar repetidos
     public const string AvisoId = "X-Aviso-Id";
 
-    // Tipo de evento (envio.admitido, envio.estado_cambiado)
+    // Tipo de evento (envio.admitido, envio.estado_cambiado, bulto.estado_cambiado)
     public const string Tipo = "X-Aviso-Tipo";
 
     // Número de intento (1 la primera vez)
     public const string Intento = "X-Aviso-Intento";
+
+    // Versión del contrato del aviso (VersionesAvisos): 1 o 2
+    public const string Version = "X-Aviso-Version";
 }
 
 // Qué URLs puede tener una suscripción a avisos. Las carga el comercio y las llama el worker desde

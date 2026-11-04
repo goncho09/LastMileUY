@@ -159,6 +159,17 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Manda_la_version_del_contrato_de_la_suscripcion()
+    {
+        var aviso = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA);
+
+        await Despachador().EnviarPendientesAsync(CancellationToken.None);
+
+        // Las suscripciones que no eligieron versión están en la 1
+        Assert.Equal("1", Assert.Single(await RecibidosAsync(aviso)).Encabezados[EncabezadosAvisos.Version]);
+    }
+
+    [Fact]
     public async Task Una_entrega_exitosa_queda_en_el_historial()
     {
         var aviso = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA);

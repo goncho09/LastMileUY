@@ -222,6 +222,44 @@ Para probarlo, en el portal del comercio (menú **Avisos**) cargá una suscripci
 `http://lastmileuy.receptoravisos:8080/avisos/mi-comercio` y cambiale el estado a un envío de ese
 comercio.
 
+### Versiones de los avisos
+
+Los comercios que ya reciben avisos tienen sus sistemas armados para el formato actual: cambiarlo los
+rompería. Por eso el contrato de los avisos está versionado (`Contracts/Avisos/VersionesAvisos`) y cada
+suscripción elige la suya (`SuscripcionesAvisos.VersionContrato`). Las que ya existían quedaron en la 1.
+
+| Versión | Qué recibe | Formato |
+|---|---|---|
+| **1** (por defecto) | Solo eventos de envío (`envio.admitido`, `envio.estado_cambiado`) | El de siempre: el evento tal cual, en PascalCase. No cambió en nada |
+| **2** | Además, los eventos de bulto (`bulto.estado_cambiado`, entrega parcial) | Nuevo, en camelCase y sin ids internos (ni de envío, operador o comercio) |
+
+Ejemplo v2 de un evento de bulto:
+
+```json
+{
+  "version": 2,
+  "eventoId": "…",
+  "tipo": "bulto.estado_cambiado",
+  "ocurridoEn": "2026-11-04T21:59:40Z",
+  "origen": "Repartidor",
+  "correlacionId": "…",
+  "envio": { "codigoSeguimiento": "GZF936JFWGV9" },
+  "bulto": { "codigo": "GZF936JFWGV9-2", "estado": "NoEntregado", "estadoAnterior": "Pendiente",
+             "motivoNoEntrega": "Rechazado por el destinatario" }
+}
+```
+
+En un evento de envío v2, `envio` lleva además `estado` y `estadoAnterior`, y no hay `bulto`.
+
+- Una suscripción v1 no se puede suscribir a eventos de bulto (la API lo rechaza), y el worker tampoco
+  le registra avisos de bulto aunque existiera.
+- El worker guarda en cada aviso el contenido de la versión de su suscripción (`ProcesadorAvisos`) y lo
+  manda con el encabezado `X-Aviso-Version`. La firma se calcula sobre ese contenido.
+- El estado nuevo del envío, **Entregado parcialmente**, les llega también a las v1: es un cambio de estado
+  del envío, como los demás, en el mismo formato de siempre (es un valor nuevo de `Estado`).
+- En el portal, la versión se elige al crear la suscripción. Para pasarse a la 2, el comercio crea una
+  suscripción v2 y desactiva la anterior.
+
 ### Firma HMAC-SHA256 de avisos HTTP
 
 **Estado: implementado.**

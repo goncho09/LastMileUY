@@ -1,4 +1,4 @@
-using System.Text.Json;
+using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
 using Npgsql;
 
@@ -46,17 +46,25 @@ public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos, SenalAvisos? senal =
             return new ResultadoProceso(Repetido: true, AvisosRegistrados: 0);
         }
 
-        // Estado 1 = Pendiente (EstadoEntregaAviso). El contenido es el evento tal cual: sin datos personales.
+        // Estado 1 = Pendiente (EstadoEntregaAviso). Sin datos personales.
+        // El contenido depende de la versión del contrato de cada suscripción (VersionesAvisos): v1 es el
+        // evento tal cual, como siempre; v2 es el formato nuevo. Una suscripción v1 nunca recibe tipos nuevos
+        // (los de bulto): solo se puede suscribir a ellos con la v2.
         // EventoId del aviso: uno propio por cada aviso, para que el comercio descarte los repetidos.
         var avisos = await EjecutarAsync(conexion, transaccion, """
             INSERT INTO "EntregasAvisos"("SuscripcionAvisosId", "EnvioId", "EventoId", "TipoEvento", "Contenido",
                     "Estado", "CantidadIntentos", "FechaCreacion", "FechaProximoIntento")
-            SELECT s."Id", @envio, gen_random_uuid(), @tipo, @contenido::jsonb, 1, 0, now(), now()
+            SELECT s."Id", @envio, gen_random_uuid(), @tipo,
+                   CASE WHEN s."VersionContrato" = 2 THEN @contenidoV2::jsonb ELSE @contenido::jsonb END,
+                   1, 0, now(), now()
             FROM "SuscripcionesAvisos" s
             WHERE s."Activa" AND s."ComercioId" = @comercio AND s."TipoEvento" = @tipo
+              AND (s."VersionContrato" = 2 OR @tipo <> @tipoBulto)
             """,
             ("envio", evento.EnvioId), ("tipo", evento.Tipo), ("comercio", evento.ComercioId),
-            ("contenido", JsonSerializer.Serialize(evento)));
+            ("tipoBulto", TiposEvento.BultoEstadoCambiado),
+            ("contenido", VersionesAvisos.Contenido(VersionesAvisos.V1, evento)),
+            ("contenidoV2", VersionesAvisos.Contenido(VersionesAvisos.V2, evento)));
 
         await transaccion.CommitAsync(cancellationToken);
 
