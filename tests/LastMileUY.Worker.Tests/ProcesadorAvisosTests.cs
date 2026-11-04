@@ -62,22 +62,12 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
     }
 
     [Fact]
-    public async Task Un_evento_de_bulto_solo_genera_avisos_para_las_suscripciones_a_eventos_de_bulto()
+    public async Task Un_evento_de_bulto_solo_genera_avisos_para_las_suscripciones_v2_a_eventos_de_bulto()
     {
         const int suscripcionABultos = 31;
-        await using (var conexion = new NpgsqlConnection(entorno.CadenaAdministrador))
-        {
-            await conexion.OpenAsync();
-            await using var comando = new NpgsqlCommand($"""
-                INSERT INTO "SuscripcionesAvisos"
-                    ("Id", "OperadorId", "ComercioId", "TipoEvento", "UrlDestino", "Activa", "FechaCreacion", "ClaveFirma")
-                VALUES ({suscripcionABultos}, {OperadorA}, {Comercio}, @tipo, 'https://comercio.test/bultos',
-                        true, now(), encode(gen_random_bytes(32), 'hex'))
-                ON CONFLICT ("Id") DO NOTHING
-                """, conexion);
-            comando.Parameters.AddWithValue("tipo", TiposEvento.BultoEstadoCambiado);
-            await comando.ExecuteNonQueryAsync();
-        }
+        const int suscripcionABultosV1 = 33;    // no se puede crear desde la API; si existiera, no recibe nada
+        await SuscripcionAsync(suscripcionABultos, TiposEvento.BultoEstadoCambiado, version: 2);
+        await SuscripcionAsync(suscripcionABultosV1, TiposEvento.BultoEstadoCambiado, version: 1);
 
         var evento = Evento(OperadorA, EnvioDeA, TiposEvento.BultoEstadoCambiado) with
         {
@@ -89,14 +79,81 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
 
         await Procesador().ProcesarAsync(evento, CancellationToken.None);
 
-        // Las suscripciones a cambios de estado del envío no reciben los de bulto
+        // Las suscripciones a cambios de estado del envío no reciben los de bulto, ni una v1 a bultos
         Assert.Equal(0, await AvisosDeAsync(evento, SuscripcionDeA));
+        Assert.Equal(0, await AvisosV2DeAsync(evento, suscripcionABultosV1));
+        Assert.Equal(1, await entorno.ContarAsync("""
+            SELECT count(*) FROM "EntregasAvisos"
+            WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'eventoId' = @evento
+              AND "Contenido"->>'version' = '2'
+              AND "Contenido"->'envio'->>'codigoSeguimiento' = 'CODIGOA'
+              AND "Contenido"->'bulto'->>'codigo' = 'B3'
+              AND "Contenido"->'bulto'->>'estado' = 'NoEntregado'
+              AND "Contenido"->'bulto'->>'motivoNoEntrega' = 'Bulto dañado'
+            """, ("suscripcion", suscripcionABultos), ("evento", evento.EventoId.ToString())));
+    }
+
+    [Fact]
+    public async Task Cada_suscripcion_recibe_el_contenido_de_su_version()
+    {
+        const int suscripcionV2 = 32;
+        await SuscripcionAsync(suscripcionV2, TiposEvento.EnvioEstadoCambiado, version: 2);
+        var evento = Evento(OperadorA, EnvioDeA);
+
+        try
+        {
+            await Procesador().ProcesarAsync(evento, CancellationToken.None);
+        }
+        finally
+        {
+            // Las demás pruebas cuentan los avisos de las suscripciones del entorno a este evento
+            await entorno.ContarAsync(
+                """WITH x AS (UPDATE "SuscripcionesAvisos" SET "Activa" = false WHERE "Id" = @id RETURNING 1) SELECT count(*) FROM x""",
+                ("id", suscripcionV2));
+        }
+
+        // v1: el evento tal cual, como siempre
         Assert.Equal(1, await entorno.ContarAsync("""
             SELECT count(*) FROM "EntregasAvisos"
             WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'EventoId' = @evento
-              AND "Contenido"->>'CodigoBulto' = 'B3' AND "Contenido"->>'MotivoNoEntrega' = 'Bulto dañado'
-            """, ("suscripcion", suscripcionABultos), ("evento", evento.EventoId.ToString())));
+              AND "Contenido"->>'Version' = '1' AND "Contenido"->>'CodigoSeguimiento' = 'CODIGOA'
+              AND "Contenido"->>'Estado' = 'EnDeposito' AND "Contenido"->>'CodigoBulto' IS NULL
+            """, ("suscripcion", SuscripcionDeA), ("evento", evento.EventoId.ToString())));
+
+        // v2: el formato nuevo, sin ids internos
+        Assert.Equal(1, await entorno.ContarAsync("""
+            SELECT count(*) FROM "EntregasAvisos"
+            WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'eventoId' = @evento
+              AND "Contenido"->>'version' = '2'
+              AND "Contenido"->'envio'->>'estado' = 'EnDeposito'
+              AND "Contenido"->'envio'->>'estadoAnterior' = 'Admitido'
+              AND "Contenido"->'bulto' IS NULL AND "Contenido"->>'operadorId' IS NULL
+              AND "Contenido"->>'envioId' IS NULL
+            """, ("suscripcion", suscripcionV2), ("evento", evento.EventoId.ToString())));
     }
+
+    // Una suscripción más del comercio con el operador A, con su versión del contrato
+    private async Task SuscripcionAsync(int id, string tipo, int version)
+    {
+        await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);
+        await conexion.OpenAsync();
+        await using var comando = new NpgsqlCommand($"""
+            INSERT INTO "SuscripcionesAvisos"
+                ("Id", "OperadorId", "ComercioId", "TipoEvento", "UrlDestino", "Activa", "FechaCreacion",
+                 "ClaveFirma", "VersionContrato")
+            VALUES ({id}, {OperadorA}, {Comercio}, @tipo, 'https://comercio.test/' || {id},
+                    true, now(), encode(gen_random_bytes(32), 'hex'), {version})
+            ON CONFLICT ("Id") DO NOTHING
+            """, conexion);
+        comando.Parameters.AddWithValue("tipo", tipo);
+        await comando.ExecuteNonQueryAsync();
+    }
+
+    private Task<long> AvisosV2DeAsync(EstadoEnvioCambiado evento, int suscripcion) => entorno.ContarAsync("""
+        SELECT count(*) FROM "EntregasAvisos"
+        WHERE "SuscripcionAvisosId" = @suscripcion
+          AND ("Contenido"->>'EventoId' = @evento OR "Contenido"->>'eventoId' = @evento)
+        """, ("suscripcion", suscripcion), ("evento", evento.EventoId.ToString()));
 
     private ProcesadorAvisos Procesador() => new(NpgsqlDataSource.Create(entorno.CadenaAplicacion));
 

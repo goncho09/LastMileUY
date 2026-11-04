@@ -19,6 +19,10 @@ public class SuscripcionAvisos : IPerteneceAOperador, IPerteneceAComercio
 
     public bool Activa { get; set; } = true;
 
+    // Versión del contrato de los avisos que recibe (VersionesAvisos): 1 el formato de siempre,
+    // 2 el nuevo con eventos de bulto
+    public int VersionContrato { get; set; } = 1;
+
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
     
     public ICollection<EntregaAviso> EntregasAvisos { get; set; }

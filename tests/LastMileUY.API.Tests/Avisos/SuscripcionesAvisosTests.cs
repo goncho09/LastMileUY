@@ -69,6 +69,46 @@ public class SuscripcionesAvisosTests(BaseConDosOperadores baseDeDatos)
     }
 
     [Fact]
+    public async Task Si_no_se_pide_version_queda_en_la_1()
+    {
+        await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioSoloDeA);
+
+        var creada = await Servicio(db, OperadorA, ComercioSoloDeA).CrearAsync(Pedido("https://tienda.uy/avisos/v1"));
+
+        Assert.Equal(VersionesAvisos.V1, creada.Version);
+    }
+
+    [Fact]
+    public async Task Los_eventos_de_bulto_requieren_la_version_2()
+    {
+        await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioSoloDeA);
+        var servicio = Servicio(db, OperadorA, ComercioSoloDeA);
+
+        var conV1 = Pedido("https://tienda.uy/avisos/bultos-v1");
+        conV1.TipoEvento = TiposEvento.BultoEstadoCambiado;
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => servicio.CrearAsync(conV1));
+        Assert.Contains("versión 2", error.Message);
+
+        var conV2 = Pedido("https://tienda.uy/avisos/bultos-v2");
+        conV2.TipoEvento = TiposEvento.BultoEstadoCambiado;
+        conV2.Version = VersionesAvisos.V2;
+        var creada = await servicio.CrearAsync(conV2);
+
+        Assert.Equal((TiposEvento.BultoEstadoCambiado, VersionesAvisos.V2), (creada.TipoEvento, creada.Version));
+        Assert.Contains(await servicio.ListarAsync(), s => s.Id == creada.Id && s.Version == VersionesAvisos.V2);
+    }
+
+    [Fact]
+    public async Task Rechaza_una_version_que_no_existe()
+    {
+        await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioSoloDeA);
+        var pedido = Pedido("https://tienda.uy/avisos/v9");
+        pedido.Version = 9;
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Servicio(db, OperadorA, ComercioSoloDeA).CrearAsync(pedido));
+    }
+
+    [Fact]
     public async Task Rechaza_un_tipo_de_evento_que_no_existe()
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioSoloDeA);

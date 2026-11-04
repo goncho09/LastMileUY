@@ -16,8 +16,6 @@ public class SuscripcionesAvisosService(
     IContextoOperador contexto,
     IConfiguration configuracion)
 {
-    public static readonly string[] TiposPermitidos = [TiposEvento.EnvioAdmitido, TiposEvento.EnvioEstadoCambiado];
-
     // Igual que el worker: en desarrollo deja usar el receptor de prueba (http y direcciones internas)
     private bool PermitirLocales => configuracion.GetValue<bool>("Avisos:PermitirDestinosLocales");
 
@@ -26,7 +24,7 @@ public class SuscripcionesAvisosService(
             .AsNoTracking()
             .OrderByDescending(s => s.FechaCreacion)
             .ThenByDescending(s => s.Id)
-            .Select(s => new SuscripcionAvisosDto(s.Id, s.TipoEvento, s.UrlDestino, s.Activa, s.FechaCreacion))
+            .Select(s => new SuscripcionAvisosDto(s.Id, s.TipoEvento, s.UrlDestino, s.Activa, s.FechaCreacion, s.VersionContrato))
             .ToListAsync(cancellationToken);
 
     // ArgumentException con el motivo si los datos no sirven
@@ -36,9 +34,16 @@ public class SuscripcionesAvisosService(
     {
         var (operadorId, comercioId) = ComercioActual();
 
+        if (!VersionesAvisos.Existe(request.Version))
+            throw new ArgumentException("La versión de los avisos no existe.");
+
         var tipo = request.TipoEvento?.Trim() ?? string.Empty;
-        if (!TiposPermitidos.Contains(tipo))
-            throw new ArgumentException("El tipo de evento no existe.");
+        if (!VersionesAvisos.Permite(request.Version, tipo))
+        {
+            throw new ArgumentException(VersionesAvisos.Todas.Any(v => VersionesAvisos.Permite(v, tipo))
+                ? $"Ese evento no está en la versión {request.Version} de los avisos: requiere la versión {VersionesAvisos.V2}."
+                : "El tipo de evento no existe.");
+        }
 
         var url = request.UrlDestino?.Trim() ?? string.Empty;
         var motivo = DestinosAvisos.Validar(url, PermitirLocales);
@@ -58,7 +63,8 @@ public class SuscripcionesAvisosService(
             UrlDestino = url,
             ClaveFirma = Convert.ToHexString(
                 RandomNumberGenerator.GetBytes(32)),
-            Activa = true
+            Activa = true,
+            VersionContrato = request.Version
         };
 
         db.SuscripcionesAvisos.Add(suscripcion);
@@ -70,7 +76,8 @@ public class SuscripcionesAvisosService(
             suscripcion.UrlDestino,
             suscripcion.Activa,
             suscripcion.FechaCreacion,
-            suscripcion.ClaveFirma);
+            suscripcion.ClaveFirma,
+            suscripcion.VersionContrato);
     }
 
     // null si no existe o es de otro comercio (para el que pregunta, es lo mismo)
@@ -98,7 +105,8 @@ public class SuscripcionesAvisosService(
         await db.SaveChangesAsync(cancellationToken);
 
         return new SuscripcionAvisosDto(
-            suscripcion.Id, suscripcion.TipoEvento, suscripcion.UrlDestino, suscripcion.Activa, suscripcion.FechaCreacion);
+            suscripcion.Id, suscripcion.TipoEvento, suscripcion.UrlDestino, suscripcion.Activa, suscripcion.FechaCreacion,
+            suscripcion.VersionContrato);
     }
     
     
@@ -130,7 +138,8 @@ public class SuscripcionesAvisosService(
             suscripcion.UrlDestino,
             suscripcion.Activa,
             suscripcion.FechaCreacion,
-            suscripcion.ClaveFirma);
+            suscripcion.ClaveFirma,
+            suscripcion.VersionContrato);
     }
 
 

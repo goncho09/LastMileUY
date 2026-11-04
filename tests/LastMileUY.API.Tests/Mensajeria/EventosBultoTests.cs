@@ -53,6 +53,29 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
     }
 
     [Fact]
+    public async Task Los_eventos_de_bulto_tienen_el_origen_de_quien_los_cambio_aunque_despues_actue_el_sistema()
+    {
+        var envioId = await EnvioEnTransitoAsync(bultos: 2);
+        var motivo = await MotivoAsync("Rechazado (eventos)");
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorA))
+        {
+            var envio = await db.Envios.Include(e => e.Bultos).SingleAsync(e => e.Id == envioId);
+            var bultos = envio.Bultos.OrderBy(b => b.Id).ToList();
+
+            envio.RegistrarResultadoBultos([Resultado(bultos[0], entregado: true), Resultado(bultos[1], false, motivo)]);
+            // Como la regla de entrega parcial, en el mismo guardado
+            envio.CambiarEstado(EstadoEnvio.Reprogramado, "Sistema");
+            await db.SaveChangesAsync();
+        }
+
+        var deBultos = (await MensajesDeAsync(envioId)).Where(m => m.Tipo == TiposEvento.BultoEstadoCambiado).ToList();
+
+        Assert.Equal(2, deBultos.Count);
+        Assert.All(deBultos, m => Assert.Equal("Repartidor", m.Origen));
+    }
+
+    [Fact]
     public async Task Un_cambio_que_no_toca_bultos_no_deja_eventos_de_bulto()
     {
         var envioId = await EnvioEnTransitoAsync(bultos: 2);

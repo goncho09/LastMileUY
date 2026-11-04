@@ -39,6 +39,10 @@ public class SuscripcionAvisosConfiguration
             .HasMaxLength(128)
             .IsRequired();
 
+        // Las suscripciones que ya existían quedan en la versión 1: siguen recibiendo lo mismo
+        builder.Property(s => s.VersionContrato)
+            .HasDefaultValue(1);
+
         // Facilita buscar las suscripciones activas
         // de un comercio para un evento determinado.
         builder.HasIndex(s => new

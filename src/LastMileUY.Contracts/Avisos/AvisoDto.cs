@@ -17,7 +17,12 @@ public record AvisoResumenDto(
     DateTime FechaCreacion,
     DateTime? FechaUltimoIntento,
     DateTime? FechaProximoIntento,
-    string? UltimoError);
+    string? UltimoError,
+    // Solo en avisos de bulto (bulto.estado_cambiado): EstadoEnvio y EstadoEnvioAnterior son los del bulto
+    string? CodigoBulto = null,
+    string? MotivoNoEntrega = null,
+    // Versión del contrato con la que se mandó (VersionesAvisos)
+    int Version = VersionesAvisos.PorDefecto);
 
 // Un intento de entrega del aviso (historial)
 public record IntentoAvisoDto(

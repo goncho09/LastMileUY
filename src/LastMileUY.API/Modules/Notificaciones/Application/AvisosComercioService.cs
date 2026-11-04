@@ -138,34 +138,59 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
 
     private static AvisoResumenDto Resumen(FilaAviso x)
     {
-        var (estado, anterior) = EstadosDelEnvio(x.Aviso.Contenido);
+        var leido = LeerContenido(x.Aviso.Contenido);
         return new(
             x.Aviso.Id,
             x.Aviso.TipoEvento,
             x.CodigoSeguimiento,
-            estado,
-            anterior,
+            leido.Estado,
+            leido.Anterior,
             x.UrlDestino,
             x.Aviso.Estado.ToString(),
             x.Aviso.CantidadIntentos,
             x.Aviso.FechaCreacion,
             x.Aviso.FechaUltimoIntento,
             x.Aviso.FechaProximoIntento,
-            x.Aviso.UltimoError);
+            x.Aviso.UltimoError,
+            leido.CodigoBulto,
+            leido.Motivo,
+            leido.Version);
     }
 
-    // El contenido es el evento tal cual se le mandó al comercio (EstadoEnvioCambiado en JSON):
-    // de ahí sale a qué estado pasó el envío. Si no se puede leer, no se muestra.
-    private static (string? Estado, string? Anterior) EstadosDelEnvio(string contenido)
+    private record Contenido(string? Estado, string? Anterior, string? CodigoBulto, string? Motivo, int Version);
+
+    // El contenido es exactamente lo que se le mandó al comercio, en el formato de su versión
+    // (VersionesAvisos): de ahí sale a qué estado pasó el envío (o el bulto). Si no se puede leer, no se muestra.
+    // - v1: el evento tal cual ("Estado", "EstadoAnterior").
+    // - v2: "envio": { "estado", "estadoAnterior" } y, en los de bulto, "bulto": { "codigo", "estado", ... }.
+    private static Contenido LeerContenido(string contenido)
     {
         try
         {
             using var json = JsonDocument.Parse(contenido);
-            return (Texto(json.RootElement, "Estado"), Texto(json.RootElement, "EstadoAnterior"));
+            var raiz = json.RootElement;
+
+            if (raiz.ValueKind == JsonValueKind.Object
+                && raiz.TryGetProperty("version", out var version)
+                && version.ValueKind == JsonValueKind.Number
+                && version.GetInt32() == VersionesAvisos.V2)
+            {
+                if (raiz.TryGetProperty("bulto", out var bulto) && bulto.ValueKind == JsonValueKind.Object)
+                {
+                    return new Contenido(Texto(bulto, "estado"), Texto(bulto, "estadoAnterior"),
+                        Texto(bulto, "codigo"), Texto(bulto, "motivoNoEntrega"), VersionesAvisos.V2);
+                }
+
+                raiz.TryGetProperty("envio", out var envio);
+                return new Contenido(Texto(envio, "estado"), Texto(envio, "estadoAnterior"), null, null,
+                    VersionesAvisos.V2);
+            }
+
+            return new Contenido(Texto(raiz, "Estado"), Texto(raiz, "EstadoAnterior"), null, null, VersionesAvisos.V1);
         }
         catch (JsonException)
         {
-            return (null, null);
+            return new Contenido(null, null, null, null, VersionesAvisos.V1);
         }
 
         static string? Texto(JsonElement raiz, string nombre) =>

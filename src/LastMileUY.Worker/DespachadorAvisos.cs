@@ -129,8 +129,8 @@ public class DespachadorAvisos(
     {
         await using var comando = new NpgsqlCommand("""
             SELECT a."Id", a."EventoId", a."TipoEvento", a."Contenido"::text, a."CantidadIntentos",
-            s."UrlDestino", a."Contenido"->>'CorrelacionId', s."Activa",
-            s."ClaveFirma", s."Id"
+            s."UrlDestino", COALESCE(a."Contenido"->>'CorrelacionId', a."Contenido"->>'correlacionId'), s."Activa",
+            s."ClaveFirma", s."Id", s."VersionContrato"
             FROM "EntregasAvisos" a
             JOIN "SuscripcionesAvisos" s ON s."Id" = a."SuscripcionAvisosId"
             WHERE a."Estado" = 1 AND (a."FechaProximoIntento" IS NULL OR a."FechaProximoIntento" <= now())
@@ -152,7 +152,8 @@ public class DespachadorAvisos(
             UrlDestino: lector.GetString(5),
             CorrelacionId: lector.IsDBNull(6) ? null : lector.GetString(6),
             ClaveFirma: lector.GetString(8),
-            SuscripcionId: lector.GetInt32(9));
+            SuscripcionId: lector.GetInt32(9),
+            Version: lector.GetInt32(10));
 
         return (aviso, lector.GetBoolean(7));
     }
