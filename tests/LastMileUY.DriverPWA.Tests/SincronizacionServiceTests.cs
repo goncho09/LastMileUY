@@ -220,7 +220,13 @@ public class SincronizacionServiceTests
         var conRed = new ApiFalsa(_ => Resultado("Aplicada"));
         var (despues, _) = Servicio(conRed, navegador);
 
+        // Antes de mandarla, la hoja muestra qué se guardó de cada bulto
+        var guardada = await despues.ObtenerPendienteAsync(7);
+        Assert.Equal(parcial.ResultadosBultos, guardada!.ResultadosBultos!);
+        Assert.Null(await despues.ObtenerPendienteAsync(8));
+
         Assert.Equal((1, 0), await despues.SincronizarPendientesAsync());
+        Assert.Null(await despues.ObtenerPendienteAsync(7));
 
         var reenviada = Assert.Single(conRed.Pedidos, p => p.Ruta == "/api/sincronizacion").Cuerpo!.Operaciones[0];
         Assert.Equal(id, reenviada.IdOperacion);

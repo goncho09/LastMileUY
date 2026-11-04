@@ -1,6 +1,5 @@
-﻿```
-
-@page "/rutas/{Id:int}"
+﻿@page "/rutas/{Id:int}"
+@using LastMileUY.Contracts.Entregas
 @using LastMileUY.Contracts.Rutas
 @using LastMileUY.Contracts.Sincronizacion
 @using LastMileUY.DriverPWA.Services
@@ -8,6 +7,7 @@
 @inject NavigationManager Navigation
 @inject SincronizacionService Sincronizacion
 @inject OperacionesConfirmadasService Confirmadas
+@inject BultosIdentificadosService BultosIdentificados
 
 <PageTitle>Hoja de ruta</PageTitle>
 
@@ -172,6 +172,15 @@
                                     <div class="alert alert-warning small mt-3 mb-0">
                                         <strong>Operación pendiente de sincronización</strong>
                                         <div>Está guardada en este dispositivo y se enviará cuando vuelva la conexión.</div>
+                                        @if (resumenPendientes.TryGetValue(parada.EnvioId, out var resumen) && resumen.Count > 0)
+                                        {
+                                            <ul class="mb-0 mt-2 ps-3">
+                                                @foreach (var linea in resumen)
+                                                {
+                                                    <li style="overflow-wrap:anywhere">@linea</li>
+                                                }
+                                            </ul>
+                                        }
                                     </div>
                                 }
                                 else if (enviosConfirmados.Contains(parada.EnvioId))
@@ -246,7 +255,13 @@
     private RutaDetalleDto? ruta;
     private HashSet<int> enviosPendientes = [];
     private HashSet<int> enviosConfirmados = [];
-    private readonly Dictionary<int, HashSet<int>> bultosIdentificadosPorEnvio = [];
+    private Dictionary<int, HashSet<int>> bultosIdentificadosPorEnvio = [];
+
+    // Por envío, qué quedó guardado de cada bulto en la operación pendiente
+    private Dictionary<int, List<string>> resumenPendientes = [];
+
+    // Los motivos (sin conexión, los guardados en el celular), para mostrar su nombre en el resumen
+    private List<MotivoNoEntregaDto> motivos = [];
     
     private bool cargando = true;
     private bool avisoEsConflicto;
@@ -264,8 +279,11 @@
         try
         {
             await CargarRutaAsync();
-            await ActualizarPendientesAsync();
             await PrecargarMotivosAsync();
+            await ActualizarPendientesAsync();
+
+            // Lo escaneado antes de cerrar la app sigue marcado
+            bultosIdentificadosPorEnvio = await BultosIdentificados.LeerAsync(Id);
         }
         catch (Exception)
         {
@@ -284,13 +302,20 @@
             : [];
     }
 
-    private Task GuardarBultosIdentificados(
+    private async Task GuardarBultosIdentificados(
         int envioId,
         IReadOnlyList<int> bultosIds)
     {
         bultosIdentificadosPorEnvio[envioId] = bultosIds.ToHashSet();
 
-        return Task.CompletedTask;
+        try
+        {
+            await BultosIdentificados.GuardarAsync(Id, envioId, bultosIds);
+        }
+        catch (JSException)
+        {
+            // Si el navegador no deja guardar, sigue valiendo lo escaneado mientras la app esté abierta
+        }
     }
     
     private async Task OperacionGuardadaPendiente()
@@ -306,13 +331,17 @@
     {
         var pendientes = new HashSet<int>();
         var confirmados = new HashSet<int>();
+        var resumenes = new Dictionary<int, List<string>>();
 
         if (ruta is not null)
         {
             foreach (var parada in ruta.Paradas)
             {
-                if (await Sincronizacion.TieneOperacionPendienteAsync(parada.EnvioId))
+                if (await Sincronizacion.ObtenerPendienteAsync(parada.EnvioId) is { } pendiente)
+                {
                     pendientes.Add(parada.EnvioId);
+                    resumenes[parada.EnvioId] = ResultadoPorBulto.Resumen(pendiente, parada.Bultos ?? [], motivos);
+                }
 
                 if (await Confirmadas.EstaConfirmadoAsync(parada.EnvioId))
                     confirmados.Add(parada.EnvioId);
@@ -321,6 +350,7 @@
 
         enviosPendientes = pendientes;
         enviosConfirmados = confirmados;
+        resumenPendientes = resumenes;
     }
 
     private async Task CargarRutaAsync()
@@ -393,7 +423,7 @@
     {
         try
         {
-            await Sincronizacion.ObtenerMotivosAsync();
+            motivos = await Sincronizacion.ObtenerMotivosAsync();
         }
         catch (HttpRequestException)
         {
@@ -431,5 +461,3 @@
         Navigation.NavigateTo("/rutas");
     }
 }
-
-```
