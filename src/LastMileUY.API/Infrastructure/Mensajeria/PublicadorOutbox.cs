@@ -2,6 +2,10 @@ using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
 using Npgsql;
 using RabbitMQ.Client;
+using System.Diagnostics;
+using System.Text;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
@@ -143,6 +147,24 @@ public class PublicadorOutbox(
 
             canal = await rabbit.CrearCanalAsync(cancellationToken);
         }
+        
+        using var actividad = TelemetriaMensajeria.Actividades.StartActivity(
+            "rabbitmq publish",
+            ActivityKind.Producer);
+
+        actividad?.SetTag("messaging.system", "rabbitmq");
+        actividad?.SetTag("messaging.destination.name", TopologiaMensajeria.ExchangeEnvios);
+        actividad?.SetTag("messaging.message.id", evento.EventoId.ToString());
+        actividad?.SetTag("lastmileuy.envio.id", evento.EnvioId);
+
+        var encabezados = new Dictionary<string, object?>();
+
+        Propagators.DefaultTextMapPropagator.Inject(
+            new PropagationContext(
+                actividad?.Context ?? Activity.Current?.Context ?? default,
+                Baggage.Current),
+            encabezados,
+            (headers, key, value) => headers[key] = Encoding.UTF8.GetBytes(value));
 
         var propiedades = new BasicProperties
         {
@@ -151,7 +173,9 @@ public class PublicadorOutbox(
             Type = evento.Tipo,
             ContentType = "application/json",
             DeliveryMode = DeliveryModes.Persistent,
-            Timestamp = new AmqpTimestamp(new DateTimeOffset(evento.OcurridoEn).ToUnixTimeSeconds())
+            Timestamp = new AmqpTimestamp(
+                new DateTimeOffset(evento.OcurridoEn).ToUnixTimeSeconds()),
+            Headers = encabezados
         };
 
         // mandatory: si no hay ninguna cola para recibirlo, RabbitMQ lo devuelve y queda en el outbox

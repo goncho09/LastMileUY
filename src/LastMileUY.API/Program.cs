@@ -28,13 +28,60 @@ using LastMileUY.API.Modules.Seguimiento.Application;
 using LastMileUY.API.Modules.Seguimiento.Endpoints;
 using LastMileUY.API.Modules.Notificaciones.Application;
 using LastMileUY.API.Modules.Notificaciones.Endpoints;
+using LastMileUY.Contracts.Mensajeria;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using OpenTelemetry.Exporter;
 using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Events;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs estructurados para la API.
+builder.Host.UseSerilog((contexto, servicios, configuracion) =>
+{
+    configuracion
+        .ReadFrom.Configuration(contexto.Configuration)
+        .ReadFrom.Services(servicios)
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+        .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(
+            outputTemplate:
+            "[{Timestamp:HH:mm:ss} {Level:u3}] " +
+            "{SourceContext} {Message:lj} " +
+            "{Properties:j}{NewLine}{Exception}");
+});
+
+// Observabilidad: métricas y trazas de la API.
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(
+            serviceName: "LastMileUY.API",
+            serviceVersion: "1.0.0"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter()
+        .AddSource(TelemetriaMensajeria.Nombre))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter(options =>
+        {
+            options.Protocol = OtlpExportProtocol.HttpProtobuf;
+            options.Endpoint = new Uri(
+                "http://prometheus:9090/api/v1/otlp/v1/metrics");
+        }));
 
 // Multitenancy (ADR-01): de qué operador es cada pedido.
 builder.Services.AddHttpContextAccessor();

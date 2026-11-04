@@ -3,6 +3,8 @@ using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Diagnostics;
+using OpenTelemetry.Context.Propagation;
 
 namespace LastMileUY.Worker;
 
@@ -144,6 +146,32 @@ public class ConsumidorEventosEnvio(
 
     private async Task RecibirAsync(BasicDeliverEventArgs mensaje, CancellationToken cancellationToken)
     {
+        var contexto = Propagators.DefaultTextMapPropagator.Extract(
+            default,
+            mensaje.BasicProperties.Headers,
+            (headers, key) =>
+            {
+                if (headers is null || !headers.TryGetValue(key, out var valor))
+                    return [];
+
+                return valor switch
+                {
+                    byte[] bytes => [Encoding.UTF8.GetString(bytes)],
+                    ReadOnlyMemory<byte> bytes => [Encoding.UTF8.GetString(bytes.Span)],
+                    string texto => [texto],
+                    _ => []
+                };
+            });
+
+        using var actividad = TelemetriaMensajeria.Actividades.StartActivity(
+            "rabbitmq process",
+            ActivityKind.Consumer,
+            contexto.ActivityContext);
+
+        actividad?.SetTag("messaging.system", "rabbitmq");
+        actividad?.SetTag("messaging.destination.name", TopologiaMensajeria.ColaWorker);
+        actividad?.SetTag("messaging.message.id", mensaje.BasicProperties.MessageId);
+        
         // El identificador del pedido HTTP que originó el evento: todo lo que se registre de acá en
         // adelante lo lleva, para seguir el cambio de punta a punta
         using var alcance = logger.BeginScope(
@@ -178,6 +206,8 @@ public class ConsumidorEventosEnvio(
                     logger.LogError(
                         ex,
                         "No se pudo registrar o publicar el mensaje fallido");
+                    
+                    actividad?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
                     await canal!.BasicNackAsync(
                         mensaje.DeliveryTag,
@@ -185,7 +215,6 @@ public class ConsumidorEventosEnvio(
                         requeue: true,
                         cancellationToken);
                 }
-
                 return;
             }
             

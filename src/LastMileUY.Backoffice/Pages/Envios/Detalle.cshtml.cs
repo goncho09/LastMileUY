@@ -18,6 +18,19 @@ public class DetalleModel(IEnviosApi enviosApi, ILogger<DetalleModel> logger) : 
 
     [TempData]
     public string? ErrorCambio { get; set; }
+    
+    public int TotalBultos =>
+        Envio?.Bultos.Count ?? 0;
+
+    public int BultosEntregados =>
+        Envio?.Bultos.Count(b => b.Estado == "Entregado") ?? 0;
+
+    public int BultosPendientes =>
+        Envio?.Bultos.Count(b =>
+            b.Estado is "Pendiente" or "NoEntregado") ?? 0;
+
+    public bool TieneEntregaParcial =>
+        BultosEntregados > 0 && BultosPendientes > 0;
 
     // Cambio de estado: después de guardar se redirige al detalle (así recargar la página no lo repite)
     public async Task<IActionResult> OnPostCambiarEstadoAsync(
