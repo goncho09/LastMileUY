@@ -171,6 +171,24 @@ Sin conexión, y también después de cerrar y volver a abrir la app:
   [datos-locales.md](datos-locales.md)), así el formulario arranca con los mismos bultos marcados. Van
   por hoja de ruta: si un bulto vuelve a salir en otra, se escanea de nuevo.
 
+### Dónde se ve el resultado de cada bulto
+
+El detalle del envío (`GET /api/envios/{id}`, `ConsultasEnviosService`) trae el estado de cada bulto
+y los intentos de entrega (`Intentos`), cada uno con:
+
+- su resultado (entregado, entrega parcial o no entregado) y el motivo;
+- el resultado de cada bulto que participó, con su motivo si no se entregó;
+- la **prueba de entrega**: quién recibió, si tiene firma o foto, y **qué bultos respalda**
+  (`BultosEntregados`).
+
+La prueba respalda solo los bultos que se entregaron en ese intento: en una entrega parcial, la firma
+de quien recibió no cubre los que no se entregaron. No se guarda aparte: sale de los resultados del
+mismo intento, así no puede quedar asociada a un bulto que el intento no entregó.
+
+Lo muestran el **Backoffice**, en el detalle del envío, con la firma y la foto, y el **portal del
+comercio**, en una página nueva de detalle (`/envios/{id}`, desde el código en "Mis envíos"). El
+comercio ve si hay firma o foto, pero no las descarga, ni el documento de quien recibió.
+
 ## Política de conflictos: manda el servidor
 
 Mientras el repartidor está sin conexión, alguien puede cambiar el mismo envío desde el Backoffice

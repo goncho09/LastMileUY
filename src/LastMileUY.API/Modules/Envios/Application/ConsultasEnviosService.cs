@@ -123,7 +123,7 @@ public class ConsultasEnviosService(
                     Destinatario = new DestinatarioDto(d.Nombre, d.Apellido, d.Telefono, d.Email),
                     Bultos = e.Bultos
                         .OrderBy(b => b.Id)
-                        .Select(b => new BultoDto(b.Codigo, b.PesoKg, b.LargoCm, b.AnchoCm, b.AltoCm, b.Descripcion))
+                        .Select(b => new { Dto = new BultoDto(b.Codigo, b.PesoKg, b.LargoCm, b.AnchoCm, b.AltoCm, b.Descripcion), b.Estado })
                         .ToList(),
                     Eventos = e.Eventos
                         .OrderBy(ev => ev.FechaHora)
@@ -169,7 +169,7 @@ public class ConsultasEnviosService(
                 direccion.Departamento,
                 direccion.CodigoPostal,
                 direccion.Referencia),
-            fila.Bultos,
+            fila.Bultos.Select(b => b.Dto with { Estado = b.Estado.ToString() }).ToList(),
             fila.Eventos)
         {
             EstadosSiguientes = envio.EstadosSiguientes(regla).Select(e => e.ToString()).ToList(),
@@ -185,8 +185,65 @@ public class ConsultasEnviosService(
                     regla.RequiereFirma,
                     regla.RequiereFotografia,
                     regla.RequiereDocumentoReceptor),
-            FechaLimiteEntrega = regla is null ? null : envio.FechaCreacion.AddHours(regla.PlazoEntregaHoras)
+            FechaLimiteEntrega = regla is null ? null : envio.FechaCreacion.AddHours(regla.PlazoEntregaHoras),
+            Intentos = await IntentosAsync(envio.Id, cancellationToken)
         };
+    }
+
+    // Cada intento con el resultado de sus bultos y su prueba de entrega. La prueba respalda solo los
+    // bultos que se entregaron en ese intento: en una entrega parcial, la firma de quien recibió no
+    // cubre los que no se entregaron. Sale de los resultados del mismo intento (no se guarda aparte),
+    // así no puede quedar una prueba asociada a un bulto que el intento no entregó.
+    private async Task<IReadOnlyList<IntentoEntregaDto>> IntentosAsync(int envioId, CancellationToken cancellationToken)
+    {
+        var intentos = await db.IntentosEntrega.AsNoTracking()
+            .Where(i => i.EnvioId == envioId)
+            .OrderBy(i => i.NumeroIntento)
+            .Select(i => new
+            {
+                i.Id,
+                i.NumeroIntento,
+                i.FechaHora,
+                i.Exitoso,
+                i.Parcial,
+                Motivo = db.MotivosNoEntrega.Where(m => m.Id == i.MotivoNoEntregaId).Select(m => m.Nombre).FirstOrDefault(),
+                i.Observaciones,
+                Bultos = i.ResultadosBultos
+                    .OrderBy(r => r.BultoId)
+                    .Select(r => new ResultadoBultoDto(
+                        r.Bulto.Codigo,
+                        r.Entregado,
+                        db.MotivosNoEntrega.Where(m => m.Id == r.MotivoNoEntregaId).Select(m => m.Nombre).FirstOrDefault()))
+                    .ToList(),
+                Prueba = i.PruebaEntrega == null
+                    ? null
+                    : new
+                    {
+                        i.PruebaEntrega.NombreReceptor,
+                        TieneFirma = i.PruebaEntrega.FirmaArchivoKey != null,
+                        TieneFoto = i.PruebaEntrega.FotoArchivoKey != null
+                    }
+            })
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+        return intentos
+            .Select(i => new IntentoEntregaDto(
+                i.Id,
+                i.NumeroIntento,
+                i.FechaHora,
+                i.Exitoso ? "Entregado" : i.Parcial ? "Parcial" : "NoEntregado",
+                i.Motivo,
+                i.Observaciones,
+                i.Bultos,
+                i.Prueba is null
+                    ? null
+                    : new PruebaEntregaDto(
+                        i.Prueba.NombreReceptor,
+                        i.Prueba.TieneFirma,
+                        i.Prueba.TieneFoto,
+                        i.Bultos.Where(b => b.Entregado).Select(b => b.Codigo).ToList())))
+            .ToList();
     }
     
     

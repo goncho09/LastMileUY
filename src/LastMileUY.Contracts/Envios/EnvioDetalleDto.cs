@@ -30,7 +30,34 @@ public record EnvioDetalleDto(
 
     // Fecha de creación + plazo de la regla (null sin regla)
     public DateTime? FechaLimiteEntrega { get; init; }
+
+    // Los intentos de entrega, del primero al último, con el resultado de cada bulto y la prueba
+    public IReadOnlyList<IntentoEntregaDto> Intentos { get; init; } = [];
 }
+
+// Un intento de entrega. Resultado: "Entregado", "Parcial" o "NoEntregado".
+// Bultos: el resultado de cada bulto que participó (vacío en intentos de antes del resultado por bulto).
+public record IntentoEntregaDto(
+    int Id,
+    int NumeroIntento,
+    DateTime FechaHora,
+    string Resultado,
+    string? Motivo,
+    string? Observaciones,
+    IReadOnlyList<ResultadoBultoDto> Bultos,
+    PruebaEntregaDto? Prueba);
+
+// Qué pasó con un bulto en un intento. Motivo: por qué no se entregó.
+public record ResultadoBultoDto(string Codigo, bool Entregado, string? Motivo);
+
+// La prueba de entrega de un intento. Respalda solo los bultos que se entregaron en ese intento
+// (BultosEntregados); vacío si el intento es de antes del resultado por bulto.
+// La firma y la foto las descarga el Backoffice (GET /api/sincronizacion/evidencias/{intentoId}/{firma|foto}).
+public record PruebaEntregaDto(
+    string? NombreReceptor,
+    bool TieneFirma,
+    bool TieneFoto,
+    IReadOnlyList<string> BultosEntregados);
 
 public record ReglaAplicadaDto(
     string Nombre,
@@ -62,7 +89,11 @@ public record BultoDto(
     decimal LargoCm,
     decimal AnchoCm,
     decimal AltoCm,
-    string? Descripcion);
+    string? Descripcion)
+{
+    // Pendiente, Entregado, NoEntregado, Devuelto o Extraviado
+    public string Estado { get; init; } = "Pendiente";
+}
 
 public record EventoEnvioDto(
     DateTime FechaHora,
