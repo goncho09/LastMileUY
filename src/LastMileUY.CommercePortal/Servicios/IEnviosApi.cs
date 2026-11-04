@@ -10,6 +10,9 @@ public interface IEnviosApi
 
     // Los envíos del comercio logueado con el operador elegido; la API filtra por comercio y operador
     Task<PaginaDto<EnvioResumenDto>> ListarAsync(int pagina, int tamanioPagina, string? estado, string? buscar, CancellationToken ct = default);
+
+    // El detalle de un envío del comercio, con el resultado de cada bulto; null si no existe o no es suyo
+    Task<EnvioDetalleDto?> ObtenerAsync(int id, CancellationToken ct = default);
 }
 
 // O se creó el envío, o la API lo rechazó con un mensaje para mostrar

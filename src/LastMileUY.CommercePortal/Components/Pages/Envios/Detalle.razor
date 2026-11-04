@@ -1,0 +1,183 @@
+@page "/envios/{Id:int}"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.CommercePortal.Servicios
+@using LastMileUY.Contracts.Envios
+@using Microsoft.AspNetCore.Authorization
+@using static LastMileUY.CommercePortal.Servicios.PresentacionEnvios
+
+@inject IEnviosApi EnviosApi
+@inject NavigationManager Navegacion
+@inject ILogger<Detalle> Logger
+
+@* Un envío del comercio: en qué estado está cada bulto y qué pasó en cada intento de entrega.
+   La prueba de entrega de cada intento respalda solo los bultos que se entregaron en él. *@
+
+<PageTitle>@(envio is null ? "Envío" : $"Envío {envio.CodigoSeguimiento}") | LastMileUY</PageTitle>
+
+<div class="space-y-6">
+    <a href="/envios" class="inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-violet-300">
+        <span aria-hidden="true">←</span> Mis envíos
+    </a>
+
+    @if (errorCarga is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">@errorCarga</div>
+    }
+    else if (cargando)
+    {
+        <p class="text-sm text-slate-400">Cargando envío…</p>
+    }
+    else if (envio is null)
+    {
+        <section class="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+            <h1 class="text-lg font-semibold text-white">No encontramos ese envío</h1>
+            <p class="mt-2 text-sm text-slate-400">Puede que no exista o que sea de otro comercio u operador.</p>
+        </section>
+    }
+    else
+    {
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="break-all font-mono text-2xl font-bold tracking-tight text-white sm:text-3xl">@envio.CodigoSeguimiento</h1>
+            <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold @ClaseEstado(envio.Estado)">
+                @TextoEstado(envio.Estado)
+            </span>
+        </div>
+
+        <dl class="grid gap-4 rounded-2xl border border-white/10 bg-[#151927] p-5 text-sm sm:grid-cols-3">
+            <div>
+                <dt class="text-xs text-slate-500">Destinatario</dt>
+                <dd class="mt-1 text-slate-200">@envio.Destinatario.Nombre @envio.Destinatario.Apellido</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-500">Destino</dt>
+                <dd class="mt-1 text-slate-200">@envio.Direccion.Calle @envio.Direccion.Numero, @envio.Direccion.Ciudad</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-500">Referencia</dt>
+                <dd class="mt-1 text-slate-200">@(envio.ReferenciaExterna ?? "—")</dd>
+            </div>
+        </dl>
+
+        <section class="rounded-2xl border border-white/10 bg-[#151927]" aria-labelledby="titulo-bultos">
+            <h2 id="titulo-bultos" class="border-b border-white/10 px-5 py-4 text-base font-semibold text-white">
+                Bultos (@envio.Bultos.Count)
+            </h2>
+            <ul class="divide-y divide-white/5">
+                @foreach (var bulto in envio.Bultos)
+                {
+                    <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+                        <span class="min-w-0">
+                            <span class="font-mono text-xs font-semibold text-violet-300">@bulto.Codigo</span>
+                            @if (!string.IsNullOrWhiteSpace(bulto.Descripcion))
+                            {
+                                <span class="text-slate-400" style="overflow-wrap:anywhere"> · @bulto.Descripcion</span>
+                            }
+                        </span>
+                        <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @ClaseEstadoBulto(bulto.Estado)">
+                            @TextoEstadoBulto(bulto.Estado)
+                        </span>
+                    </li>
+                }
+            </ul>
+        </section>
+
+        <section class="rounded-2xl border border-white/10 bg-[#151927]" aria-labelledby="titulo-intentos">
+            <h2 id="titulo-intentos" class="border-b border-white/10 px-5 py-4 text-base font-semibold text-white">Intentos de entrega</h2>
+
+            @if (envio.Intentos.Count == 0)
+            {
+                <p class="px-5 py-4 text-sm text-slate-400">Todavía no hubo intentos de entrega.</p>
+            }
+            else
+            {
+                <ol class="divide-y divide-white/5">
+                    @foreach (var intento in envio.Intentos)
+                    {
+                        <li class="space-y-3 px-5 py-4 text-sm">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-semibold text-white">Intento @intento.NumeroIntento</span>
+                                <span class="inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold @ClaseIntento(intento.Resultado)">
+                                    @TextoIntento(intento.Resultado)
+                                </span>
+                                <span class="text-xs text-slate-500">@Fecha(intento.FechaHora)</span>
+                            </div>
+
+                            @if (intento.Motivo is not null)
+                            {
+                                <p class="text-slate-300">Motivo: @intento.Motivo</p>
+                            }
+
+                            @if (intento.Bultos.Count > 0)
+                            {
+                                <ul class="space-y-1" aria-label="Resultado de cada bulto en el intento @intento.NumeroIntento">
+                                    @foreach (var bulto in intento.Bultos)
+                                    {
+                                        <li class="flex flex-wrap gap-x-2">
+                                            <span class="font-mono text-xs font-semibold text-violet-300">@bulto.Codigo</span>
+                                            <span class="@(bulto.Entregado ? "text-emerald-300" : "text-amber-300")">
+                                                @(bulto.Entregado ? "Entregado" : "No entregado")
+                                            </span>
+                                            @if (bulto.Motivo is not null)
+                                            {
+                                                <span class="text-slate-400" style="overflow-wrap:anywhere">· @bulto.Motivo</span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+
+                            @if (intento.Prueba is { } prueba)
+                            {
+                                <p class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-300">
+                                    Prueba de entrega
+                                    @(prueba.NombreReceptor is null ? "" : $"· recibió {prueba.NombreReceptor}")
+                                    @(prueba.TieneFirma ? " · con firma" : "")@(prueba.TieneFoto ? " · con foto" : "")
+                                    @if (prueba.BultosEntregados.Count > 0)
+                                    {
+                                        <span class="block mt-1 text-slate-400" style="overflow-wrap:anywhere">
+                                            Respalda: @string.Join(", ", prueba.BultosEntregados)
+                                        </span>
+                                    }
+                                </p>
+                            }
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EnvioDetalleDto? envio;
+    private bool cargando = true;
+    private string? errorCarga;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        cargando = true;
+        errorCarga = null;
+
+        try
+        {
+            envio = await EnviosApi.ObtenerAsync(Id);
+        }
+        catch (SesionVencidaException)
+        {
+            Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo cargar el envío {Id}", Id);
+            errorCarga = "No se pudo cargar el envío. Probá recargar la página.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}
