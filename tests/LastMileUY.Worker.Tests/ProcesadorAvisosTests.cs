@@ -61,6 +61,43 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
             """SELECT count(*) FROM "MensajesProcesados" WHERE "MensajeId" = @id""", ("id", evento.EventoId)));
     }
 
+    [Fact]
+    public async Task Un_evento_de_bulto_solo_genera_avisos_para_las_suscripciones_a_eventos_de_bulto()
+    {
+        const int suscripcionABultos = 31;
+        await using (var conexion = new NpgsqlConnection(entorno.CadenaAdministrador))
+        {
+            await conexion.OpenAsync();
+            await using var comando = new NpgsqlCommand($"""
+                INSERT INTO "SuscripcionesAvisos"
+                    ("Id", "OperadorId", "ComercioId", "TipoEvento", "UrlDestino", "Activa", "FechaCreacion", "ClaveFirma")
+                VALUES ({suscripcionABultos}, {OperadorA}, {Comercio}, @tipo, 'https://comercio.test/bultos',
+                        true, now(), encode(gen_random_bytes(32), 'hex'))
+                ON CONFLICT ("Id") DO NOTHING
+                """, conexion);
+            comando.Parameters.AddWithValue("tipo", TiposEvento.BultoEstadoCambiado);
+            await comando.ExecuteNonQueryAsync();
+        }
+
+        var evento = Evento(OperadorA, EnvioDeA, TiposEvento.BultoEstadoCambiado) with
+        {
+            Estado = "NoEntregado",
+            EstadoAnterior = "Pendiente",
+            CodigoBulto = "B3",
+            MotivoNoEntrega = "Bulto dañado"
+        };
+
+        await Procesador().ProcesarAsync(evento, CancellationToken.None);
+
+        // Las suscripciones a cambios de estado del envío no reciben los de bulto
+        Assert.Equal(0, await AvisosDeAsync(evento, SuscripcionDeA));
+        Assert.Equal(1, await entorno.ContarAsync("""
+            SELECT count(*) FROM "EntregasAvisos"
+            WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'EventoId' = @evento
+              AND "Contenido"->>'CodigoBulto' = 'B3' AND "Contenido"->>'MotivoNoEntrega' = 'Bulto dañado'
+            """, ("suscripcion", suscripcionABultos), ("evento", evento.EventoId.ToString())));
+    }
+
     private ProcesadorAvisos Procesador() => new(NpgsqlDataSource.Create(entorno.CadenaAplicacion));
 
     // Los avisos de un evento: el contenido es el evento, con su EventoId

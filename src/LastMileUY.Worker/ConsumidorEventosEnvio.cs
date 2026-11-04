@@ -116,6 +116,9 @@ public class ConsumidorEventosEnvio(
         await canal.QueueBindAsync(
             TopologiaMensajeria.ColaWorker, TopologiaMensajeria.ExchangeEnvios,
             TopologiaMensajeria.PatronEventosEnvio, cancellationToken: cancellationToken);
+        await canal.QueueBindAsync(
+            TopologiaMensajeria.ColaWorker, TopologiaMensajeria.ExchangeEnvios,
+            TopologiaMensajeria.PatronEventosBulto, cancellationToken: cancellationToken);
 
         // Una cola de espera por reintento. Nadie las consume: el mensaje espera ahí lo que dice su
         // vencimiento y RabbitMQ lo devuelve a la cola principal (dead-letter). Una por nivel para que

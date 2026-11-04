@@ -12,6 +12,9 @@ public class BultoConfiguration : IEntityTypeConfiguration<Bulto>
 
         builder.HasKey(b => b.Id);
 
+        // Solo en memoria: los cambios que el outbox todavía no publicó
+        builder.Ignore(b => b.CambiosSinPublicar);
+
         // Cada bulto pertenece a un envío.
         builder.HasOne<Envio>()
             .WithMany(e => e.Bultos)

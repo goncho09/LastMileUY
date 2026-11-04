@@ -6,10 +6,12 @@ public static class TopologiaMensajeria
     // Exchange de tipo topic: la clave de ruteo es el tipo de evento (TiposEvento)
     public const string ExchangeEnvios = "lastmileuy.envios";
 
-    // Cola del worker: recibe todos los eventos de envío ("envio.#")
+    // Cola del worker: recibe todos los eventos de envío ("envio.#") y de sus bultos ("bulto.#")
     public const string ColaWorker = "lastmileuy.worker.envios";
 
     public const string PatronEventosEnvio = "envio.#";
+
+    public const string PatronEventosBulto = "bulto.#";
 
     // Encabezado HTTP con el que llega (o sale) el identificador de correlación de un pedido.
     // En el mensaje viaja en la propiedad CorrelationId de AMQP y en el propio evento.

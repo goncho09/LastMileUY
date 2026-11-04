@@ -102,7 +102,8 @@ public class PublicadorOutbox(
     {
         await using var comando = new NpgsqlCommand($"""
             SELECT "Id", "Tipo", "OcurridoEn", "OperadorId", "ComercioId", "EnvioId", "CodigoSeguimiento",
-                   "Estado", "EstadoAnterior", "Origen", "EsPublico", "CorrelacionId"
+                   "Estado", "EstadoAnterior", "Origen", "EsPublico", "CorrelacionId",
+                   "CodigoBulto", "MotivoNoEntrega"
             FROM "MensajesOutbox"
             WHERE "FechaPublicacion" IS NULL
             ORDER BY "FechaCreacion"
@@ -128,7 +129,9 @@ public class PublicadorOutbox(
                 EstadoAnterior: lector.IsDBNull(8) ? null : lector.GetString(8),
                 Origen: lector.GetString(9),
                 EsPublico: lector.GetBoolean(10),
-                CorrelacionId: lector.IsDBNull(11) ? null : lector.GetString(11)));
+                CorrelacionId: lector.IsDBNull(11) ? null : lector.GetString(11),
+                CodigoBulto: lector.IsDBNull(12) ? null : lector.GetString(12),
+                MotivoNoEntrega: lector.IsDBNull(13) ? null : lector.GetString(13)));
         }
 
         return pendientes;

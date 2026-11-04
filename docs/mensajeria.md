@@ -76,6 +76,27 @@ Publica apenas se guarda un evento (la API le avisa) y, además, revisa la tabla
 **Al menos una vez.** Si la API se cae entre publicar y marcar, el mensaje sale de nuevo. El worker
 descarta los repetidos por `EventoId` (ver abajo).
 
+### Eventos de bulto (entrega parcial)
+
+Cada bulto que cambia de estado (entregado, no entregado, devuelto...) también deja su mensaje en el
+outbox, en el mismo guardado, con el tipo `bulto.estado_cambiado`:
+
+- `Bulto.CambiarEstado` anota el cambio en memoria (`Bulto.CambiosSinPublicar`, no se guarda en la base)
+  y `OutboxInterceptor` lo convierte en un `MensajeOutbox` al guardar. Así funciona venga de donde venga
+  el cambio (`Envio.RegistrarResultadoBultos`, la devolución...), igual que con el envío.
+- Uno por bulto y por guardado: si un bulto cambió más de una vez en el mismo guardado (no entregado →
+  pendiente → no entregado en una segunda visita), sale uno solo, del primer estado al último.
+- Van después del evento del envío (por ejemplo, primero "Entregado parcialmente" y después cada bulto),
+  con el mismo origen, fecha y correlación.
+- El contrato es el mismo `EstadoEnvioCambiado`: `Estado` y `EstadoAnterior` son los del bulto
+  (`EstadoBulto`), y además lleva `CodigoBulto` (el código que cargó el comercio, nunca el id interno) y,
+  si no se entregó, `MotivoNoEntrega` (el nombre del motivo del catálogo del operador). En los eventos de
+  envío esos dos campos no viajan, ni vacíos: el JSON que reciben los comercios no cambia.
+- La cola del worker escucha `envio.#` y también `bulto.#` (`TopologiaMensajeria.PatronEventosBulto`).
+  El tablero en vivo del backoffice sigue escuchando solo `envio.#`.
+- Sin efectos duplicados: los de bulto pasan por el mismo control que los de envío (`MensajesProcesados`).
+- Avisos: solo los reciben las suscripciones a `bulto.estado_cambiado` (las de envío no cambian).
+
 ## El worker
 
 ### Qué hace con cada evento

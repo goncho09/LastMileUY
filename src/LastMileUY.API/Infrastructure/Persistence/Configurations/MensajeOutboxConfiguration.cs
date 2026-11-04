@@ -28,6 +28,9 @@ public class MensajeOutboxConfiguration : IEntityTypeConfiguration<MensajeOutbox
         builder.Property(m => m.EstadoAnterior).HasMaxLength(100);
         builder.Property(m => m.Origen).HasMaxLength(100).IsRequired();
         builder.Property(m => m.CorrelacionId).HasMaxLength(64);
+        // Mismo largo que Bultos.Codigo y que el nombre de MotivosNoEntrega
+        builder.Property(m => m.CodigoBulto).HasMaxLength(100);
+        builder.Property(m => m.MotivoNoEntrega).HasMaxLength(150);
         builder.Property(m => m.UltimoError).HasMaxLength(1000);
 
         // Lo que busca el publicador: los que faltan publicar, en orden
