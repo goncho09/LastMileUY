@@ -9,7 +9,9 @@ namespace LastMileUY.API.Infrastructure.Cache;
 // y borra del caché lo que quedó viejo. Al estar en un solo lugar, cualquier código que cambie
 // envíos o la configuración del operador invalida solo, aunque no sepa que existe el caché.
 //   - Seguimiento público: cambia el envío (su estado y su historial): sincronización del repartidor,
-//     cambio de estado en el Backoffice, armado y despacho de rutas.
+//     cambio de estado en el Backoffice, armado y despacho de rutas. O cambia uno de sus bultos: el
+//     seguimiento muestra el avance de la entrega (2 de 3 bultos entregados), y un bulto puede cambiar
+//     sin que cambie el envío.
 //   - Configuración del operador: cambia el operador (nombre, color, logo) o una regla operativa.
 // Se crea uno por pedido (con su DbContext), por eso puede guardar lo pendiente en campos.
 public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesInterceptor
@@ -70,7 +72,7 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
         if (contexto is null)
             return;
 
-        foreach (var entrada in contexto.ChangeTracker.Entries())
+        foreach (var entrada in contexto.ChangeTracker.Entries().ToList())
         {
             if (entrada.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted))
                 continue;
@@ -79,6 +81,10 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
             {
                 case Envio envio when entrada.State == EntityState.Modified:
                     codigosCambiados.Add(envio.CodigoSeguimiento);
+                    break;
+                case Bulto bulto when entrada.State == EntityState.Modified:
+                    if (CodigoDelEnvio(contexto, bulto.EnvioId) is { } codigo)
+                        codigosCambiados.Add(codigo);
                     break;
                 case Operador operador:
                     operadoresCambiados.Add(operador.Id);
@@ -89,6 +95,14 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
             }
         }
     }
+
+    // El código de seguimiento del envío de un bulto: normalmente el envío ya está cargado
+    private static string? CodigoDelEnvio(DbContext contexto, int envioId) =>
+        contexto.Set<Envio>().Local.FirstOrDefault(e => e.Id == envioId)?.CodigoSeguimiento
+        ?? contexto.Set<Envio>().AsNoTracking()
+            .Where(e => e.Id == envioId)
+            .Select(e => e.CodigoSeguimiento)
+            .FirstOrDefault();
 
     private async Task InvalidarAsync(CancellationToken cancellationToken)
     {

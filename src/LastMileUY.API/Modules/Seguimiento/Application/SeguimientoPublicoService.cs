@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.Contracts.Seguimiento;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,7 +66,23 @@ public partial class SeguimientoPublicoService(ApplicationDbContext db)
             .Select(ev => new EventoPublicoDto(ev.FechaHora, ev.Tipo))
             .ToListAsync(cancellationToken);
 
+        // Avance por bultos: solo los estados, para contar (ni códigos ni ids). Los bultos se ven por la
+        // política RLS de su envío, igual que los eventos.
+        var estadosBultos = await db.Bultos
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(b => b.EnvioId == envio.Id)
+            .Select(b => b.Estado)
+            .ToListAsync(cancellationToken);
+
         await transaccion.CommitAsync(cancellationToken);
+
+        var bultos = estadosBultos.Count == 0
+            ? null
+            : new AvanceBultosDto(
+                estadosBultos.Count,
+                estadosBultos.Count(e => e == EstadoBulto.Entregado),
+                estadosBultos.Count(e => e == EstadoBulto.Devuelto));
 
         return new SeguimientoPublicoDto(
             envio.CodigoSeguimiento,
@@ -75,7 +92,8 @@ public partial class SeguimientoPublicoService(ApplicationDbContext db)
             envio.Ciudad,
             envio.Departamento,
             operador,
-            eventos);
+            eventos,
+            bultos);
     }
 
     // Letras y números (los códigos se generan con 12, ver Envio.GenerarCodigoSeguimiento)
