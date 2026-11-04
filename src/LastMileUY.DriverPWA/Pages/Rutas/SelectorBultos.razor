@@ -1,5 +1,6 @@
 ﻿
 @using LastMileUY.Contracts.Rutas
+@using LastMileUY.DriverPWA.Services
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
@@ -75,7 +76,7 @@
         @foreach (var bulto in Bultos)
         {
             var identificado = identificados.Contains(bulto.Id);
-            var pendiente = bulto.Estado == "Pendiente";
+            var pendiente = ResultadoPorBulto.PorEntregar(bulto);
 
             <div @key="bulto.Id"
                  class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border p-3 @(identificado ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50")">
@@ -151,7 +152,7 @@
     protected override void OnParametersSet()
     {
         var idsValidos = Bultos
-            .Where(b => b.Estado == "Pendiente")
+            .Where(ResultadoPorBulto.PorEntregar)
             .Select(b => b.Id)
             .ToHashSet();
 
@@ -186,7 +187,7 @@
             return;
         }
 
-        if (bulto.Estado != "Pendiente")
+        if (!ResultadoPorBulto.PorEntregar(bulto))
         {
             error = "Este bulto no está pendiente de entrega.";
             return;

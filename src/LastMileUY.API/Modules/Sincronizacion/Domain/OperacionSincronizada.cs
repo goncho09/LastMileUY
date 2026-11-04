@@ -17,6 +17,11 @@ public class OperacionSincronizada : IPerteneceAOperador
     // La genera la app al registrar la operación (sin conexión); identifica los reenvíos
     public Guid IdOperacion { get; set; }
 
+    // SHA-256 de lo que decide la operación (tipo, ruta, envío, motivo y resultado de cada bulto).
+    // Un reenvío con el mismo IdOperacion tiene que traer lo mismo; si trae otra cosa se rechaza.
+    // null en las operaciones guardadas antes de que existiera.
+    public string? Huella { get; set; }
+
     // Usuario del repartidor que la mandó
     public string UsuarioId { get; set; } = string.Empty;
 

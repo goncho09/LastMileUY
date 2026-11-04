@@ -23,10 +23,11 @@ que pasaron. Cada operación lleva:
 | Campo | Para qué |
 |---|---|
 | `IdOperacion` | Un Guid que genera la app al registrar la operación. Se repite igual en cada reenvío. |
-| `Tipo` | `Entrega` o `IntentoFallido`. |
+| `Tipo` | `Entrega`, `IntentoFallido` o `EntregaParcial`. |
 | `RutaId`, `EnvioId` | Qué parada de qué ruta. |
 | `FechaHoraDispositivo`, `Latitud`, `Longitud` | Cuándo y dónde pasó, según el celular. |
 | `MotivoNoEntregaId`, `Observaciones` | Intento fallido: el motivo (de `GET /api/sincronizacion/motivos`) y un comentario. |
+| `ResultadosBultos` | Entrega parcial: el resultado de **cada** bulto que faltaba entregar (`BultoId`, `Entregado` y, si no se entregó, `MotivoNoEntregaId`). |
 | `NombreReceptor`, `DocumentoReceptor`, `FirmaBase64`, `FotoBase64` | Entrega: la evidencia. Las imágenes son PNG o JPEG de hasta 1 MB. |
 
 ## Qué responde
@@ -58,6 +59,16 @@ guardó pero antes de que llegue la respuesta. Para que eso no genere dos entreg
 3. La base tiene un índice único `(OperadorId, IdOperacion)`. Si dos reenvíos llegan exactamente a la
    vez, uno se guarda y el otro choca con el índice y responde `Error` (reintentar), que en el
    siguiente intento ya da `Duplicada`.
+4. **Un reenvío tiene que traer lo mismo.** Cada operación guarda una huella (`Huella`, SHA-256) de lo
+   que decide: tipo, ruta, envío, motivo y el resultado de cada bulto (ordenados por bulto, así el orden
+   en que lleguen no importa). Si llega el mismo `IdOperacion` con otro contenido (por ejemplo, otro
+   bulto marcado como entregado), no es un reenvío: se responde `Rechazada` sin aplicarla y sin tocar
+   lo que ya quedó. La evidencia (firma, foto, receptor) no entra en la huella porque no cambia qué
+   se aplica. Las operaciones guardadas antes de la huella no la tienen y se responden como antes.
+
+Así el resultado de cada bulto se aplica una sola vez: un intento de entrega por operación, un
+resultado por bulto (además, índice único `(IntentoEntregaId, BultoId)` en `ResultadosBultosIntentos`)
+y un solo evento en el historial, aunque la app reenvíe.
 
 ## Reglas que se validan
 
@@ -131,6 +142,25 @@ la versión de la ruta (`Envio.AplicarPoliticaBultosPendientes`):
 
 Una entrega parcial cuenta como intento sin éxito, porque no se entregó todo. Con la regla de prueba del
 operador 1, que permite un solo intento, lo pendiente siempre va a devolución.
+
+### La entrega parcial desde la app
+
+Al confirmar la entrega de una parada con más de un bulto por entregar, la app muestra la lista de
+bultos para marcar cuáles se entregaron (`Services/ResultadoPorBulto.cs`):
+
+- **Cómo arrancan:** si el repartidor escaneó algún bulto, esos como entregados y el resto no; si no
+  escaneó ninguno, todos entregados. Los puede cambiar a mano.
+- **Cada bulto no entregado necesita su motivo** (los mismos del intento fallido; sin conexión salen de
+  los guardados en el celular).
+- **Qué se manda:** todos entregados es una `Entrega` común; algunos, una `EntregaParcial` con el
+  resultado de cada bulto que faltaba entregar (también los `NoEntregado` de una ruta anterior);
+  ninguno no es una entrega (se usa "No se pudo entregar").
+- **Antes de guardar** avisa si la versión de las reglas de la hoja de ruta no permite entregas
+  parciales. La API lo vuelve a controlar igual.
+
+La operación queda en la cola del celular con su `IdOperacion` y sus resultados por bulto, y se reenvía
+igual aunque se cierre la app. Una entrega parcial no deja el envío como entregado en el celular: los
+bultos que faltan pueden volver a salir.
 
 ## Política de conflictos: manda el servidor
 
