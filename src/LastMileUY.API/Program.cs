@@ -207,19 +207,20 @@ var conexionRedis = builder.Configuration.GetConnectionString("Redis");
 if (!string.IsNullOrWhiteSpace(conexionRedis))
 {
     // Una sola conexión a Redis para el caché y para los contadores de aciertos y fallos.
-    // AbortOnConnectFail = false: si Redis no está al arrancar, la API arranca igual y se reconecta sola.
-    var opcionesRedis = StackExchange.Redis.ConfigurationOptions.Parse(conexionRedis);
-    opcionesRedis.AbortOnConnectFail = false;
-    var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(opcionesRedis);
+    // Si Redis no está o se cae, la API sigue desde la base sin esperarlo (ver ConexionRedis).
+    var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(ConexionRedis.Opciones(conexionRedis));
 
     builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redis);
     builder.Services.AddSingleton<IMetricasCache, MetricasCacheRedis>();
+
+    // Al volver Redis borra lo cacheado: las invalidaciones de mientras estuvo caído se perdieron
+    builder.Services.AddHostedService<LimpiezaCacheRedis>();
 
     builder.Services.AddStackExchangeRedisCache(options =>
     {
         options.ConnectionMultiplexerFactory = () => Task.FromResult<StackExchange.Redis.IConnectionMultiplexer>(redis);
         // Prefijo de todas las claves de la app en Redis
-        options.InstanceName = "lastmileuy:";
+        options.InstanceName = CasosDeCache.PrefijoRedis;
     });
 }
 else
