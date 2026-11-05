@@ -171,8 +171,7 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "ops"
+          }
         },
         "overrides": []
       },
@@ -200,7 +199,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (job) (\r\n  rate(dotnet_exceptions_total[5m])\r\n)",
+          "expr": "sum by (job) (\r\n  increase(dotnet_exceptions_total[5m])\r\n)",
           "interval": "",
           "legendFormat": "{{job}}",
           "range": true,
@@ -361,8 +360,7 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "reqps"
+          }
         },
         "overrides": []
       },
@@ -390,7 +388,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(\r\n  increase(http_server_request_duration_seconds_count{job=\"LastMileUY.API\"}[15m])\r\n)",
+          "expr": "sum(increase(http_server_request_duration_seconds_count[5m]))",
           "interval": "",
           "legendFormat": "{{label}}",
           "range": true,
@@ -512,5 +510,5 @@
   "timezone": "browser",
   "title": "LastMileUY — Observabilidad",
   "uid": "cg3bml9fnq8e8d",
-  "version": 6
+  "version": 11
 }
