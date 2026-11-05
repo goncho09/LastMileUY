@@ -21,7 +21,7 @@ public interface IMetricasCache
 // HINCRBY suma de a uno y es atómico: dos pedidos a la vez no pisan la cuenta.
 public class MetricasCacheRedis(IConnectionMultiplexer redis, ILogger<MetricasCacheRedis> logger) : IMetricasCache
 {
-    private const string Clave = "lastmileuy:metricas:cache";
+    public const string Clave = CasosDeCache.PrefijoRedis + "metricas:cache";
 
     public void Registrar(CasoDeCache caso, bool acierto)
     {
@@ -39,19 +39,43 @@ public class MetricasCacheRedis(IConnectionMultiplexer redis, ILogger<MetricasCa
     public async Task<IReadOnlyDictionary<string, (long Aciertos, long Fallos)>> ObtenerAsync(
         CancellationToken cancellationToken = default)
     {
-        var campos = (await redis.GetDatabase().HashGetAllAsync(Clave))
-            .ToDictionary(c => c.Name.ToString(), c => (long)c.Value);
+        HashEntry[] guardados;
+
+        try
+        {
+            guardados = await redis.GetDatabase().HashGetAllAsync(Clave);
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            // Los contadores viven en Redis: sin Redis no hay de dónde leerlos (la API sigue atendiendo igual)
+            throw new MetricasCacheNoDisponiblesException(ex);
+        }
+
+        var campos = guardados.ToDictionary(c => c.Name.ToString(), c => (long)c.Value);
 
         return CasosDeCache.Todos.ToDictionary(
             caso => caso.Id,
             caso => (campos.GetValueOrDefault(Campo(caso.Id, true)), campos.GetValueOrDefault(Campo(caso.Id, false))));
     }
 
-    public Task ReiniciarAsync(CancellationToken cancellationToken = default) =>
-        redis.GetDatabase().KeyDeleteAsync(Clave);
+    public async Task ReiniciarAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await redis.GetDatabase().KeyDeleteAsync(Clave);
+        }
+        catch (Exception ex) when (ex is RedisException or TimeoutException)
+        {
+            throw new MetricasCacheNoDisponiblesException(ex);
+        }
+    }
 
     private static string Campo(string casoId, bool acierto) => $"{casoId}:{(acierto ? "aciertos" : "fallos")}";
 }
+
+// Redis no respondió al leer o reiniciar los contadores
+public class MetricasCacheNoDisponiblesException(Exception inner)
+    : Exception("Redis no está disponible: no se pueden leer las métricas del caché.", inner);
 
 // Sin Redis (pruebas, o la API corriendo fuera de Docker): en memoria de esta instancia
 public class MetricasCacheMemoria : IMetricasCache

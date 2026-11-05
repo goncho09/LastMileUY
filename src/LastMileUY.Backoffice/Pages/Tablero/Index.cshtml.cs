@@ -28,6 +28,11 @@ public class IndexModel(ICacheApi cacheApi, ILogger<IndexModel> logger) : PageMo
         {
             Metricas = await cacheApi.ObtenerMetricasAsync(ct);
         }
+        catch (RedisNoDisponibleException)
+        {
+            Error = "Redis no está disponible en este momento: los contadores del caché se guardan ahí y no se " +
+                    "pueden leer. El sistema sigue funcionando: mientras tanto, las consultas van directo a la base.";
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
             logger.LogError(ex, "No se pudieron obtener las métricas del caché");

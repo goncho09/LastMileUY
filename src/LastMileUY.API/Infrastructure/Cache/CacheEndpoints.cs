@@ -16,7 +16,16 @@ public static class CacheEndpoints
 
         group.MapGet("/metricas", async (IMetricasCache metricas, CancellationToken cancellationToken) =>
             {
-                var numeros = await metricas.ObtenerAsync(cancellationToken);
+                IReadOnlyDictionary<string, (long Aciertos, long Fallos)> numeros;
+
+                try
+                {
+                    numeros = await metricas.ObtenerAsync(cancellationToken);
+                }
+                catch (MetricasCacheNoDisponiblesException)
+                {
+                    return RedisNoDisponible();
+                }
 
                 return Results.Ok(CasosDeCache.Todos.Select(caso =>
                 {
@@ -39,7 +48,15 @@ public static class CacheEndpoints
         // Para empezar una medición de cero (por ejemplo antes de una demostración)
         group.MapPost("/metricas/reiniciar", async (IMetricasCache metricas, CancellationToken cancellationToken) =>
             {
-                await metricas.ReiniciarAsync(cancellationToken);
+                try
+                {
+                    await metricas.ReiniciarAsync(cancellationToken);
+                }
+                catch (MetricasCacheNoDisponiblesException)
+                {
+                    return RedisNoDisponible();
+                }
+
                 return Results.NoContent();
             })
             .RequireAuthorization(politica => politica.RequireRole("Administrador"))
@@ -47,4 +64,12 @@ public static class CacheEndpoints
 
         return app;
     }
+
+    // 503 y no 500: no es un error de la API, es Redis que no responde (el Backoffice muestra el aviso)
+    private static IResult RedisNoDisponible() =>
+        Results.Problem(
+            title: "Redis no disponible",
+            detail: "Los contadores del caché se guardan en Redis y no responde. La API sigue atendiendo: " +
+                    "mientras tanto las consultas van directo a la base.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
 }

@@ -8,6 +8,9 @@ public record CasoDeCache(string Id, string Nombre, string Perfil, TimeSpan Dura
 // y envolver su consulta con CacheDistribuido.ObtenerOCrearAsync.
 public static class CasosDeCache
 {
+    // Prefijo de todas las claves de la app en Redis (las del caché y la de los contadores de métricas)
+    public const string PrefijoRedis = "lastmileuy:";
+
     // Configuración del operador (nombre, color, logo y reglas operativas): se pide en cada inicio de
     // sesión y en la página del operador, y casi nunca cambia -> duración larga.
     public static readonly CasoDeCache ConfiguracionOperador = new(
