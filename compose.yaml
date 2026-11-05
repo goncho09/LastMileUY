@@ -244,6 +244,8 @@
     volumes:
       - grafana_data:/var/lib/grafana
       - ./observabilidad/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./observabilidad/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./observabilidad/grafana:/etc/grafana/provisioning/dashboards/json:ro
     depends_on:
       - prometheus
       - jaeger
