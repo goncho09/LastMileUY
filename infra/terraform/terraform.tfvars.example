@@ -1,0 +1,17 @@
+﻿subscription_id = "PEGAR-SUBSCRIPTION-ID"
+
+location = "brazilsouth"
+
+resource_group_name = "lastmileuy-rg"
+
+vm_name = "lastmileuy-server"
+
+vm_size = "Standard_D2as_v4"
+
+admin_username = "azureuser"
+
+ssh_public_key = "PEGAR-CLAVE-PUBLICA-SSH"
+
+ssh_allowed_cidr = "PEGAR-TU-IP-PUBLICA/32"
+
+os_disk_size_gb = 64
