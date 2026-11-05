@@ -76,6 +76,15 @@ builder.Services.AddOpenTelemetry()
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation()
+        // Aciertos y fallos del caché por caso (Infrastructure/Cache/TelemetriaCache)
+        .AddMeter(TelemetriaCache.Nombre)
+        // Operaciones de la app del repartidor y cuánto esperaron para sincronizarse
+        .AddMeter(TelemetriaSincronizacion.Nombre)
+        // Cortes pensados para la demora: de menos de un segundo (con señal) a horas (sin señal)
+        .AddView(TelemetriaSincronizacion.NombreDemora, new ExplicitBucketHistogramConfiguration
+        {
+            Boundaries = [0.5, 1, 2, 5, 10, 30, 60, 300, 900, 1800, 3600, 7200, 14400, 28800]
+        })
         .AddOtlpExporter(options =>
         {
             options.Protocol = OtlpExportProtocol.HttpProtobuf;
@@ -312,6 +321,10 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Las métricas propias arrancan en 0, para que el tablero técnico vea desde el primer evento
+TelemetriaCache.Inicializar();
+TelemetriaSincronizacion.Inicializar();
 
 // Primero las tablas (si corresponde), después los datos iniciales
 await MigracionesAlIniciar.AplicarSiCorrespondeAsync(app);

@@ -45,6 +45,9 @@
       - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      # Plugins: la consola web y las métricas para Prometheus (puerto 15692, solo dentro de la red de
+      # Docker). Prometheus lee de ahí la profundidad de las colas para el tablero técnico
+      - ./observabilidad/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s

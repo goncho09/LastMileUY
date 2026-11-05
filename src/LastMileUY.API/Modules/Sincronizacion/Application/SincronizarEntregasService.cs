@@ -174,6 +174,8 @@ public class SincronizarEntregasService(
         // El cambio del envío, la ruta, el intento con su prueba y el registro de la operación van juntos
         await db.SaveChangesAsync(cancellationToken);
 
+        TelemetriaSincronizacion.Registrar(resultado, fecha);
+
         return new ResultadoOperacionDto(
             operacion.IdOperacion,
             resultado.ToString(),
