@@ -11,3 +11,14 @@ scrape_configs:
     static_configs:
       - targets:
           - localhost:9090
+
+  # RabbitMQ (plugin rabbitmq_prometheus): mensajes en cada cola, para la profundidad de la cola
+  # del worker y de la de fallidos en el tablero técnico
+  - job_name: rabbitmq
+    metrics_path: /metrics/detailed
+    params:
+      family:
+        - queue_coarse_metrics
+    static_configs:
+      - targets:
+          - rabbitmq:15692

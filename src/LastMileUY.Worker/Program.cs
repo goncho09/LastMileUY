@@ -41,6 +41,8 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation()
+        // Intentos de avisos a comercios y avisos que quedaron fallidos (TelemetriaAvisos)
+        .AddMeter(TelemetriaAvisos.Nombre)
         .AddOtlpExporter(options =>
         {
             options.Protocol = OtlpExportProtocol.HttpProtobuf;
@@ -74,4 +76,7 @@ builder.Services.AddHostedService<DespachadorAvisos>();
 
 
 var host = builder.Build();
+
+// Las métricas de avisos arrancan en 0, para que el tablero técnico vea desde el primer aviso
+TelemetriaAvisos.Inicializar();
 host.Run();

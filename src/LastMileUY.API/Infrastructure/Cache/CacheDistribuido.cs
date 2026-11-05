@@ -28,6 +28,7 @@ public class CacheDistribuido(IDistributedCache cache, IMetricasCache metricas, 
             {
                 var valorGuardado = JsonSerializer.Deserialize<T>(guardado, OpcionesJson);
                 metricas.Registrar(caso, acierto: true);
+                TelemetriaCache.Registrar(caso, acierto: true);
                 return valorGuardado;
             }
         }
@@ -38,6 +39,7 @@ public class CacheDistribuido(IDistributedCache cache, IMetricasCache metricas, 
 
         // No estaba en el caché (o el caché no respondió): se va a la base
         metricas.Registrar(caso, acierto: false);
+        TelemetriaCache.Registrar(caso, acierto: false);
 
         var valor = await consultar(cancellationToken);
 

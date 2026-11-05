@@ -101,12 +101,15 @@ public class DespachadorAvisos(
             : new ResultadoEnvio(false, null, "La suscripción está desactivada.", TimeSpan.Zero);
 
         // Si la suscripción está desactivada no se reintenta: queda Fallido
-        await RegistrarResultadoAsync(conexion, transaccion, aviso, resultado, reintentar: suscripcionActiva, cancellationToken);
+        var quedoFallido = await RegistrarResultadoAsync(
+            conexion, transaccion, aviso, resultado, reintentar: suscripcionActiva, cancellationToken);
 
         // Historial: cada intento queda anotado, en la misma transacción que el resultado
         await RegistrarIntentoAsync(conexion, transaccion, aviso, resultado, cancellationToken);
 
         await transaccion.CommitAsync(cancellationToken);
+
+        TelemetriaAvisos.RegistrarIntento(resultado.Exitoso, quedoFallido);
 
         if (resultado.Exitoso)
             logger.LogInformation(
@@ -158,8 +161,9 @@ public class DespachadorAvisos(
         return (aviso, lector.GetBoolean(7));
     }
 
-    // Estado 2 = Entregado, 3 = Fallido; 1 = sigue Pendiente, con el próximo intento programado
-    private static async Task RegistrarResultadoAsync(
+    // Estado 2 = Entregado, 3 = Fallido; 1 = sigue Pendiente, con el próximo intento programado.
+    // true si el aviso quedó Fallido (no se reintenta más)
+    private static async Task<bool> RegistrarResultadoAsync(
         NpgsqlConnection conexion, NpgsqlTransaction transaccion, AvisoPendiente aviso, ResultadoEnvio resultado,
         bool reintentar, CancellationToken cancellationToken)
     {
@@ -181,6 +185,8 @@ public class DespachadorAvisos(
         comando.Parameters.Add(new NpgsqlParameter<DateTime?>("proximo", proximo));
         comando.Parameters.Add(new NpgsqlParameter<string?>("error", resultado.Error));
         await comando.ExecuteNonQueryAsync(cancellationToken);
+
+        return !resultado.Exitoso && proximo is null;
     }
 
     // Una fila del historial de entregas (IntentosAvisos) por cada intento, con su resultado
