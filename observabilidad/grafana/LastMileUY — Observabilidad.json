@@ -295,7 +295,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(increase(http_server_request_duration_seconds_sum[15m]))\r\n/\r\nsum(increase(http_server_request_duration_seconds_count[15m]))",
+          "expr": "sum(\r\n  http_server_request_duration_seconds_sum{job=\"LastMileUY.API\"}\r\n)\r\n/\r\nsum(\r\n  http_server_request_duration_seconds_count{job=\"LastMileUY.API\"}\r\n)",
           "legendFormat": "{{API}}",
           "range": true,
           "refId": "A"
@@ -390,7 +390,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (job) (\r\n  rate(http_server_request_duration_seconds_count[5m])\r\n)",
+          "expr": "sum(\r\n  increase(http_server_request_duration_seconds_count{job=\"LastMileUY.API\"}[15m])\r\n)",
           "interval": "",
           "legendFormat": "{{label}}",
           "range": true,
@@ -505,12 +505,12 @@
     "list": []
   },
   "time": {
-    "from": "2026-11-04T21:39:21.672Z",
-    "to": "2026-11-04T21:43:16.455Z"
+    "from": "now-15m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "LastMileUY — Observabilidad",
   "uid": "cg3bml9fnq8e8d",
-  "version": 4
+  "version": 6
 }
