@@ -24,7 +24,8 @@ public static class RutasDePuntaAPunta
         HttpClient operador,
         HttpClient despachador,
         int diasAdelante,
-        int cantidadEnvios)
+        int cantidadEnvios,
+        int bultosPorEnvio = 1)
     {
         var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
         var envioIds = new int[cantidadEnvios];
@@ -36,17 +37,16 @@ public static class RutasDePuntaAPunta
                 ComercioId = api.IdComercio1,
                 DestinatarioId = destinatario,
                 DireccionId = direccion,
-                Bultos =
-                [
-                    new CrearBultoRequest
+                Bultos = Enumerable.Range(1, bultosPorEnvio)
+                    .Select(n => new CrearBultoRequest
                     {
                         PesoKg = 1,
                         LargoCm = 20,
                         AnchoCm = 15,
                         AltoCm = 10,
-                        Descripcion = "Bulto de prueba"
-                    }
-                ]
+                        Descripcion = $"Bulto de prueba {n}"
+                    })
+                    .ToList()
             });
 
             Assert.Equal(HttpStatusCode.Created, alta.StatusCode);

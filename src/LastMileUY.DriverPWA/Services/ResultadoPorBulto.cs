@@ -26,8 +26,8 @@ public static class ResultadoPorBulto
     public static bool PorEntregar(BultoRutaDto bulto) =>
         bulto.Estado is "Pendiente" or "NoEntregado";
 
-    // Cómo arranca cada bulto: si el repartidor escaneó alguno, esos como entregados y el resto no;
-    // si no escaneó ninguno, todos entregados. Después los puede cambiar a mano.
+    // Cómo arranca cada bulto: los escaneados como entregados y el resto no (si no escaneó ninguno,
+    // ninguno arranca entregado). Después los puede cambiar a mano.
     public static Dictionary<int, Marca> MarcasIniciales(
         IEnumerable<BultoRutaDto> bultos,
         IReadOnlyCollection<int> identificados)

@@ -25,6 +25,9 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\LastMileUY.API\LastMileUY.API.csproj" />
         <ProjectReference Include="..\..\src\LastMileUY.Worker\LastMileUY.Worker.csproj" />
+        <!-- La app del repartidor, para la prueba sin conexión de punta a punta (ModoSinConexionDePuntaAPuntaTests).
+             Con alias porque la app y la API tienen las dos una clase Program -->
+        <ProjectReference Include="..\..\src\LastMileUY.DriverPWA\LastMileUY.DriverPWA.csproj" Aliases="AppRepartidor" />
     </ItemGroup>
 
 </Project>
