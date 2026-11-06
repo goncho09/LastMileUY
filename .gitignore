@@ -487,3 +487,5 @@ cobertura/
 
 # Firmas y fotos de entregas que guarda la API al correr en desarrollo (ver AlmacenEvidenciasEnDisco)
 src/LastMileUY.API/evidencias/
+
+.env.azure
