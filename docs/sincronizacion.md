@@ -148,8 +148,9 @@ operador 1, que permite un solo intento, lo pendiente siempre va a devolución.
 Al confirmar la entrega de una parada con más de un bulto por entregar, la app muestra la lista de
 bultos para marcar cuáles se entregaron (`Services/ResultadoPorBulto.cs`):
 
-- **Cómo arrancan:** si el repartidor escaneó algún bulto, esos como entregados y el resto no; si no
-  escaneó ninguno, todos entregados. Los puede cambiar a mano.
+- **Cómo arrancan:** los que el repartidor escaneó, como entregados, y el resto no. Si no escaneó
+  ninguno, ninguno arranca entregado y no se puede confirmar sin marcar alguno: nada se da por
+  entregado sin que el repartidor lo indique. Los puede cambiar a mano.
 - **Cada bulto no entregado necesita su motivo** (los mismos del intento fallido; sin conexión salen de
   los guardados en el celular).
 - **Qué se manda:** todos entregados es una `Entrega` con la lista de esos bultos; algunos, una `EntregaParcial` con el
@@ -235,6 +236,26 @@ anterior de la app que quedó en la cola) se sigue aceptando como antes.
   la de la primera operación según el celular.
 - Cuando ninguno de sus envíos sigue En tránsito (todos entregados o con intento fallido), pasa a
   **Finalizada**.
+
+## Cómo se prueba sin conexión
+
+`tests/LastMileUY.API.Tests/PuntaAPunta/ModoSinConexionDePuntaAPuntaTests.cs` prueba el modo sin
+conexión completo, de punta a punta: los servicios reales de la app (hoja de ruta, escaneo de bultos,
+cola de operaciones y almacén local) contra la API real (PostgreSQL y RabbitMQ en Docker). Lo único
+simulado es el navegador: lo que la app guarda en IndexedDB queda en memoria y sobrevive a "cerrar la
+app" (crear los servicios de nuevo). La señal la maneja la prueba: cortada, el pedido no sale, como un
+`fetch` sin red; "perdiendo respuestas", el pedido llega a la API pero la respuesta no vuelve.
+
+| Escenario | Qué se comprueba |
+|---|---|
+| Una jornada sin señal | La hoja y los motivos se descargan con conexión y después salen del celular. Sin señal se registran una entrega (bultos escaneados), una entrega parcial (con el motivo del bulto que no se entregó) y un intento fallido, y se cierra la app. Nada llega al servidor mientras tanto. Al volver la señal las tres se aplican en el orden en que pasaron, con la hora del celular, y el celular queda al día (sin pendientes, la hoja guardada actualizada). |
+| Se pierde la respuesta | La API aplicó la entrega pero el celular no se enteró: el reenvío lleva el mismo `IdOperacion`, vuelve como `Duplicada` y el envío tiene un solo intento. |
+| El Backoffice lo cambió mientras tanto | El operador lo marca extraviado mientras el repartidor está sin señal: la entrega vuelve como `Conflicto`, sale de la cola y el envío sigue extraviado. |
+| Se venció la sesión | Al volver la señal la API contesta 401: la pendiente sigue en el celular, y cuando el mismo repartidor vuelve a entrar se manda. |
+
+Para comprobar que la prueba sirve se rompió la app a propósito, de a una cosa por vez, y en cada caso
+falló: mandar las pendientes de la más nueva a la más vieja, no guardar la cola, reenviar con otro
+`IdOperacion`, borrar lo guardado en cada inicio de sesión y dejar en la cola las que vuelven en conflicto.
 
 ## Evidencia
 

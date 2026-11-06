@@ -1,0 +1,423 @@
+extern alias AppRepartidor;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
+
+using System.Net;
+using System.Net.Http.Json;
+using AppRepartidor::LastMileUY.DriverPWA.Services;
+using LastMileUY.Contracts.Envios;
+using LastMileUY.Contracts.Operadores;
+using LastMileUY.Contracts.Rutas;
+using LastMileUY.Contracts.Sincronizacion;
+using Microsoft.AspNetCore.Mvc.Testing.Handlers;
+using Microsoft.JSInterop;
+using static ApiDePuntaAPunta;
+
+// El modo sin conexión completo, de punta a punta: la app del repartidor (sus servicios reales: hoja de
+// ruta, escaneo de bultos, cola de operaciones y almacén local) contra la API real, con una red que se
+// corta y una app que se cierra y se vuelve a abrir. Lo único simulado es el navegador: lo que la app
+// guarda en IndexedDB queda en memoria (NavegadorEnMemoria) y sobrevive a cerrar la app, como en el celular.
+//
+// Cubre lo que tiene que pasar en la calle:
+// - una jornada sin señal: se descarga la hoja con conexión, se entrega, se entrega en parte y se registra
+//   un intento fallido sin conexión, se cierra la app, y al volver la señal todo llega en orden y una sola vez;
+// - se corta la respuesta: la API aplicó la entrega pero el celular no se enteró; el reenvío no la repite;
+// - mientras tanto cambió el Backoffice: manda el servidor y la operación queda como conflicto;
+// - se vence la sesión: lo pendiente no se pierde y sale al volver a entrar.
+[Collection(ColeccionApiDePuntaAPunta.Nombre)]
+public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
+{
+    private static readonly string Png = Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
+
+    [Fact]
+    public async Task Una_jornada_sin_senal_llega_entera_y_en_orden_al_volver_la_conexion()
+    {
+        var operador = await api.IniciarSesionAsync(Operador1);
+        var despachador = await api.IniciarSesionAsync(Despachador1);
+        await PermitirEntregasParcialesAsync(operador);
+
+        // Cuatro paradas de dos bultos. La cuarta queda para después, así la ruta sigue abierta
+        var (rutaId, envios) = await RutasDePuntaAPunta.RutaConEnviosAsync(
+            api, operador, despachador, diasAdelante: 50, cantidadEnvios: 4, bultosPorEnvio: 2);
+        await RutasDePuntaAPunta.DespacharAsync(despachador, rutaId);
+        var (completa, parcial, fallida) = (envios[0], envios[1], envios[2]);
+
+        // Con conexión, al empezar el día: inicia sesión y descarga la hoja y los motivos
+        var celular = new Celular(api);
+        var app = celular.Abrir();
+        Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
+        Assert.Contains(await app.Rutas.ObtenerMisRutasAsync(), r => r.Id == rutaId);
+        Assert.NotNull(await app.Rutas.ObtenerRutaAsync(rutaId));
+        var motivos = await app.Sincronizacion.ObtenerMotivosAsync();
+        Assert.NotEmpty(motivos);
+
+        // Se va la señal y se cierra la app: al abrirla, la hoja y los motivos salen del celular
+        celular.Red.Cortar();
+        app = celular.Abrir();
+        var hoja = (await app.Rutas.ObtenerRutaAsync(rutaId))!;
+        Assert.Equal(motivos, await app.Sincronizacion.ObtenerMotivosAsync());
+        var bultos = hoja.Paradas.ToDictionary(p => p.EnvioId, p => p.Bultos!.ToList());
+        Assert.All(envios, id => Assert.Equal(2, bultos[id].Count));
+
+        var hace30 = DateTime.UtcNow.AddMinutes(-30);
+        var hace20 = DateTime.UtcNow.AddMinutes(-20);
+        var hace10 = DateTime.UtcNow.AddMinutes(-10);
+
+        // Parada 1: escanea los dos bultos y entrega
+        await app.Bultos.GuardarAsync(rutaId, completa, [.. bultos[completa].Select(b => b.Id)]);
+        var decision = await DecidirAsync(app, rutaId, completa, bultos[completa], hoja, motivoDelResto: null);
+        Assert.Equal("Entrega", decision.Tipo);
+        var estado = await app.Sincronizacion.GuardarOperacionAsync(
+            Entrega(decision, rutaId, completa, hace30));
+        Assert.True(estado.Pendiente);
+
+        // Parada 2: escanea uno solo; el otro no se entrega, con su motivo
+        var entregado = bultos[parcial][0];
+        var noEntregado = bultos[parcial][1];
+        await app.Bultos.GuardarAsync(rutaId, parcial, [entregado.Id]);
+        decision = await DecidirAsync(app, rutaId, parcial, bultos[parcial], hoja, motivos[0].Id);
+        Assert.Equal("EntregaParcial", decision.Tipo);
+        Assert.True((await app.Sincronizacion.GuardarOperacionAsync(
+            Entrega(decision, rutaId, parcial, hace20))).Pendiente);
+
+        // Parada 3: no está nadie
+        Assert.True((await app.Sincronizacion.GuardarOperacionAsync(new OperacionRequest
+        {
+            Tipo = "IntentoFallido",
+            RutaId = rutaId,
+            EnvioId = fallida,
+            FechaHoraDispositivo = hace10,
+            Latitud = -34.9m,
+            Longitud = -56.16m,
+            MotivoNoEntregaId = motivos[0].Id
+        })).Pendiente);
+
+        // Nada salió del celular: el servidor sigue viendo los envíos en tránsito
+        Assert.True(celular.Red.PedidosSinSalir > 0);
+        foreach (var id in envios)
+            Assert.Equal("EnTransito", (await DetalleAsync(operador, id)).Estado);
+
+        // Se cierra la app otra vez: las tres siguen ahí, con lo que se marcó de cada bulto
+        app = celular.Abrir();
+        Assert.Equal(3, (await app.Cola.ObtenerPendientesAsync()).Count);
+        var guardada = (await app.Sincronizacion.ObtenerPendienteAsync(parcial))!;
+        Assert.Equal(
+            [new ResultadoBultoRequest(entregado.Id, true), new ResultadoBultoRequest(noEntregado.Id, false, motivos[0].Id)],
+            guardada.ResultadosBultos!);
+
+        // Vuelve la señal: se mandan todas, de la más vieja a la más nueva
+        celular.Red.Conectar();
+        Assert.Equal((3, 0), await app.Sincronizacion.SincronizarPendientesAsync());
+
+        var mias = (await app.Sincronizacion.ObtenerMisOperacionesAsync(null, 1)).Items
+            .Where(o => o.RutaId == rutaId)
+            .OrderBy(o => o.FechaRecepcion)
+            .ToList();
+        Assert.Equal([completa, parcial, fallida], mias.Select(o => o.EnvioId));
+        Assert.All(mias, o => Assert.Equal("Aplicada", o.Resultado));
+
+        // En el servidor quedó lo que pasó en la calle, con la hora en que pasó (no la de la sincronización)
+        var detalleCompleta = await DetalleAsync(operador, completa);
+        Assert.Equal("Entregado", detalleCompleta.Estado);
+        Assert.All(detalleCompleta.Bultos, b => Assert.Equal("Entregado", b.Estado));
+        Assert.Equal(hace30, Assert.Single(detalleCompleta.Intentos).FechaHora, TimeSpan.FromSeconds(1));
+
+        var detalleParcial = await DetalleAsync(operador, parcial);
+        var intentoParcial = Assert.Single(detalleParcial.Intentos);
+        Assert.Equal("Parcial", intentoParcial.Resultado);
+        Assert.Equal(hace20, intentoParcial.FechaHora, TimeSpan.FromSeconds(1));
+        Assert.Equal("Entregado", detalleParcial.Bultos.Single(b => b.Codigo == entregado.Codigo).Estado);
+        Assert.Equal("NoEntregado", detalleParcial.Bultos.Single(b => b.Codigo == noEntregado.Codigo).Estado);
+        Assert.Equal([entregado.Codigo], intentoParcial.Prueba!.BultosEntregados);
+
+        var intentoFallido = Assert.Single((await DetalleAsync(operador, fallida)).Intentos);
+        Assert.Equal("NoEntregado", intentoFallido.Resultado);
+        Assert.Equal(hace10, intentoFallido.FechaHora, TimeSpan.FromSeconds(1));
+
+        // Y el celular se puso al día: sin pendientes, la entrega confirmada y la hoja actualizada
+        // (se lee sin conexión para ver la que quedó guardada)
+        Assert.Empty(await app.Cola.ObtenerPendientesAsync());
+        Assert.True(await app.Confirmadas.EstaConfirmadoAsync(completa));
+        celular.Red.Cortar();
+        var hojaGuardada = (await celular.Abrir().Rutas.ObtenerRutaAsync(rutaId))!;
+        Assert.Equal("Entregado", hojaGuardada.Paradas.Single(p => p.EnvioId == completa).EstadoEnvio);
+        Assert.Equal("EnTransito", hojaGuardada.Paradas.Single(p => p.EnvioId == envios[3]).EstadoEnvio);
+    }
+
+    [Fact]
+    public async Task Si_se_pierde_la_respuesta_el_reenvio_no_aplica_la_entrega_dos_veces()
+    {
+        var (operador, rutaId, envioId) = await RutaDeUnEnvioAsync(diasAdelante: 51);
+        var celular = new Celular(api);
+        var app = celular.Abrir();
+        Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
+        var hoja = (await app.Rutas.ObtenerRutaAsync(rutaId))!;
+        var parada = Assert.Single(hoja.Paradas);
+
+        // La entrega llega a la API, pero la respuesta se pierde en el camino
+        celular.Red.PerderRespuestas();
+        var decision = await DecidirAsync(app, rutaId, envioId, parada.Bultos!, hoja, motivoDelResto: null, escanearTodos: true);
+        Assert.True((await app.Sincronizacion.GuardarOperacionAsync(Entrega(decision, rutaId, envioId, DateTime.UtcNow))).Pendiente);
+        Assert.Equal("Entregado", (await DetalleAsync(operador, envioId)).Estado);
+
+        // Para el celular sigue pendiente: al reenviarla, la API la reconoce y no la aplica de nuevo
+        celular.Red.Conectar();
+        var pendiente = Assert.Single(await app.Cola.ObtenerPendientesAsync());
+        var estado = await app.Sincronizacion.ReintentarOperacionAsync(pendiente.IdOperacion);
+
+        Assert.False(estado.Pendiente);
+        Assert.True(estado.Resultado!.Duplicada);
+        Assert.Equal("Aplicada", estado.Resultado.Resultado);
+        Assert.Empty(await app.Cola.ObtenerPendientesAsync());
+        Assert.Single((await DetalleAsync(operador, envioId)).Intentos);
+    }
+
+    [Fact]
+    public async Task Si_el_backoffice_cambio_el_envio_mientras_tanto_manda_el_servidor()
+    {
+        var (operador, rutaId, envioId) = await RutaDeUnEnvioAsync(diasAdelante: 52);
+        var celular = new Celular(api);
+        var app = celular.Abrir();
+        Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
+        var hoja = (await app.Rutas.ObtenerRutaAsync(rutaId))!;
+
+        celular.Red.Cortar();
+        var decision = await DecidirAsync(app, rutaId, envioId, hoja.Paradas[0].Bultos!, hoja, motivoDelResto: null, escanearTodos: true);
+        Assert.True((await app.Sincronizacion.GuardarOperacionAsync(Entrega(decision, rutaId, envioId, DateTime.UtcNow))).Pendiente);
+
+        // Mientras el repartidor no tiene señal, el operador lo da por extraviado
+        using (var cambio = await operador.PatchAsJsonAsync($"api/envios/{envioId}/estado",
+                   new CambiarEstadoRequest { Estado = "Extraviado", Descripcion = "No aparece en el camión" }))
+        {
+            Assert.True(cambio.IsSuccessStatusCode);
+        }
+
+        celular.Red.Conectar();
+        var pendiente = Assert.Single(await app.Cola.ObtenerPendientesAsync());
+        var estado = await app.Sincronizacion.ReintentarOperacionAsync(pendiente.IdOperacion);
+
+        // Es un resultado final: sale de la cola, no se reintenta, y no se pisa lo del Backoffice
+        Assert.False(estado.Pendiente);
+        Assert.Equal("Conflicto", estado.Resultado!.Resultado);
+        Assert.Equal("Extraviado", estado.Resultado.EstadoEnvio);
+        Assert.Empty(await app.Cola.ObtenerPendientesAsync());
+        Assert.False(await app.Confirmadas.EstaConfirmadoAsync(envioId));
+
+        var detalle = await DetalleAsync(operador, envioId);
+        Assert.Equal("Extraviado", detalle.Estado);
+        Assert.Empty(detalle.Intentos);
+
+        // El repartidor lo ve entre sus conflictos
+        var conflictos = await app.Sincronizacion.ObtenerMisOperacionesAsync("Conflicto", 1);
+        Assert.Contains(conflictos.Items, o => o.IdOperacion == pendiente.IdOperacion);
+    }
+
+    [Fact]
+    public async Task Si_la_sesion_vencio_lo_pendiente_no_se_pierde_y_sale_al_volver_a_entrar()
+    {
+        var (operador, rutaId, envioId) = await RutaDeUnEnvioAsync(diasAdelante: 53);
+        var celular = new Celular(api);
+        var app = celular.Abrir();
+        Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
+        var hoja = (await app.Rutas.ObtenerRutaAsync(rutaId))!;
+
+        celular.Red.Cortar();
+        var decision = await DecidirAsync(app, rutaId, envioId, hoja.Paradas[0].Bultos!, hoja, motivoDelResto: null, escanearTodos: true);
+        Assert.True((await app.Sincronizacion.GuardarOperacionAsync(Entrega(decision, rutaId, envioId, DateTime.UtcNow))).Pendiente);
+
+        // Vuelve la señal, pero la sesión ya no vale (se perdió la cookie)
+        celular.PerderSesion();
+        celular.Red.Conectar();
+        app = celular.Abrir();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => app.Sincronizacion.SincronizarPendientesAsync());
+        Assert.Single(await app.Cola.ObtenerPendientesAsync());
+
+        // El mismo repartidor vuelve a entrar: lo guardado es suyo, así que no se borra, y sale
+        Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
+        Assert.Equal((1, 0), await app.Sincronizacion.SincronizarPendientesAsync());
+        Assert.Equal("Entregado", (await DetalleAsync(operador, envioId)).Estado);
+    }
+
+    // Lo que hace el formulario de entrega: arranca con los bultos escaneados como entregados y,
+    // a los que no, les pone el motivo; con eso decide si es entrega o entrega parcial
+    private static async Task<ResultadoPorBulto.Decision> DecidirAsync(
+        App app, int rutaId, int envioId, IReadOnlyList<BultoRutaDto> bultos, RutaDetalleDto hoja,
+        int? motivoDelResto, bool escanearTodos = false)
+    {
+        if (escanearTodos)
+            await app.Bultos.GuardarAsync(rutaId, envioId, [.. bultos.Select(b => b.Id)]);
+
+        var identificados = (await app.Bultos.LeerAsync(rutaId)).GetValueOrDefault(envioId) ?? [];
+        var marcas = ResultadoPorBulto.MarcasIniciales(bultos, identificados);
+
+        foreach (var marca in marcas.Values.Where(m => !m.Entregado))
+            marca.MotivoNoEntregaId = motivoDelResto;
+
+        var decision = ResultadoPorBulto.Decidir(bultos, marcas, hoja.ReglaEntregaParcial);
+        Assert.Null(decision.Error);
+
+        return decision;
+    }
+
+    private static OperacionRequest Entrega(ResultadoPorBulto.Decision decision, int rutaId, int envioId, DateTime cuando) => new()
+    {
+        Tipo = decision.Tipo,
+        ResultadosBultos = decision.Resultados,
+        RutaId = rutaId,
+        EnvioId = envioId,
+        FechaHoraDispositivo = cuando,
+        Latitud = -34.9m,
+        Longitud = -56.16m,
+        NombreReceptor = "Ana Silva",
+        FirmaBase64 = Png
+    };
+
+    private async Task<(HttpClient Operador, int RutaId, int EnvioId)> RutaDeUnEnvioAsync(int diasAdelante)
+    {
+        var operador = await api.IniciarSesionAsync(Operador1);
+        var despachador = await api.IniciarSesionAsync(Despachador1);
+        var (rutaId, envioId) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante);
+
+        return (operador, rutaId, envioId);
+    }
+
+    // Las otras pruebas que comparten la API pueden haber publicado una versión que no las permite
+    private static async Task PermitirEntregasParcialesAsync(HttpClient operador)
+    {
+        using var respuesta = await operador.PostAsJsonAsync("api/operador/reglas-entrega-parcial",
+            new PublicarReglaEntregaParcialRequest
+            {
+                PermiteEntregaParcial = true,
+                DestinoBultosPendientes = "NuevaHojaDeRuta",
+                Motivo = "Prueba sin conexión"
+            });
+
+        Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
+    }
+
+    private static async Task<EnvioDetalleDto> DetalleAsync(HttpClient operador, int envioId) =>
+        (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envioId}"))!;
+
+    // Un celular con la app instalada. Lo que guarda la app (IndexedDB) y la cookie de sesión siguen ahí
+    // aunque se cierre la app; Abrir() la vuelve a abrir, con servicios nuevos sobre lo mismo guardado.
+    private sealed class Celular
+    {
+        private readonly ApiDePuntaAPunta api;
+        private readonly NavegadorEnMemoria navegador = new();
+        private HttpClient http;
+
+        public Celular(ApiDePuntaAPunta api)
+        {
+            this.api = api;
+            http = Cliente();
+        }
+
+        public Red Red { get; private set; } = new();
+
+        public App Abrir() => new(http, navegador);
+
+        // Como si la cookie hubiera vencido: lo guardado y la señal siguen igual, pero sin sesión
+        public void PerderSesion() => http = Cliente();
+
+        // La red va primero: si está cortada, el pedido no llega ni a las cookies
+        private HttpClient Cliente() =>
+            api.CreateDefaultClient(new Uri("https://localhost/"), new RedDelCelular(this), new CookieContainerHandler());
+
+        private sealed class RedDelCelular(Celular celular) : DelegatingHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+                celular.Red.EnviarAsync(request, r => base.SendAsync(r, cancellationToken));
+        }
+    }
+
+    // Los servicios de la app, armados como en su Program.cs
+    private sealed class App
+    {
+        public App(HttpClient http, IJSRuntime navegador)
+        {
+            var almacen = new AlmacenLocal(navegador, TimeProvider.System);
+            Cola = new ColaOperacionesService(almacen);
+            Confirmadas = new OperacionesConfirmadasService(almacen);
+            Rutas = new RutasService(http, almacen);
+            Bultos = new BultosIdentificadosService(almacen);
+            Sincronizacion = new SincronizacionService(http, almacen, Rutas, Confirmadas, Cola);
+            Auth = new AuthService(http, almacen, Cola);
+        }
+
+        public ColaOperacionesService Cola { get; }
+        public OperacionesConfirmadasService Confirmadas { get; }
+        public RutasService Rutas { get; }
+        public BultosIdentificadosService Bultos { get; }
+        public SincronizacionService Sincronizacion { get; }
+        public AuthService Auth { get; }
+    }
+
+    // La señal del celular. Cortada: el pedido no sale (como fetch sin red, la app recibe HttpRequestException).
+    // Perdiendo respuestas: el pedido llega a la API, pero la respuesta no vuelve.
+    private sealed class Red
+    {
+        private enum Modo { Conectada, Cortada, PierdeRespuestas }
+
+        private Modo modo = Modo.Conectada;
+
+        public int PedidosSinSalir { get; private set; }
+
+        public void Conectar() => modo = Modo.Conectada;
+        public void Cortar() => modo = Modo.Cortada;
+        public void PerderRespuestas() => modo = Modo.PierdeRespuestas;
+
+        public async Task<HttpResponseMessage> EnviarAsync(
+            HttpRequestMessage request, Func<HttpRequestMessage, Task<HttpResponseMessage>> enviar)
+        {
+            if (modo == Modo.Cortada)
+            {
+                PedidosSinSalir++;
+                throw new HttpRequestException("Sin conexión");
+            }
+
+            var respuesta = await enviar(request);
+
+            if (modo == Modo.PierdeRespuestas)
+            {
+                respuesta.Dispose();
+                throw new HttpRequestException("Se cortó la conexión antes de la respuesta");
+            }
+
+            return respuesta;
+        }
+    }
+
+    // Hace de wwwroot/js/almacen.js (IndexedDB): guarda en memoria lo que la app le pide
+    private sealed class NavegadorEnMemoria : IJSRuntime
+    {
+        private readonly Dictionary<string, string> datos = [];
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+            InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+        {
+            object? resultado = null;
+
+            switch (identifier)
+            {
+                case "lastMileAlmacen.guardar":
+                    datos[(string)args![0]!] = (string)args[1]!;
+                    break;
+                case "lastMileAlmacen.leer":
+                    resultado = datos.GetValueOrDefault((string)args![0]!);
+                    break;
+                case "lastMileAlmacen.borrar":
+                    datos.Remove((string)args![0]!);
+                    break;
+                case "lastMileAlmacen.borrarTodo":
+                    datos.Clear();
+                    break;
+                default:
+                    throw new InvalidOperationException($"Función inesperada: {identifier}");
+            }
+
+            return ValueTask.FromResult((TValue)resultado!);
+        }
+    }
+}
