@@ -7,6 +7,8 @@ namespace LastMileUY.Backoffice.Pages.Rutas;
 
 // Armar una hoja de ruta: nombre, fecha, repartidor, vehículo y los envíos en el orden de visita.
 // Las reglas (capacidad, franjas, duplicados) las controla la API; acá se muestra su respuesta.
+// "Ordenar por recorrido" le pide a la API un orden sugerido y lo carga en los números de orden:
+// el despachador lo revisa, lo cambia si quiere y recién ahí arma la ruta.
 public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger) : PageModel
 {
     public OpcionesRutaDto Opciones { get; private set; } = new([], [], []);
@@ -32,6 +34,18 @@ public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger) : PageMo
     public Dictionary<int, int?> Orden { get; set; } = [];
 
     public string? Error { get; private set; }
+
+    // El último orden sugerido (null si no se pidió)
+    public SugerenciaOrdenDto? Sugerencia { get; private set; }
+
+    // Los envíos como se muestran: después de ordenar, primero los elegidos en el orden sugerido
+    public IEnumerable<EnvioDisponibleDto> EnviosEnPantalla => Sugerencia is null
+        ? Opciones.Envios
+        : Opciones.Envios
+            .Select((envio, posicion) => (Envio: envio, Posicion: posicion))
+            .OrderBy(x => Seleccionados.Contains(x.Envio.Id) ? Orden.GetValueOrDefault(x.Envio.Id) ?? int.MaxValue : int.MaxValue)
+            .ThenBy(x => x.Posicion)
+            .Select(x => x.Envio);
 
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
@@ -88,6 +102,48 @@ public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger) : PageMo
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             logger.LogError(ex, "No se pudo crear la hoja de ruta");
+            Error = "No se pudo conectar con el servidor. Probá de nuevo en unos minutos.";
+        }
+
+        return Page();
+    }
+
+    // Pide el orden sugerido para los envíos tildados y lo carga en los números de orden (no arma la ruta)
+    public async Task<IActionResult> OnPostOrdenarAsync(CancellationToken ct)
+    {
+        if (!Permisos.PuedePlanificarRutas(User))
+        {
+            return Forbid();
+        }
+
+        if (!await CargarOpcionesAsync(ct))
+        {
+            return Page();
+        }
+
+        var envioIds = ArmadoDeRuta.OrdenarSeleccion(
+            Opciones.Envios.Select(e => e.Id).ToList(), Seleccionados, Orden);
+
+        if (envioIds.Count == 0)
+        {
+            Error = "Elegí los envíos que querés ordenar.";
+            return Page();
+        }
+
+        try
+        {
+            Sugerencia = await rutasApi.SugerirOrdenAsync(envioIds, ct);
+            Orden = Sugerencia.EnvioIds
+                .Select((id, posicion) => (Id: id, Numero: posicion + 1))
+                .ToDictionary(x => x.Id, x => (int?)x.Numero);
+        }
+        catch (OperacionRechazadaException ex)
+        {
+            Error = ex.Message;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogError(ex, "No se pudo obtener el orden sugerido");
             Error = "No se pudo conectar con el servidor. Probá de nuevo en unos minutos.";
         }
 

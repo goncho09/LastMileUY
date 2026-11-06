@@ -7,7 +7,7 @@ namespace LastMileUY.Backoffice.Servicios;
 // Hojas de ruta de prueba en memoria, para trabajar el Backoffice sin la API ("Api:UsarDatosDePrueba").
 // Repite las reglas principales de la API (capacidad, franjas en orden, un repartidor y un vehículo
 // por día, un envío en una sola ruta) para que la pantalla muestre los mismos rechazos.
-public class RutasApiDePrueba : IRutasApi
+public class RutasApiDePrueba(IOperadorApi? operadorApi = null) : IRutasApi
 {
     private static readonly string[] EstadosAbiertos = ["Planificada", "Despachada", "EnCurso"];
 
@@ -29,12 +29,21 @@ public class RutasApiDePrueba : IRutasApi
     // Envíos en depósito que todavía no están en ninguna ruta
     private readonly List<EnvioDisponibleDto> disponibles =
     [
-        new(201, "K7M2Q9T4XW3P", "EnDeposito", "Ana Silva", "Rivera 1234, Montevideo", Manana, 2.5m, 0.012m),
+        new(201, "K7M2Q9T4XW3P", "EnDeposito", "Ana Silva", "Rivera 1234, Montevideo", Manana, 2.5m, 0.012m, true),
         new(202, "R4T8Y2U6P9HZ", "EnDeposito", "Bruno Pereira", "Ejido 55, Montevideo", null, 12, 0.08m),
-        new(203, "M3N7B5V9C2XQ", "Reprogramado", "Carla Rodríguez", "Colonia 900, Montevideo", Tarde, 1, 0.004m),
-        new(204, "Z9X5C3V7B2NM", "EnDeposito", "Diego Fernández", "18 de Julio 1500, Montevideo", Manana, 20, 0.11m),
-        new(205, "Q2W6E4R8T3YU", "EnDeposito", "Elena Gómez", "Bulevar Artigas 800, Montevideo", Tarde, 0.8m, 0.002m)
+        new(203, "M3N7B5V9C2XQ", "Reprogramado", "Carla Rodríguez", "Colonia 900, Montevideo", Tarde, 1, 0.004m, true),
+        new(204, "Z9X5C3V7B2NM", "EnDeposito", "Diego Fernández", "18 de Julio 1500, Montevideo", Manana, 20, 0.11m, true),
+        new(205, "Q2W6E4R8T3YU", "EnDeposito", "Elena Gómez", "Bulevar Artigas 800, Montevideo", Tarde, 0.8m, 0.002m, true)
     ];
+
+    // Dónde quedan (aproximado). El 202 no tiene ubicación: en el orden sugerido va al final
+    private static readonly Dictionary<int, Coordenadas> Ubicaciones = new()
+    {
+        [201] = new(-34.902000m, -56.172000m),
+        [203] = new(-34.905500m, -56.198500m),
+        [204] = new(-34.903500m, -56.182000m),
+        [205] = new(-34.911500m, -56.161000m)
+    };
 
     private readonly List<RutaDetalleDto> rutas = [];
 
@@ -77,6 +86,34 @@ public class RutasApiDePrueba : IRutasApi
         lock (bloqueo)
         {
             return Task.FromResult(new OpcionesRutaDto(repartidores.ToList(), vehiculos.ToList(), disponibles.ToList()));
+        }
+    }
+
+    // El mismo cálculo que la API (OrdenDeParadas), desde el depósito del operador de prueba
+    public async Task<SugerenciaOrdenDto> SugerirOrdenAsync(IReadOnlyList<int> envioIds, CancellationToken ct = default)
+    {
+        if (envioIds.Count == 0)
+            throw new OperacionRechazadaException("Elegí al menos un envío para ordenar.");
+
+        var deposito = operadorApi is null ? null : (await operadorApi.ObtenerActualAsync(ct)).Deposito;
+
+        lock (bloqueo)
+        {
+            var envios = envioIds
+                .Select(id => disponibles.FirstOrDefault(e => e.Id == id)
+                              ?? throw new OperacionRechazadaException($"El envío {id} no existe."))
+                .ToList();
+
+            var orden = OrdenDeParadas.Sugerir(
+                envios.Select(e => new ParadaAOrdenar(e.Id, Ubicaciones.GetValueOrDefault(e.Id), e.Franja?.HoraInicio)).ToList(),
+                deposito);
+
+            return new SugerenciaOrdenDto(
+                orden.Ids,
+                orden.KmActual,
+                orden.KmSugerido,
+                orden.SinUbicacion.Select(id => envios.Single(e => e.Id == id).CodigoSeguimiento).ToList(),
+                DesdeDeposito: deposito is not null);
         }
     }
 

@@ -8,7 +8,10 @@ public class OperadorConfiguration : IEntityTypeConfiguration<Operador>
 {
     public void Configure(EntityTypeBuilder<Operador> builder)
     {
-        builder.ToTable("Operadores");
+        // El depósito va completo (latitud y longitud) o no va
+        builder.ToTable("Operadores", t => t.HasCheckConstraint(
+            "CK_Operadores_Deposito",
+            "(\"DepositoLatitud\" IS NULL AND \"DepositoLongitud\" IS NULL) OR (\"DepositoLatitud\" IS NOT NULL AND \"DepositoLongitud\" IS NOT NULL AND \"DepositoLatitud\" BETWEEN -90 AND 90 AND \"DepositoLongitud\" BETWEEN -180 AND 180)"));
 
         builder.HasKey(o => o.Id);
 
@@ -29,6 +32,12 @@ public class OperadorConfiguration : IEntityTypeConfiguration<Operador>
 
         builder.Property(o => o.LogoUrl)
             .HasMaxLength(500);
+
+        builder.Property(o => o.DepositoLatitud)
+            .HasPrecision(9, 6);
+
+        builder.Property(o => o.DepositoLongitud)
+            .HasPrecision(9, 6);
 
         // Las relaciones con las demás entidades
         // se configuran en sus respectivas clases.

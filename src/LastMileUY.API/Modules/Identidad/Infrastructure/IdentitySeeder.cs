@@ -174,6 +174,15 @@ public static async Task SeedAdminAsync(IServiceProvider services)
             // Colores distintos para que se note en el Backoffice con qué operador se entró
             operador.ColorPrimario ??= numero == 1 ? "#0B5CAD" : "#1E7F4F";
 
+            // Un depósito en Montevideo, punto de partida del orden sugerido de las paradas
+            // (también a los que ya existían de antes)
+            if (operador.DepositoLatitud is null)
+            {
+                (operador.DepositoLatitud, operador.DepositoLongitud) = numero == 1
+                    ? (-34.859000m, -56.211500m)  // Paso Molino
+                    : (-34.866000m, -56.088000m); // Camino Carrasco
+            }
+
             operadores.Add(operador);
         }
 
@@ -446,13 +455,52 @@ public static async Task SeedAdminAsync(IServiceProvider services)
             await using var db = new ApplicationDbContext(opciones, contexto);
 
             if (await db.Destinatarios.AnyAsync())
+            {
+                await UbicarDireccionesDePruebaAsync(db);
                 continue;
+            }
 
-            db.Destinatarios.AddRange(DestinatariosDePrueba(comerciosId[i], i + 1));
+            var destinatarios = DestinatariosDePrueba(comerciosId[i], i + 1);
+
+            foreach (var direccion in destinatarios.SelectMany(d => d.Direcciones))
+                Ubicada(direccion);
+
+            db.Destinatarios.AddRange(destinatarios);
             await db.SaveChangesAsync();
 
             Console.WriteLine($"Destinatarios del comercio {comerciosId[i]} inicializados correctamente");
         }
+    }
+
+    // Dónde quedan las direcciones de prueba (aproximado, en Montevideo y Canelones)
+    private static readonly Dictionary<(string Calle, string Numero), (decimal Latitud, decimal Longitud)> UbicacionesDePrueba = new()
+    {
+        [("Av. 18 de Julio", "1234")] = (-34.905600m, -56.188900m),
+        [("Rivera", "2500")] = (-34.898500m, -56.155000m),
+        [("Av. Giannattasio", "Km 21")] = (-34.844000m, -55.997000m),
+        [("Av. Brasil", "2800")] = (-34.907700m, -56.149500m),
+        [("Mercedes", "1400")] = (-34.902100m, -56.183600m),
+        [("Av. Italia", "3500")] = (-34.886900m, -56.130500m),
+        [("Av. Arocena", "1500")] = (-34.887500m, -56.058500m)
+    };
+
+    private static Direccion Ubicada(Direccion direccion)
+    {
+        if (UbicacionesDePrueba.TryGetValue((direccion.Calle, direccion.Numero), out var ubicacion))
+            (direccion.Latitud, direccion.Longitud) = ubicacion;
+
+        return direccion;
+    }
+
+    // Las bases cargadas antes de que las direcciones tuvieran ubicación: se la pone a las de prueba
+    private static async Task UbicarDireccionesDePruebaAsync(ApplicationDbContext db)
+    {
+        var sinUbicacion = await db.Direcciones.Where(d => d.Latitud == null).ToListAsync();
+
+        foreach (var direccion in sinUbicacion)
+            Ubicada(direccion);
+
+        await db.SaveChangesAsync();
     }
 
     private static List<Destinatario> DestinatariosDePrueba(int comercioId, int numero) =>
@@ -492,6 +540,39 @@ public static async Task SeedAdminAsync(IServiceProvider services)
                 {
                     Calle = "Av. Giannattasio", Numero = "Km 21",
                     Ciudad = "Ciudad de la Costa", Departamento = "Canelones", CodigoPostal = "15000"
+                }
+            ]
+        },
+        // Varias direcciones repartidas por Montevideo, para que el orden sugerido de las paradas
+        // tenga algo que ordenar
+        new Destinatario
+        {
+            ComercioId = comercioId,
+            Nombre = "Carla",
+            Apellido = $"Méndez {numero}",
+            Email = $"carla.mendez{numero}@ejemplo.uy",
+            Telefono = "097111222",
+            Direcciones =
+            [
+                new Direccion
+                {
+                    Calle = "Av. Brasil", Numero = "2800",
+                    Ciudad = "Montevideo", Departamento = "Montevideo", CodigoPostal = "11300"
+                },
+                new Direccion
+                {
+                    Calle = "Mercedes", Numero = "1400",
+                    Ciudad = "Montevideo", Departamento = "Montevideo", CodigoPostal = "11100"
+                },
+                new Direccion
+                {
+                    Calle = "Av. Italia", Numero = "3500",
+                    Ciudad = "Montevideo", Departamento = "Montevideo", CodigoPostal = "11400"
+                },
+                new Direccion
+                {
+                    Calle = "Av. Arocena", Numero = "1500",
+                    Ciudad = "Montevideo", Departamento = "Montevideo", CodigoPostal = "11500"
                 }
             ]
         }

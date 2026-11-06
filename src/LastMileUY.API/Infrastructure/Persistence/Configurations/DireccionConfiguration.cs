@@ -9,7 +9,10 @@ public class DireccionConfiguration
 {
     public void Configure(EntityTypeBuilder<Direccion> builder)
     {
-        builder.ToTable("Direcciones");
+        // La ubicación va completa (latitud y longitud) o no va, y dentro del rango de un mapa
+        builder.ToTable("Direcciones", t => t.HasCheckConstraint(
+            "CK_Direcciones_Ubicacion",
+            "(\"Latitud\" IS NULL AND \"Longitud\" IS NULL) OR (\"Latitud\" IS NOT NULL AND \"Longitud\" IS NOT NULL AND \"Latitud\" BETWEEN -90 AND 90 AND \"Longitud\" BETWEEN -180 AND 180)"));
 
         builder.HasKey(d => d.Id);
 
@@ -43,6 +46,13 @@ public class DireccionConfiguration
 
         builder.Property(d => d.Referencia)
             .HasMaxLength(300);
+
+        // Grados decimales con 6 decimales (unos 10 cm)
+        builder.Property(d => d.Latitud)
+            .HasPrecision(9, 6);
+
+        builder.Property(d => d.Longitud)
+            .HasPrecision(9, 6);
 
         // Facilita consultar las direcciones de un destinatario.
         builder.HasIndex(d => d.DestinatarioId);

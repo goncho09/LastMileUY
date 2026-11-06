@@ -292,7 +292,8 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 $"{x.Envio.DireccionEntrega.Calle} {x.Envio.DireccionEntrega.Numero}, {x.Envio.DireccionEntrega.Ciudad}",
                 x.Franja,
                 x.PesoKg,
-                x.VolumenM3 / Bulto.CentimetrosCubicosPorMetroCubico))
+                x.VolumenM3 / Bulto.CentimetrosCubicosPorMetroCubico,
+                x.Envio.DireccionEntrega.Latitud is not null))
             .ToList();
 
         return new OpcionesRutaDto(repartidores, vehiculos, envios);

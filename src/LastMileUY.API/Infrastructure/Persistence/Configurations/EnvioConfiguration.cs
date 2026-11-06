@@ -11,7 +11,10 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
 {
     public void Configure(EntityTypeBuilder<Envio> builder)
     {
-        builder.ToTable("Envios");
+        // La ubicación copiada de la dirección va completa o no va (como en Direcciones)
+        builder.ToTable("Envios", t => t.HasCheckConstraint(
+            "CK_Envios_Ubicacion",
+            "(\"DireccionEntrega_Latitud\" IS NULL AND \"DireccionEntrega_Longitud\" IS NULL) OR (\"DireccionEntrega_Latitud\" IS NOT NULL AND \"DireccionEntrega_Longitud\" IS NOT NULL AND \"DireccionEntrega_Latitud\" BETWEEN -90 AND 90 AND \"DireccionEntrega_Longitud\" BETWEEN -180 AND 180)"));
 
         builder.HasKey(e => e.Id);
 
@@ -64,6 +67,13 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
 
             direccion.Property(d => d.Referencia)
                 .HasMaxLength(300);
+
+            // Grados decimales con 6 decimales (unos 10 cm)
+            direccion.Property(d => d.Latitud)
+                .HasPrecision(9, 6);
+
+            direccion.Property(d => d.Longitud)
+                .HasPrecision(9, 6);
         });
         
         // Relaciones del envío con las entidades principales.

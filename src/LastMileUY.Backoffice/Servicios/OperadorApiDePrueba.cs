@@ -1,4 +1,5 @@
 using LastMileUY.Contracts.Operadores;
+using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.Backoffice.Servicios;
 
@@ -26,8 +27,31 @@ public class OperadorApiDePrueba : IOperadorApi
 
     private readonly Lock candado = new();
 
-    public Task<OperadorActualDto> ObtenerActualAsync(CancellationToken ct = default) =>
-        Task.FromResult(Operador);
+    // Un depósito en Montevideo, para que el orden sugerido de las paradas arranque de algún lado
+    private Coordenadas? deposito = new(-34.859000m, -56.211500m);
+
+    public Task<OperadorActualDto> ObtenerActualAsync(CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            return Task.FromResult(Operador with { Deposito = deposito });
+        }
+    }
+
+    public Task GuardarDepositoAsync(Coordenadas? nuevo, CancellationToken ct = default)
+    {
+        if (nuevo is not null && !Coordenadas.EsValida(nuevo.Latitud, nuevo.Longitud))
+        {
+            throw new OperacionRechazadaException("La latitud va de -90 a 90 y la longitud de -180 a 180.");
+        }
+
+        lock (candado)
+        {
+            deposito = nuevo;
+        }
+
+        return Task.CompletedTask;
+    }
 
     public Task<IReadOnlyList<ReglaEntregaParcialDto>> ListarReglasEntregaParcialAsync(CancellationToken ct = default)
     {

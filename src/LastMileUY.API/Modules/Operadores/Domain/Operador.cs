@@ -24,6 +24,12 @@ public class Operador
 
     public string? LogoUrl { get; set; }
 
+    // El depósito de donde salen las rutas (grados decimales; null si no lo cargó).
+    // Es el punto de partida del orden sugerido de las paradas
+    public decimal? DepositoLatitud { get; set; }
+
+    public decimal? DepositoLongitud { get; set; }
+
     public ICollection<ReglaOperativa> ReglasOperativas { get; set; }
         = new List<ReglaOperativa>();
     

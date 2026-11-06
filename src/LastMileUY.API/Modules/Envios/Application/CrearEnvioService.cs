@@ -113,7 +113,9 @@ public class CrearEnvioService(
             direccion.Ciudad,
             direccion.Departamento,
             direccion.CodigoPostal,
-            direccion.Referencia
+            direccion.Referencia,
+            direccion.Latitud,
+            direccion.Longitud
         ));
 
         // Cada bulto lleva el código del envío y su número: ABC123DEF456-1, -2...
