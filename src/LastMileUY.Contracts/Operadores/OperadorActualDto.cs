@@ -1,3 +1,5 @@
+using LastMileUY.Contracts.Rutas;
+
 namespace LastMileUY.Contracts.Operadores;
 
 // El operador del usuario logueado: su identidad visual y su configuración (GET /api/operador)
@@ -6,7 +8,9 @@ public record OperadorActualDto(
     string Nombre,
     string? ColorPrimario,
     string? LogoUrl,
-    IReadOnlyList<ReglaOperativaDto> Reglas);
+    IReadOnlyList<ReglaOperativaDto> Reglas,
+    // De dónde salen sus rutas (null si no lo cargó): el punto de partida del orden sugerido
+    Coordenadas? Deposito = null);
 
 // Una regla operativa activa del operador (hay como máximo una por modalidad)
 public record ReglaOperativaDto(

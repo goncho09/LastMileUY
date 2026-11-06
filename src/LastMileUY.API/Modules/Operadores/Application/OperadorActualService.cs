@@ -2,6 +2,7 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Operadores.Domain;
 using LastMileUY.Contracts.Operadores;
+using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Operadores.Application;
@@ -22,7 +23,7 @@ public class OperadorActualService(ApplicationDbContext db, IContextoOperador co
         var operador = await db.Set<Operador>()
             .AsNoTracking()
             .Where(o => o.Id == operadorId)
-            .Select(o => new { o.Id, o.Nombre, o.ColorPrimario, o.LogoUrl })
+            .Select(o => new { o.Id, o.Nombre, o.ColorPrimario, o.LogoUrl, o.DepositoLatitud, o.DepositoLongitud })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (operador is null)
@@ -48,6 +49,10 @@ public class OperadorActualService(ApplicationDbContext db, IContextoOperador co
                 r.RequiereDocumentoReceptor))
             .ToListAsync(cancellationToken);
 
-        return new OperadorActualDto(operador.Id, operador.Nombre, operador.ColorPrimario, operador.LogoUrl, reglas);
+        var deposito = operador is { DepositoLatitud: { } latitud, DepositoLongitud: { } longitud }
+            ? new Coordenadas(latitud, longitud)
+            : null;
+
+        return new OperadorActualDto(operador.Id, operador.Nombre, operador.ColorPrimario, operador.LogoUrl, reglas, deposito);
     }
 }

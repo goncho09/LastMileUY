@@ -35,6 +35,28 @@ public static class OperadorEndpoints
             .WithName("ObtenerOperadorActual")
             .RequireAuthorization();
 
+        // El depósito de donde salen las rutas (punto de partida del orden sugerido de las paradas).
+        // Configuración del operador: solo el perfil Operador
+        app.MapPut("/api/operador/deposito", async (
+                GuardarDepositoRequest request,
+                DepositoOperadorService servicio,
+                CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await servicio.GuardarAsync(request, cancellationToken)
+                        ? Results.NoContent()
+                        : Results.Forbid();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+            })
+            .WithTags("Operador")
+            .WithName("GuardarDepositoOperador")
+            .RequireAuthorization(politica => politica.RequireRole("Operador"));
+
         // Reglas de entrega parcial: el historial de versiones y publicar una nueva.
         // Es configuración del operador: solo el perfil Operador (como "Mi operador" en el Backoffice).
         var reglas = app.MapGroup("/api/operador/reglas-entrega-parcial")

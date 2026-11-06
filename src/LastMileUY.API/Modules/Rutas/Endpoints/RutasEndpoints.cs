@@ -118,6 +118,28 @@ public static class RutasEndpoints
             .RequireAuthorization(politica => politica.RequireRole(PerfilesDePlanificacion))
             .WithName("CrearRuta");
 
+        // Orden sugerido para los envíos de una ruta que se está armando: no guarda nada
+        group.MapPost("/sugerir-orden", async (
+                SugerirOrdenRequest request,
+                SugerirOrdenService servicio,
+                IContextoOperador contextoOperador,
+                CancellationToken cancellationToken) =>
+            {
+                if (contextoOperador.OperadorId is null)
+                    return Results.Forbid();
+
+                try
+                {
+                    return Results.Ok(await servicio.SugerirAsync(request, cancellationToken));
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+            })
+            .RequireAuthorization(politica => politica.RequireRole(PerfilesDePlanificacion))
+            .WithName("SugerirOrdenDeParadas");
+
         group.MapPost("/{id:int}/despachar", async (
                 int id,
                 PlanificarRutaService planificar,

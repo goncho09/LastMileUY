@@ -18,6 +18,10 @@ public interface IRutasApi
     // OperacionRechazadaException: la API no aceptó la ruta (capacidad, franjas, duplicados, sin permiso)
     Task<RutaDetalleDto> CrearAsync(CrearRutaRequest ruta, CancellationToken ct = default);
 
+    // Orden sugerido para los envíos elegidos (en el orden en que están ahora). No guarda nada.
+    // OperacionRechazadaException: la API no aceptó la lista (vacía, repetidos, un envío que no existe, sin permiso)
+    Task<SugerenciaOrdenDto> SugerirOrdenAsync(IReadOnlyList<int> envioIds, CancellationToken ct = default);
+
     // Devuelve la ruta despachada, o null si no existe.
     // OperacionRechazadaException: no se puede despachar (ya salió, un envío ya no está asignado, sin permiso)
     Task<RutaDetalleDto?> DespacharAsync(int id, CancellationToken ct = default);

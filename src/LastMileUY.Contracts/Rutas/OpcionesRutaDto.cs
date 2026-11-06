@@ -15,4 +15,6 @@ public record EnvioDisponibleDto(
     string Direccion,
     FranjaHorariaDto? Franja,
     decimal PesoKg,
-    decimal VolumenM3);
+    decimal VolumenM3,
+    // Si la dirección tiene ubicación en el mapa (sin ella no entra en el orden sugerido)
+    bool TieneUbicacion = false);

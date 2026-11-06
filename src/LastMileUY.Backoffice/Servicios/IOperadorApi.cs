@@ -1,4 +1,5 @@
 using LastMileUY.Contracts.Operadores;
+using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.Backoffice.Servicios;
 
@@ -14,4 +15,8 @@ public interface IOperadorApi
     // OperacionRechazadaException con el motivo si la API no la acepta
     Task<ReglaEntregaParcialDto> PublicarReglaEntregaParcialAsync(
         PublicarReglaEntregaParcialRequest request, CancellationToken ct = default);
+
+    // De dónde salen las rutas (PUT /api/operador/deposito); null lo borra.
+    // OperacionRechazadaException con el motivo si la API no lo acepta
+    Task GuardarDepositoAsync(Coordenadas? deposito, CancellationToken ct = default);
 }

@@ -23,8 +23,9 @@ su repartidor, su vehículo y sus envíos están ocupados.
 
 **El orden lo decide quien arma la ruta.** Los envíos se mandan en una lista (`EnvioIds`) y el
 orden de la lista es el orden de visita: el primero es la parada 1, el segundo la parada 2, etc.
-La API no reordena, porque quien conoce el recorrido es el despachador (calles, tránsito,
-acuerdos con los clientes). El campo `Parada.Orden` guarda ese número y la base no permite dos
+Al armar la ruta la API no reordena, porque quien conoce el recorrido es el despachador (calles,
+tránsito, acuerdos con los clientes). Para ayudarlo, puede pedir un **orden sugerido** antes de
+armarla (ver abajo): es una sugerencia que él revisa y cambia si quiere. El campo `Parada.Orden` guarda ese número y la base no permite dos
 paradas con el mismo orden en una ruta (índice único `RutaId + Orden`).
 
 La API solo controla una regla del orden, la de las **franjas horarias**:
@@ -40,6 +41,56 @@ Ejemplo, con las franjas Mañana (9 a 12) y Tarde (14 a 18):
 | Mañana, sin franja, Tarde | Se acepta |
 | sin franja, Mañana, Mañana, Tarde | Se acepta |
 | Tarde, sin franja, Mañana | Se rechaza (la parada 3 no puede ir después de la parada 1) |
+
+## Orden sugerido
+
+En el Backoffice, "Nueva hoja de ruta" tiene el botón **Ordenar por recorrido**. Manda los envíos
+tildados (en el orden en que están) a `POST /api/rutas/sugerir-orden`, y la respuesta trae el orden
+sugerido y cuántos kilómetros tiene el recorrido antes y después. El Backoffice carga esos números de
+orden en la pantalla. **No se guarda nada**: el despachador revisa los números, los cambia si quiere y
+recién ahí arma la ruta como siempre.
+
+**De dónde salen las ubicaciones.**
+- Cada dirección de destinatario puede tener latitud y longitud (`Direccion.Latitud`/`Longitud`,
+  opcionales).
+- Al crear un envío se copian junto con el resto de la dirección (`DireccionEntrega`), igual que la
+  calle. Si después cambia la dirección del destinatario, el envío conserva la suya.
+- El operador carga su **depósito** en "Mi operador" (`PUT /api/operador/deposito`, solo el perfil
+  Operador). Es el punto de partida del recorrido. Sin depósito, los kilómetros se cuentan desde la
+  primera parada.
+- La base exige que cada ubicación esté completa (latitud y longitud juntas) y dentro del mapa:
+  restricciones `CK_Direcciones_Ubicacion`, `CK_Envios_Ubicacion` y `CK_Operadores_Deposito`.
+- No se usa ningún servicio externo para convertir direcciones en coordenadas. Las direcciones de los
+  destinatarios no salen del sistema.
+
+**Cómo se calcula** (`OrdenDeParadas`, en Contracts, así el Backoffice con datos de prueba usa el
+mismo cálculo):
+
+1. **Vecino más cercano:** desde el depósito, siempre a la parada más cercana que se pueda visitar.
+2. **Mejoras locales**, mientras alguna acorte el recorrido:
+   - "2-opt": dar vuelta un tramo, lo que saca los cruces;
+   - "or-opt": sacar de 1 a 3 paradas seguidas y ponerlas en otro lugar.
+3. **Varios arranques:** se repite empezando por las 8 paradas más cercanas al depósito, y también
+   mejorando el orden que mandó el despachador. Se queda el más corto, así que nunca queda peor que lo
+   que ya tenía.
+
+Reglas que siempre cumple:
+
+| Regla | Cómo |
+|---|---|
+| Franjas horarias | Las paradas con franja van en orden de horario (la misma regla que controla la API al armar la ruta). Una parada sin franja puede ir en cualquier lugar, también entre la mañana y la tarde. |
+| Sin ubicación | No se pueden ubicar en el recorrido. Van al final o, si tienen franja, justo antes de la primera parada de una franja posterior. La respuesta las nombra (`SinUbicacion`) y la pantalla las marca "sin ubicación". |
+| Distancia | En línea recta (fórmula del haversine), desde el depósito hasta la última parada, sin la vuelta. No es la distancia por calle, pero sirve para comparar un orden con otro. |
+
+Qué tan bueno es: con 7 paradas se puede probar todos los órdenes posibles. En 150 casos al azar, el
+sugerido quedó como mucho un 2 % más largo que el mejor posible; la prueba exige menos del 5 %. Con el
+máximo de una ruta (100 paradas) tarda unos 0,2 segundos. Arrancando una sola vez, aun con las dos
+mejoras, el peor caso era un 16 % más largo: el recorrido arrancaba para el lado equivocado y las mejoras locales no lo pueden
+dar vuelta.
+
+Pruebas: `tests/LastMileUY.API.Tests/Rutas/OrdenDeParadasTests.cs` (el cálculo),
+`tests/LastMileUY.API.Tests/PuntaAPunta/OrdenSugeridoDePuntaAPuntaTests.cs` (por HTTP) y
+`tests/LastMileUY.Backoffice.Tests/OrdenSugeridoTests.cs` (la pantalla y el depósito).
 
 ## Validaciones al armar una ruta
 
@@ -99,6 +150,8 @@ Ese es el manifiesto de la hoja de ruta:
 | `GET /api/rutas/opciones` (repartidores, vehículos y envíos disponibles) | Operador, Despachador |
 | `GET /api/rutas/{id}` | Operador, Despachador |
 | `POST /api/rutas` | Operador, Despachador |
+| `POST /api/rutas/sugerir-orden` (orden sugerido, no guarda nada) | Operador, Despachador |
+| `PUT /api/operador/deposito` (de dónde salen las rutas) | Operador |
 | `POST /api/rutas/{id}/despachar` | Operador, Despachador |
 | `GET /api/rutas/mias` | Repartidor |
 | `GET /api/rutas/mias/{id}` | Repartidor |
@@ -110,3 +163,8 @@ Ese es el manifiesto de la hoja de ruta:
 furgoneta de 800 kg / 6 m³) y la ficha de repartidor de `repartidor@prueba.test` (operador 1) y
 `repartidor2@prueba.test` (operador 2), que crea `IdentitySeeder` con la misma contraseña que el
 resto de los usuarios de prueba.
+
+Para el orden sugerido, `IdentitySeeder` le pone un depósito a cada operador de prueba (Paso Molino y
+Camino Carrasco) y ubicación aproximada a las direcciones de prueba. Agrega además una destinataria
+con cuatro direcciones repartidas por Montevideo. En una base cargada antes, completa la ubicación de
+las direcciones de prueba que no la tenían.

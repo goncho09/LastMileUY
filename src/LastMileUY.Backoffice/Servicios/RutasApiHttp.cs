@@ -43,6 +43,17 @@ public class RutasApiHttp(HttpClient http) : IRutasApi
         return (await respuesta.Content.ReadFromJsonAsync<RutaDetalleDto>(ct))!;
     }
 
+    public async Task<SugerenciaOrdenDto> SugerirOrdenAsync(IReadOnlyList<int> envioIds, CancellationToken ct = default)
+    {
+        using var respuesta = await http.PostAsJsonAsync(
+            "api/rutas/sugerir-orden", new SugerirOrdenRequest { EnvioIds = [.. envioIds] }, ct);
+
+        await RechazarSiCorrespondeAsync(respuesta, "armar hojas de ruta", ct);
+        respuesta.EnsureSuccessStatusCode();
+
+        return (await respuesta.Content.ReadFromJsonAsync<SugerenciaOrdenDto>(ct))!;
+    }
+
     public async Task<RutaDetalleDto?> DespacharAsync(int id, CancellationToken ct = default)
     {
         using var respuesta = await http.PostAsync($"api/rutas/{id}/despachar", null, ct);

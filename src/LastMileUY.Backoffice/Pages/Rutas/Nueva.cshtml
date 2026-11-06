@@ -15,7 +15,8 @@
         <p class="mt-2 text-sm text-slate-400">
             Elegí repartidor, vehículo y los envíos. El orden de visita es el número que le pongas a cada
             envío (sin número, van al final en el orden de la lista). Las paradas con franja horaria
-            tienen que ir en orden de horario.
+            tienen que ir en orden de horario. "Ordenar por recorrido" sugiere un orden que recorre menos
+            kilómetros; lo podés cambiar antes de armar la ruta.
         </p>
     </div>
 
@@ -27,7 +28,39 @@
         </div>
     }
 
-    <form method="post" class="space-y-7">
+    @if (Model.Sugerencia is { } sugerencia)
+    {
+        var ahorro = sugerencia.KmActual - sugerencia.KmSugerido;
+
+        <div role="status"
+             class="space-y-1 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-200">
+            <p class="font-semibold">
+                Orden sugerido: @Formato.Numero((decimal)sugerencia.KmSugerido) km
+                @if (ahorro > 0.05)
+                {
+                    <span class="font-normal">(antes @Formato.Numero((decimal)sugerencia.KmActual) km, @Formato.Numero((decimal)ahorro) km menos)</span>
+                }
+                else
+                {
+                    <span class="font-normal">(el orden que tenías ya era el más corto que encontró)</span>
+                }
+            </p>
+            <p class="text-xs text-emerald-300/80">
+                Distancia en línea recta @(sugerencia.DesdeDeposito ? "desde el depósito" : "desde la primera parada (el operador no cargó su depósito)"),
+                respetando las franjas horarias. Revisá los números y armá la hoja de ruta.
+            </p>
+            @if (sugerencia.SinUbicacion.Count > 0)
+            {
+                <p class="text-xs text-amber-300">
+                    Sin ubicación, van al final: @string.Join(", ", sugerencia.SinUbicacion)
+                </p>
+            }
+        </div>
+    }
+
+    @* La acción va explícita: después de "Ordenar por recorrido" la dirección de la página queda con
+       ?handler=ordenar, y un formulario sin acción la repetiría en vez de armar la ruta *@
+    <form method="post" asp-page="/Rutas/Nueva" class="space-y-7">
 
         <!-- Datos de la ruta -->
         <section class="grid gap-4 rounded-2xl border border-white/10 bg-[#171923] p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
@@ -106,7 +139,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/5">
-                            @foreach (var envio in Model.Opciones.Envios)
+                            @foreach (var envio in Model.EnviosEnPantalla)
                             {
                                 var seleccionado = Model.Seleccionados.Contains(envio.Id);
 
@@ -128,7 +161,16 @@
                                         <label for="envio-@envio.Id">@envio.CodigoSeguimiento</label>
                                     </td>
                                     <td class="px-4 py-3 text-slate-300">@envio.Destinatario</td>
-                                    <td class="px-4 py-3 text-slate-400">@envio.Direccion</td>
+                                    <td class="px-4 py-3 text-slate-400">
+                                        @envio.Direccion
+                                        @if (!envio.TieneUbicacion)
+                                        {
+                                            <span class="ml-1 whitespace-nowrap rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-300"
+                                                  title="La dirección no tiene ubicación en el mapa: no entra en el orden sugerido">
+                                                sin ubicación
+                                            </span>
+                                        }
+                                    </td>
                                     <td class="whitespace-nowrap px-4 py-3 text-slate-300">
                                         @(envio.Franja is null
                                             ? "—"
@@ -144,11 +186,15 @@
             }
         </section>
 
-        <div class="flex justify-end gap-2">
+        <div class="flex flex-wrap justify-end gap-2">
             <a asp-page="/Rutas/Index"
                class="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-300 no-underline hover:bg-white/10 hover:text-white">
                 Cancelar
             </a>
+            <button type="submit" asp-page-handler="Ordenar" formnovalidate
+                    class="rounded-xl border border-violet-500/40 bg-violet-500/10 px-5 py-3 text-sm font-semibold text-violet-200 transition-colors hover:bg-violet-500/20">
+                Ordenar por recorrido
+            </button>
             <button type="submit"
                     class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
                 Armar hoja de ruta

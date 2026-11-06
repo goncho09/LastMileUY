@@ -264,6 +264,14 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<int>("DestinatarioId")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("Latitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<decimal?>("Longitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
                     b.Property<string>("Numero")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -277,7 +285,10 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("DestinatarioId");
 
-                    b.ToTable("Direcciones", (string)null);
+                    b.ToTable("Direcciones", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Direcciones_Ubicacion", "(\"Latitud\" IS NULL AND \"Longitud\" IS NULL) OR (\"Latitud\" IS NOT NULL AND \"Longitud\" IS NOT NULL AND \"Latitud\" BETWEEN -90 AND 90 AND \"Longitud\" BETWEEN -180 AND 180)");
+                        });
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Entregas.Domain.Devolucion", b =>
@@ -612,6 +623,14 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                                 .HasMaxLength(100)
                                 .HasColumnType("character varying(100)");
 
+                            b1.Property<decimal?>("Latitud")
+                                .HasPrecision(9, 6)
+                                .HasColumnType("numeric(9,6)");
+
+                            b1.Property<decimal?>("Longitud")
+                                .HasPrecision(9, 6)
+                                .HasColumnType("numeric(9,6)");
+
                             b1.Property<string>("Numero")
                                 .IsRequired()
                                 .HasMaxLength(20)
@@ -639,7 +658,10 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"ReferenciaExterna\" IS NOT NULL");
 
-                    b.ToTable("Envios", (string)null);
+                    b.ToTable("Envios", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Envios_Ubicacion", "(\"DireccionEntrega_Latitud\" IS NULL AND \"DireccionEntrega_Longitud\" IS NULL) OR (\"DireccionEntrega_Latitud\" IS NOT NULL AND \"DireccionEntrega_Longitud\" IS NOT NULL AND \"DireccionEntrega_Latitud\" BETWEEN -90 AND 90 AND \"DireccionEntrega_Longitud\" BETWEEN -180 AND 180)");
+                        });
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Identidad.Domain.Rol", b =>
@@ -1107,6 +1129,14 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(7)
                         .HasColumnType("character varying(7)");
 
+                    b.Property<decimal?>("DepositoLatitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<decimal?>("DepositoLongitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
 
@@ -1126,6 +1156,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("Operadores", null, t =>
                         {
                             t.HasCheckConstraint("CK_Operadores_ColorPrimario", "\"ColorPrimario\" IS NULL OR \"ColorPrimario\" ~ '^#[0-9A-Fa-f]{6}$'");
+
+                            t.HasCheckConstraint("CK_Operadores_Deposito", "(\"DepositoLatitud\" IS NULL AND \"DepositoLongitud\" IS NULL) OR (\"DepositoLatitud\" IS NOT NULL AND \"DepositoLongitud\" IS NOT NULL AND \"DepositoLatitud\" BETWEEN -90 AND 90 AND \"DepositoLongitud\" BETWEEN -180 AND 180)");
                         });
                 });
 
