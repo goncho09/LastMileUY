@@ -12,6 +12,9 @@
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
         <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
+        <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
+        <!-- Hace de nginx en las pruebas de la app del repartidor: le pasa /api a la API -->
+        <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     </ItemGroup>
@@ -22,6 +25,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\LastMileUY.Backoffice\LastMileUY.Backoffice.csproj" />
+        <!-- Con alias: la API y el Backoffice tienen las dos una clase Program -->
+        <ProjectReference Include="..\..\src\LastMileUY.API\LastMileUY.API.csproj" Aliases="Api" />
     </ItemGroup>
 
 </Project>

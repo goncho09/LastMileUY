@@ -257,6 +257,22 @@ Para comprobar que la prueba sirve se rompió la app a propósito, de a una cosa
 falló: mandar las pendientes de la más nueva a la más vieja, no guardar la cola, reenviar con otro
 `IdOperacion`, borrar lo guardado en cada inicio de sesión y dejar en la cola las que vuelven en conflicto.
 
+**En un navegador de verdad**,
+`tests/LastMileUY.E2E.Tests/AppRepartidorSinConexionTests.cs` (Playwright) cubre lo que la prueba de
+arriba no puede ver:
+- la app publicada en Release, con su service worker, servida como en producción (los archivos y
+  `/api` en la misma dirección, como nginx), contra la API real;
+- un Chromium inicia sesión y abre la hoja con conexión;
+- se corta la red y se recarga: la app sale del service worker y la hoja, de lo guardado;
+- identifica el bulto escribiendo su código, firma y confirma: queda "pendiente de sincronización" y
+  la API sigue viendo el envío En tránsito;
+- se recarga otra vez y lo pendiente sigue ahí;
+- vuelve la red y, sin tocar nada, la app la manda (evento `online` → `ReenvioAutomatico`): el envío
+  queda Entregado, con la firma y quien recibió.
+
+Para comprobar que sirve se rompieron tres cosas, una por vez, y en cada caso falló: el service
+worker sin guardar la app, el reenvío automático apagado y la cola sin guardar.
+
 ## Evidencia
 
 Las imágenes se guardan como archivos en la carpeta de `Evidencias:Directorio` (en Docker, el
