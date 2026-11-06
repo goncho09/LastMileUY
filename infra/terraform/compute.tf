@@ -12,6 +12,12 @@ resource "azurerm_linux_virtual_machine" "lastmileuy" {
     azurerm_network_interface.lastmileuy.id
   ]
 
+  lifecycle {
+    ignore_changes = [
+      admin_ssh_key
+    ]
+  }
+
   admin_ssh_key {
     username   = var.admin_username
     public_key = trimspace(var.ssh_public_key)
