@@ -13,6 +13,7 @@
         <Project Path="tests/LastMileUY.Backoffice.Tests/LastMileUY.Backoffice.Tests.csproj" />
         <Project Path="tests/LastMileUY.API.Tests/LastMileUY.API.Tests.csproj" />
         <Project Path="tests/LastMileUY.DriverPWA.Tests/LastMileUY.DriverPWA.Tests.csproj" />
+        <Project Path="tests/LastMileUY.E2E.Tests/LastMileUY.E2E.Tests.csproj" />
         <Project Path="tests/LastMileUY.Worker.Tests/LastMileUY.Worker.Tests.csproj" />
     </Folder>
 </Solution>
