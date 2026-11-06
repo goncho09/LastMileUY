@@ -266,6 +266,8 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 from f in franjas.DefaultIfEmpty()
                 where (e.Estado == EstadoEnvio.EnDeposito || e.Estado == EstadoEnvio.Reprogramado)
                       && !enRutasAbiertas.Contains(e.Id)
+                      // Los mismos que acepta PlanificarRutaService: sin bultos por entregar no se puede asignar
+                      && e.Bultos.Any(b => b.Estado == EstadoBulto.Pendiente || b.Estado == EstadoBulto.NoEntregado)
                 orderby f == null ? 1 : 0, f.HoraInicio, e.Id
                 select new
                 {

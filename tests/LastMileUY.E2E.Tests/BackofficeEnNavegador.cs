@@ -47,6 +47,7 @@ public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, I
         if (instalacion != 0)
             throw new InvalidOperationException($"No se pudo instalar Chromium para Playwright (código {instalacion}).");
 
+        Esperas.Configurar();
         playwright = await Playwright.CreateAsync();
         Navegador = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
     }
@@ -67,7 +68,7 @@ public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, I
             ViewportSize = new ViewportSize { Width = ancho, Height = alto },
             Locale = "es-UY"
         });
-        var pagina = await contexto.NewPageAsync();
+        var pagina = await Esperas.Preparar(contexto).NewPageAsync();
 
         await pagina.GotoAsync("/Login");
         await pagina.GetByLabel("Correo electrónico").FillAsync(email);

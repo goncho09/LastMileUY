@@ -77,6 +77,7 @@ builder.Services.AddHostedService<DespachadorAvisos>();
 
 var host = builder.Build();
 
-// Las métricas de avisos arrancan en 0, para que el tablero técnico vea desde el primer aviso
-TelemetriaAvisos.Inicializar();
+// Las métricas de avisos arrancan en 0, para que el tablero técnico vea desde el primer aviso.
+// Recién cuando arrancó el host: antes OpenTelemetry todavía no escucha y las series en 0 se perdían
+host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStarted.Register(TelemetriaAvisos.Inicializar);
 host.Run();

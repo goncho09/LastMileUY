@@ -325,9 +325,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Las métricas propias arrancan en 0, para que el tablero técnico vea desde el primer evento
-TelemetriaCache.Inicializar();
-TelemetriaSincronizacion.Inicializar();
+// Las métricas propias arrancan en 0, para que el tablero técnico vea desde el primer evento.
+// Recién cuando arrancó el host: OpenTelemetry empieza a escuchar las métricas al arrancar, y lo que
+// se mide antes se pierde (las series en 0 no aparecían y el primer evento no se veía en el tablero)
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    TelemetriaCache.Inicializar();
+    TelemetriaSincronizacion.Inicializar();
+});
 
 // Primero las tablas (si corresponde), después los datos iniciales
 await MigracionesAlIniciar.AplicarSiCorrespondeAsync(app);
