@@ -73,8 +73,16 @@ Hace falta **Docker andando**: las pruebas de la API y del worker levantan Postg
 un Chromium real usa el Backoffice como una persona. Hace clic, completa formularios y lee lo que se
 ve: inicio de sesión, permisos por perfil, filtros de envíos, armar y despachar una hoja de ruta con el
 orden sugerido, el depósito, y que ninguna pantalla se corra de costado en un celular. El Backoffice
-arranca con los datos de prueba en memoria, así que no necesitan la API ni Docker. La primera vez
-descargan Chromium (unos 150 MB, en la carpeta de Playwright del usuario).
+arranca con los datos de prueba en memoria, así que esas no necesitan la API ni Docker.
+
+También prueban la **app del repartidor sin conexión**, en el navegador:
+- la app publicada en Release, con su service worker, servida como en producción (los archivos de la
+  app y `/api` pasado a la API, como hace nginx);
+- la API real, con PostgreSQL en Docker;
+- con la red cortada, la app se abre igual y se registra una entrega;
+- lo pendiente sigue ahí al recargar, y al volver la conexión la app la manda sola.
+
+La primera vez descargan Chromium (unos 150 MB, en la carpeta de Playwright del usuario).
 
 Cubren lo que no ven las pruebas de las páginas: lo que pasa en el navegador entre un pedido y otro.
 Al escribirlas encontraron dos fallas reales:
