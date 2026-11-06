@@ -69,7 +69,21 @@ dotnet test LastMileUY.slnx
 
 Hace falta **Docker andando**: las pruebas de la API y del worker levantan PostgreSQL y RabbitMQ reales con Testcontainers. Las de punta a punta (`tests/LastMileUY.API.Tests/PuntaAPunta`) arrancan la API completa y le hablan por HTTP con los usuarios de los seeders.
 
-El CI (`.github/workflows/ci.yml`) compila y corre todas las pruebas con cobertura en cada PR.
+**Pruebas de navegador** (`tests/LastMileUY.E2E.Tests`, con [Playwright](https://playwright.dev/dotnet/)):
+un Chromium real usa el Backoffice como una persona. Hace clic, completa formularios y lee lo que se
+ve: inicio de sesión, permisos por perfil, filtros de envíos, armar y despachar una hoja de ruta con el
+orden sugerido, el depósito, y que ninguna pantalla se corra de costado en un celular. El Backoffice
+arranca con los datos de prueba en memoria, así que no necesitan la API ni Docker. La primera vez
+descargan Chromium (unos 150 MB, en la carpeta de Playwright del usuario).
+
+Cubren lo que no ven las pruebas de las páginas: lo que pasa en el navegador entre un pedido y otro.
+Al escribirlas encontraron dos fallas reales:
+- quien no tenía permiso veía una página en blanco (404), porque la de "Sin permiso" no estaba en la
+  dirección configurada;
+- después de "Ordenar por recorrido", el botón "Armar hoja de ruta" volvía a ordenar.
+
+El CI (`.github/workflows/ci.yml`) compila y corre todas las pruebas con cobertura en cada PR. Antes
+instala Chromium con sus dependencias del sistema.
 
 ## Documentación por módulo
 

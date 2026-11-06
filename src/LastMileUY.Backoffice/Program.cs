@@ -255,3 +255,6 @@ app.MapRazorPages()
 app.MapHub<EnviosHub>("/hubs/envios");
 
 app.Run();
+
+// Para las pruebas de navegador (tests/LastMileUY.E2E.Tests), que levantan el Backoffice con WebApplicationFactory
+public partial class Program;

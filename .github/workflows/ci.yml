@@ -24,6 +24,11 @@ jobs:
       - name: Compilar
         run: dotnet build LastMileUY.slnx --no-restore --configuration Release
 
+      # Las pruebas de navegador (tests/LastMileUY.E2E.Tests) usan Chromium con Playwright: se instala
+      # con las bibliotecas del sistema que necesita (pwsh ya viene en el runner)
+      - name: Navegador para las pruebas
+        run: pwsh tests/LastMileUY.E2E.Tests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
       # Las pruebas de aislamiento levantan PostgreSQL con Testcontainers (Docker ya viene en el runner)
       - name: Pruebas (con cobertura)
         run: >
