@@ -332,6 +332,11 @@ await MigracionesAlIniciar.AplicarSiCorrespondeAsync(app);
 await VerificacionUsuarioBase.AvisarSiSalteaRlsAsync(app);
 
 await IdentitySeeder.SeedRolesAsync(app.Services);
+if (!app.Environment.IsDevelopment() &&
+    app.Configuration.GetValue<bool>("SeedAdmin:Enabled"))
+{
+    await IdentitySeeder.SeedAdminAsync(app.Services);
+}
 
 // Configure the HTTP request pipeline y Scalar 
 if (app.Environment.IsDevelopment())

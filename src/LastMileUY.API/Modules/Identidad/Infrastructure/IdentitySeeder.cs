@@ -70,8 +70,11 @@ public static async Task SeedAdminAsync(IServiceProvider services)
     var environment = scope.ServiceProvider
         .GetRequiredService<IHostEnvironment>();
 
-    if (!environment.IsDevelopment())
+    if (!environment.IsDevelopment() &&
+        !configuration.GetValue<bool>("SeedAdmin:Enabled"))
+    {
         return;
+    }
 
     var email = configuration["SeedAdmin:Email"];
     var password = configuration["SeedAdmin:Password"];
@@ -107,7 +110,7 @@ public static async Task SeedAdminAsync(IServiceProvider services)
 
         Console.WriteLine($"Administrador {email} creado");
     }
-    else
+    else if (environment.IsDevelopment())
     {
         // Solo en Development: sincronizar la contraseña de prueba.
         var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
