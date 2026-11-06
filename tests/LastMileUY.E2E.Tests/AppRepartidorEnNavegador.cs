@@ -73,6 +73,7 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         if (Microsoft.Playwright.Program.Main(["install", "chromium"]) is var codigo and not 0)
             throw new InvalidOperationException($"No se pudo instalar Chromium para Playwright (código {codigo}).");
 
+        Esperas.Configurar();
         playwright = await Playwright.CreateAsync();
         Navegador = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
     }
@@ -89,7 +90,7 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
             Permissions = ["geolocation"]
         });
 
-        return (celular, await celular.NewPageAsync());
+        return (Esperas.Preparar(celular), await celular.NewPageAsync());
     }
 
     // Un cliente HTTP con sesión iniciada, directo a la API. La cookie de sesión es Secure y acá no hay

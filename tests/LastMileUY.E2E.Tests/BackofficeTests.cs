@@ -16,7 +16,7 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
     public async Task Sin_sesion_manda_a_iniciar_sesion_y_al_cerrarla_vuelve_ahi()
     {
         var contexto = await backoffice.Navegador.NewContextAsync(new() { BaseURL = backoffice.Direccion });
-        var anonima = await contexto.NewPageAsync();
+        var anonima = await Esperas.Preparar(contexto).NewPageAsync();
 
         await anonima.GotoAsync("/Envios");
         await Expect(anonima).ToHaveURLAsync(new Regex("/Login", RegexOptions.IgnoreCase));
