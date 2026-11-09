@@ -1,9 +1,11 @@
 using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Infrastructure.Persistence.Configurations;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace LastMileUY.API.Modules.Rutas.Application;
 
@@ -188,7 +190,23 @@ public class PlanificarRutaService(ApplicationDbContext db)
         }
 
         db.Rutas.Add(ruta);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+                                           {
+                                               SqlState: PostgresErrorCodes.UniqueViolation,
+                                               ConstraintName: RutaConfiguration.IndiceRepartidorPorDia
+                                                   or RutaConfiguration.IndiceVehiculoPorDia
+                                           } choque)
+        {
+            // Otra ruta para el mismo repartidor o vehículo y día se guardó entre el control y ahora
+            throw new AsignacionDuplicadaException(choque.ConstraintName == RutaConfiguration.IndiceRepartidorPorDia
+                ? $"El repartidor ya tiene una ruta para el {request.Fecha:dd/MM/yyyy}."
+                : $"El vehículo {vehiculo.Matricula} ya está en una ruta el {request.Fecha:dd/MM/yyyy}.");
+        }
 
         return ruta.Id;
     }

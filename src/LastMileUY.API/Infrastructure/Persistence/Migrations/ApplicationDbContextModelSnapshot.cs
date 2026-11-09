@@ -1556,6 +1556,16 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("VehiculoId");
 
+                    b.HasIndex("Fecha", "RepartidorId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Rutas_Fecha_RepartidorId_Abiertas")
+                        .HasFilter("\"Estado\" IN (1, 2, 3)");
+
+                    b.HasIndex("Fecha", "VehiculoId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Rutas_Fecha_VehiculoId_Abiertas")
+                        .HasFilter("\"Estado\" IN (1, 2, 3)");
+
                     b.ToTable("Rutas", (string)null);
                 });
 

@@ -124,6 +124,46 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.DoesNotContain(opciones.Envios, e => e.Id == sinBultos);
     }
 
+    // Dos despachadores arman a la vez rutas distintas (envíos y vehículos distintos) para el mismo
+    // repartidor y el mismo día: una sola puede quedar abierta. Se repite en varios días porque la
+    // carrera depende del momento justo en que llega cada pedido.
+    [Fact]
+    public async Task Dos_rutas_a_la_vez_para_el_mismo_repartidor_y_dia_solo_se_guarda_una()
+    {
+        var operador = await api.IniciarSesionAsync(Operador1);
+        var despachadorA = await api.IniciarSesionAsync(Despachador1);
+        var despachadorB = await api.IniciarSesionAsync(Operador1);
+        var opciones = (await despachadorA.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
+        var repartidor = opciones.Repartidores[0].Id;
+        Assert.True(opciones.Vehiculos.Count >= 2);
+
+        for (var dia = 300; dia < 306; dia++)
+        {
+            var fecha = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(dia);
+            var envioA = await CrearEnvioEnDepositoAsync(operador);
+            var envioB = await CrearEnvioEnDepositoAsync(operador);
+
+            var respuestas = await Task.WhenAll(
+                despachadorA.PostAsJsonAsync("api/rutas", Ruta($"Carrera A {dia}", fecha, repartidor, opciones.Vehiculos[0].Id, envioA)),
+                despachadorB.PostAsJsonAsync("api/rutas", Ruta($"Carrera B {dia}", fecha, repartidor, opciones.Vehiculos[1].Id, envioB)));
+
+            var codigos = respuestas.Select(r => r.StatusCode).Order().ToList();
+            Assert.Equal([HttpStatusCode.Created, HttpStatusCode.Conflict], codigos);
+
+            foreach (var respuesta in respuestas)
+                respuesta.Dispose();
+        }
+    }
+
+    private static CrearRutaRequest Ruta(string nombre, DateOnly fecha, int repartidor, int vehiculo, int envio) => new()
+    {
+        Nombre = nombre,
+        Fecha = fecha,
+        RepartidorId = repartidor,
+        VehiculoId = vehiculo,
+        EnvioIds = [envio]
+    };
+
     private async Task<int> CrearEnvioEnDepositoAsync(HttpClient operador)
     {
         var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
