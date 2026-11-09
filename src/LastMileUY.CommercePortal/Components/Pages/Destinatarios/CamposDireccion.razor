@@ -1,0 +1,76 @@
+@using LastMileUY.Contracts.Destinatarios
+
+@* Los campos de una dirección de entrega. Prefijo: para que los id de los campos no se repitan
+   si hay más de un formulario en la página *@
+
+<div class="grid gap-4 sm:grid-cols-6">
+    <div class="sm:col-span-4">
+        <label for="@($"{Prefijo}-calle")" class="mb-2 block text-xs font-medium text-slate-300">
+            Calle <span class="text-violet-400">*</span>
+        </label>
+        <input id="@($"{Prefijo}-calle")" maxlength="150" @bind="Modelo.Calle" placeholder="Ej.: Av. 18 de Julio"
+               class="@ClaseCampo"/>
+    </div>
+    <div class="sm:col-span-1">
+        <label for="@($"{Prefijo}-numero")" class="mb-2 block text-xs font-medium text-slate-300">
+            Número <span class="text-violet-400">*</span>
+        </label>
+        <input id="@($"{Prefijo}-numero")" maxlength="20" @bind="Modelo.Numero" class="@ClaseCampo"/>
+    </div>
+    <div class="sm:col-span-1">
+        <label for="@($"{Prefijo}-apto")" class="mb-2 block text-xs font-medium text-slate-300">Apto.</label>
+        <input id="@($"{Prefijo}-apto")" maxlength="50" @bind="Modelo.Apartamento" class="@ClaseCampo"/>
+    </div>
+
+    <div class="sm:col-span-3">
+        <label for="@($"{Prefijo}-ciudad")" class="mb-2 block text-xs font-medium text-slate-300">
+            Ciudad o localidad <span class="text-violet-400">*</span>
+        </label>
+        <input id="@($"{Prefijo}-ciudad")" maxlength="100" @bind="Modelo.Ciudad" class="@ClaseCampo"/>
+    </div>
+    <div class="sm:col-span-2">
+        <label for="@($"{Prefijo}-departamento")" class="mb-2 block text-xs font-medium text-slate-300">
+            Departamento <span class="text-violet-400">*</span>
+        </label>
+        <select id="@($"{Prefijo}-departamento")" @bind="Modelo.Departamento" class="@ClaseCampo">
+            @foreach (var departamento in DepartamentosUruguay.Todos)
+            {
+                <option value="@departamento">@departamento</option>
+            }
+        </select>
+    </div>
+    <div class="sm:col-span-1">
+        <label for="@($"{Prefijo}-cp")" class="mb-2 block text-xs font-medium text-slate-300">C. postal</label>
+        <input id="@($"{Prefijo}-cp")" maxlength="20" @bind="Modelo.CodigoPostal" class="@ClaseCampo"/>
+    </div>
+
+    <div class="sm:col-span-3">
+        <label for="@($"{Prefijo}-referencia")" class="mb-2 block text-xs font-medium text-slate-300">
+            Referencia <span class="font-normal text-slate-500">(opcional)</span>
+        </label>
+        <input id="@($"{Prefijo}-referencia")" maxlength="300" @bind="Modelo.Referencia"
+               placeholder="Ej.: portón verde, timbre 2" class="@ClaseCampo"/>
+    </div>
+    <div class="sm:col-span-3">
+        <label for="@($"{Prefijo}-ubicacion")" class="mb-2 block text-xs font-medium text-slate-300">
+            Ubicación en el mapa <span class="font-normal text-slate-500">(opcional)</span>
+        </label>
+        <input id="@($"{Prefijo}-ubicacion")" maxlength="60" @bind="Modelo.Ubicacion" inputmode="decimal"
+               placeholder="-34.9011, -56.1645" class="@ClaseCampo"/>
+        <p class="mt-1.5 text-xs text-slate-500">
+            Latitud y longitud. En Google Maps: clic derecho sobre el lugar y clic en los números para copiarlos.
+            Con la ubicación, el operador puede ordenar mejor el recorrido.
+        </p>
+    </div>
+</div>
+
+@code {
+    private const string ClaseCampo =
+        "w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-500";
+
+    [Parameter, EditorRequired]
+    public FormularioDireccion Modelo { get; set; } = default!;
+
+    [Parameter]
+    public string Prefijo { get; set; } = "direccion";
+}

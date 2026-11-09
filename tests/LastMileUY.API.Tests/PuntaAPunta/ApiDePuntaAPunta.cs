@@ -69,7 +69,8 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         IdComercio1 = await ConsultarIdAsync("SELECT \"Id\" FROM \"Comercios\" WHERE \"Nombre\" = 'Comercio Prueba 1'");
         IdComercio2 = await ConsultarIdAsync("SELECT \"Id\" FROM \"Comercios\" WHERE \"Nombre\" = 'Comercio Prueba 2'");
 
-        // Los seeders vinculan los dos comercios solo con el operador 1. El comercio 2 pasa a trabajar
+        // Los seeders vinculan el comercio 1 con los dos operadores y el comercio 2 solo con el operador 1
+        // (IdentitySeeder.SeedVinculosPruebaAsync). Acá el comercio 2 pasa a trabajar
         // también con el operador 2, para que el operador 2 tenga envíos propios (y el comercio 2
         // tenga que elegir operador al iniciar sesión).
         await EjecutarAsync($"""

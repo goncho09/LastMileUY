@@ -1,0 +1,354 @@
+@page "/destinatarios"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.Contracts.Destinatarios
+
+@inject IDestinatariosApi DestinatariosApi
+@inject NavigationManager Navegacion
+@inject ILogger<Index> Logger
+
+<PageTitle>Destinatarios | LastMileUY</PageTitle>
+
+<div class="space-y-8">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+                Portal de Comercios
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Destinatarios</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+                Las personas a las que les mandás envíos y sus direcciones de entrega.
+            </p>
+        </div>
+
+        @if (!mostrarAlta)
+        {
+            <button type="button" @onclick="AbrirAlta"
+                    class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:bg-violet-500">
+                + Nuevo destinatario
+            </button>
+        }
+    </div>
+
+    @if (aviso is not null)
+    {
+        <div role="status" class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-200">
+            @aviso
+            @if (volverAEnvio)
+            {
+                <a href="/envios/nuevo" class="ml-2 font-semibold text-emerald-100 underline underline-offset-2">Crear el envío →</a>
+            }
+        </div>
+    }
+
+    @if (mostrarAlta)
+    {
+        <section class="overflow-hidden rounded-2xl border border-violet-500/25 bg-[#131a2a] shadow-xl shadow-black/10" aria-labelledby="titulo-alta">
+            <div class="border-b border-white/10 px-5 py-5 sm:px-7">
+                <h2 id="titulo-alta" class="text-lg font-semibold text-white">Nuevo destinatario</h2>
+                <p class="mt-0.5 text-xs text-slate-400">Sus datos de contacto y la primera dirección de entrega.</p>
+            </div>
+
+            <div class="space-y-6 p-5 sm:p-7">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <label for="nombre" class="mb-2 block text-xs font-medium text-slate-300">
+                            Nombre <span class="text-violet-400">*</span>
+                        </label>
+                        <input id="nombre" maxlength="100" @bind="nombre" class="@ClaseCampo"/>
+                    </div>
+                    <div>
+                        <label for="apellido" class="mb-2 block text-xs font-medium text-slate-300">
+                            Apellido <span class="text-violet-400">*</span>
+                        </label>
+                        <input id="apellido" maxlength="100" @bind="apellido" class="@ClaseCampo"/>
+                    </div>
+                    <div>
+                        <label for="email" class="mb-2 block text-xs font-medium text-slate-300">
+                            Email <span class="font-normal text-slate-500">(opcional, para avisarle del envío)</span>
+                        </label>
+                        <input id="email" type="email" maxlength="250" @bind="email" class="@ClaseCampo"/>
+                    </div>
+                    <div>
+                        <label for="telefono" class="mb-2 block text-xs font-medium text-slate-300">
+                            Teléfono <span class="font-normal text-slate-500">(opcional)</span>
+                        </label>
+                        <input id="telefono" type="tel" maxlength="30" @bind="telefono" class="@ClaseCampo"/>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="mb-3 text-sm font-semibold text-white">Dirección de entrega</h3>
+                    <CamposDireccion Modelo="direccionAlta" Prefijo="alta"/>
+                </div>
+
+                <Errores Lista="erroresAlta"/>
+
+                <div class="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
+                    <button type="button" @onclick="CerrarAlta"
+                            class="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/5">
+                        Cancelar
+                    </button>
+                    <button type="button" @onclick="CrearAsync" disabled="@enviando"
+                            class="rounded-xl bg-violet-600 px-8 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-wait disabled:opacity-60">
+                        @(enviando ? "Guardando…" : "Guardar destinatario")
+                    </button>
+                </div>
+            </div>
+        </section>
+    }
+
+    @if (destinatarios is null)
+    {
+        <div class="rounded-2xl border border-white/10 bg-[#131a2a] p-8 text-sm text-slate-300" role="status">
+            @(errorCarga ?? "Cargando destinatarios…")
+        </div>
+    }
+    else if (destinatarios.Count == 0)
+    {
+        <div class="rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] p-6 text-sm text-amber-200" role="status">
+            Todavía no cargaste destinatarios. Cargá el primero para poder crear envíos.
+        </div>
+    }
+    else
+    {
+        <div>
+            <label for="buscar" class="sr-only">Buscar destinatario</label>
+            <input id="buscar" type="search" @bind="buscar" @bind:event="oninput" placeholder="Buscar por nombre, email o calle…"
+                   class="w-full rounded-xl border border-white/10 bg-[#131a2a] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-violet-500 sm:max-w-md"/>
+        </div>
+
+        <ul class="space-y-4">
+            @foreach (var d in Filtrados)
+            {
+                <li @key="d.Id" class="rounded-2xl border border-white/10 bg-[#131a2a] p-5 sm:p-6">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p class="text-base font-semibold text-white">@d.Apellido, @d.Nombre</p>
+                            <p class="mt-1 text-xs text-slate-400">
+                                @(d.Email ?? "Sin email") @(d.Telefono is null ? "" : $"· {d.Telefono}")
+                            </p>
+                        </div>
+                        @if (direccionPara != d.Id)
+                        {
+                            <button type="button" @onclick="() => AbrirDireccion(d.Id)"
+                                    class="rounded-lg border border-violet-500/35 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-200 transition hover:bg-violet-500/20">
+                                + Agregar dirección
+                            </button>
+                        }
+                    </div>
+
+                    <ul class="mt-4 space-y-2">
+                        @foreach (var dir in d.Direcciones)
+                        {
+                            <li class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-sm text-slate-300">
+                                <span>@TextoDireccion(dir)</span>
+                                @if (dir.Latitud is not null)
+                                {
+                                    <span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">Con ubicación</span>
+                                }
+                                else
+                                {
+                                    <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs text-slate-500">Sin ubicación</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+
+                    @if (direccionPara == d.Id)
+                    {
+                        <div class="mt-5 space-y-5 rounded-xl border border-violet-500/20 bg-[#0d1423] p-4 sm:p-5">
+                            <h3 class="text-sm font-semibold text-white">Nueva dirección para @d.Nombre</h3>
+                            <CamposDireccion Modelo="direccionNueva" Prefijo="@($"dir-{d.Id}")"/>
+                            <Errores Lista="erroresDireccion"/>
+                            <div class="flex flex-wrap justify-end gap-3">
+                                <button type="button" @onclick="CerrarDireccion"
+                                        class="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/5">
+                                    Cancelar
+                                </button>
+                                <button type="button" @onclick="() => AgregarDireccionAsync(d)" disabled="@enviando"
+                                        class="rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-wait disabled:opacity-60">
+                                    @(enviando ? "Guardando…" : "Guardar dirección")
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private const string ClaseCampo =
+        "w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-500";
+
+    // ?nuevo=1: viene del formulario de envíos, abre el alta y al terminar ofrece volver
+    [SupplyParameterFromQuery(Name = "nuevo")]
+    private int? Nuevo { get; set; }
+
+    private List<DestinatarioDto>? destinatarios;
+    private string? errorCarga;
+    private string? buscar;
+    private string? aviso;
+    private bool volverAEnvio;
+    private bool enviando;
+
+    private bool mostrarAlta;
+    private string? nombre, apellido, email, telefono;
+    private FormularioDireccion direccionAlta = new();
+    private readonly List<string> erroresAlta = [];
+
+    private int? direccionPara;
+    private FormularioDireccion direccionNueva = new();
+    private readonly List<string> erroresDireccion = [];
+
+    private IEnumerable<DestinatarioDto> Filtrados =>
+        string.IsNullOrWhiteSpace(buscar)
+            ? destinatarios!
+            : destinatarios!.Where(d =>
+                $"{d.Nombre} {d.Apellido} {d.Email} {string.Join(" ", d.Direcciones.Select(x => x.Calle))}"
+                    .Contains(buscar.Trim(), StringComparison.CurrentCultureIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        mostrarAlta = Nuevo == 1;
+        volverAEnvio = Nuevo == 1;
+
+        try
+        {
+            destinatarios = await DestinatariosApi.ListarAsync();
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudieron cargar los destinatarios");
+            errorCarga = "No se pudieron cargar los destinatarios. Probá recargar la página.";
+        }
+    }
+
+    private void AbrirAlta()
+    {
+        mostrarAlta = true;
+        aviso = null;
+        CerrarDireccion();
+    }
+
+    private void CerrarAlta()
+    {
+        mostrarAlta = false;
+        (nombre, apellido, email, telefono) = (null, null, null, null);
+        direccionAlta = new FormularioDireccion();
+        erroresAlta.Clear();
+    }
+
+    private void AbrirDireccion(int destinatarioId)
+    {
+        direccionPara = destinatarioId;
+        direccionNueva = new FormularioDireccion();
+        erroresDireccion.Clear();
+        aviso = null;
+    }
+
+    private void CerrarDireccion()
+    {
+        direccionPara = null;
+        erroresDireccion.Clear();
+    }
+
+    private async Task CrearAsync()
+    {
+        erroresAlta.Clear();
+
+        if (string.IsNullOrWhiteSpace(nombre))
+            erroresAlta.Add("Completá el nombre.");
+
+        if (string.IsNullOrWhiteSpace(apellido))
+            erroresAlta.Add("Completá el apellido.");
+
+        direccionAlta.Validar(erroresAlta);
+
+        if (erroresAlta.Count > 0)
+            return;
+
+        await EnviarAsync(erroresAlta, async () =>
+        {
+            var resultado = await DestinatariosApi.CrearAsync(new CrearDestinatarioRequest
+            {
+                Nombre = nombre!.Trim(),
+                Apellido = apellido!.Trim(),
+                Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
+                Telefono = string.IsNullOrWhiteSpace(telefono) ? null : telefono.Trim(),
+                Direccion = direccionAlta.ARequest()
+            });
+
+            if (!resultado.Exito)
+                return resultado.Error;
+
+            destinatarios!.Add(resultado.Destinatario!);
+            destinatarios.Sort((a, b) => string.Compare($"{a.Apellido} {a.Nombre}", $"{b.Apellido} {b.Nombre}", StringComparison.CurrentCulture));
+            aviso = $"Se guardó a {resultado.Destinatario!.Nombre} {resultado.Destinatario.Apellido}.";
+            CerrarAlta();
+            return null;
+        });
+    }
+
+    private async Task AgregarDireccionAsync(DestinatarioDto destinatario)
+    {
+        erroresDireccion.Clear();
+        direccionNueva.Validar(erroresDireccion);
+
+        if (erroresDireccion.Count > 0)
+            return;
+
+        await EnviarAsync(erroresDireccion, async () =>
+        {
+            var resultado = await DestinatariosApi.AgregarDireccionAsync(destinatario.Id, direccionNueva.ARequest());
+
+            if (!resultado.Exito)
+                return resultado.Error;
+
+            destinatario.Direcciones.Add(resultado.Direccion!);
+            aviso = $"Se agregó la dirección de {destinatario.Nombre} {destinatario.Apellido}.";
+            volverAEnvio = false;
+            CerrarDireccion();
+            return null;
+        });
+    }
+
+    // Manda el pedido; si la API lo rechaza, el motivo va a la lista de errores del formulario
+    private async Task EnviarAsync(List<string> errores, Func<Task<string?>> accion)
+    {
+        enviando = true;
+
+        try
+        {
+            var error = await accion();
+
+            if (error is not null)
+                errores.Add(error);
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            Logger.LogError(ex, "No se pudo guardar el destinatario o la dirección");
+            errores.Add("No se pudo conectar con el servidor. Probá de nuevo.");
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+
+    private void IrAlLogin() =>
+        Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+
+    private static string TextoDireccion(DireccionDto d) =>
+        $"{d.Calle} {d.Numero}{(d.Apartamento is null ? "" : $" apto {d.Apartamento}")}, {d.Ciudad} ({d.Departamento})";
+}
