@@ -87,14 +87,36 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
     }
 
-    // Los bultos son opcionales al crear un envío, pero sin bultos por entregar no se puede asignar a una
-    // ruta: la pantalla para armarlas no lo tiene que ofrecer (antes lo ofrecía y la API lo rechazaba)
+    // Sin bultos no hay nada que entregar: el envío no se podría asignar a ninguna ruta. Ni con la
+    // lista vacía ni sin mandarla; tampoco desde el portal del comercio
+    [Theory]
+    [InlineData(Operador1, """{ "Bultos": [] }""")]
+    [InlineData(Operador1, "{}")]
+    [InlineData(Comercio1, """{ "Bultos": null }""")]
+    public async Task No_se_puede_crear_un_envio_sin_bultos(string email, string bultos)
+    {
+        var cliente = await api.IniciarSesionAsync(email);
+        var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
+        var cuerpo = System.Text.Json.Nodes.JsonNode.Parse(bultos)!.AsObject();
+        cuerpo["ComercioId"] = api.IdComercio1;
+        cuerpo["DestinatarioId"] = destinatario;
+        cuerpo["DireccionId"] = direccion;
+
+        using var alta = await cliente.PostAsJsonAsync("api/envios", cuerpo);
+
+        Assert.Equal(HttpStatusCode.BadRequest, alta.StatusCode);
+        Assert.Contains("al menos un bulto", await alta.Content.ReadAsStringAsync());
+    }
+
+    // Un envío que quedó sin bultos (de antes de exigirlos) no se puede asignar a una ruta: la
+    // pantalla para armarlas no lo tiene que ofrecer
     [Fact]
     public async Task Un_envio_sin_bultos_no_se_ofrece_para_armar_una_ruta()
     {
         var operador = await api.IniciarSesionAsync(Operador1);
         var conBultos = await CrearEnvioEnDepositoAsync(operador);
-        var sinBultos = await CrearEnvioEnDepositoAsync(operador, conBultos: false);
+        var sinBultos = await CrearEnvioEnDepositoAsync(operador);
+        await api.EjecutarAsync($"""DELETE FROM "Bultos" WHERE "EnvioId" = {sinBultos}""");
 
         var opciones = (await operador.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
 
@@ -102,7 +124,7 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.DoesNotContain(opciones.Envios, e => e.Id == sinBultos);
     }
 
-    private async Task<int> CrearEnvioEnDepositoAsync(HttpClient operador, bool conBultos = true)
+    private async Task<int> CrearEnvioEnDepositoAsync(HttpClient operador)
     {
         var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
 
@@ -111,19 +133,7 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             ComercioId = api.IdComercio1,
             DestinatarioId = destinatario,
             DireccionId = direccion,
-            Bultos = conBultos
-                ?
-                [
-                    new CrearBultoRequest
-                    {
-                        PesoKg = 1,
-                        LargoCm = 20,
-                        AnchoCm = 15,
-                        AltoCm = 10,
-                        Descripcion = "Bulto de prueba"
-                    }
-                ]
-                : []
+            Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10, Descripcion = "Bulto de prueba" }]
         });
         Assert.Equal(HttpStatusCode.Created, alta.StatusCode);
         var id = (await alta.Content.ReadFromJsonAsync<EnvioResponse>())!.Id;

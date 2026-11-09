@@ -116,7 +116,8 @@ Ese es el manifiesto de la hoja de ruta:
 - La capacidad del vehículo, la hoja de ruta (cantidad, peso y volumen de cada parada) y la lista de
   envíos para armar rutas cuentan esos bultos, no todo el envío.
 - La lista de envíos para armar rutas (`GET /api/rutas/opciones`) solo trae los que tienen al menos un
-  bulto por entregar: los bultos son opcionales al crear un envío, y uno sin bultos no se puede asignar.
+  bulto por entregar. Un envío se crea con al menos un bulto (`POST /api/envios` sin bultos es un 400),
+  pero si alguno quedó sin bultos de antes de exigirlos, no se ofrece porque no se puede asignar.
 - Queda fijo: una ruta terminada sigue mostrando lo que llevó, aunque después esos bultos se entreguen
   en otra.
 - La base no deja que una parada lleve un bulto de otro envío: la política RLS de `BultosParada` lo
