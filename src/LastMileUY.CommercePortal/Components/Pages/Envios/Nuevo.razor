@@ -202,34 +202,34 @@
 
                             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                 <div>
-                                    <label class="mb-2 block text-xs font-medium text-slate-300">Peso (kg)</label>
+                                    <label for="peso-@numero" class="mb-2 block text-xs font-medium text-slate-300">Peso (kg)</label>
                                     <input type="number" step="0.01" min="0.01" max="1000"
-                                           @bind="bulto.PesoKg"
+                                           id="peso-@numero" @bind="bulto.PesoKg"
                                            class="w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
                                 </div>
                                 <div>
-                                    <label class="mb-2 block text-xs font-medium text-slate-300">Largo (cm)</label>
+                                    <label for="largo-@numero" class="mb-2 block text-xs font-medium text-slate-300">Largo (cm)</label>
                                     <input type="number" step="0.1" min="0.1" max="1000"
-                                           @bind="bulto.LargoCm"
+                                           id="largo-@numero" @bind="bulto.LargoCm"
                                            class="w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
                                 </div>
                                 <div>
-                                    <label class="mb-2 block text-xs font-medium text-slate-300">Ancho (cm)</label>
+                                    <label for="ancho-@numero" class="mb-2 block text-xs font-medium text-slate-300">Ancho (cm)</label>
                                     <input type="number" step="0.1" min="0.1" max="1000"
-                                           @bind="bulto.AnchoCm"
+                                           id="ancho-@numero" @bind="bulto.AnchoCm"
                                            class="w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
                                 </div>
                                 <div>
-                                    <label class="mb-2 block text-xs font-medium text-slate-300">Alto (cm)</label>
+                                    <label for="alto-@numero" class="mb-2 block text-xs font-medium text-slate-300">Alto (cm)</label>
                                     <input type="number" step="0.1" min="0.1" max="1000"
-                                           @bind="bulto.AltoCm"
+                                           id="alto-@numero" @bind="bulto.AltoCm"
                                            class="w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none focus:border-violet-500"/>
                                 </div>
                                 <div class="sm:col-span-2 lg:col-span-4">
-                                    <label class="mb-2 block text-xs font-medium text-slate-300">
+                                    <label for="descripcion-@numero" class="mb-2 block text-xs font-medium text-slate-300">
                                         Descripción <span class="font-normal text-slate-500">(opcional)</span>
                                     </label>
-                                    <input maxlength="500" @bind="bulto.Descripcion"
+                                    <input id="descripcion-@numero" maxlength="500" @bind="bulto.Descripcion"
                                            placeholder="Ej.: Caja con artículos de indumentaria"
                                            class="w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-500"/>
                                 </div>

@@ -157,3 +157,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+// Para las pruebas de navegador (WebApplicationFactory)
+public partial class Program;
