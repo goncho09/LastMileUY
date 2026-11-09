@@ -258,8 +258,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-// Add services to the container.
-builder.Services.AddControllers();
+// Las políticas por perfil van en cada endpoint (RequireAuthorization). Antes lo registraba de rebote
+// AddControllers, que se sacó porque la API no tiene controllers
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
@@ -280,6 +281,8 @@ builder.Services.AddScoped<SeguimientoPublicoService>();
 builder.Services.AddScoped<SuscripcionesAvisosService>();
 builder.Services.AddScoped<AvisosComercioService>();
 builder.Services.AddScoped<ConsultasMensajesFallidosService>();
+// Sin registrarlo, el endpoint de reintentar lo tomaba como el cuerpo del pedido y siempre daba 400
+builder.Services.AddScoped<ReintentosMensajesFallidosService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
@@ -305,7 +308,7 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// Documentación de la API (OpenAPI + Scalar): solo en desarrollo, ver abajo
 builder.Services.AddOpenApi();
 
 // CORS: solo hace falta cuando la app del repartidor se sirve desde otro origen que la API
@@ -347,7 +350,7 @@ if (!app.Environment.IsDevelopment() &&
     await IdentitySeeder.SeedAdminAsync(app.Services);
 }
 
-// Configure the HTTP request pipeline y Scalar 
+// Solo en desarrollo: la documentación de la API (Scalar) y los datos de prueba
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -383,8 +386,6 @@ app.UseCors("DriverPWA");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
-
-app.MapControllers(); 
 
 // ENDPOINTS
 app.MapAuthEndpoints();

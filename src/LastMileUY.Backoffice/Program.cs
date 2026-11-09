@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Servicios
 // Todo el Backoffice pide sesión con un perfil del Backoffice, salvo el login, la salida y las páginas de error.
 // La configuración del operador además pide el perfil Operador (ver Permisos).
 builder.Services.AddRazorPages(opciones =>
@@ -218,11 +218,11 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Pipeline de cada pedido
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    // HSTS: el navegador recuerda 30 días (valor por defecto) que el sitio va solo por https
     app.UseHsts();
 }
 

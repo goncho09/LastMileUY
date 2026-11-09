@@ -100,4 +100,4 @@ Detalle en [seguimiento-publico.md](seguimiento-publico.md).
 ## Pendientes conocidos
 
 - **Despliegue:** las contraseñas de los usuarios de base y las variables que hay que cambiar están en la sección "Antes de desplegar" del README.
-- **Primer administrador fuera de desarrollo:** el usuario Administrador se crea automáticamente únicamente en desarrollo (`SeedAdmin`). Para desplegar hay que definir cómo se crea el primero.
+- **Primer administrador fuera de desarrollo:** se crea al arrancar la API con `SeedAdmin:Enabled=true` y `SeedAdmin:Email`/`SeedAdmin:Password`. Solo lo crea si no existe: fuera de desarrollo nunca le cambia la contraseña. Conviene apagarlo, o sacar la contraseña de la configuración, una vez creado.
