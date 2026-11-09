@@ -134,7 +134,8 @@ public class CanalIngresoTests(BaseConDosOperadores baseDeDatos)
             ComercioId = ComercioCompartido,
             DestinatarioId = 1,
             DireccionId = 1,
-            ReferenciaExterna = referencia
+            ReferenciaExterna = referencia,
+            Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10 }]
         };
 
         var rol = canal == CanalIngreso.Portal ? "Comercio" : "Operador";

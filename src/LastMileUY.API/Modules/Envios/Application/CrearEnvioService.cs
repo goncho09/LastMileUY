@@ -163,9 +163,10 @@ public class CrearEnvioService(
     // Mismos límites que los atributos de CrearBultoRequest (las minimal APIs no los validan solas)
     private static void ValidarBultos(List<CrearBultoRequest>? bultos)
     {
-        if (bultos is null)
+        // Sin bultos no hay nada que entregar: el envío no se podría asignar a ninguna ruta
+        if (bultos is null || bultos.Count == 0)
         {
-            return;
+            throw new ArgumentException("El envío tiene que tener al menos un bulto.");
         }
 
         if (bultos.Count > 50)

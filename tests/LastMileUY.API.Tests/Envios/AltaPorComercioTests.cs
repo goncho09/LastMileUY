@@ -67,7 +67,8 @@ public class AltaPorComercioTests(BaseConDosOperadores baseDeDatos)
                 {
                     ComercioId = ComercioSoloDeA,
                     DestinatarioId = DestinatarioComercio2,
-                    DireccionId = 1
+                    DireccionId = 1,
+                    Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10 }]
                 },
                 CrearUsuarioComercio()));
     }

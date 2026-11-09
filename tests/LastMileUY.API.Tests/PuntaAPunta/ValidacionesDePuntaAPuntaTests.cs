@@ -50,7 +50,8 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
             ComercioId = api.IdComercio1,
             DestinatarioId = destinatario,
             DireccionId = direccion,
-            ReferenciaExterna = new string('R', 101)
+            ReferenciaExterna = new string('R', 101),
+            Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10 }]
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
@@ -70,7 +71,8 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
                 ComercioId = api.IdComercio1,
                 DestinatarioId = destinatario,
                 DireccionId = direccion,
-                ReferenciaExterna = "  "
+                ReferenciaExterna = "  ",
+                Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10 }]
             });
 
             Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
