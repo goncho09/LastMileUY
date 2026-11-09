@@ -22,6 +22,7 @@ public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, I
     // (ver AutenticacionApiDePrueba)
     public const string Operador = "operador@prueba.test";
     public const string Despachador = "despachador@prueba.test";
+    public const string Administrador = "administrador@prueba.test";
     public const string Clave = "cualquiera";
 
     private IPlaywright? playwright;
@@ -57,6 +58,9 @@ public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, I
         builder.UseEnvironment("Development");
         builder.UseSetting("Api:UsarDatosDePrueba", "true");
         builder.UseSetting("DataProtection:Directorio", directorioClaves);
+        // Cada prueba inicia sesión, y todas desde la misma IP: con el tope de producción (10 por minuto)
+        // la undécima se quedaba en el login con un 429
+        builder.UseSetting("Login:IntentosPorMinuto", "1000");
     }
 
     // Una ventana nueva con la sesión iniciada con ese email. ancho: para probar en celular

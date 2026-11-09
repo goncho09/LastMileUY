@@ -96,8 +96,10 @@ public class RutasApiHttp(HttpClient http) : IRutasApi
     {
         switch (respuesta.StatusCode)
         {
+            // Con motivo cuando es una funcionalidad apagada para el operador; sin motivo, es el perfil
             case HttpStatusCode.Forbidden:
-                throw new OperacionRechazadaException($"Tu usuario no tiene permiso para {accion}.");
+                throw new OperacionRechazadaException(
+                    await RespuestasApi.LeerMensajeAsync(respuesta, $"Tu usuario no tiene permiso para {accion}.", ct));
             case HttpStatusCode.BadRequest or HttpStatusCode.Conflict:
                 throw new OperacionRechazadaException(
                     await RespuestasApi.LeerMensajeAsync(respuesta, "La API rechazó la hoja de ruta.", ct));

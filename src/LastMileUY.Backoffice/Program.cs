@@ -35,6 +35,10 @@ builder.Services.AddRazorPages(opciones =>
 
     opciones.Conventions.AuthorizeFolder(
         "/MensajesFallidos", Permisos.PoliticaAdministracionGlobal);
+
+    // Banderas de funcionalidad por operador: son de la plataforma
+    opciones.Conventions.AuthorizeFolder(
+        "/Funcionalidades", Permisos.PoliticaAdministracionGlobal);
 });
 
 builder.Services.AddAuthorizationBuilder()
@@ -95,6 +99,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IRutasApi, RutasApiDePrueba>();
     builder.Services.AddSingleton<ISincronizacionApi, SincronizacionApiDePrueba>();
     builder.Services.AddSingleton<IMensajesFallidosApi, MensajesFallidosApiDePrueba>();
+    builder.Services.AddSingleton<IFuncionalidadesApi, FuncionalidadesApiDePrueba>();
 }
 else
 {
@@ -161,6 +166,14 @@ else
                 cliente.BaseAddress = urlBase;
                 cliente.Timeout = TimeSpan.FromSeconds(10);
             })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IFuncionalidadesApi, FuncionalidadesApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
         .AddHttpMessageHandler<ReenviarCookieApi>();
 

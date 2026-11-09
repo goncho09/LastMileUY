@@ -92,6 +92,10 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
                 case ReglaOperativa regla:
                     operadoresCambiados.Add(regla.OperadorId);
                     break;
+                // GET /api/operador trae qué funcionalidades tiene prendidas
+                case FuncionalidadOperador funcionalidad:
+                    operadoresCambiados.Add(funcionalidad.OperadorId);
+                    break;
             }
         }
     }

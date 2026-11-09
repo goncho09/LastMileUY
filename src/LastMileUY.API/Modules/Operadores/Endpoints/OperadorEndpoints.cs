@@ -94,6 +94,45 @@ public static class OperadorEndpoints
             })
             .WithName("PublicarReglaEntregaParcial");
 
+        // Banderas de funcionalidad por operador (docs/funcionalidades.md). Son de la plataforma:
+        // solo el Administrador las ve todas y las cambia. Cada operador ve las suyas en GET /api/operador.
+        var funcionalidades = app.MapGroup("/api/admin")
+            .WithTags("Funcionalidades")
+            .RequireAuthorization(politica => politica.RequireRole("Administrador"));
+
+        funcionalidades.MapGet("/funcionalidades", async (
+                FuncionalidadesService servicio,
+                CancellationToken cancellationToken) =>
+                Results.Ok(await servicio.ListarAsync(cancellationToken)))
+            .WithName("ListarFuncionalidades");
+
+        // 204 cambiada, 404 operador que no existe, 400 funcionalidad que no existe
+        funcionalidades.MapPut("/operadores/{operadorId:int}/funcionalidades/{clave}", async (
+                int operadorId,
+                string clave,
+                CambiarFuncionalidadRequest request,
+                ClaimsPrincipal usuario,
+                FuncionalidadesService servicio,
+                CancellationToken cancellationToken) =>
+            {
+                var usuarioId = usuario.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (usuarioId is null)
+                    return Results.Unauthorized();
+
+                try
+                {
+                    return await servicio.CambiarAsync(operadorId, clave, request.Activa, usuarioId, cancellationToken)
+                        ? Results.NoContent()
+                        : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+            })
+            .WithName("CambiarFuncionalidad");
+
         return app;
     }
 }

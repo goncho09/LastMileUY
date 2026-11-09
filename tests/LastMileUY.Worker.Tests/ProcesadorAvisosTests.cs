@@ -49,6 +49,35 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
         Assert.Equal(1, await AvisosDeAsync(evento, SuscripcionDeB));
     }
 
+    // Avisos apagados para el operador (docs/funcionalidades.md): el evento se procesa, pero no deja
+    // avisos. Prendidos otra vez, el siguiente evento sí
+    [Fact]
+    public async Task Con_los_avisos_apagados_para_el_operador_no_registra_avisos()
+    {
+        await BanderaDeAvisosAsync(OperadorB, """
+            INSERT INTO "FuncionalidadesOperador"("OperadorId", "Clave", "Activa", "FechaModificacion")
+            VALUES (@operador, @clave, false, now())
+            """);
+        try
+        {
+            var apagado = Evento(OperadorB, EnvioDeB);
+            var resultado = await Procesador().ProcesarAsync(apagado, CancellationToken.None);
+
+            Assert.False(resultado.Repetido);
+            Assert.Equal(0, resultado.AvisosRegistrados);
+            Assert.Equal(0, await AvisosDeAsync(apagado, SuscripcionDeB));
+        }
+        finally
+        {
+            await BanderaDeAvisosAsync(OperadorB, """
+                DELETE FROM "FuncionalidadesOperador" WHERE "OperadorId" = @operador AND "Clave" = @clave
+                """);
+        }
+
+        var prendido = Evento(OperadorB, EnvioDeB);
+        Assert.Equal(1, (await Procesador().ProcesarAsync(prendido, CancellationToken.None)).AvisosRegistrados);
+    }
+
     [Fact]
     public async Task Si_falla_no_queda_anotado_y_se_puede_volver_a_procesar()
     {
@@ -154,6 +183,16 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
         WHERE "SuscripcionAvisosId" = @suscripcion
           AND ("Contenido"->>'EventoId' = @evento OR "Contenido"->>'eventoId' = @evento)
         """, ("suscripcion", suscripcion), ("evento", evento.EventoId.ToString()));
+
+    private async Task BanderaDeAvisosAsync(int operadorId, string sql)
+    {
+        await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);
+        await conexion.OpenAsync();
+        await using var comando = new NpgsqlCommand(sql, conexion);
+        comando.Parameters.AddWithValue("operador", operadorId);
+        comando.Parameters.AddWithValue("clave", Contracts.Operadores.Funcionalidades.AvisosComercios);
+        await comando.ExecuteNonQueryAsync();
+    }
 
     private ProcesadorAvisos Procesador() => new(NpgsqlDataSource.Create(entorno.CadenaAplicacion));
 

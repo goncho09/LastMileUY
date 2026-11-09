@@ -103,6 +103,7 @@ instala Chromium con sus dependencias del sistema.
 | [docs/seguimiento-publico.md](docs/seguimiento-publico.md) | Página pública de seguimiento |
 | [docs/mensajeria.md](docs/mensajeria.md) | Outbox, RabbitMQ, worker, avisos HTTP a comercios |
 | [docs/seguridad.md](docs/seguridad.md) | Autenticación, permisos, validación de entradas, SSRF y pendientes conocidos |
+| [docs/funcionalidades.md](docs/funcionalidades.md) | Funcionalidades por operador (banderas): cuáles hay, quién las cambia y qué cortan |
 
 ## Antes de desplegar fuera de desarrollo
 

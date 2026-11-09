@@ -15,8 +15,12 @@
         <p class="mt-2 text-sm text-slate-400">
             Elegí repartidor, vehículo y los envíos. El orden de visita es el número que le pongas a cada
             envío (sin número, van al final en el orden de la lista). Las paradas con franja horaria
-            tienen que ir en orden de horario. "Ordenar por recorrido" sugiere un orden que recorre menos
-            kilómetros; lo podés cambiar antes de armar la ruta.
+            tienen que ir en orden de horario.
+            @if (Model.OrdenSugeridoHabilitado)
+            {
+                <text>"Ordenar por recorrido" sugiere un orden que recorre menos kilómetros; lo podés cambiar
+                antes de armar la ruta.</text>
+            }
         </p>
     </div>
 
@@ -191,10 +195,13 @@
                class="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-300 no-underline hover:bg-white/10 hover:text-white">
                 Cancelar
             </a>
-            <button type="submit" asp-page-handler="Ordenar" formnovalidate
-                    class="rounded-xl border border-violet-500/40 bg-violet-500/10 px-5 py-3 text-sm font-semibold text-violet-200 transition-colors hover:bg-violet-500/20">
-                Ordenar por recorrido
-            </button>
+            @if (Model.OrdenSugeridoHabilitado)
+            {
+                <button type="submit" asp-page-handler="Ordenar" formnovalidate
+                        class="rounded-xl border border-violet-500/40 bg-violet-500/10 px-5 py-3 text-sm font-semibold text-violet-200 transition-colors hover:bg-violet-500/20">
+                    Ordenar por recorrido
+                </button>
+            }
             <button type="submit"
                     class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
                 Armar hoja de ruta

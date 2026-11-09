@@ -10,7 +10,16 @@ public record OperadorActualDto(
     string? LogoUrl,
     IReadOnlyList<ReglaOperativaDto> Reglas,
     // De dónde salen sus rutas (null si no lo cargó): el punto de partida del orden sugerido
-    Coordenadas? Deposito = null);
+    Coordenadas? Deposito = null,
+    // Las claves de las funcionalidades prendidas para el operador (ver Funcionalidades)
+    IReadOnlyList<string>? Funcionalidades = null)
+{
+    // Sin la lista (una API vieja o datos de prueba que no la cargan) vale el valor por defecto
+    public bool Tiene(string funcionalidad) =>
+        Funcionalidades?.Contains(funcionalidad)
+        ?? global::LastMileUY.Contracts.Operadores.Funcionalidades.Buscar(funcionalidad)?.PorDefecto
+        ?? false;
+}
 
 // Una regla operativa activa del operador (hay como máximo una por modalidad)
 public record ReglaOperativaDto(

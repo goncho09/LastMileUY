@@ -8,7 +8,10 @@ using Microsoft.EntityFrameworkCore;
 namespace LastMileUY.API.Modules.Operadores.Application;
 
 // Identidad y configuración del operador del usuario logueado.
-public class OperadorActualService(ApplicationDbContext db, IContextoOperador contexto)
+public class OperadorActualService(
+    ApplicationDbContext db,
+    IContextoOperador contexto,
+    FuncionalidadesService funcionalidades)
 {
     // null si el usuario no tiene operador
     public async Task<OperadorActualDto?> ObtenerAsync(CancellationToken cancellationToken = default)
@@ -53,6 +56,10 @@ public class OperadorActualService(ApplicationDbContext db, IContextoOperador co
             ? new Coordenadas(latitud, longitud)
             : null;
 
-        return new OperadorActualDto(operador.Id, operador.Nombre, operador.ColorPrimario, operador.LogoUrl, reglas, deposito);
+        var activas = await funcionalidades.ActivasAsync(operador.Id, cancellationToken);
+
+        return new OperadorActualDto(
+            operador.Id, operador.Nombre, operador.ColorPrimario, operador.LogoUrl, reglas, deposito,
+            activas.Order().ToList());
     }
 }

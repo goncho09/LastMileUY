@@ -47,6 +47,6 @@ public class OperadorActualTests(BaseConDosOperadores baseDeDatos)
     private async Task<Contracts.Operadores.OperadorActualDto?> ObtenerAsync(int? operadorId)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
-        return await new OperadorActualService(db, new ContextoOperadorFijo(operadorId)).ObtenerAsync();
+        return await new OperadorActualService(db, new ContextoOperadorFijo(operadorId), new FuncionalidadesService(db)).ObtenerAsync();
     }
 }

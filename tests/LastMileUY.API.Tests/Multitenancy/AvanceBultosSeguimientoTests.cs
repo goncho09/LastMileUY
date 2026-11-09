@@ -1,5 +1,6 @@
 namespace LastMileUY.API.Tests.Multitenancy;
 
+using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
@@ -107,7 +108,7 @@ public class AvanceBultosSeguimientoTests(BaseConDosOperadores baseDeDatos)
     private async Task<SeguimientoPublicoDto> SeguimientoAsync(string codigo)
     {
         await using var db = baseDeDatos.CrearContexto(null);
-        return Assert.IsType<SeguimientoPublicoDto>(await new SeguimientoPublicoService(db).ObtenerAsync(codigo));
+        return Assert.IsType<SeguimientoPublicoDto>(await new SeguimientoPublicoService(db, new FuncionalidadesService(db)).ObtenerAsync(codigo));
     }
 
     private async Task<(int Id, string Codigo)> EnvioEnTransitoAsync(int bultos)
