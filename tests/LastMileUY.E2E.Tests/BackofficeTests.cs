@@ -44,6 +44,32 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
             .ToBeVisibleAsync();
     }
 
+    // Banderas de funcionalidad: el administrador apaga una para un operador desde el menú. Se usa el
+    // segundo operador de los datos de prueba, que no usan las demás pruebas
+    [Fact]
+    public async Task El_administrador_apaga_una_funcionalidad_de_un_operador()
+    {
+        var pagina = await backoffice.IniciarSesionAsync(Administrador);
+
+        await pagina.GetByRole(AriaRole.Link, new() { Name = "Funcionalidades" }).ClickAsync();
+        await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "Funcionalidades por operador" })).ToBeVisibleAsync();
+
+        var otro = pagina.GetByRole(AriaRole.Region, new() { Name = "Otro operador" });
+        await otro.GetByRole(AriaRole.Button, new() { Name = "Apagar Avisos a comercios para Otro operador" }).ClickAsync();
+
+        await Expect(pagina.GetByRole(AriaRole.Status)).ToHaveTextAsync("\"Avisos a comercios\" quedó apagada.");
+        var avisos = otro.GetByRole(AriaRole.Listitem).Filter(new() { HasText = "Avisos a comercios" });
+        await Expect(avisos).ToContainTextAsync("Apagada");
+        await Expect(avisos.GetByRole(AriaRole.Button)).ToHaveTextAsync("Prender");
+
+        // Un operador no entra a esta pantalla
+        var operador = await backoffice.IniciarSesionAsync(Operador);
+        await Expect(operador.GetByRole(AriaRole.Link, new() { Name = "Funcionalidades" })).ToHaveCountAsync(0);
+        await operador.GotoAsync("/Funcionalidades");
+        await Expect(operador.GetByRole(AriaRole.Heading, new() { Name = "No tenés permiso para ver esta página" }))
+            .ToBeVisibleAsync();
+    }
+
     [Fact]
     public async Task Filtrar_los_envios_y_abrir_el_detalle_con_los_intentos()
     {
