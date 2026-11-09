@@ -159,6 +159,26 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Created, prendido.StatusCode);
     }
 
+    // Varios cambios a la vez sobre una bandera que todavía no tiene fila (la primera vez se inserta):
+    // ninguno puede terminar en un 500 por la clave duplicada. Las demás pruebas usan el operador 1:
+    // para el 2 esta es la primera escritura. Queda prendida, que es su valor por defecto.
+    [Fact]
+    public async Task Varios_cambios_a_la_vez_de_una_bandera_nueva_no_fallan()
+    {
+        var administradores = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => api.IniciarSesionAsync(Administrador)));
+
+        var respuestas = await Task.WhenAll(administradores.Select((cliente, i) => cliente.PutAsJsonAsync(
+            $"api/admin/operadores/{api.IdOperador2}/funcionalidades/{Funcionalidades.SeguimientoPublico}",
+            new CambiarFuncionalidadRequest { Activa = i % 2 == 0 })));
+
+        Assert.All(respuestas, r => Assert.Equal(HttpStatusCode.NoContent, r.StatusCode));
+
+        await CambiarAsync(api.IdOperador2, Funcionalidades.SeguimientoPublico, activa: true);
+        var lista = (await administradores[0].GetFromJsonAsync<List<FuncionalidadesOperadorDto>>("api/admin/funcionalidades"))!;
+        Assert.True(lista.Single(o => o.OperadorId == api.IdOperador2)
+            .Funcionalidades.Single(f => f.Clave == Funcionalidades.SeguimientoPublico).Activa);
+    }
+
     private async Task CambiarAsync(int operadorId, string clave, bool activa)
     {
         var administrador = await api.IniciarSesionAsync(Administrador);

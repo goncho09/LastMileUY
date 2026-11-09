@@ -2,6 +2,7 @@ using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Operadores.Domain;
 using LastMileUY.Contracts.Operadores;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace LastMileUY.API.Modules.Operadores.Application;
 
@@ -89,6 +90,25 @@ public class FuncionalidadesService(ApplicationDbContext db)
             return false;
         }
 
+        try
+        {
+            await GuardarAsync(operadorId, clave, activa, usuarioId, cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Otro administrador la guardó por primera vez al mismo tiempo: ahora la fila existe y se
+            // actualiza (gana el último, como si hubieran llegado uno después del otro)
+            db.ChangeTracker.Clear();
+            await GuardarAsync(operadorId, clave, activa, usuarioId, cancellationToken);
+        }
+
+        return true;
+    }
+
+    // Con EF y no con un INSERT ... ON CONFLICT: así InvalidacionCacheInterceptor ve el cambio y borra
+    // del caché el GET /api/operador de ese operador
+    private async Task GuardarAsync(int operadorId, string clave, bool activa, string usuarioId, CancellationToken cancellationToken)
+    {
         var guardada = await db.FuncionalidadesOperador
             .FirstOrDefaultAsync(f => f.OperadorId == operadorId && f.Clave == clave, cancellationToken);
 
@@ -103,6 +123,5 @@ public class FuncionalidadesService(ApplicationDbContext db)
         guardada.ModificadaPor = usuarioId;
 
         await db.SaveChangesAsync(cancellationToken);
-        return true;
     }
 }

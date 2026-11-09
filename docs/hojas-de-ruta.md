@@ -105,7 +105,7 @@ Pruebas: `tests/LastMileUY.API.Tests/Rutas/OrdenDeParadasTests.cs` (el cálculo)
 | Las franjas de los envíos tienen que estar activas y en orden (ver arriba) | 400 |
 | Cada envío tiene al menos un bulto sin entregar | 400 |
 | El peso total de los bultos que salen no supera la carga del vehículo; el volumen (largo × ancho × alto) tampoco | 400 |
-| El repartidor no tiene otra ruta abierta ese día; el vehículo tampoco | 409 |
+| El repartidor no tiene otra ruta abierta ese día; el vehículo tampoco. Lo asegura la base (índices únicos parciales sobre las rutas abiertas), también si dos despachadores arman rutas a la vez | 409 |
 | Ningún envío está ya en otra ruta abierta | 409 |
 | Otro usuario modificó un envío al mismo tiempo (concurrencia optimista) | 409 |
 
