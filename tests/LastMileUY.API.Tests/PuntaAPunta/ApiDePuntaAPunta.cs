@@ -237,6 +237,27 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         return Convert.ToInt32(await comando.ExecuteScalarAsync());
     }
 
+    // Deja mensajes en una cola de RabbitMQ (la crea si no existe), como lo haría el worker con la de
+    // fallidos. Vacía la cola antes, para que cada prueba sepa cuántos hay.
+    public async Task PublicarEnColaAsync(string cola, params (string Cuerpo, string Error)[] mensajes)
+    {
+        await using var canal = await conexionRabbit!.CreateChannelAsync();
+        await canal.QueueDeclareAsync(cola, durable: true, exclusive: false, autoDelete: false);
+        await canal.QueuePurgeAsync(cola);
+
+        foreach (var (cuerpo, error) in mensajes)
+        {
+            var propiedades = new BasicProperties
+            {
+                MessageId = Guid.NewGuid().ToString(),
+                Type = TiposEvento.EnvioEstadoCambiado,
+                Headers = new Dictionary<string, object?> { ["x-intentos"] = "3", ["x-ultimo-error"] = error }
+            };
+
+            await canal.BasicPublishAsync("", cola, mandatory: false, propiedades, Encoding.UTF8.GetBytes(cuerpo));
+        }
+    }
+
     // SQL con el superusuario (saltea RLS): para armar datos que la API no deja crear
     public async Task EjecutarAsync(string sql)
     {
