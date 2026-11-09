@@ -1,0 +1,19 @@
+@* La lista de errores de un formulario, o nada si no hay *@
+
+@if (Lista.Count > 0)
+{
+    <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">
+        <p class="mb-2 font-semibold">Revisá los siguientes datos:</p>
+        <ul class="list-disc space-y-1 pl-5">
+            @foreach (var error in Lista)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public List<string> Lista { get; set; } = [];
+}

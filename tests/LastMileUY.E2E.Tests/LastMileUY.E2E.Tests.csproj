@@ -27,6 +27,8 @@
         <ProjectReference Include="..\..\src\LastMileUY.Backoffice\LastMileUY.Backoffice.csproj" />
         <!-- Con alias: la API y el Backoffice tienen las dos una clase Program -->
         <ProjectReference Include="..\..\src\LastMileUY.API\LastMileUY.API.csproj" Aliases="Api" />
+        <!-- El portal del comercio también tiene su Program -->
+        <ProjectReference Include="..\..\src\LastMileUY.CommercePortal\LastMileUY.CommercePortal.csproj" Aliases="Portal" />
     </ItemGroup>
 
 </Project>

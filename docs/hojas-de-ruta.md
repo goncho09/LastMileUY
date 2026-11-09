@@ -52,7 +52,9 @@ recién ahí arma la ruta como siempre.
 
 **De dónde salen las ubicaciones.**
 - Cada dirección de destinatario puede tener latitud y longitud (`Direccion.Latitud`/`Longitud`,
-  opcionales).
+  opcionales). Las carga quien da de alta la dirección: el comercio en su portal (página
+  Destinatarios, pegando las coordenadas como las copia Google Maps) o por la API
+  (`POST /api/destinatarios` y `POST /api/destinatarios/{id}/direcciones`).
 - Al crear un envío se copian junto con el resto de la dirección (`DireccionEntrega`), igual que la
   calle. Si después cambia la dirección del destinatario, el envío conserva la suya.
 - El operador carga su **depósito** en "Mi operador" (`PUT /api/operador/deposito`, solo el perfil

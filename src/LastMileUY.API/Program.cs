@@ -268,6 +268,7 @@ builder.Services.AddScoped<OperadorActualService>();
 builder.Services.AddScoped<DepositoOperadorService>();
 builder.Services.AddScoped<ReglasEntregaParcialService>();
 builder.Services.AddScoped<ConsultasDestinatariosService>();
+builder.Services.AddScoped<AltaDestinatariosService>();
 builder.Services.AddScoped<OperadoresDeComercioService>();
 builder.Services.AddScoped<PlanificarRutaService>();
 builder.Services.AddScoped<SugerirOrdenService>();

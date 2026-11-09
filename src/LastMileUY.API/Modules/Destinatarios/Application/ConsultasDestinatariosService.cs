@@ -42,7 +42,9 @@ public class ConsultasDestinatariosService(ApplicationDbContext db)
                         x.Ciudad,
                         x.Departamento,
                         x.CodigoPostal,
-                        x.Referencia))
+                        x.Referencia,
+                        x.Latitud,
+                        x.Longitud))
                     .ToList()))
             .ToListAsync(cancellationToken);
     }
