@@ -114,6 +114,9 @@ public class PortalComercioEnNavegador : IAsyncLifetime
             builder.UseEnvironment("Development");
             builder.UseSetting("Api:UrlBase", direccionApi + "/");
             builder.UseSetting("DataProtection:Directorio", carpetaClaves);
+            // Cada prueba inicia sesión, y todas desde la misma IP: el tope de producción (10 por minuto)
+            // las frenaría con un 429 cuando sean más
+            builder.UseSetting("Login:IntentosPorMinuto", "1000");
         }
     }
 }
