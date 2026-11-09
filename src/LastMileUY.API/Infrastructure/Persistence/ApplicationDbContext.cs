@@ -41,6 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<Operador> Operadores => Set<Operador>();
     public DbSet<ReglaOperativa> ReglasOperativas => Set<ReglaOperativa>();
     public DbSet<ReglaEntregaParcial> ReglasEntregaParcial => Set<ReglaEntregaParcial>();
+    public DbSet<FuncionalidadOperador> FuncionalidadesOperador => Set<FuncionalidadOperador>();
     public DbSet<Zona> Zonas => Set<Zona>();
     public DbSet<FranjaHoraria> FranjasHorarias => Set<FranjaHoraria>();
 

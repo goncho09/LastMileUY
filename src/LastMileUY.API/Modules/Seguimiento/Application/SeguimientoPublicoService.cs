@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.Contracts.Operadores;
 using LastMileUY.Contracts.Seguimiento;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +12,9 @@ namespace LastMileUY.API.Modules.Seguimiento.Application;
 // Sin sesión no hay operador, así que el filtro de EF y el RLS no dejarían ver ningún envío.
 // Para este caso hay una política RLS aparte (migración SeguimientoPublico): deja LEER solo el envío
 // cuyo código se cargó en la variable app.codigo_seguimiento, y nada más. Ver docs/seguimiento-publico.md
-public partial class SeguimientoPublicoService(ApplicationDbContext db)
+// Si el operador del envío tiene apagado el seguimiento público (docs/funcionalidades.md), es como si
+// el envío no existiera.
+public partial class SeguimientoPublicoService(ApplicationDbContext db, FuncionalidadesService funcionalidades)
 {
     public async Task<SeguimientoPublicoDto?> ObtenerAsync(string codigo, CancellationToken cancellationToken = default)
     {
@@ -47,6 +51,9 @@ public partial class SeguimientoPublicoService(ApplicationDbContext db)
             .SingleOrDefaultAsync(cancellationToken);
 
         if (envio is null)
+            return null;
+
+        if (!await funcionalidades.EstaActivaAsync(envio.OperadorId, Funcionalidades.SeguimientoPublico, cancellationToken))
             return null;
 
         var operador = await db.Operadores

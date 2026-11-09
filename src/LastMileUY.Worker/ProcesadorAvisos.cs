@@ -1,5 +1,6 @@
 using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
+using LastMileUY.Contracts.Operadores;
 using Npgsql;
 
 namespace LastMileUY.Worker;
@@ -60,9 +61,16 @@ public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos, SenalAvisos? senal =
             FROM "SuscripcionesAvisos" s
             WHERE s."Activa" AND s."ComercioId" = @comercio AND s."TipoEvento" = @tipo
               AND (s."VersionContrato" = 2 OR @tipo <> @tipoBulto)
+              -- Avisos apagados para el operador (docs/funcionalidades.md): no se registran avisos nuevos.
+              -- Sin decisión guardada vale el valor por defecto
+              AND COALESCE((SELECT f."Activa" FROM "FuncionalidadesOperador" f
+                            WHERE f."OperadorId" = @operador AND f."Clave" = @funcionalidad), @porDefecto)
             """,
             ("envio", evento.EnvioId), ("tipo", evento.Tipo), ("comercio", evento.ComercioId),
             ("tipoBulto", TiposEvento.BultoEstadoCambiado),
+            ("operador", evento.OperadorId),
+            ("funcionalidad", Funcionalidades.AvisosComercios),
+            ("porDefecto", Funcionalidades.Buscar(Funcionalidades.AvisosComercios)!.PorDefecto),
             ("contenido", VersionesAvisos.Contenido(VersionesAvisos.V1, evento)),
             ("contenidoV2", VersionesAvisos.Contenido(VersionesAvisos.V2, evento)));
 

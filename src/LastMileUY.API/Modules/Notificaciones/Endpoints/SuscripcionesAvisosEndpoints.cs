@@ -1,5 +1,8 @@
+using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Notificaciones.Application;
+using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.Contracts.Avisos;
+using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.API.Modules.Notificaciones.Endpoints;
 
@@ -10,7 +13,25 @@ public static class SuscripcionesAvisosEndpoints
     {
         var group = app.MapGroup("/api/avisos/suscripciones")
             .WithTags("Avisos")
-            .RequireAuthorization(politica => politica.RequireRole("Comercio"));
+            .RequireAuthorization(politica => politica.RequireRole("Comercio"))
+            // Con los avisos apagados para el operador (docs/funcionalidades.md) se pueden ver las
+            // suscripciones, pero no crearlas ni cambiarlas
+            .AddEndpointFilter(async (contexto, siguiente) =>
+            {
+                var http = contexto.HttpContext;
+
+                if (HttpMethods.IsGet(http.Request.Method)
+                    || http.RequestServices.GetRequiredService<IContextoOperador>().OperadorId is not int operadorId)
+                {
+                    return await siguiente(contexto);
+                }
+
+                var funcionalidades = http.RequestServices.GetRequiredService<FuncionalidadesService>();
+
+                return await funcionalidades.EstaActivaAsync(operadorId, Funcionalidades.AvisosComercios, http.RequestAborted)
+                    ? await siguiente(contexto)
+                    : FuncionalidadesService.Desactivada(Funcionalidades.AvisosComercios);
+            });
 
         group.MapGet("/", async (SuscripcionesAvisosService servicio, CancellationToken ct) =>
                 Results.Ok(await servicio.ListarAsync(ct)))

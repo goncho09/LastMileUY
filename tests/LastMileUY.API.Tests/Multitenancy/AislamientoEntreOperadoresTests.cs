@@ -167,6 +167,10 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         "Operadores",
         // OperadoresComercios: la usan las propias políticas para saber quién trabaja con quién
         "OperadoresComercios",
+        // FuncionalidadesOperador: banderas de la plataforma, no del operador. Las lee el seguimiento
+        // público y las cambia el administrador, que no tienen operador; la API las cambia solo con el
+        // perfil Administrador y siempre filtra por el operador que pide (FuncionalidadesService)
+        "FuncionalidadesOperador",
         // Comercios: al darlo de alta todavía no tiene operador; se protege con el filtro de EF
         "Comercios",
         // MensajesOutbox: eventos de todos los operadores para publicar en RabbitMQ. En vez de RLS, la
@@ -221,7 +225,7 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
             .Where(t => t.Namespace?.StartsWith("Microsoft.AspNetCore.Identity") != true)
             .Where(t => t != typeof(Usuario) && t != typeof(Rol))
             .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
-            .Where(t => t != typeof(Operador) && t != typeof(OperadorComercio))
+            .Where(t => t != typeof(FuncionalidadOperador))
             .Where(t => t != typeof(MensajeFallido))
             .Where(t => t != typeof(MensajeReintentoOutbox))
             .Select(t => t.Name)

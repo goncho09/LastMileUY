@@ -1,5 +1,6 @@
 namespace LastMileUY.API.Tests.Multitenancy;
 
+using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.API.Modules.Seguimiento.Application;
 using Microsoft.EntityFrameworkCore;
 using static BaseConDosOperadores;
@@ -14,7 +15,7 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(null);
 
-        var envio = await new SeguimientoPublicoService(db).ObtenerAsync("CODIGOB");
+        var envio = await new SeguimientoPublicoService(db, new FuncionalidadesService(db)).ObtenerAsync("CODIGOB");
 
         Assert.NotNull(envio);
         Assert.Equal("CODIGOB", envio.CodigoSeguimiento);
@@ -27,7 +28,7 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(null);
 
-        var envio = await new SeguimientoPublicoService(db).ObtenerAsync("  codigoa ");
+        var envio = await new SeguimientoPublicoService(db, new FuncionalidadesService(db)).ObtenerAsync("  codigoa ");
 
         Assert.Equal("CODIGOA", envio?.CodigoSeguimiento);
     }
@@ -40,7 +41,7 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(null);
 
-        Assert.Null(await new SeguimientoPublicoService(db).ObtenerAsync(codigo));
+        Assert.Null(await new SeguimientoPublicoService(db, new FuncionalidadesService(db)).ObtenerAsync(codigo));
     }
 
     // --- La política de la base ---

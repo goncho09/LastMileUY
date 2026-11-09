@@ -6,7 +6,8 @@ using LastMileUY.Contracts.Comun;
 namespace LastMileUY.CommercePortal.Servicios;
 
 // Suscripciones y claves HMAC, historial de avisos y reenvío de avisos fallidos.
-// La API limita los resultados al comercio autenticado.
+// La API limita los resultados al comercio autenticado. Un 403 con motivo: los avisos están apagados
+// para el operador (docs/funcionalidades.md); se muestra el motivo como un rechazo más.
 public class AvisosApiHttp(HttpClient http, SesionActual sesion)
     : ClienteApiBase(http, sesion), IAvisosApi
 {
@@ -30,7 +31,7 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
         };
         using var respuesta = await EnviarAsync(pedido, ct);
 
-        if (respuesta.StatusCode == HttpStatusCode.BadRequest)
+        if (respuesta.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Forbidden)
             return new ResultadoCreacionSuscripcion(
                 null, await AutenticacionApiHttp.LeerMensajeAsync(respuesta, ct));
 
@@ -55,6 +56,10 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
     {
         using var pedido = new HttpRequestMessage(HttpMethod.Post, $"{Ruta}/{id}/regenerar-clave");
         using var respuesta = await EnviarAsync(pedido, ct);
+
+        if (respuesta.StatusCode == HttpStatusCode.Forbidden)
+            return new ResultadoCreacionSuscripcion(
+                null, await AutenticacionApiHttp.LeerMensajeAsync(respuesta, ct));
 
         if (respuesta.StatusCode == HttpStatusCode.NotFound)
             return new ResultadoCreacionSuscripcion(
@@ -115,7 +120,7 @@ public class AvisosApiHttp(HttpClient http, SesionActual sesion)
         using (pedido)
         using (var respuesta = await EnviarAsync(pedido, ct))
         {
-            if (respuesta.StatusCode == HttpStatusCode.BadRequest)
+            if (respuesta.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Forbidden)
                 return new ResultadoSuscripcion(
                     null, await AutenticacionApiHttp.LeerMensajeAsync(respuesta, ct));
             if (respuesta.StatusCode == HttpStatusCode.NotFound)

@@ -9,9 +9,14 @@ namespace LastMileUY.Backoffice.Pages.Rutas;
 // Las reglas (capacidad, franjas, duplicados) las controla la API; acá se muestra su respuesta.
 // "Ordenar por recorrido" le pide a la API un orden sugerido y lo carga en los números de orden:
 // el despachador lo revisa, lo cambia si quiere y recién ahí arma la ruta.
-public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger) : PageModel
+// Si el administrador le apagó al operador el orden sugerido (docs/funcionalidades.md), el botón no aparece.
+public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger, IOperadorApi? operadorApi = null) : PageModel
 {
     public OpcionesRutaDto Opciones { get; private set; } = new([], [], []);
+
+    // "Ordenar por recorrido" habilitado para el operador. Si no se puede saber, se muestra: la API
+    // igual lo rechaza con el motivo si está apagado
+    public bool OrdenSugeridoHabilitado { get; private set; } = true;
 
     [BindProperty]
     public string Nombre { get; set; } = string.Empty;
@@ -152,6 +157,19 @@ public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger) : PageMo
 
     private async Task<bool> CargarOpcionesAsync(CancellationToken ct)
     {
+        if (operadorApi is not null)
+        {
+            try
+            {
+                var operador = await operadorApi.ObtenerActualAsync(ct);
+                OrdenSugeridoHabilitado = operador.Tiene(global::LastMileUY.Contracts.Operadores.Funcionalidades.OrdenSugerido);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                logger.LogWarning(ex, "No se pudo saber si el orden sugerido está habilitado");
+            }
+        }
+
         try
         {
             Opciones = await rutasApi.ObtenerOpcionesAsync(ct);

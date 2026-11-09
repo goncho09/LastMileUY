@@ -1114,6 +1114,30 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("FranjasHorarias", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.FuncionalidadOperador", b =>
+                {
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Clave")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("FechaModificacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModificadaPor")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.HasKey("OperadorId", "Clave");
+
+                    b.ToTable("FuncionalidadesOperador", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.Operador", b =>
                 {
                     b.Property<int>("Id")
@@ -2214,6 +2238,15 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .WithMany("FranjasHorarias")
                         .HasForeignKey("ZonaId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Operadores.Domain.FuncionalidadOperador", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

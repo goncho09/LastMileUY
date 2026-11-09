@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.Contracts.Operadores;
 using LastMileUY.API.Modules.Rutas.Application;
 using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.Contracts.Rutas;
@@ -122,11 +124,15 @@ public static class RutasEndpoints
         group.MapPost("/sugerir-orden", async (
                 SugerirOrdenRequest request,
                 SugerirOrdenService servicio,
+                FuncionalidadesService funcionalidades,
                 IContextoOperador contextoOperador,
                 CancellationToken cancellationToken) =>
             {
-                if (contextoOperador.OperadorId is null)
+                if (contextoOperador.OperadorId is not int operadorId)
                     return Results.Forbid();
+
+                if (!await funcionalidades.EstaActivaAsync(operadorId, Funcionalidades.OrdenSugerido, cancellationToken))
+                    return FuncionalidadesService.Desactivada(Funcionalidades.OrdenSugerido);
 
                 try
                 {

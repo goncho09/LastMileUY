@@ -16,6 +16,7 @@
     var enMensajesFallidos = paginaActual.StartsWith(
         "/MensajesFallidos",
         StringComparison.OrdinalIgnoreCase);
+    var enFuncionalidades = paginaActual.StartsWith("/Funcionalidades", StringComparison.OrdinalIgnoreCase);
 
     var claseNavBase = "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium no-underline transition-colors";
     var claseNavActivo = "bg-violet-500/15 text-violet-300";
@@ -170,6 +171,17 @@
                         </svg>
 
                         Mensajes fallidos
+                    </a>
+
+                    <a asp-page="/Funcionalidades/Index"
+                       aria-current="@(enFuncionalidades ? "page" : null)"
+                       class="@(claseNavBase) @(enFuncionalidades ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 21V14M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>
+                        </svg>
+                        Funcionalidades
                     </a>
                 }
             </nav>

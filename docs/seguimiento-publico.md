@@ -63,3 +63,7 @@ CREATE POLICY seguimiento_publico ON "Envios"
 - Tope de consultas por IP: la página permite 20 por minuto a cada visitante y la API 120 por minuto
   a cada IP (todas las consultas de la página llegan desde la misma IP, la de su servidor). Al pasarlo
   responden 429. Se configuran con `Seguimiento:ConsultasPorMinuto` en cada proyecto.
+
+## Operadores sin seguimiento público
+
+El administrador puede apagar el seguimiento público para un operador (ver [funcionalidades.md](funcionalidades.md)). Si está apagado, los códigos de ese operador contestan 404, igual que un código que no existe.
