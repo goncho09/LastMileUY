@@ -1,4 +1,5 @@
-﻿
+﻿using LastMileUY.Contracts.Administracion;
+
 using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.Contracts.Operadores;
 
@@ -30,13 +31,13 @@ public static class GestionOperadoresEndpoints
         });
 
         grupo.MapPost("/", async (
-            GuardarOperadorAdminRequest request,
+            CrearOperadorConUsuarioRequest request,
             GestionOperadoresService servicio,
             CancellationToken ct) =>
         {
             try
             {
-                var operador = await servicio.CrearAsync(request, ct);
+                var operador = await servicio.CrearConUsuarioAsync(request, ct);
                 return Results.Created(
                     $"/api/admin/operadores/{operador.Id}",
                     operador);

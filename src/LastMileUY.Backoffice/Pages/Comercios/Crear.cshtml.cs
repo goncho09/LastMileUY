@@ -1,4 +1,6 @@
-﻿using LastMileUY.Backoffice.Servicios;
+﻿using LastMileUY.Backoffice.Pages.Shared;
+using LastMileUY.Contracts.Administracion;
+using LastMileUY.Backoffice.Servicios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -11,6 +13,9 @@ public sealed class CrearModel(IGestionComerciosApi api) : PageModel
     [BindProperty]
     public FormularioComercioModel Formulario { get; set; } = new();
 
+    [BindProperty]
+    public UsuarioInicialFormulario Usuario { get; set; } = new();
+
     public void OnGet() { }
 
     public async Task<IActionResult> OnPostAsync()
@@ -19,7 +24,7 @@ public sealed class CrearModel(IGestionComerciosApi api) : PageModel
 
         try
         {
-            await api.CrearAsync(Formulario.ARequest());
+            await api.CrearAsync(new CrearComercioConUsuarioRequest(Formulario.Nombre, Formulario.RazonSocial, Formulario.RUT, Formulario.Email, Formulario.Telefono, Usuario.ARequest()));
             TempData["MensajeExito"] = "Comercio creado correctamente.";
             return RedirectToPage("/Comercios/Index");
         }

@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Threading.RateLimiting;
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Correlacion;
@@ -289,6 +289,7 @@ builder.Services.AddScoped<AvisosComercioService>();
 builder.Services.AddScoped<ConsultasMensajesFallidosService>();
 builder.Services.AddScoped<ReintentosMensajesFallidosService>();
 builder.Services.AddScoped<GestionUsuariosService>();
+builder.Services.AddScoped<AltaUsuarioInicialService>();
 builder.Services.AddScoped<GestionOperadoresService>();
 builder.Services.AddScoped<GestionComerciosService>();
 

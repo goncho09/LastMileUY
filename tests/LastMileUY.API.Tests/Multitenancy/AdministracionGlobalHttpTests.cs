@@ -1,4 +1,5 @@
-﻿
+﻿using LastMileUY.Contracts.Administracion;
+
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
@@ -62,10 +63,10 @@ public class AdministracionGlobalHttpTests(
         // 1. Crear operador
         var crearOperador = await cliente.PostAsJsonAsync(
             "/api/admin/operadores",
-            new GuardarOperadorAdminRequest(
+            new CrearOperadorConUsuarioRequest(
                 $"Operador HTTP {Guid.NewGuid():N}",
-                "#336699",
-                null));
+                "#336699", null,
+                new UsuarioInicialRequest("Responsable", "Operador", $"op-{Guid.NewGuid():N}@ejemplo.com", "ClaveInicial123")));
 
         Assert.Equal(
             HttpStatusCode.Created,
@@ -91,12 +92,11 @@ public class AdministracionGlobalHttpTests(
         // 3. Crear comercio
         var crearComercio = await cliente.PostAsJsonAsync(
             "/api/admin/comercios",
-            new GuardarComercioAdminRequest(
+            new CrearComercioConUsuarioRequest(
                 $"Comercio HTTP {Guid.NewGuid():N}",
-                "Razón Social HTTP",
-                null,
-                "http@ejemplo.com",
-                "099123456"));
+                "Razón Social HTTP", null,
+                "http@ejemplo.com", "099123456",
+                new UsuarioInicialRequest("Responsable", "Comercio", $"com-{Guid.NewGuid():N}@ejemplo.com", "ClaveInicial123")));
 
         Assert.Equal(
             HttpStatusCode.Created,
