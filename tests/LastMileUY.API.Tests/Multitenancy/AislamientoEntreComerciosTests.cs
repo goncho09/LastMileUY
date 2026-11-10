@@ -193,4 +193,60 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
             "Ejido", "55", null, "Montevideo", "Montevideo", null, null));
         return envio;
     }
+    
+    
+    [Fact]
+    public async Task Un_vinculo_inactivo_no_permite_ver_destinatarios_del_comercio()
+    {
+        // ComercioSoloDeA pertenece inicialmente al operador A.
+        // Lo desactivamos usando la conexión administrativa
+        // únicamente para preparar el escenario.
+        await using var admin = new NpgsqlConnection(
+            baseDeDatos.CadenaAdministrador);
+
+        await admin.OpenAsync();
+
+        try
+        {
+            await using (var comando = new NpgsqlCommand("""
+                                                         UPDATE "OperadoresComercios"
+                                                         SET "Activo" = false
+                                                         WHERE "OperadorId" = @operador
+                                                           AND "ComercioId" = @comercio
+                                                         """, admin))
+            {
+                comando.Parameters.AddWithValue("operador", OperadorA);
+                comando.Parameters.AddWithValue("comercio", ComercioSoloDeA);
+                await comando.ExecuteNonQueryAsync();
+            }
+
+            // Contexto del operador A con el usuario limitado
+            // al que sí se aplican las políticas RLS.
+            await using var db = baseDeDatos.CrearContexto(OperadorA);
+
+            var destinatarios = await db.Destinatarios
+                .IgnoreQueryFilters()
+                .Select(d => d.Id)
+                .ToListAsync();
+
+            Assert.DoesNotContain(
+                DestinatarioComercio2, destinatarios);
+        }
+        finally
+        {
+            // Restauramos el vínculo para no afectar las otras pruebas.
+            await using var comando = new NpgsqlCommand("""
+                                                        UPDATE "OperadoresComercios"
+                                                        SET "Activo" = true
+                                                        WHERE "OperadorId" = @operador
+                                                          AND "ComercioId" = @comercio
+                                                        """, admin);
+
+            comando.Parameters.AddWithValue("operador", OperadorA);
+            comando.Parameters.AddWithValue("comercio", ComercioSoloDeA);
+
+            await comando.ExecuteNonQueryAsync();
+        }
+    }
+
 }

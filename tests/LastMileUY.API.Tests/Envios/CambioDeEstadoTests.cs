@@ -161,7 +161,10 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
         await VincularOperadorConComercioAsync();
         var request = new CrearEnvioRequest
         {
-            ComercioId = 1, DestinatarioId = 1, DireccionId = 1, ReferenciaExterna = "PED-DUPLICADO",
+            ComercioId = 1,
+            DestinatarioId = 1,
+            DireccionId = 1,
+            ReferenciaExterna = "PED-DUPLICADO",
             Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10 }]
         };
 

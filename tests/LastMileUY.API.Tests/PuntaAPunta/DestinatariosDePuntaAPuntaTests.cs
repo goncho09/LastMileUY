@@ -191,23 +191,23 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
     private static CrearDestinatarioRequest Destinatario(
         string departamento = "Montevideo", decimal? latitud = null, decimal? longitud = null) => new()
-    {
-        Nombre = "Lucía",
-        Apellido = "Pérez",
-        Telefono = "099 123 456",
-        Direccion = Direccion(departamento, latitud, longitud)
-    };
+        {
+            Nombre = "Lucía",
+            Apellido = "Pérez",
+            Telefono = "099 123 456",
+            Direccion = Direccion(departamento, latitud, longitud)
+        };
 
     private static CrearDireccionRequest Direccion(
         string departamento, decimal? latitud = null, decimal? longitud = null) => new()
-    {
-        Calle = "Av. 18 de Julio",
-        Numero = "1234",
-        Apartamento = "502",
-        Ciudad = "Montevideo",
-        Departamento = departamento,
-        Referencia = "Timbre 5",
-        Latitud = latitud,
-        Longitud = longitud
-    };
+        {
+            Calle = "Av. 18 de Julio",
+            Numero = "1234",
+            Apartamento = "502",
+            Ciudad = "Montevideo",
+            Departamento = departamento,
+            Referencia = "Timbre 5",
+            Latitud = latitud,
+            Longitud = longitud
+        };
 }

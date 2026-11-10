@@ -1,0 +1,67 @@
+﻿
+@page
+@model LastMileUY.Backoffice.Pages.Operadores.CrearModel
+
+@{
+    ViewData["Title"] = "Nuevo operador";
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <div>
+        <p class="mb-2 text-sm font-medium text-violet-400">
+            Administración / Operadores
+        </p>
+
+        <h1 class="text-3xl font-bold tracking-tight text-white">
+            Nuevo operador
+        </h1>
+
+        <p class="mt-2 text-sm text-slate-400">
+            Registrá una nueva empresa operadora en LastMileUY.
+        </p>
+    </div>
+
+    <div class="max-w-3xl">
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+            <div class="border-b border-white/10 px-6 py-5">
+                <h2 class="text-base font-semibold text-white">
+                    Datos del operador
+                </h2>
+                <p class="mt-1 text-sm text-slate-400">
+                    Completá la información de la empresa y su identidad visual.
+                </p>
+            </div>
+
+            <form method="post" class="space-y-6 p-6">
+
+                <partial name="_Formulario" for="Formulario" />
+
+                <div class="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-6">
+
+                    <a asp-page="/Operadores/Index"
+                       class="inline-flex items-center justify-center rounded-xl
+                              border border-white/10 bg-white/5 px-5 py-3
+                              text-sm font-semibold text-slate-300 no-underline
+                              transition-colors hover:bg-white/10 hover:text-white">
+                        Cancelar
+                    </a>
+
+                    <button type="submit"
+                            class="inline-flex items-center justify-center gap-2
+                                   rounded-xl bg-violet-600 px-5 py-3
+                                   text-sm font-semibold text-white
+                                   transition-colors hover:bg-violet-500">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                             stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 5v14M5 12h14" />
+                        </svg>
+                        Crear operador
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

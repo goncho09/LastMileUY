@@ -250,11 +250,17 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
         // Destinatarios: son del comercio. El usuario de un comercio ve los suyos;
         // el operador ve los de los comercios con los que trabaja.
+        
         modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
             ComercioActual != null
                 ? d.ComercioId == ComercioActual
-                : OperadoresComercios.Any(oc => oc.ComercioId == d.ComercioId && oc.OperadorId == OperadorActual));
-        modelBuilder.Entity<Direccion>().HasQueryFilter(x => Destinatarios.Any(d => d.Id == x.DestinatarioId));
+                : OperadoresComercios.Any(oc =>
+                    oc.ComercioId == d.ComercioId &&
+                    oc.OperadorId == OperadorActual &&
+                    oc.Activo));
+
+        modelBuilder.Entity<Direccion>().HasQueryFilter(x =>
+            Destinatarios.Any(d => d.Id == x.DestinatarioId));
 
         // Comercios: el usuario de un comercio ve el suyo; el operador, los comercios con los que trabaja.
         // Solo filtro de EF, sin RLS: al dar de alta un comercio todavía no está vinculado a ningún
@@ -262,7 +268,10 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<Comercio>().HasQueryFilter(c =>
             ComercioActual != null
                 ? c.Id == ComercioActual
-                : OperadoresComercios.Any(oc => oc.ComercioId == c.Id && oc.OperadorId == OperadorActual));
+                : OperadoresComercios.Any(oc =>
+                    oc.ComercioId == c.Id &&
+                    oc.OperadorId == OperadorActual &&
+                    oc.Activo));
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

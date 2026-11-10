@@ -41,6 +41,12 @@ builder.Services.AddRazorPages(opciones =>
     // Banderas de funcionalidad por operador: son de la plataforma
     opciones.Conventions.AuthorizeFolder(
         "/Funcionalidades", Permisos.PoliticaAdministracionGlobal);
+
+    opciones.Conventions.AuthorizeFolder(
+        "/Operadores", Permisos.PoliticaAdministracionGlobal);
+    
+    opciones.Conventions.AuthorizeFolder(
+        "/Comercios", Permisos.PoliticaAdministracionGlobal);
 });
 
 builder.Services.AddAuthorizationBuilder()
@@ -169,6 +175,23 @@ else
         })
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
 
+    builder.Services.AddHttpClient<IGestionOperadoresApi, GestionOperadoresApiHttp>(
+            cliente =>
+            {
+                cliente.BaseAddress = urlBase;
+                cliente.Timeout = TimeSpan.FromSeconds(10);
+            })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IGestionComerciosApi, GestionComerciosApiHttp>(
+            cliente =>
+            {
+                cliente.BaseAddress = urlBase;
+                cliente.Timeout = TimeSpan.FromSeconds(10);
+            })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IMensajesFallidosApi, MensajesFallidosApiHttp>(
             cliente =>

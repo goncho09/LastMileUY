@@ -199,6 +199,42 @@
                         Funcionalidades
                     </a>
                 }
+                
+                
+                @if (User.IsInRole("Administrador"))
+                {
+                    <span class="mt-5 mb-2 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Administración global
+                    </span>
+
+                    <a asp-page="/Operadores/Index"
+                       aria-current="@(Context.Request.Path.StartsWithSegments("/Operadores") ? "page" : null)"
+                       class="@(claseNavBase) @(Context.Request.Path.StartsWithSegments("/Operadores") ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none"
+                             stroke="currentColor" stroke-width="1.7"
+                             viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3" y="7" width="18" height="14" rx="2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M7 7V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v3M8 12h2m4 0h2M8 16h2m4 0h2"/>
+                        </svg>
+                        Operadores
+                    </a>
+
+                    <a asp-page="/Comercios/Index"
+                       aria-current="@(Context.Request.Path.StartsWithSegments("/Comercios") ? "page" : null)"
+                       class="@(claseNavBase) @(Context.Request.Path.StartsWithSegments("/Comercios") ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none"
+                             stroke="currentColor" stroke-width="1.7"
+                             viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M3 10h18l-2-6H5l-2 6zM5 10v11h14V10M9 21v-7h6v7"/>
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M3 10c0 2 3 3 4.5 1 1.5 2 3.5 2 4.5 0 1.5 2 3.5 2 4.5 0 1.5 2 4.5 1 4.5-1"/>
+                        </svg>
+                        Comercios
+                    </a>
+                }
+
             </nav>
 
             <!-- Usuario y cerrar sesión -->

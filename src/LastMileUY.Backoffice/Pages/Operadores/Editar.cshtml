@@ -1,0 +1,78 @@
+﻿
+@model LastMileUY.Backoffice.Pages.Operadores.FormularioOperadorModel
+
+<div asp-validation-summary="ModelOnly"
+     class="text-sm text-red-300"></div>
+
+<div class="space-y-6">
+
+    <!-- Nombre -->
+    <div>
+        <label asp-for="Nombre"
+               class="mb-2 block text-sm font-medium text-slate-300">
+            Nombre del operador
+            <span class="text-red-400">*</span>
+        </label>
+
+        <input asp-for="Nombre"
+               maxlength="150"
+               required
+               placeholder="Ej. Logística del Sur"
+               class="w-full rounded-xl border border-white/10
+                      bg-[#10121a] px-4 py-3 text-sm text-white
+                      outline-none placeholder:text-slate-500
+                      transition-colors focus:border-violet-500" />
+
+        <span asp-validation-for="Nombre"
+              class="mt-1 block text-xs text-red-300"></span>
+    </div>
+
+    <!-- Color -->
+    <div>
+        <label asp-for="ColorPrimario"
+               class="mb-2 block text-sm font-medium text-slate-300">
+            Color primario
+        </label>
+
+        <input asp-for="ColorPrimario"
+               maxlength="7"
+               placeholder="#2563EB"
+               class="w-full rounded-xl border border-white/10
+                      bg-[#10121a] px-4 py-3 text-sm text-white
+                      outline-none placeholder:text-slate-500
+                      transition-colors focus:border-violet-500" />
+
+        <p class="mt-2 text-xs text-slate-500">
+            Ingresá un color hexadecimal, por ejemplo #2563EB.
+            Se utilizará para identificar visualmente al operador.
+        </p>
+
+        <span asp-validation-for="ColorPrimario"
+              class="mt-1 block text-xs text-red-300"></span>
+    </div>
+
+    <!-- Logo -->
+    <div>
+        <label asp-for="LogoUrl"
+               class="mb-2 block text-sm font-medium text-slate-300">
+            URL del logo
+        </label>
+
+        <input asp-for="LogoUrl"
+               type="url"
+               maxlength="500"
+               placeholder="https://ejemplo.com/logo.png"
+               class="w-full rounded-xl border border-white/10
+                      bg-[#10121a] px-4 py-3 text-sm text-white
+                      outline-none placeholder:text-slate-500
+                      transition-colors focus:border-violet-500" />
+
+        <p class="mt-2 text-xs text-slate-500">
+            Opcional. Podés indicar una imagen alojada en una URL pública.
+        </p>
+
+        <span asp-validation-for="LogoUrl"
+              class="mt-1 block text-xs text-red-300"></span>
+    </div>
+
+</div>

@@ -5,6 +5,8 @@ using LastMileUY.API.Infrastructure.Correlacion;
 using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Comercios.Application;
+using LastMileUY.API.Modules.Comercios.Endpoints;
 using LastMileUY.API.Modules.Destinatarios.Application;
 using LastMileUY.API.Modules.Destinatarios.Endpoints;
 using LastMileUY.API.Modules.Entregas.Infrastructure;
@@ -265,6 +267,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 // AddControllers, que se sacó porque la API no tiene controllers
 builder.Services.AddAuthorization();
 
+
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
@@ -286,6 +289,8 @@ builder.Services.AddScoped<AvisosComercioService>();
 builder.Services.AddScoped<ConsultasMensajesFallidosService>();
 builder.Services.AddScoped<ReintentosMensajesFallidosService>();
 builder.Services.AddScoped<GestionUsuariosService>();
+builder.Services.AddScoped<GestionOperadoresService>();
+builder.Services.AddScoped<GestionComerciosService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
@@ -389,6 +394,7 @@ app.UseCors("DriverPWA");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
+app.UseMiddleware<ValidarVinculoComercioMiddleware>();
 
 // ENDPOINTS
 app.MapAuthEndpoints();
@@ -402,6 +408,9 @@ app.MapSeguimientoEndpoints();
 app.MapSuscripcionesAvisosEndpoints();
 app.MapAvisosEndpoints();
 app.MapCacheEndpoints();
+app.MapGestionComerciosEndpoints();
+app.MapGestionOperadoresEndpoints();
+
 // Habilitar consulta de mensajes fallidos cuando RabbitMQ está configurado.
 if (!string.IsNullOrWhiteSpace(conexionRabbit))
     app.MapMensajesFallidosEndpoints();

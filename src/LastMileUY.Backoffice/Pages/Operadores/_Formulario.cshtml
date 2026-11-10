@@ -1,0 +1,38 @@
+﻿@model LastMileUY.Backoffice.Pages.Operadores.FormularioOperadorModel
+
+<div asp-validation-summary="ModelOnly"
+     class="text-error text-sm"></div>
+
+<div class="form-control">
+    <label asp-for="Nombre" class="label">
+        <span class="label-text">Nombre del operador</span>
+    </label>
+    <input asp-for="Nombre"
+           class="input input-bordered w-full"
+           maxlength="150"
+           required />
+    <span asp-validation-for="Nombre" class="text-error text-sm"></span>
+</div>
+
+<div class="form-control">
+    <label asp-for="ColorPrimario" class="label">
+        <span class="label-text">Color primario</span>
+    </label>
+    <input asp-for="ColorPrimario"
+           class="input input-bordered w-full"
+           placeholder="#2563EB"
+           maxlength="7" />
+    <span asp-validation-for="ColorPrimario" class="text-error text-sm"></span>
+</div>
+
+<div class="form-control">
+    <label asp-for="LogoUrl" class="label">
+        <span class="label-text">URL del logo</span>
+    </label>
+    <input asp-for="LogoUrl"
+           type="url"
+           class="input input-bordered w-full"
+           placeholder="https://ejemplo.com/logo.png"
+           maxlength="500" />
+    <span asp-validation-for="LogoUrl" class="text-error text-sm"></span>
+</div>

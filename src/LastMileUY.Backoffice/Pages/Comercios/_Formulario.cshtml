@@ -1,0 +1,113 @@
+﻿
+@model LastMileUY.Backoffice.Pages.Comercios.FormularioComercioModel
+
+<div asp-validation-summary="ModelOnly"
+     class="text-sm text-red-300"></div>
+
+<div class="space-y-6">
+
+    <!-- Nombre -->
+    <div>
+        <label asp-for="Nombre"
+               class="mb-2 block text-sm font-medium text-slate-300">
+            Nombre del comercio
+            <span class="text-red-400">*</span>
+        </label>
+
+        <input asp-for="Nombre"
+               maxlength="150"
+               required
+               placeholder="Ej. Tienda del Centro"
+               class="w-full rounded-xl border border-white/10
+                      bg-[#10121a] px-4 py-3 text-sm text-white
+                      outline-none placeholder:text-slate-500
+                      transition-colors focus:border-violet-500" />
+
+        <span asp-validation-for="Nombre"
+              class="mt-1 block text-xs text-red-300"></span>
+    </div>
+
+    <!-- Razón social -->
+    <div>
+        <label asp-for="RazonSocial"
+               class="mb-2 block text-sm font-medium text-slate-300">
+            Razón social
+        </label>
+
+        <input asp-for="RazonSocial"
+               maxlength="200"
+               placeholder="Ej. Tienda del Centro S.A."
+               class="w-full rounded-xl border border-white/10
+                      bg-[#10121a] px-4 py-3 text-sm text-white
+                      outline-none placeholder:text-slate-500
+                      transition-colors focus:border-violet-500" />
+
+        <span asp-validation-for="RazonSocial"
+              class="mt-1 block text-xs text-red-300"></span>
+    </div>
+
+    <!-- RUT -->
+    <div>
+        <label asp-for="RUT"
+               class="mb-2 block text-sm font-medium text-slate-300">
+            RUT
+        </label>
+
+        <input asp-for="RUT"
+               maxlength="20"
+               placeholder="Ej. 210123450019"
+               class="w-full rounded-xl border border-white/10
+                      bg-[#10121a] px-4 py-3 text-sm text-white
+                      outline-none placeholder:text-slate-500
+                      transition-colors focus:border-violet-500" />
+
+        <p class="mt-2 text-xs text-slate-500">
+            Opcional. No puede repetirse entre comercios.
+        </p>
+
+        <span asp-validation-for="RUT"
+              class="mt-1 block text-xs text-red-300"></span>
+    </div>
+
+    <!-- Email y teléfono -->
+    <div class="grid gap-6 md:grid-cols-2">
+
+        <div>
+            <label asp-for="Email"
+                   class="mb-2 block text-sm font-medium text-slate-300">
+                Email
+            </label>
+
+            <input asp-for="Email"
+                   type="email"
+                   maxlength="250"
+                   placeholder="contacto@comercio.com"
+                   class="w-full rounded-xl border border-white/10
+                          bg-[#10121a] px-4 py-3 text-sm text-white
+                          outline-none placeholder:text-slate-500
+                          transition-colors focus:border-violet-500" />
+
+            <span asp-validation-for="Email"
+                  class="mt-1 block text-xs text-red-300"></span>
+        </div>
+
+        <div>
+            <label asp-for="Telefono"
+                   class="mb-2 block text-sm font-medium text-slate-300">
+                Teléfono
+            </label>
+
+            <input asp-for="Telefono"
+                   type="tel"
+                   maxlength="30"
+                   placeholder="099 123 456"
+                   class="w-full rounded-xl border border-white/10
+                          bg-[#10121a] px-4 py-3 text-sm text-white
+                          outline-none placeholder:text-slate-500
+                          transition-colors focus:border-violet-500" />
+
+            <span asp-validation-for="Telefono"
+                  class="mt-1 block text-xs text-red-300"></span>
+        </div>
+    </div>
+</div>
