@@ -337,6 +337,8 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Las métricas propias arrancan en 0, para que el tablero técnico vea desde el primer evento.
@@ -415,6 +417,8 @@ app.MapGestionOperadoresEndpoints();
 // Habilitar consulta de mensajes fallidos cuando RabbitMQ está configurado.
 if (!string.IsNullOrWhiteSpace(conexionRabbit))
     app.MapMensajesFallidosEndpoints();
+
+app.MapHealthChecks("/health");
 
 app.Run();
 
