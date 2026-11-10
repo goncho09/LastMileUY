@@ -1,3 +1,4 @@
+
 name: Publicar imagenes Docker
 
 on:
@@ -72,3 +73,40 @@ jobs:
           tags: ${{ steps.imagen.outputs.base }}-${{ matrix.servicio }}:${{ github.event.workflow_run.head_sha }}
           cache-from: type=gha,scope=${{ matrix.servicio }}
           cache-to: type=gha,mode=max,scope=${{ matrix.servicio }}
+
+  registrar-version:
+    name: Registrar version validada
+    needs: publicar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Iniciar sesion en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar indicador de version
+        env:
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+          REPOSITORIO: ${{ github.repository }}
+        run: |
+          REPOSITORIO="${REPOSITORIO,,}"
+          printf '%s\n' "$COMMIT" > version.txt
+          printf 'FROM scratch\nCOPY version.txt /version.txt\n' > Dockerfile.release
+
+          docker build \
+            -f Dockerfile.release \
+            -t "ghcr.io/$REPOSITORIO-release:stable" .
+
+          docker push "ghcr.io/$REPOSITORIO-release:stable"
+
+      - name: Resumen
+        env:
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          echo "## Version lista para desplegar" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`$COMMIT\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Imagenes publicadas: 7/7" >> "$GITHUB_STEP_SUMMARY"
+          echo "Indicador de version: publicado" >> "$GITHUB_STEP_SUMMARY"
