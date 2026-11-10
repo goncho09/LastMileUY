@@ -1,0 +1,28 @@
+services:
+  lastmileuy.api:
+    image: ghcr.io/goncho09/lastmileuy-api:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null
+
+  lastmileuy.backoffice:
+    image: ghcr.io/goncho09/lastmileuy-backoffice:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null
+
+  lastmileuy.commerceportal:
+    image: ghcr.io/goncho09/lastmileuy-commerceportal:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null
+
+  lastmileuy.driverpwa:
+    image: ghcr.io/goncho09/lastmileuy-driverpwa:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null
+
+  lastmileuy.publictracking:
+    image: ghcr.io/goncho09/lastmileuy-publictracking:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null
+
+  lastmileuy.worker:
+    image: ghcr.io/goncho09/lastmileuy-worker:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null
+
+  lastmileuy.receptoravisos:
+    image: ghcr.io/goncho09/lastmileuy-receptoravisos:${LASTMILEUY_VERSION:?Configurar LASTMILEUY_VERSION}
+    build: !reset null

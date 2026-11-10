@@ -1,0 +1,11 @@
+[Unit]
+Description=Comprobar actualizaciones de LastMileUY
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+Persistent=true
+Unit=lastmileuy-update.service
+
+[Install]
+WantedBy=timers.target

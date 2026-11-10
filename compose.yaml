@@ -72,10 +72,10 @@
       BaseDeDatos__AplicarMigraciones: "true"
       SeedAdmin__Email: ${SeedAdmin__Email:?Configurar SeedAdmin__Email}
       SeedAdmin__Password: ${SeedAdmin__Password:?Configurar SeedAdmin__Password}
-      SeedOperadorPrueba__Email: ${SeedOperadorPrueba__Email:?Configurar SeedOperadorPrueba__Email}
-      SeedOperadorPrueba__Password: ${SeedOperadorPrueba__Password:?Configurar SeedOperadorPrueba__Password}
-      SeedComercioPrueba__Email: ${SeedComercioPrueba__Email:?Configurar SeedComercioPrueba__Email}
-      SeedComercioPrueba__Password: ${SeedComercioPrueba__Password:?Configurar SeedComercioPrueba__Password}
+      SeedOperadorPrueba__Email: ${SeedOperadorPrueba__Email:-}
+      SeedOperadorPrueba__Password: ${SeedOperadorPrueba__Password:-}
+      SeedComercioPrueba__Email: ${SeedComercioPrueba__Email:-}
+      SeedComercioPrueba__Password: ${SeedComercioPrueba__Password:-}
       # Claves de las cookies de sesión en un volumen: las sesiones sobreviven a recrear el contenedor
       DataProtection__Directorio: /claves
       # Firmas y fotos de las entregas que manda la app del repartidor
