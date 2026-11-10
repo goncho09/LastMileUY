@@ -1,6 +1,6 @@
-﻿namespace LastMileUY.API.Modules.Entregas.Domain;
+﻿using LastMileUY.API.Modules.Operadores.Domain;
 
-using LastMileUY.API.Modules.Operadores.Domain;
+namespace LastMileUY.API.Modules.Entregas.Domain;
 
 public class MotivoNoEntrega : IPerteneceAOperador
 {

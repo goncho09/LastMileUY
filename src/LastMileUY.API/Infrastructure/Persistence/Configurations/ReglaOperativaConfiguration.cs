@@ -29,10 +29,10 @@ public class ReglaOperativaConfiguration
         // Un operador puede tener como máximo una regla activa
         // por modalidad de envío.
         builder.HasIndex(r => new
-            {
-                r.OperadorId,
-                r.Modalidad
-            })
+        {
+            r.OperadorId,
+            r.Modalidad
+        })
             .IsUnique()
             .HasFilter("\"Activa\" = true");
     }

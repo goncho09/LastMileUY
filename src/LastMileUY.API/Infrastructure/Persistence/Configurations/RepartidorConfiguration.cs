@@ -1,6 +1,6 @@
-﻿using LastMileUY.API.Modules.Rutas.Domain;
+﻿using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
-using LastMileUY.API.Modules.Identidad.Domain;
+using LastMileUY.API.Modules.Rutas.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

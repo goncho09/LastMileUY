@@ -1,14 +1,13 @@
 @page "/login"
-@attribute [AllowAnonymous]
 @using System.ComponentModel.DataAnnotations
-@using LastMileUY.Contracts.Auth
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
+@attribute [AllowAnonymous]
 @inject IAutenticacionApi Autenticacion
 @inject NavigationManager Navegacion
 @inject ILogger<Login> Logger
 @inject SeleccionOperadorCookie SeleccionCookie
-@layout LastMileUY.CommercePortal.Components.Layout.AuthLayout
+@layout AuthLayout
 
 @* Renderizado estático: necesario para escribir la cookie de autenticación. *@
 <PageTitle>Iniciar sesión | LastMileUY</PageTitle>

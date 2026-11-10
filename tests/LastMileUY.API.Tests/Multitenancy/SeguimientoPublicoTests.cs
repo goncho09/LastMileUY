@@ -1,8 +1,9 @@
-namespace LastMileUY.API.Tests.Multitenancy;
-
 using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.API.Modules.Seguimiento.Application;
 using Microsoft.EntityFrameworkCore;
+
+namespace LastMileUY.API.Tests.Multitenancy;
+
 using static BaseConDosOperadores;
 
 // Seguimiento público (docs/seguimiento-publico.md): sin sesión, con el código se ve ese envío y nada más.

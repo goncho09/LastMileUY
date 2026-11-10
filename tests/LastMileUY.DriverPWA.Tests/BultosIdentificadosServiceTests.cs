@@ -1,6 +1,6 @@
-namespace LastMileUY.DriverPWA.Tests;
-
 using LastMileUY.DriverPWA.Services;
+
+namespace LastMileUY.DriverPWA.Tests;
 
 // Lo escaneado en cada parada queda en el celular: si se cierra la app a mitad de la entrega, al
 // volver los bultos siguen identificados. El navegador se simula con NavegadorFalso.

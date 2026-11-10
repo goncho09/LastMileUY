@@ -1,5 +1,4 @@
 ﻿using LastMileUY.API.Modules.Comercios.Domain;
-using LastMileUY.API.Modules.Operadores.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

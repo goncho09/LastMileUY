@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Multitenancy;
-
 using LastMileUY.API.Infrastructure.Correlacion;
 using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
@@ -7,6 +5,8 @@ using LastMileUY.API.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
+
+namespace LastMileUY.API.Tests.Multitenancy;
 
 // Levanta un PostgreSQL real en Docker, aplica todas las migraciones y carga
 // dos operadores con un envío cada uno. Se comparte entre las pruebas de la colección.

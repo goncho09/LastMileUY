@@ -18,7 +18,7 @@ public class DetalleModel(IEnviosApi enviosApi, ILogger<DetalleModel> logger) : 
 
     [TempData]
     public string? ErrorCambio { get; set; }
-    
+
     public int TotalBultos =>
         Envio?.Bultos.Count ?? 0;
 

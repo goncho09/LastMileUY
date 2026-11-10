@@ -17,13 +17,15 @@ builder.Services.AddRazorPages(opciones =>
     opciones.Conventions.AuthorizeFolder("/Operador", Permisos.PoliticaConfiguracion);
     // Tablero técnico (métricas del caché): mismo perfil que la configuración del operador
     opciones.Conventions.AuthorizeFolder("/Tablero", Permisos.PoliticaConfiguracion);
+    opciones.Conventions.AuthorizeFolder(
+        "/Usuarios", Permisos.PoliticaConfiguracion);
 
     // Páginas públicas
     opciones.Conventions.AllowAnonymousToPage("/Login");
     opciones.Conventions.AllowAnonymousToPage("/Logout");
     opciones.Conventions.AllowAnonymousToPage("/AccesoDenegado");
     opciones.Conventions.AllowAnonymousToPage("/Error");
-    
+
     opciones.Conventions.AuthorizeFolder(
         "/Envios", Permisos.PoliticaOperacion);
 
@@ -152,14 +154,22 @@ else
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
         .AddHttpMessageHandler<ReenviarCookieApi>();
 
+    builder.Services.AddHttpClient<IUsuariosApi, UsuariosApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
     builder.Services.AddHttpClient<IAutenticacionApi, AutenticacionApiHttp>(cliente =>
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);
         })
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
-    
-    
+
+
     builder.Services.AddHttpClient<IMensajesFallidosApi, MensajesFallidosApiHttp>(
             cliente =>
             {

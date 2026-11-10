@@ -1,11 +1,12 @@
-namespace LastMileUY.API.Tests.Mensajeria;
-
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Mensajeria;
+
+using static BaseConDosOperadores;
 
 // El outbox contra la base real (ver docs/mensajeria.md): cada evento de un envío deja su mensaje en
 // el mismo guardado, con los datos del contrato, y cada usuario de la base hace solo lo que le toca.

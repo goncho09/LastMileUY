@@ -7,7 +7,7 @@ public class EntregaAviso
     public int SuscripcionAvisosId { get; set; }
 
     public int EnvioId { get; set; }
-    
+
     // GUID: ID unico
     public Guid EventoId { get; set; } = Guid.NewGuid();
 

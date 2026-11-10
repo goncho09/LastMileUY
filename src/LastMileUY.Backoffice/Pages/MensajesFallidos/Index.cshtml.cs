@@ -1,5 +1,4 @@
-﻿
-using LastMileUY.Backoffice.Servicios;
+﻿using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -25,7 +24,7 @@ public class IndexModel(
     public ResumenMensajesFallidosDto? Resumen { get; private set; }
 
     public PaginaResponse<MensajeFallidoResponse>? Resultado
-        { get; private set; }
+    { get; private set; }
 
     public string? Error { get; private set; }
 
@@ -79,8 +78,8 @@ public class IndexModel(
             Error = "No se pudo obtener el listado de mensajes fallidos.";
         }
     }
-    
-    
+
+
     public async Task<IActionResult> OnPostReintentarAsync(
         Guid id,
         CancellationToken ct)

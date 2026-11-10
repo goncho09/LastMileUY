@@ -1,13 +1,14 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using System.Security.Claims;
 using LastMileUY.Backoffice.Pages;
 using LastMileUY.Backoffice.Pages.Envios;
 using LastMileUY.Backoffice.Servicios;
+using LastMileUY.Contracts.Envios;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
+
+namespace LastMileUY.Backoffice.Tests;
 
 public class PermisosTests
 {
@@ -39,7 +40,7 @@ public class PermisosTests
         Assert.Equal(cambiaEstado, Permisos.PuedeCambiarEstado(usuario));
         Assert.Equal(veConfiguracion, Permisos.PuedeVerConfiguracion(usuario));
     }
-    
+
     [Fact]
     public void El_administrador_solo_puede_administrar_mensajeria()
     {
@@ -109,7 +110,7 @@ public class PermisosTests
     }
 
     // Un envío de los datos de prueba que todavía no está en un estado final
-    private static async Task<Contracts.Envios.EnvioDetalleDto> EnvioQuePuedeCambiarAsync(IEnviosApi api)
+    private static async Task<EnvioDetalleDto> EnvioQuePuedeCambiarAsync(IEnviosApi api)
     {
         for (var id = 1; ; id++)
         {

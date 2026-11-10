@@ -29,7 +29,7 @@ public class CrearEnvioService(
         var operadorId = contextoOperador.OperadorId
             ?? throw new UnauthorizedAccessException(
                 "No se pudo identificar el operador autenticado.");
-        
+
         var comercioIdUsuario = contextoOperador.ComercioId;
 
         if (usuario.IsInRole("Comercio"))
@@ -52,7 +52,7 @@ public class CrearEnvioService(
             throw new ArgumentException(
                 "Los identificadores deben ser mayores a cero.");
         }
-        
+
         ValidarBultos(request.Bultos);
 
         // En blanco es "sin referencia": si no, dos envíos sin referencia chocarían en el índice único
@@ -134,7 +134,7 @@ public class CrearEnvioService(
         }
 
         // Primer evento del historial
-        envio.RegistrarAdmision(canal == CanalIngreso.Portal ? "Portal" : "API",responsableId);
+        envio.RegistrarAdmision(canal == CanalIngreso.Portal ? "Portal" : "API", responsableId);
 
         db.Envios.Add(envio);
 

@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Avisos;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Notificaciones.Application;
@@ -7,7 +5,10 @@ using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.Extensions.Configuration;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Avisos;
+
+using static BaseConDosOperadores;
 
 // Suscripciones del comercio a avisos, contra la base real con RLS.
 // La base es compartida entre los tests: cada uno usa sus propias URLs.

@@ -1,13 +1,9 @@
 @page "/envios"
 @attribute [Authorize]
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
-@using LastMileUY.CommercePortal.Servicios
 @using LastMileUY.Contracts.Comun
 @using LastMileUY.Contracts.Envios
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Web
-@using static LastMileUY.CommercePortal.Servicios.PresentacionEnvios
+@using static Servicios.PresentacionEnvios
 
 @inject IEnviosApi EnviosApi
 @inject NavigationManager Navegacion

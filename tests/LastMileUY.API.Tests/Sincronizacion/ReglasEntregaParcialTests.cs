@@ -1,6 +1,5 @@
-namespace LastMileUY.API.Tests.Sincronizacion;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Application;
@@ -16,7 +15,10 @@ using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Sincronizacion;
+
+using static BaseConDosOperadores;
 
 // Reglas de entrega parcial versionadas, contra la base real con RLS:
 // - las versiones se numeran por operador y no se pueden modificar ni borrar (lo frena la base);
@@ -301,7 +303,7 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
     }
 
     private static ReglasEntregaParcialService Servicio(
-        API.Infrastructure.Persistence.ApplicationDbContext db, int operadorId) =>
+        ApplicationDbContext db, int operadorId) =>
         new(db, new ContextoOperadorFijo(operadorId));
 
     private async Task<ResultadoOperacionDto> SincronizarAsync(
@@ -344,7 +346,7 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         };
     }
 
-    private static async Task<int> MotivoAsync(API.Infrastructure.Persistence.ApplicationDbContext db)
+    private static async Task<int> MotivoAsync(ApplicationDbContext db)
     {
         var motivo = await db.MotivosNoEntrega.FirstOrDefaultAsync(m => m.Activo);
 

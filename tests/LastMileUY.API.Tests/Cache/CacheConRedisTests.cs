@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Cache;
-
 using System.Diagnostics;
 using LastMileUY.API.Infrastructure.Cache;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -7,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Testcontainers.Redis;
+
+namespace LastMileUY.API.Tests.Cache;
 
 // El caché con un Redis de verdad (en Docker), conectado igual que en la API (ConexionRedis):
 // dos instancias de la API que lo comparten, y qué pasa cuando Redis se cae y cuando vuelve.

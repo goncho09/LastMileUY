@@ -1,5 +1,3 @@
-namespace LastMileUY.Worker.Tests;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.Contracts.Mensajeria;
@@ -7,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Testcontainers.RabbitMq;
+
+namespace LastMileUY.Worker.Tests;
 
 // PostgreSQL (con las migraciones de la API) y RabbitMQ reales en Docker, compartidos por las pruebas.
 // Datos: dos operadores que trabajan con el mismo comercio, un envío de cada uno y suscripciones del
@@ -46,7 +46,7 @@ public class EntornoDelWorker : IAsyncLifetime
         var opciones = new DbContextOptionsBuilder<ApplicationDbContext>().UseNpgsql(CadenaAdministrador).Options;
         await using var db = new ApplicationDbContext(opciones, new ContextoOperadorFijo(null));
         await db.Database.MigrateAsync();
-        
+
         await db.Database.ExecuteSqlInterpolatedAsync($"""
                                                                                INSERT INTO "Operadores"("Id", "Nombre", "Activo", "FechaCreacion")
                                                                                VALUES ({OperadorA}, 'Operador A', true, now()),

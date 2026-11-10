@@ -1,5 +1,4 @@
 ﻿using LastMileUY.API.Modules.Envios.Domain;
-using Xunit;
 
 public class BultoTests
 {

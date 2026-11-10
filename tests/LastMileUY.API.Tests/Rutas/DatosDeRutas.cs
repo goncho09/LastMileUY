@@ -1,12 +1,13 @@
-namespace LastMileUY.API.Tests.Rutas;
-
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Rutas.Application;
 using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Rutas;
 using Npgsql;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Rutas;
+
+using static BaseConDosOperadores;
 
 // Datos para las pruebas de hojas de ruta y de sincronización, sobre la base con dos operadores.
 // Cada llamada crea datos nuevos, así las pruebas no chocan entre sí.

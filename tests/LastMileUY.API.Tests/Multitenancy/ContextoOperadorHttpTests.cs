@@ -1,8 +1,8 @@
-namespace LastMileUY.API.Tests.Multitenancy;
-
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using Microsoft.AspNetCore.Http;
+
+namespace LastMileUY.API.Tests.Multitenancy;
 
 public class ContextoOperadorHttpTests
 {

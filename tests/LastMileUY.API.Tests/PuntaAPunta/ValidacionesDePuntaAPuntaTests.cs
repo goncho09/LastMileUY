@@ -1,10 +1,13 @@
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Avisos;
+using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Envios;
+using LastMileUY.Contracts.Mensajeria;
 using LastMileUY.Contracts.Sincronizacion;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
+
 using static ApiDePuntaAPunta;
 
 // Pedidos fuera de los límites: la API los contesta con un 400 (o rechaza la operación) en vez
@@ -87,7 +90,7 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         using var respuesta = await operador.GetAsync($"api/envios?pagina={int.MaxValue}&tamanioPagina=100");
 
         Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
-        Assert.Empty((await respuesta.Content.ReadFromJsonAsync<Contracts.Comun.PaginaDto<EnvioResumenDto>>())!.Items);
+        Assert.Empty((await respuesta.Content.ReadFromJsonAsync<PaginaDto<EnvioResumenDto>>())!.Items);
     }
 
     // Las métricas del caché son de toda la plataforma: un operador las ve, pero si las reiniciara
@@ -129,7 +132,7 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
         using var respuesta = await comercio.PostAsJsonAsync("api/avisos/suscripciones", new CrearSuscripcionAvisosRequest
         {
-            TipoEvento = Contracts.Mensajeria.TiposEvento.EnvioAdmitido,
+            TipoEvento = TiposEvento.EnvioAdmitido,
             UrlDestino = "https://comercio.example/" + new string('a', 2000)
         });
 

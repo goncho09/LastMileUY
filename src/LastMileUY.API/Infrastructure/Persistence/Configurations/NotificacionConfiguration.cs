@@ -1,5 +1,5 @@
-﻿using LastMileUY.API.Modules.Notificaciones.Domain;
-using LastMileUY.API.Modules.Envios.Domain;
+﻿using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Notificaciones.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

@@ -1,6 +1,6 @@
+using System.Globalization;
 using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Contracts.Cache;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Tablero;
@@ -42,5 +42,5 @@ public class IndexModel(ICacheApi cacheApi, ILogger<IndexModel> logger) : PageMo
 
     // Ancho de la barra en CSS: con punto decimal aunque la cultura use coma
     public static string Ancho(double porcentaje) =>
-        Math.Clamp(porcentaje, 0, 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%";
+        Math.Clamp(porcentaje, 0, 100).ToString("0.#", CultureInfo.InvariantCulture) + "%";
 }

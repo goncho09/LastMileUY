@@ -1,5 +1,4 @@
-﻿
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Rutas;
 
@@ -88,7 +87,7 @@ public class RutasService(HttpClient http, AlmacenLocal almacen)
         return await almacen.LeerAsync<RutaDetalleDto>(
             ClaveRuta(id));
     }
-    
+
     public async Task ActualizarCacheRutaAsync(int rutaId)
     {
         // No usamos ObtenerRutaAsync porque ese método

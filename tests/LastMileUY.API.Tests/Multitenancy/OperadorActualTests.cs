@@ -1,9 +1,10 @@
-namespace LastMileUY.API.Tests.Multitenancy;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Operadores.Application;
-using Microsoft.EntityFrameworkCore;
+using LastMileUY.Contracts.Operadores;
 using Npgsql;
+
+namespace LastMileUY.API.Tests.Multitenancy;
+
 using static BaseConDosOperadores;
 
 // GET /api/operador: cada usuario ve solo la identidad y las reglas de su operador
@@ -44,7 +45,7 @@ public class OperadorActualTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("23514", error.SqlState);
     }
 
-    private async Task<Contracts.Operadores.OperadorActualDto?> ObtenerAsync(int? operadorId)
+    private async Task<OperadorActualDto?> ObtenerAsync(int? operadorId)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
         return await new OperadorActualService(db, new ContextoOperadorFijo(operadorId), new FuncionalidadesService(db)).ObtenerAsync();

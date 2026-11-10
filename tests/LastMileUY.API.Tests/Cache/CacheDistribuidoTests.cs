@@ -1,10 +1,10 @@
-namespace LastMileUY.API.Tests.Cache;
-
 using LastMileUY.API.Infrastructure.Cache;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
+namespace LastMileUY.API.Tests.Cache;
 
 // El caché común (CacheDistribuido) sin Redis: con el caché en memoria, que tiene la misma interfaz,
 // y con uno que falla siempre, como un Redis caído.

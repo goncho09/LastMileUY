@@ -101,7 +101,7 @@ public class SincronizacionService(
 
         return pendientes.FirstOrDefault(x => x.EnvioId == envioId);
     }
-    
+
     public async Task<List<MotivoNoEntregaDto>> ObtenerMotivosAsync()
     {
         const string clave = "driver:motivos";
@@ -134,7 +134,7 @@ public class SincronizacionService(
             return await almacen.LeerAsync<List<MotivoNoEntregaDto>>(clave) ?? [];
         }
     }
-    
+
     // Lo que mandó este repartidor y qué pasó con cada cosa, lo más nuevo primero.
     // resultado: null (todas), "Aplicada", "Rechazada" o "Conflicto".
     public async Task<PaginaDto<OperacionSincronizadaDto>> ObtenerMisOperacionesAsync(string? resultado, int pagina)
@@ -163,7 +163,7 @@ public class SincronizacionService(
 
         return await EnviarOperacionGuardadaAsync(operacion);
     }
-    
+
     // Reintenta una operación existente sin generar otro IdOperacion.
     public async Task<EstadoEnvioOperacion> ReintentarOperacionAsync(
         Guid idOperacion)
@@ -179,7 +179,7 @@ public class SincronizacionService(
 
         return await EnviarOperacionGuardadaAsync(operacion);
     }
-    
+
     // Una sola sincronización a la vez: la disparan la pantalla de operaciones y el reenvío
     // automático del layout (ReenvioAutomatico), y coinciden al volver la conexión
     private readonly SemaphoreSlim sincronizando = new(1, 1);

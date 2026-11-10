@@ -1,7 +1,7 @@
-namespace LastMileUY.Worker.Tests;
-
 using System.Net;
 using LastMileUY.Contracts.Avisos;
+
+namespace LastMileUY.Worker.Tests;
 
 // Qué URLs puede tener una suscripción: solo https y direcciones públicas (que no se pueda usar para
 // llegar a servicios internos, SSRF)

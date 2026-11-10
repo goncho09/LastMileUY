@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Avisos;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Notificaciones.Application;
 using LastMileUY.API.Modules.Notificaciones.Domain;
@@ -8,7 +6,10 @@ using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Avisos;
+
+using static BaseConDosOperadores;
 
 // El historial de intentos de los avisos (IntentosAvisos) también queda aislado por operador (ADR-01)
 [Collection(ColeccionBaseConDosOperadores.Nombre)]

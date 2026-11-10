@@ -1,5 +1,5 @@
-﻿
-using System.Net;
+﻿using System.Net;
+using System.Text;
 using LastMileUY.DriverPWA.Services;
 
 namespace LastMileUY.DriverPWA.Tests;
@@ -143,7 +143,7 @@ public class DescargaRutaOfflineTests
             {
                 Content = new StringContent(
                     json,
-                    System.Text.Encoding.UTF8,
+                    Encoding.UTF8,
                     "application/json")
             });
         }

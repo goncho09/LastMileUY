@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Sincronizacion;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Entregas.Domain;
@@ -11,7 +9,10 @@ using LastMileUY.API.Tests.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Sincronizacion;
+
+using static BaseConDosOperadores;
 
 // Conflictos a nivel de bulto, contra la base real: lo que el celular dice de cada bulto se compara
 // con lo que tiene el servidor (docs/sincronizacion.md, "Política de conflictos"). Manda el servidor:

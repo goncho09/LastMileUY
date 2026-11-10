@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using System.Text;
 using LastMileUY.API.Modules.Mensajeria.Application;
 using LastMileUY.Contracts.Mensajeria;
 
@@ -89,8 +90,8 @@ public static class MensajesFallidosEndpoints
                         {
                             var mensaje = await canal.BasicGetAsync(cola, autoAck: false, cancellationToken: ct);
 
-                            if (mensaje is null)
-                                break;
+                if (mensaje is null)
+                    break;
 
                             entregas.Add(mensaje.DeliveryTag);
                             var propiedades = mensaje.BasicProperties;

@@ -1,10 +1,10 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using System.Net;
 using System.Text;
 using LastMileUY.Backoffice.Pages.Operador;
 using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Contracts.Operadores;
+
+namespace LastMileUY.Backoffice.Tests;
 
 // Reglas de entrega parcial en "Mi operador": el cliente de la API y los datos de prueba
 public class ReglasEntregaParcialTests

@@ -1,7 +1,7 @@
-namespace LastMileUY.Worker.Tests;
-
 using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
+
+namespace LastMileUY.Worker.Tests;
 
 // El pedido HTTP de cada aviso, contra el receptor de prueba levantado de verdad
 public class ClienteAvisosTests : IAsyncLifetime
@@ -101,7 +101,7 @@ public class ClienteAvisosTests : IAsyncLifetime
         UrlDestino: url,
         CorrelacionId: "prueba-avisos",
         ClaveFirma: new string('A', 64),
-        SuscripcionId:15);
+        SuscripcionId: 15);
 
     public async Task DisposeAsync() => await receptor.DisposeAsync();
 }

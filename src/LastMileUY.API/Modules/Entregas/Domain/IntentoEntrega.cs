@@ -15,16 +15,16 @@ public class IntentoEntrega
     public DateTime FechaRecepcion { get; set; } = DateTime.UtcNow;
 
     public bool Exitoso { get; set; }
-    
+
     // Indica que se entregaron algunos bultos, pero no todos.
     public bool Parcial { get; set; }
 
     public int? MotivoNoEntregaId { get; set; }
 
     public string? Observaciones { get; set; }
-    
+
     public PruebaEntrega? PruebaEntrega { get; set; }
-    
+
     public ICollection<ResultadoBultoIntento> ResultadosBultos { get; set; }
         = new List<ResultadoBultoIntento>();
 }

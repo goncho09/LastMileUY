@@ -1,9 +1,9 @@
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Envios;
 using LastMileUY.Contracts.Rutas;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
 
 // Arma una ruta por HTTP como lo hacen el operador y el despachador desde el Backoffice:
 // envíos nuevos del comercio 1, pasados a depósito, en una ruta del repartidor 1.
@@ -18,7 +18,7 @@ public static class RutasDePuntaAPunta
         return (rutaId, envioIds[0]);
     }
 
-    
+
     public static async Task<(int RutaId, int[] EnvioIds)> RutaConEnviosAsync(
         ApiDePuntaAPunta api,
         HttpClient operador,

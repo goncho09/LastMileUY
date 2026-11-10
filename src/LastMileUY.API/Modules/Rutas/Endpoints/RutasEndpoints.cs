@@ -3,7 +3,6 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.Contracts.Operadores;
 using LastMileUY.API.Modules.Rutas.Application;
-using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
 
@@ -199,7 +198,7 @@ public static class RutasEndpoints
             })
             .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
             .WithName("MisRutas");
-        
+
         // App del repartidor: detalle de una ruta asignada
         group.MapGet("/mias/{id:int}", async (
                 int id,
@@ -225,7 +224,7 @@ public static class RutasEndpoints
             })
             .RequireAuthorization(p => p.RequireRole("Repartidor"))
             .WithName("ObtenerMiRutaPorId");
-        
+
         // App del repartidor: descarga la hoja de ruta (solo si es suya y ya se despachó)
         group.MapGet("/{id:int}/hoja", async (
                 int id,

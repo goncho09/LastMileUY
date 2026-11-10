@@ -1,10 +1,10 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using System.Net;
 using System.Security.Claims;
 using System.Text;
 using LastMileUY.Backoffice.Servicios;
 using Microsoft.AspNetCore.Http;
+
+namespace LastMileUY.Backoffice.Tests;
 
 public class AutenticacionApiTests
 {

@@ -1,6 +1,7 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using LastMileUY.Backoffice.Servicios;
+using LastMileUY.Contracts.Envios;
+
+namespace LastMileUY.Backoffice.Tests;
 
 public class EnviosApiDePruebaTests
 {
@@ -11,7 +12,7 @@ public class EnviosApiDePruebaTests
     [Fact]
     public async Task Los_intentos_de_prueba_son_coherentes_con_el_estado_de_cada_bulto()
     {
-        var envios = new List<Contracts.Envios.EnvioDetalleDto>();
+        var envios = new List<EnvioDetalleDto>();
         for (var id = 1; id <= 45; id++)
             envios.Add((await api.ObtenerAsync(id))!);
 

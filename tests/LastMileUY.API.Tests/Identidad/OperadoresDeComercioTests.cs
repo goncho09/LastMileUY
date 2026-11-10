@@ -1,8 +1,9 @@
-namespace LastMileUY.API.Tests.Identidad;
-
 using LastMileUY.API.Modules.Identidad.Application;
 using LastMileUY.API.Tests.Multitenancy;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Identidad;
+
+using static BaseConDosOperadores;
 
 // Operadores que puede elegir un usuario de comercio al iniciar sesión
 [Collection(ColeccionBaseConDosOperadores.Nombre)]

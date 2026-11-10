@@ -1,6 +1,6 @@
-﻿namespace LastMileUY.API.Modules.Operadores.Domain;
+﻿using LastMileUY.API.Modules.Envios.Domain;
 
-using LastMileUY.API.Modules.Envios.Domain;
+namespace LastMileUY.API.Modules.Operadores.Domain;
 
 public class FranjaHoraria
 {
@@ -15,7 +15,7 @@ public class FranjaHoraria
     public TimeOnly HoraFin { get; set; }
 
     public bool Activa { get; set; } = true;
-    
+
     public ICollection<Envio> Envios { get; set; }
         = new List<Envio>();
 }

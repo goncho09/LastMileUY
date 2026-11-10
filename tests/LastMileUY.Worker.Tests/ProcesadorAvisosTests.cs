@@ -1,7 +1,8 @@
-namespace LastMileUY.Worker.Tests;
-
 using LastMileUY.Contracts.Mensajeria;
 using Npgsql;
+
+namespace LastMileUY.Worker.Tests;
+
 using static EntornoDelWorker;
 
 // Lo que hace el worker con cada evento, contra la base real: un aviso pendiente por cada suscripción

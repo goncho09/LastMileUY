@@ -1,10 +1,10 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
+using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System.Diagnostics;
-using OpenTelemetry.Context.Propagation;
 
 namespace LastMileUY.Worker;
 
@@ -38,7 +38,7 @@ public class ConsumidorEventosEnvio(
     // Para mandar a reintento y a fallidos, con confirmación: el original se confirma recién cuando
     // RabbitMQ guardó la copia
     private IChannel? canalPublicacion;
-    
+
     private async Task RegistrarFalloAsync(
         BasicDeliverEventArgs mensaje,
         int intentos,
@@ -56,7 +56,7 @@ public class ConsumidorEventosEnvio(
             intentos,
             ct);
     }
-    
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await ConectarAsync(stoppingToken);
@@ -174,7 +174,7 @@ public class ConsumidorEventosEnvio(
         actividad?.SetTag("messaging.system", "rabbitmq");
         actividad?.SetTag("messaging.destination.name", TopologiaMensajeria.ColaWorker);
         actividad?.SetTag("messaging.message.id", mensaje.BasicProperties.MessageId);
-        
+
         // El identificador del pedido HTTP que originó el evento: todo lo que se registre de acá en
         // adelante lo lleva, para seguir el cambio de punta a punta
         using var alcance = logger.BeginScope(
@@ -188,7 +188,7 @@ public class ConsumidorEventosEnvio(
         {
             var evento = Leer(mensaje);
 
-            
+
             if (evento is null)
             {
                 logger.LogError(
@@ -209,7 +209,7 @@ public class ConsumidorEventosEnvio(
                     logger.LogError(
                         ex,
                         "No se pudo registrar o publicar el mensaje fallido");
-                    
+
                     actividad?.SetStatus(ActivityStatusCode.Error, ex.Message);
 
                     await canal!.BasicNackAsync(
@@ -220,7 +220,7 @@ public class ConsumidorEventosEnvio(
                 }
                 return;
             }
-            
+
             var resultado = await procesador.ProcesarAsync(evento, cancellationToken);
 
             if (resultado.Repetido)
@@ -230,7 +230,7 @@ public class ConsumidorEventosEnvio(
                     "Evento {Tipo} del envío {EnvioId} (operador {OperadorId}): {EstadoAnterior} -> {Estado}, {Avisos} avisos",
                     evento.Tipo, evento.EnvioId, evento.OperadorId, evento.EstadoAnterior, evento.Estado,
                     resultado.AvisosRegistrados);
-            
+
             if (incidenciaOriginalId.HasValue)
             {
                 await repositorioFallidos.MarcarResueltoAsync(
@@ -279,8 +279,8 @@ public class ConsumidorEventosEnvio(
         CancellationToken cancellationToken)
     {
         var original = mensaje.BasicProperties;
-        
-        
+
+
         var encabezados = original.Headers is null
             ? new Dictionary<string, object?>()
             : new Dictionary<string, object?>(original.Headers);
@@ -300,7 +300,7 @@ public class ConsumidorEventosEnvio(
             // Cuánto espera en la cola de reintento antes de volver a la principal
             Expiration = espera is null ? null : ((long)espera.Value.TotalMilliseconds).ToString()
         };
-        
+
         var incidenciaOriginalId = ObtenerIncidenciaOriginal(mensaje);
 
         if (cola == ColaFallidos && !incidenciaOriginalId.HasValue)
@@ -311,7 +311,7 @@ public class ConsumidorEventosEnvio(
                 error,
                 cancellationToken);
         }
-        
+
         await canalPublicacion!.BasicPublishAsync(
             "",
             cola,
@@ -326,7 +326,7 @@ public class ConsumidorEventosEnvio(
             mensaje.DeliveryTag,
             multiple: false,
             cancellationToken);
-        
+
         // La actualización del registro es posterior.
         // Si falla PostgreSQL, NO debemos reencolar el mensaje
         // que RabbitMQ ya aceptó.
@@ -350,7 +350,7 @@ public class ConsumidorEventosEnvio(
         }
 
     }
-    
+
     private static Guid? ObtenerIncidenciaOriginal(
         BasicDeliverEventArgs mensaje)
     {

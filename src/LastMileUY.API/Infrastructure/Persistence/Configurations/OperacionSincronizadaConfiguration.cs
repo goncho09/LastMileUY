@@ -1,4 +1,3 @@
-using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 using LastMileUY.API.Modules.Sincronizacion.Domain;
 using Microsoft.EntityFrameworkCore;

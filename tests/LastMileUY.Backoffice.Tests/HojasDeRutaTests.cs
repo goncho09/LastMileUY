@@ -1,5 +1,3 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using System.Net;
 using System.Security.Claims;
 using System.Text;
@@ -11,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
+
+namespace LastMileUY.Backoffice.Tests;
 
 // Hojas de ruta en el Backoffice: el orden que arma el formulario, el cliente HTTP,
 // los datos de prueba y que el despacho respete el perfil

@@ -57,7 +57,7 @@ public class DespachadorAvisos(
 
         return intentados;
     }
-    
+
     private async Task<List<int>> OperadoresAsync(CancellationToken cancellationToken)
     {
         await using var comando = baseDeDatos.CreateCommand("""SELECT "Id" FROM "Operadores" ORDER BY "Id" """);

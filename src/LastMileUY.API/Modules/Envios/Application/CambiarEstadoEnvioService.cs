@@ -30,13 +30,13 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new UnauthorizedAccessException(
                 "No tenés permisos para cambiar el estado de un envío.");
         }
-        
+
         if (!Enum.TryParse<EstadoEnvio>(request.Estado, ignoreCase: true, out var nuevoEstado)
             || !Enum.IsDefined(nuevoEstado))
         {
             throw new ArgumentException($"El estado '{request.Estado}' no existe.");
         }
-        
+
         // Estos estados no se pueden establecer manualmente.
         if (nuevoEstado == EstadoEnvio.AsignadoARuta)
         {
@@ -49,7 +49,7 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new TransicionInvalidaException(
                 "Para poner un envío en tránsito, debés despachar la ruta a la que pertenece.");
         }
-        
+
         if (nuevoEstado == EstadoEnvio.EntregadoParcialmente)
         {
             throw new TransicionInvalidaException(
@@ -74,8 +74,8 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
         {
             return false;
         }
-        
-        
+
+
         if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
         {
             // Primero respetamos la tabla de transiciones del dominio.
@@ -101,12 +101,12 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
 
         try
         {
-          envio.CambiarEstado(
-              nuevoEstado,
-              origen,
-              descripcion,
-              usuario.FindFirstValue(ClaimTypes.NameIdentifier),
-              regla);
+            envio.CambiarEstado(
+                nuevoEstado,
+                origen,
+                descripcion,
+                usuario.FindFirstValue(ClaimTypes.NameIdentifier),
+                regla);
         }
         catch (InvalidOperationException ex)
         {

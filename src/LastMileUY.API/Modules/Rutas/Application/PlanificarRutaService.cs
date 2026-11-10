@@ -69,11 +69,22 @@ public class PlanificarRutaService(ApplicationDbContext db)
             throw new ArgumentException($"El envío {repetido.Key} está más de una vez en la ruta.");
         }
 
-        var repartidor = await db.Repartidores
-            .FirstOrDefaultAsync(r => r.Id == request.RepartidorId, cancellationToken)
-            ?? throw new ArgumentException("El repartidor no existe.");
+        await using var transaccion =
+            await db.Database.BeginTransactionAsync(cancellationToken);
 
-        if (!repartidor.Activo)
+        var repartidor = await BloqueoRepartidor.ObtenerAsync(
+                             db,
+                             request.RepartidorId,
+                             cancellationToken)
+                         ?? throw new ArgumentException("El repartidor no existe.");
+
+        var usuarioActivo = await db.Users
+            .AnyAsync(u =>
+                    u.Id == repartidor.UsuarioId &&
+                    u.Activo,
+                cancellationToken);
+
+        if (!repartidor.Activo || !usuarioActivo)
         {
             throw new ArgumentException("El repartidor está dado de baja.");
         }
@@ -142,7 +153,7 @@ public class PlanificarRutaService(ApplicationDbContext db)
                     $"El envío {envio.CodigoSeguimiento} está {envio.Estado}: "
                     + "solo se pueden asignar envíos en depósito o reprogramados.");
             }
-            
+
             if (!envio.Bultos.Any(EsPendiente))
             {
                 throw new ArgumentException(
@@ -194,18 +205,20 @@ public class PlanificarRutaService(ApplicationDbContext db)
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            await transaccion.CommitAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
-                                           {
-                                               SqlState: PostgresErrorCodes.UniqueViolation,
-                                               ConstraintName: RutaConfiguration.IndiceRepartidorPorDia
-                                                   or RutaConfiguration.IndiceVehiculoPorDia
-                                           } choque)
+        catch (DbUpdateException ex) when (
+            ex.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: RutaConfiguration.IndiceRepartidorPorDia
+                or RutaConfiguration.IndiceVehiculoPorDia
+            } choque)
         {
-            // Otra ruta para el mismo repartidor o vehículo y día se guardó entre el control y ahora
-            throw new AsignacionDuplicadaException(choque.ConstraintName == RutaConfiguration.IndiceRepartidorPorDia
-                ? $"El repartidor ya tiene una ruta para el {request.Fecha:dd/MM/yyyy}."
-                : $"El vehículo {vehiculo.Matricula} ya está en una ruta el {request.Fecha:dd/MM/yyyy}.");
+            throw new AsignacionDuplicadaException(
+                choque.ConstraintName == RutaConfiguration.IndiceRepartidorPorDia
+                    ? $"El repartidor ya tiene una ruta para el {request.Fecha:dd/MM/yyyy}."
+                    : $"El vehículo {vehiculo.Matricula} ya está en una ruta el {request.Fecha:dd/MM/yyyy}.");
         }
 
         return ruta.Id;
@@ -219,6 +232,9 @@ public class PlanificarRutaService(ApplicationDbContext db)
         string? responsableId,
         CancellationToken cancellationToken = default)
     {
+        await using var transaccion =
+            await db.Database.BeginTransactionAsync(cancellationToken);
+
         var ruta = await db.Rutas
             .Include(r => r.Paradas)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
@@ -227,6 +243,25 @@ public class PlanificarRutaService(ApplicationDbContext db)
         {
             return false;
         }
+
+        var repartidor = await BloqueoRepartidor.ObtenerAsync(
+            db,
+            ruta.RepartidorId,
+            cancellationToken);
+
+        if (repartidor is null)
+            throw new EstadoDeRutaException(
+                "El repartidor asignado no existe.");
+
+        var usuarioActivo = await db.Users
+            .AnyAsync(u =>
+                    u.Id == repartidor.UsuarioId &&
+                    u.Activo,
+                cancellationToken);
+
+        if (!repartidor.Activo || !usuarioActivo)
+            throw new EstadoDeRutaException(
+                "No se puede despachar una ruta con un repartidor inactivo.");
 
         var envioIds = ruta.Paradas.Select(p => p.EnvioId).ToList();
         var envios = await db.Envios
@@ -264,6 +299,7 @@ public class PlanificarRutaService(ApplicationDbContext db)
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        await transaccion.CommitAsync(cancellationToken);
 
         return true;
     }

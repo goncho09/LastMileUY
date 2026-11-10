@@ -1,9 +1,10 @@
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Envios;
 using LastMileUY.Contracts.Seguimiento;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
+
 using static ApiDePuntaAPunta;
 
 // Seguimiento público por HTTP: un envío creado y movido por el operador se consulta sin sesión

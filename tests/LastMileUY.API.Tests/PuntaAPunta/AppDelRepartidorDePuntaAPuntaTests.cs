@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.API.Infrastructure.Persistence;
@@ -11,6 +9,9 @@ using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
+
 using static ApiDePuntaAPunta;
 
 // Lo que usa la app del repartidor, por HTTP y con los usuarios reales: la hoja de ruta (con la

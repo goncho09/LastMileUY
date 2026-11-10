@@ -1,10 +1,11 @@
-namespace LastMileUY.DriverPWA.Tests;
-
 using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 using LastMileUY.DriverPWA.Services;
-using static LastMileUY.DriverPWA.Services.ResultadoPorBulto;
+
+namespace LastMileUY.DriverPWA.Tests;
+
+using static ResultadoPorBulto;
 
 // Qué manda la app al confirmar una entrega con varios bultos: el repartidor marca cuáles entregó
 // y, de los que no, el motivo. Con eso se decide si es una entrega o una entrega parcial.
@@ -143,7 +144,7 @@ public class ResultadoPorBultoTests
         Assert.Contains("motivo", decision.Error);
         Assert.Null(decision.Resultados);
     }
-    
+
     [Fact]
     public void Sin_bultos_identificados_no_se_puede_confirmar_una_entrega()
     {

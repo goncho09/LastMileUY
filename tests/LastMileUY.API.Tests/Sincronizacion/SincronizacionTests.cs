@@ -1,6 +1,5 @@
-namespace LastMileUY.API.Tests.Sincronizacion;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Rutas.Domain;
@@ -11,7 +10,10 @@ using LastMileUY.API.Tests.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Sincronizacion;
+
+using static BaseConDosOperadores;
 
 // Sincronización de la app del repartidor contra la base real: evidencia según la regla de cada
 // operador, reenvíos sin duplicar, conflictos, resultado por operación y avance de la ruta.
@@ -300,24 +302,24 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
             new SincronizarRequest { Operaciones = [.. operaciones] }, usuarioRepartidor);
     }
 
-    private SincronizarEntregasService Servicio(API.Infrastructure.Persistence.ApplicationDbContext db, int operadorId) =>
+    private SincronizarEntregasService Servicio(ApplicationDbContext db, int operadorId) =>
         new(db, new ContextoOperadorFijo(operadorId), almacen, NullLogger<SincronizarEntregasService>.Instance);
 
     private static OperacionRequest Entrega(
         int rutaId, int envioId, string? firma, string? foto = null, string? documento = null, DateTime? fecha = null) => new()
-    {
-        IdOperacion = Guid.NewGuid(),
-        Tipo = "Entrega",
-        RutaId = rutaId,
-        EnvioId = envioId,
-        FechaHoraDispositivo = fecha ?? DateTime.UtcNow.AddMinutes(-10),
-        Latitud = -34.9m,
-        Longitud = -56.16m,
-        NombreReceptor = "Ana Silva",
-        DocumentoReceptor = documento,
-        FirmaBase64 = firma,
-        FotoBase64 = foto
-    };
+        {
+            IdOperacion = Guid.NewGuid(),
+            Tipo = "Entrega",
+            RutaId = rutaId,
+            EnvioId = envioId,
+            FechaHoraDispositivo = fecha ?? DateTime.UtcNow.AddMinutes(-10),
+            Latitud = -34.9m,
+            Longitud = -56.16m,
+            NombreReceptor = "Ana Silva",
+            DocumentoReceptor = documento,
+            FirmaBase64 = firma,
+            FotoBase64 = foto
+        };
 
     private static OperacionRequest IntentoFallido(int rutaId, int envioId, int? motivoId, string? observaciones = null) => new()
     {

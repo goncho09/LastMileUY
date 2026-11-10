@@ -1,6 +1,6 @@
-﻿namespace LastMileUY.API.Modules.Rutas.Domain;
+﻿using LastMileUY.API.Modules.Operadores.Domain;
 
-using LastMileUY.API.Modules.Operadores.Domain;
+namespace LastMileUY.API.Modules.Rutas.Domain;
 
 public class Vehiculo : IPerteneceAOperador
 {
@@ -19,7 +19,7 @@ public class Vehiculo : IPerteneceAOperador
     public bool Activo { get; set; } = true;
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
-    
+
     public ICollection<Ruta> Rutas { get; set; }
         = new List<Ruta>();
 }

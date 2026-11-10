@@ -1,7 +1,6 @@
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
-using Xunit;
 
 namespace LastMileUY.API.Tests.Envios;
 

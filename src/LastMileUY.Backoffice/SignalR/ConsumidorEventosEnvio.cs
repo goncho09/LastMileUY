@@ -1,5 +1,4 @@
-﻿
-using System.Text.Json;
+﻿using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.AspNetCore.SignalR;
 using RabbitMQ.Client;

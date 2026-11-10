@@ -19,7 +19,7 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
         await db.MotivosNoEntrega.AsNoTracking()
             .Where(m => m.Activo)
             .OrderBy(m => m.Nombre)
-            .Select(m => new MotivoNoEntregaDto(m.Id, m.Nombre,m.Descripcion))
+            .Select(m => new MotivoNoEntregaDto(m.Id, m.Nombre, m.Descripcion))
             .ToListAsync(cancellationToken);
 
     // Las más recientes primero. rutaId y resultado son opcionales.

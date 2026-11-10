@@ -11,6 +11,6 @@ public class Rendicion
     public int CantidadEntregados { get; set; }
 
     public int CantidadNoEntregados { get; set; }
-    
+
     public string? Observaciones { get; set; }
 }

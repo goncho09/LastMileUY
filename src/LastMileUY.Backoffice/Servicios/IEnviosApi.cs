@@ -15,7 +15,7 @@ public interface IEnviosApi
     // Devuelve el envío actualizado, o null si no existe.
     // OperacionRechazadaException: la API no aceptó el cambio (transición inválida, sin permiso, conflicto).
     Task<EnvioDetalleDto?> CambiarEstadoAsync(int id, string estado, string? descripcion, CancellationToken ct = default);
-    
+
     Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
         CancellationToken ct = default);
 }

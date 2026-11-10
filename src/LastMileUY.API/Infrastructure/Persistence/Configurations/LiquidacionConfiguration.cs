@@ -1,6 +1,6 @@
-﻿using LastMileUY.API.Modules.Tarifas.Domain;
+﻿using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
-using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Tarifas.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

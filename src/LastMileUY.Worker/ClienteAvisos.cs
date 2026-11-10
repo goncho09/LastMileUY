@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
 using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
@@ -35,7 +34,7 @@ public record ResultadoEnvio(bool Exitoso, int? CodigoHttp, string? Error, TimeS
 public class ClienteAvisos(HttpClient http)
 {
     public static readonly TimeSpan TiempoMaximo = TimeSpan.FromSeconds(10);
-    
+
     public async Task<ResultadoEnvio> EnviarAsync(AvisoPendiente aviso, CancellationToken cancellationToken)
     {
         var reloj = Stopwatch.StartNew();
@@ -76,7 +75,7 @@ public class ClienteAvisos(HttpClient http)
         pedido.Headers.Add(
             FirmaAvisos.EncabezadoTimestamp,
             timestamp.ToString(CultureInfo.InvariantCulture));
-        
+
         pedido.Headers.Add(
             FirmaAvisos.EncabezadoSuscripcionId,
             aviso.SuscripcionId.ToString(CultureInfo.InvariantCulture));

@@ -7,7 +7,7 @@ namespace LastMileUY.API.Modules.Mensajeria.Application;
 public sealed class ReintentosMensajesFallidosService(
     ApplicationDbContext db)
 {
-    
+
     public async Task<bool> SolicitarAsync(
         Guid id,
         string administradorId,

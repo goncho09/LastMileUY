@@ -97,8 +97,8 @@ public static class AuthEndpoints
                 return SesionIniciada();
             })
             .AllowAnonymous();
-        
-        
+
+
         group.MapPost("/seleccionar-operador", async (
                 SeleccionarOperadorRequest request,
                 SeleccionOperadorTemporalService seleccionTemporal,

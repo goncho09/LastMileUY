@@ -1,19 +1,18 @@
-﻿using LastMileUY.API.Modules.Identidad.Domain;
-using LastMileUY.API.Modules.Operadores.Domain;
-using LastMileUY.API.Modules.Comercios.Domain;
-using LastMileUY.API.Modules.Destinatarios.Domain;
-using LastMileUY.API.Modules.Envios.Domain;
-using LastMileUY.API.Modules.Tarifas.Domain;
-using LastMileUY.API.Modules.Rutas.Domain;
-using LastMileUY.API.Modules.Sincronizacion.Domain;
-using LastMileUY.API.Modules.Entregas.Domain;
-using LastMileUY.API.Modules.Seguimiento.Domain;
-using LastMileUY.API.Modules.Notificaciones.Domain;
-
-using System.Reflection;
+﻿using System.Reflection;
 using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Destinatarios.Domain;
+using LastMileUY.API.Modules.Entregas.Domain;
+using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Mensajeria.Domain;
+using LastMileUY.API.Modules.Notificaciones.Domain;
+using LastMileUY.API.Modules.Operadores.Domain;
+using LastMileUY.API.Modules.Rutas.Domain;
+using LastMileUY.API.Modules.Seguimiento.Domain;
+using LastMileUY.API.Modules.Sincronizacion.Domain;
+using LastMileUY.API.Modules.Tarifas.Domain;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,7 +35,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     public int? ComercioActual => contextoOperador.ComercioId;
 
-    
+
     // Operadores
     public DbSet<Operador> Operadores => Set<Operador>();
     public DbSet<ReglaOperativa> ReglasOperativas => Set<ReglaOperativa>();
@@ -79,7 +78,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<MotivoNoEntrega> MotivosNoEntrega => Set<MotivoNoEntrega>();
     public DbSet<PruebaEntrega> PruebasEntrega => Set<PruebaEntrega>();
     public DbSet<Devolucion> Devoluciones => Set<Devolucion>();
-    
+
     public DbSet<ResultadoBultoIntento> ResultadosBultosIntentos
         => Set<ResultadoBultoIntento>();
 
@@ -91,7 +90,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<SuscripcionAvisos> SuscripcionesAvisos => Set<SuscripcionAvisos>();
     public DbSet<EntregaAviso> EntregasAvisos => Set<EntregaAviso>();
     public DbSet<IntentoAviso> IntentosAvisos => Set<IntentoAviso>();
-    
+
     // Mensajeria
     public DbSet<MensajeFallido> MensajesFallidos => Set<MensajeFallido>();
     public DbSet<MensajeReintentoOutbox> MensajesReintentoOutbox
@@ -105,7 +104,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     // Eventos que el worker ya procesó (para descartar los repetidos)
     public DbSet<MensajeProcesado> MensajesProcesados => Set<MensajeProcesado>();
-    
+
     // Configura las entidades y relaciones de la base de datos,
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -160,7 +159,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
                     });
                 }
             );
-        
+
         modelBuilder.Entity<MensajeReintentoOutbox>(entity =>
         {
             entity.ToTable("MensajesReintentoOutbox");
