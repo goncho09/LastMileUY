@@ -355,17 +355,8 @@
         _ => estado
     };
 
-    // Estado del envío, como lo muestra el resto del portal
-    private static string TextoEstadoEnvio(string estado) => estado switch
-    {
-        "EnDeposito" => "En depósito",
-        "AsignadoARuta" => "Asignado a ruta",
-        "EnTransito" => "En tránsito",
-        "NoEntregado" => "No entregado",
-        "EnDevolucion" => "En devolución",
-        "EntregadoParcialmente" => "Entregado parcialmente",
-        _ => estado
-    };
+    // Estado del envío (o del bulto), con los mismos textos que el resto del portal
+    private static string TextoEstadoEnvio(string estado) => PresentacionEnvios.TextoEstado(estado);
 
     // Sin datos técnicos: si el sistema del comercio contestó con un error, el código ayuda a
     // encontrar el problema; si no contestó, alcanza con decirlo

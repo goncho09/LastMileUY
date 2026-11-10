@@ -24,6 +24,18 @@ jobs:
       - name: Compilar
         run: dotnet build LastMileUY.slnx --no-restore --configuration Release
 
+      # El CSS de Tailwind va generado en el repositorio: si alguien usa una clase nueva y no lo vuelve a
+      # generar, la clase no existe y la pantalla se ve mal sin ningún error. Se genera de nuevo y tiene
+      # que dar lo mismo que lo que está subido
+      - name: CSS de Tailwind al día
+        run: |
+          for app in Backoffice:wwwroot/css/tailwind.css CommercePortal:wwwroot/tailwind.css DriverPWA:wwwroot/css/tailwind.css; do
+            proyecto="src/LastMileUY.${app%%:*}"
+            (cd "$proyecto" && npm ci --silent && npx @tailwindcss/cli -i Styles/input.css -o "${app#*:}")
+          done
+          git diff --exit-code --stat -- 'src/*/wwwroot/*tailwind.css' \
+            || { echo "::error::Falta regenerar el CSS de Tailwind (ver la sección Estilos del README)"; exit 1; }
+
       # Las pruebas de navegador (tests/LastMileUY.E2E.Tests) usan Chromium con Playwright: se instala
       # con las bibliotecas del sistema que necesita (pwsh ya viene en el runner)
       - name: Navegador para las pruebas
