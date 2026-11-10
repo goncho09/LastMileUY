@@ -20,6 +20,7 @@
         ASPNETCORE_ENVIRONMENT: Production
         Avisos__PermitirDestinosLocales: "false"
         SeedAdmin__Enabled: "false"
+        BaseDeDatos__AplicarMigraciones: "false"
       restart: unless-stopped
 
     lastmileuy.backoffice:

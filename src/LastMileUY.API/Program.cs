@@ -44,7 +44,52 @@ using Serilog;
 using Serilog.Events;
 using StackExchange.Redis;
 
-var builder = WebApplication.CreateBuilder(args);
+var argumentosOperativos = args;
+var argumentosHost = argumentosOperativos
+    .Where(argumento => argumento is not "--check-migrations" and not "--apply-migrations")
+    .ToArray();
+var builder = WebApplication.CreateBuilder(argumentosHost);
+
+// Comandos operativos para el despliegue. Se ejecutan dentro de la imagen exacta
+// de la API, con la misma versión de EF Core y sus migraciones incluidas.
+var comprobarMigraciones = args.Contains("--check-migrations", StringComparer.OrdinalIgnoreCase);
+var aplicarMigraciones = args.Contains("--apply-migrations", StringComparer.OrdinalIgnoreCase);
+
+if (comprobarMigraciones || aplicarMigraciones)
+{
+    var cadenaMigraciones = builder.Configuration.GetConnectionString("Migraciones")
+        ?? throw new InvalidOperationException("Falta ConnectionStrings__Migraciones.");
+
+    var opcionesMigraciones = new DbContextOptionsBuilder<ApplicationDbContext>()
+        .UseNpgsql(cadenaMigraciones)
+        .Options;
+
+    await using var dbMigraciones = new ApplicationDbContext(
+        opcionesMigraciones,
+        new ContextoOperadorFijo(null));
+
+    var pendientes = (await dbMigraciones.Database.GetPendingMigrationsAsync()).ToArray();
+
+    if (comprobarMigraciones)
+    {
+        if (pendientes.Length == 0)
+        {
+            Console.WriteLine("SIN_MIGRACIONES_PENDIENTES");
+            return 0;
+        }
+
+        Console.WriteLine("MIGRACIONES_PENDIENTES:");
+        foreach (var migracion in pendientes)
+            Console.WriteLine(migracion);
+
+        // Código 10: el actualizador debe bloquear el despliegue automático.
+        return 10;
+    }
+
+    await dbMigraciones.Database.MigrateAsync();
+    Console.WriteLine("MIGRACIONES_APLICADAS");
+    return 0;
+}
 
 // Logs estructurados para la API.
 builder.Host.UseSerilog((contexto, servicios, configuracion) =>
@@ -421,6 +466,7 @@ if (!string.IsNullOrWhiteSpace(conexionRabbit))
 app.MapHealthChecks("/health");
 
 app.Run();
+return 0;
 
 // Visible para las pruebas de punta a punta (WebApplicationFactory<Program>)
 public partial class Program;

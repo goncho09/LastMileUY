@@ -1,106 +1,58 @@
-
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
 PROYECTO="/opt/lastmileuy"
 REPO="ghcr.io/goncho09/lastmileuy"
 MARCADOR="${REPO}-release:stable"
-
-ESTADO="$PROYECTO/.deploy-state"
+ESTADO="/var/lib/lastmileuy-deploy"
 VERSION_FILE="$ESTADO/version"
 LOCK="$ESTADO/deploy.lock"
 
-SERVICIOS=(
-  api
-  backoffice
-  commerceportal
-  driverpwa
-  publictracking
-  worker
-  receptoravisos
-)
+SERVICIOS=(api backoffice commerceportal driverpwa publictracking worker receptoravisos)
 
 cd "$PROYECTO"
 mkdir -p "$ESTADO"
-
 exec 9>"$LOCK"
-flock -n 9 || {
-  echo "Ya existe un despliegue en ejecución."
-  exit 0
-}
+flock -n 9 || { echo "Ya existe una actualización en ejecución."; exit 0; }
 
-log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
-}
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
-COMPOSE=(
-  docker compose
-  --env-file .env.azure
-  -f compose.yaml
-  -f docker-compose.azure.yml
-  -f compose.deploy.yaml
-)
+compose_base=(docker compose --project-directory "$PROYECTO" --env-file .env.azure \
+  -f compose.yaml -f docker-compose.azure.yml -f compose.deploy.yaml)
 
-# Obtiene el SHA publicado después de CI.
 obtener_version() {
-  local contenedor version
-
+  local cid version
   docker pull "$MARCADOR" >&2
-
-  contenedor=$(docker create "$MARCADOR")
-
-  if ! version=$(
-    docker cp "$contenedor:/version.txt" - |
-      tar -xO -f - version.txt |
-      tr -d '\r\n'
-  ); then
-    docker rm -f "$contenedor" >/dev/null
+  cid=$(docker create "$MARCADOR")
+  if ! version=$(docker cp "$cid:/version.txt" - | tar -xO -f - version.txt | tr -d '\r\n'); then
+    docker rm -f "$cid" >/dev/null 2>&1 || true
     return 1
   fi
-
-  docker rm -f "$contenedor" >/dev/null
-
-  [[ "$version" =~ ^[a-f0-9]{40}$ ]] || {
-    log "ERROR: versión inválida."
-    return 1
-  }
-
+  docker rm "$cid" >/dev/null
+  [[ "$version" =~ ^[a-f0-9]{40}$ ]] || { log "Indicador GHCR inválido."; return 1; }
   printf '%s\n' "$version"
 }
 
-# Comprueba los contenedores de aplicación.
 verificar_contenedores() {
-  local servicio id estado
-
+  local servicio cid
   for servicio in "${SERVICIOS[@]}"; do
-    id=$("${COMPOSE[@]}" ps -q "lastmileuy.$servicio")
-
-    [[ -n "$id" ]] || return 1
-
-    estado=$(docker inspect -f '{{.State.Running}}' "$id")
-
-    if [[ "$estado" != "true" ]]; then
-      log "ERROR: lastmileuy.$servicio no está ejecutándose."
-      return 1
-    fi
+    cid=$("${compose_base[@]}" ps -q "lastmileuy.$servicio")
+    [[ -n "$cid" ]] || { log "No existe el contenedor lastmileuy.$servicio"; return 1; }
+    [[ "$(docker inspect -f '{{.State.Running}}' "$cid")" == true ]] || {
+      log "lastmileuy.$servicio no está ejecutándose."; return 1;
+    }
   done
 }
 
 verificar_http() {
-  local nombre="$1"
-  local url="$2"
-  local intento
-
+  local nombre="$1" url="$2" intento
   for intento in {1..20}; do
-    if curl --fail --silent --show-error \
-      --max-time 5 "$url" >/dev/null 2>&1; then
-      log "$nombre responde correctamente."
-      return 0
+    if curl --fail --silent --max-time 5 "$url" >/dev/null; then
+      log "$nombre responde correctamente."; return 0
     fi
     sleep 3
   done
-
-  log "ERROR: $nombre no respondió correctamente."
+  log "Falló la comprobación HTTP de $nombre ($url)."
   return 1
 }
 
@@ -110,113 +62,99 @@ verificar_aplicacion() {
   verificar_http "Backoffice" "http://127.0.0.1:8081/Login"
 }
 
-# Guarda imágenes exactas, sin sobrescribir las anteriores.
-guardar_respaldo() {
-  local servicio id imagen
-  local directorio="$1"
-
-  mkdir -p "$directorio"
-
+crear_respaldo_y_override() {
+  local version="$1" servicio cid image_id tag dir="$ESTADO/rollback-$1" override="$ESTADO/rollback-$1.yaml"
+  mkdir -p "$dir"
+  printf 'services:\n' > "$override"
   for servicio in "${SERVICIOS[@]}"; do
-    id=$("${COMPOSE[@]}" ps -q "lastmileuy.$servicio")
-    [[ -n "$id" ]] || return 1
-
-    imagen=$(docker inspect -f '{{.Image}}' "$id")
-    printf '%s\n' "$imagen" > "$directorio/$servicio"
+    cid=$("${compose_base[@]}" ps -q "lastmileuy.$servicio")
+    [[ -n "$cid" ]] || { log "No se pudo respaldar lastmileuy.$servicio"; return 1; }
+    image_id=$(docker inspect -f '{{.Image}}' "$cid")
+    tag="lastmileuy-rollback-${servicio}:${version}"
+    docker tag "$image_id" "$tag"
+    printf '  lastmileuy.%s:\n    image: %s\n    build: !reset null\n' "$servicio" "$tag" >> "$override"
   done
+  printf '%s\n' "$override"
 }
 
-# Crea un override temporal con las imágenes respaldadas.
-crear_compose_rollback() {
-  local directorio="$1"
-  local archivo="$2"
-  local servicio imagen
-
-  printf 'services:\n' > "$archivo"
-
-  for servicio in "${SERVICIOS[@]}"; do
-    imagen=$(cat "$directorio/$servicio")
-
-    printf '  lastmileuy.%s:\n' "$servicio" >> "$archivo"
-    printf '    image: "%s"\n' "$imagen" >> "$archivo"
-    printf '    build: !reset null\n' >> "$archivo"
-  done
+restaurar() {
+  local override="$1"
+  log "Intentando restaurar las imágenes anteriores..."
+  docker compose --project-directory "$PROYECTO" --env-file .env.azure \
+    -f compose.yaml -f docker-compose.azure.yml -f "$override" \
+    up -d --no-build --no-deps "${SERVICIOS[@]/#/lastmileuy.}"
+  verificar_contenedores
+  verificar_http "API restaurada" "http://127.0.0.1:8080/health"
+  verificar_http "Backoffice restaurado" "http://127.0.0.1:8081/Login"
+  log "Rollback verificado."
 }
 
-ROLLBACK=""
-DESPLIEGUE_INICIADO=false
-
-recuperar() {
-  local codigo=$?
-  trap - ERR
-
-  if [[ "$DESPLIEGUE_INICIADO" == true &&
-        -n "$ROLLBACK" &&
-        -f "$ROLLBACK" ]]; then
-
-    log "Falló el despliegue. Intentando rollback..."
-
-    if docker compose \
-      --env-file .env.azure \
-      -f compose.yaml \
-      -f docker-compose.azure.yml \
-      -f "$ROLLBACK" \
-      up -d --no-build --no-deps \
-      "${SERVICIOS[@]/#/lastmileuy.}"; then
-
-      log "Se restauraron los contenedores anteriores."
-    else
-      log "ERROR CRÍTICO: falló el rollback."
-    fi
-  fi
-
-  exit "$codigo"
-}
-
-trap recuperar ERR
-
-log "Consultando GHCR..."
-
+log "Consultando versión validada en GHCR..."
 VERSION_NUEVA=$(obtener_version)
 VERSION_ACTUAL=$(cat "$VERSION_FILE" 2>/dev/null || true)
+[[ "$VERSION_NUEVA" != "$VERSION_ACTUAL" ]] || { log "Ya está instalada la versión $VERSION_NUEVA."; exit 0; }
 
-log "Instalada: ${VERSION_ACTUAL:-desconocida}"
-log "Disponible: $VERSION_NUEVA"
-
-if [[ "$VERSION_NUEVA" == "$VERSION_ACTUAL" ]]; then
-  log "No hay actualizaciones."
+# No se despliega una imagen si su commit no es el HEAD actual de main.
+log "Comprobando que el repositorio local puede sincronizarse..."
+git fetch origin main
+HEAD_REMOTO=$(git rev-parse origin/main)
+if [[ "$HEAD_REMOTO" != "$VERSION_NUEVA" ]]; then
+  log "La versión publicada ($VERSION_NUEVA) no coincide todavía con origin/main ($HEAD_REMOTO). Se reintentará luego."
   exit 0
 fi
+if [[ "$(git branch --show-current)" != main ]]; then
+  log "El repositorio no está en main. No se despliega automáticamente."
+  exit 1
+fi
+if [[ -n "$(git status --porcelain)" ]]; then
+  log "Hay cambios locales en el repositorio. Se bloquea el despliegue para protegerlos."
+  exit 1
+fi
+git merge --ff-only origin/main
 
 export LASTMILEUY_VERSION="$VERSION_NUEVA"
+"${compose_base[@]}" config --quiet
 
-"${COMPOSE[@]}" config --quiet
-
-log "Descargando imágenes..."
-
+log "Descargando las siete imágenes antes de modificar contenedores..."
 for servicio in "${SERVICIOS[@]}"; do
-  "${COMPOSE[@]}" pull "lastmileuy.$servicio"
+  "${compose_base[@]}" pull "lastmileuy.$servicio"
 done
 
-RESPALDO="$ESTADO/rollback-$VERSION_NUEVA"
-ROLLBACK="$ESTADO/rollback-$VERSION_NUEVA.yaml"
+log "Comprobando migraciones de la imagen nueva contra PostgreSQL..."
+set +e
+"${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
+  LastMileUY.API.dll --check-migrations
+codigo_migraciones=$?
+set -e
+if [[ "$codigo_migraciones" -eq 10 ]]; then
+  log "Hay migraciones pendientes. Despliegue automático bloqueado; requiere respaldo y ejecución controlada."
+  exit 0
+elif [[ "$codigo_migraciones" -ne 0 ]]; then
+  log "No se pudo comprobar el estado de las migraciones (código $codigo_migraciones). Despliegue bloqueado."
+  exit 1
+fi
 
-log "Guardando versión anterior..."
-guardar_respaldo "$RESPALDO"
-crear_compose_rollback "$RESPALDO" "$ROLLBACK"
+log "Guardando respaldo de las imágenes actuales..."
+ROLLBACK=$(crear_respaldo_y_override "$VERSION_NUEVA")
 
-log "Actualizando LastMileUY..."
-DESPLIEGUE_INICIADO=true
+DESPLIEGUE_OK=false
+rollback_si_falla() {
+  local codigo=$?
+  trap - ERR
+  if [[ "$DESPLIEGUE_OK" != true && -n "${ROLLBACK:-}" && -f "$ROLLBACK" ]]; then
+    if ! restaurar "$ROLLBACK"; then
+      log "ERROR CRÍTICO: falló también la recuperación. Intervención manual necesaria."
+    fi
+  fi
+  exit "$codigo"
+}
+trap rollback_si_falla ERR
 
-"${COMPOSE[@]}" up -d --no-build --no-deps \
-  "${SERVICIOS[@]/#/lastmileuy.}"
-
-log "Verificando funcionamiento..."
+log "Actualizando los siete servicios..."
+"${compose_base[@]}" up -d --no-build --no-deps "${SERVICIOS[@]/#/lastmileuy.}"
 verificar_aplicacion
-
 printf '%s\n' "$VERSION_NUEVA" > "$VERSION_FILE.tmp"
 mv "$VERSION_FILE.tmp" "$VERSION_FILE"
-
-DESPLIEGUE_INICIADO=false
-
-log "Despliegue exitoso: $VERSION_NUEVA"
+DESPLIEGUE_OK=true
+trap - ERR
+log "Despliegue completado: $VERSION_NUEVA"
