@@ -23,7 +23,7 @@ compose_base=(docker compose --project-directory "$PROYECTO" --env-file .env.azu
 obtener_version() {
   local cid version
   docker pull "$MARCADOR" >&2
-  cid=$(docker create "$MARCADOR")
+  cid=$(docker create "$MARCADOR" /version.txt)
   if ! version=$(docker cp "$cid:/version.txt" - | tar -xO -f - version.txt | tr -d '\r\n'); then
     docker rm -f "$cid" >/dev/null 2>&1 || true
     return 1
@@ -77,6 +77,21 @@ crear_respaldo_y_override() {
   printf '%s\n' "$override"
 }
 
+verificar_api_restaurada() {
+  local intento codigo
+  for intento in {1..20}; do
+    codigo=$(curl --silent --output /dev/null       --write-out '%{http_code}' --max-time 5       http://127.0.0.1:8080/ || true)
+
+    if [[ "$codigo" =~ ^[1-5][0-9][0-9]$ ]]; then
+      log "API restaurada responde HTTP $codigo."
+      return 0
+    fi
+    sleep 3
+  done
+  log "La API restaurada no responde."
+  return 1
+}
+
 restaurar() {
   local override="$1"
   log "Intentando restaurar las imágenes anteriores..."
@@ -84,7 +99,8 @@ restaurar() {
     -f compose.yaml -f docker-compose.azure.yml -f "$override" \
     up -d --no-build --no-deps "${SERVICIOS[@]/#/lastmileuy.}"
   verificar_contenedores
-  verificar_http "API restaurada" "http://127.0.0.1:8080/health"
+  # La versión anterior puede no tener /health.
+  verificar_api_restaurada
   verificar_http "Backoffice restaurado" "http://127.0.0.1:8081/Login"
   log "Rollback verificado."
 }
