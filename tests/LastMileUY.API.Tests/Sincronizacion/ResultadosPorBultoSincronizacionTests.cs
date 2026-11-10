@@ -1,9 +1,6 @@
-namespace LastMileUY.API.Tests.Sincronizacion;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Entregas.Domain;
-using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.API.Tests.Multitenancy;
@@ -11,7 +8,10 @@ using LastMileUY.API.Tests.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Sincronizacion;
+
+using static BaseConDosOperadores;
 
 // El resultado de cada bulto se sincroniza una sola vez, contra la base real:
 // - un reenvío (la app no recibió la respuesta) no duplica el intento, los resultados ni el historial;

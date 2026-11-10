@@ -118,7 +118,7 @@ public class ConsultasRutasService(ApplicationDbContext db)
                         .Sum(b => (decimal?)(b.LargoCm * b.AnchoCm * b.AltoCm)) ?? 0
                 })
             .ToListAsync(cancellationToken);
-        
+
         // Los bultos de cada parada, con el mismo criterio que la cantidad de arriba: su manifiesto o,
         // en las rutas armadas antes del manifiesto, todos los del envío. Siempre en el mismo orden.
         var bultosRuta = await (
@@ -176,7 +176,7 @@ public class ConsultasRutasService(ApplicationDbContext db)
             .ToList();
 
         var ruta = cabecera.Ruta;
-        
+
         ReglaEntregaParcialRutaDto? reglaDto = null;
 
         if (cabecera.Ruta.ReglaEntregaParcialId is int reglaId)

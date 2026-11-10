@@ -1,5 +1,4 @@
-﻿
-using LastMileUY.API.Tests.Multitenancy;
+﻿using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Worker;
 using Npgsql;
 
@@ -105,8 +104,8 @@ public class RepositorioMensajesFallidosTests(
         Assert.Equal(3, resultado.Intentos);
         Assert.Null(resultado.FechaResolucion);
     }
-    
-    
+
+
     [Fact]
     public async Task Registrar_dos_veces_el_mismo_mensaje_no_duplica_incidencia()
     {
@@ -164,8 +163,8 @@ public class RepositorioMensajesFallidosTests(
         Assert.Equal("Error inicial", incidencia.Error);
         Assert.Equal(3, incidencia.Intentos);
     }
-    
-    
+
+
     [Fact]
     public async Task Registrar_mismo_mensaje_con_distintos_intentos_genera_ids_diferentes()
     {

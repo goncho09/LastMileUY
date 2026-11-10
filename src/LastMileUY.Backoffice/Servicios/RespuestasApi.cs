@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace LastMileUY.Backoffice.Servicios;
 
@@ -17,7 +17,7 @@ public static class RespuestasApi
                 return error.Mensaje;
             }
         }
-        catch (System.Text.Json.JsonException)
+        catch (JsonException)
         {
             // Sin cuerpo o con otro formato: se usa el mensaje genérico
         }

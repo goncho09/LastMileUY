@@ -1,7 +1,7 @@
-﻿namespace LastMileUY.API.Modules.Tarifas.Domain;
-
-using LastMileUY.API.Modules.Comercios.Domain;
+﻿using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
+
+namespace LastMileUY.API.Modules.Tarifas.Domain;
 
 public class Liquidacion : IPerteneceAOperador, IPerteneceAComercio
 {
@@ -24,7 +24,7 @@ public class Liquidacion : IPerteneceAOperador, IPerteneceAComercio
     public DateTime? FechaCierre { get; set; }
 
     public string? Observaciones { get; set; }
-    
+
     public ICollection<DetalleLiquidacion> Detalles { get; set; }
         = new List<DetalleLiquidacion>();
 }

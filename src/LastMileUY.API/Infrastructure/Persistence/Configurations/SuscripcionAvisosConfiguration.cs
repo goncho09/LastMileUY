@@ -1,6 +1,6 @@
-﻿using LastMileUY.API.Modules.Notificaciones.Domain;
+﻿using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Notificaciones.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
-using LastMileUY.API.Modules.Comercios.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -34,7 +34,7 @@ public class SuscripcionAvisosConfiguration
         builder.Property(s => s.UrlDestino)
             .HasMaxLength(2000)
             .IsRequired();
-        
+
         builder.Property(s => s.ClaveFirma)
             .HasMaxLength(128)
             .IsRequired();

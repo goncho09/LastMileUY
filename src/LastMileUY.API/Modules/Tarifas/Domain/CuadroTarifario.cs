@@ -1,7 +1,7 @@
-﻿namespace LastMileUY.API.Modules.Tarifas.Domain;
-
+﻿using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
-using LastMileUY.API.Modules.Envios.Domain;
+
+namespace LastMileUY.API.Modules.Tarifas.Domain;
 
 public class CuadroTarifario : IPerteneceAOperador
 {
@@ -17,8 +17,8 @@ public class CuadroTarifario : IPerteneceAOperador
 
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
-	public ICollection<Tarifa> Tarifas { get; set; } = new List<Tarifa>();
-	
-	public ICollection<Envio> Envios { get; set; }
-		= new List<Envio>();
+    public ICollection<Tarifa> Tarifas { get; set; } = new List<Tarifa>();
+
+    public ICollection<Envio> Envios { get; set; }
+        = new List<Envio>();
 }

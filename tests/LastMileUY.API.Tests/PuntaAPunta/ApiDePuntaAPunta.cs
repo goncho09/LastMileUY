@@ -1,20 +1,22 @@
-using System.Net;
-
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Contracts.Auth;
-using Contracts.Mensajeria;
+using LastMileUY.Contracts.Auth;
+using LastMileUY.Contracts.Mensajeria;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Testcontainers.PostgreSql;
 using Testcontainers.RabbitMq;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
 
 // La API completa, tal como arranca en desarrollo, contra un PostgreSQL real en Docker:
 // aplica las migraciones, corre los seeders (operadores, despachadores, comercios, destinatarios
@@ -78,6 +80,23 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
             """);
     }
 
+
+    public async Task<long> ConsultarCantidadAsync(
+        string sql,
+        params NpgsqlParameter[] parametros)
+    {
+        await using var conexion =
+            new NpgsqlConnection(contenedor.GetConnectionString());
+
+        await conexion.OpenAsync();
+
+        await using var comando = new NpgsqlCommand(sql, conexion);
+        comando.Parameters.AddRange(parametros);
+
+        return Convert.ToInt64(await comando.ExecuteScalarAsync());
+    }
+
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         var cadenaAplicacion = new NpgsqlConnectionStringBuilder(contenedor.GetConnectionString())
@@ -103,7 +122,18 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
             Username = "lastmileuy_publicador",
             Password = "lastmileuy_publicador_dev"
         }.ConnectionString);
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.PostConfigure<SecurityStampValidatorOptions>(options =>
+            {
+                options.ValidationInterval = TimeSpan.Zero;
+            });
+        });
     }
+
+
+
 
     // Espera (hasta 15 segundos) a que llegue a RabbitMQ un evento que cumpla la condición
     public async Task<EventoRecibido> EsperarEventoAsync(Func<EstadoEnvioCambiado, bool> condicion)
@@ -151,7 +181,7 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 
     // Un cliente HTTP con sesión iniciada (guarda la cookie como un navegador).
     // operadorId: para un comercio que trabaja con varios operadores.
-    
+
     public async Task<HttpClient> IniciarSesionAsync(string email, int? operadorId = null)
     {
         var cliente = ClienteSinSesion();

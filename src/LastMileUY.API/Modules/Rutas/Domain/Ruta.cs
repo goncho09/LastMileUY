@@ -1,7 +1,7 @@
-﻿namespace LastMileUY.API.Modules.Rutas.Domain;
-
-using LastMileUY.API.Modules.Envios.Domain;
+﻿using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
+
+namespace LastMileUY.API.Modules.Rutas.Domain;
 
 public class Ruta : IPerteneceAOperador
 {
@@ -33,13 +33,13 @@ public class Ruta : IPerteneceAOperador
     public ReglaEntregaParcial? ReglaEntregaParcial { get; set; }
 
     public Rendicion? Rendicion { get; set; }
-    
+
     public ICollection<Parada> Paradas { get; set; }
         = new List<Parada>();
-    
+
     public ICollection<Posicion> Posiciones { get; set; }
         = new List<Posicion>();
-    
+
     public ICollection<Incidencia> Incidencias { get; set; }
         = new List<Incidencia>();
 

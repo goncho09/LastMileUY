@@ -1,9 +1,9 @@
 
 @page "/operador"
-@attribute [Authorize]
 @using LastMileUY.Contracts.Auth
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
+@attribute [Authorize]
 @inject IAutenticacionApi Autenticacion
 @inject NavigationManager Navegacion
 @inject ILogger<Operador> Logger

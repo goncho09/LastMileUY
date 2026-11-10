@@ -1,9 +1,10 @@
-namespace LastMileUY.API.Tests.Envios;
-
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Tests.Multitenancy;
 using Microsoft.EntityFrameworkCore;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Envios;
+
+using static BaseConDosOperadores;
 
 // Crear un envío completo con EF contra la base real, como lo hará el alta de envíos
 [Collection(ColeccionBaseConDosOperadores.Nombre)]

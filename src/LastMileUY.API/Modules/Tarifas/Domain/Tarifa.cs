@@ -1,6 +1,6 @@
-﻿namespace LastMileUY.API.Modules.Tarifas.Domain;
+﻿using LastMileUY.API.Modules.Envios.Domain;
 
-using LastMileUY.API.Modules.Envios.Domain;
+namespace LastMileUY.API.Modules.Tarifas.Domain;
 
 public class Tarifa
 {
@@ -27,7 +27,7 @@ public class Tarifa
     public decimal PrecioPorKgAdicional { get; set; }
 
     public bool Activa { get; set; } = true;
-    
+
     public ICollection<AjusteTarifa> Ajustes { get; set; }
         = new List<AjusteTarifa>();
 }

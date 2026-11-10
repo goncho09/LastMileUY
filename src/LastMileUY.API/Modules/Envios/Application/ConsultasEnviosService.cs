@@ -34,7 +34,7 @@ public class ConsultasEnviosService(
             join c in db.Comercios on e.ComercioId equals c.Id
             join d in db.Destinatarios on e.DestinatarioId equals d.Id
             select new { Envio = e, Comercio = c.Nombre, Destinatario = d.Nombre + " " + d.Apellido };
-        
+
         var comercioId = ObtenerComercioAutorizado();
 
         if (comercioId.HasValue)
@@ -108,7 +108,7 @@ public class ConsultasEnviosService(
         CancellationToken cancellationToken = default)
     {
         var comercioId = ObtenerComercioAutorizado();
-        
+
         var fila = await (
                 from e in db.Envios.AsNoTracking()
                 join c in db.Comercios on e.ComercioId equals c.Id
@@ -245,8 +245,8 @@ public class ConsultasEnviosService(
                         i.Bultos.Where(b => b.Entregado).Select(b => b.Codigo).ToList())))
             .ToList();
     }
-    
-    
+
+
     public async Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
         CancellationToken cancellationToken = default)
     {
@@ -279,8 +279,8 @@ public class ConsultasEnviosService(
             .ToListAsync(cancellationToken);
     }
 
-    
-    
+
+
     private int? ObtenerComercioAutorizado()
     {
         var usuario = httpContextAccessor.HttpContext?.User;

@@ -1,4 +1,4 @@
-﻿
+﻿using System.Security.Cryptography;
 using System.Text.Json;
 using LastMileUY.Contracts.Auth;
 using Microsoft.AspNetCore.DataProtection;
@@ -43,7 +43,7 @@ public sealed class SeleccionOperadorCookie(IDataProtectionProvider provider)
             var datos = protector.Unprotect(valor);
             return JsonSerializer.Deserialize<DatosSeleccion>(datos);
         }
-        catch (System.Security.Cryptography.CryptographicException)
+        catch (CryptographicException)
         {
             return null;
         }

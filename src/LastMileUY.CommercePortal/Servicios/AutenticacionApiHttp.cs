@@ -1,5 +1,5 @@
 using System.Net;
-using System.Net.Http.Json;
+using System.Text.Json;
 using LastMileUY.Contracts.Auth;
 
 namespace LastMileUY.CommercePortal.Servicios;
@@ -40,8 +40,8 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
 
         return await ObtenerSesionAsync(LeerCookieObligatoria(login), ct);
     }
-    
-    
+
+
     public async Task<ResultadoLogin> SeleccionarOperadorAsync(
         string tokenTemporal,
         int operadorId,
@@ -181,7 +181,7 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
             if (!string.IsNullOrWhiteSpace(cuerpo?.Mensaje))
                 return cuerpo.Mensaje;
         }
-        catch (System.Text.Json.JsonException)
+        catch (JsonException)
         {
             // El cuerpo no era el JSON esperado: se usa el mensaje genérico
         }

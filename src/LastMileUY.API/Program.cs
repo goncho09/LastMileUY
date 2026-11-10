@@ -7,39 +7,40 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Destinatarios.Application;
 using LastMileUY.API.Modules.Destinatarios.Endpoints;
+using LastMileUY.API.Modules.Entregas.Infrastructure;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Endpoints;
 using LastMileUY.API.Modules.Identidad.Application;
 using LastMileUY.API.Modules.Identidad.Domain;
 using LastMileUY.API.Modules.Identidad.Endpoints;
 using LastMileUY.API.Modules.Identidad.Infrastructure;
+using LastMileUY.API.Modules.Mensajeria.Application;
+using LastMileUY.API.Modules.Notificaciones.Application;
+using LastMileUY.API.Modules.Notificaciones.Endpoints;
 using LastMileUY.API.Modules.Operadores.Application;
 using LastMileUY.API.Modules.Operadores.Endpoints;
 using LastMileUY.API.Modules.Operadores.Infrastructure;
 using LastMileUY.API.Modules.Rutas.Application;
 using LastMileUY.API.Modules.Rutas.Endpoints;
 using LastMileUY.API.Modules.Rutas.Infrastructure;
+using LastMileUY.API.Modules.Seguimiento.Application;
+using LastMileUY.API.Modules.Seguimiento.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
-using LastMileUY.API.Modules.Entregas.Infrastructure;
-using LastMileUY.API.Modules.Mensajeria.Application;
-using LastMileUY.API.Modules.Seguimiento.Application;
-using LastMileUY.API.Modules.Seguimiento.Endpoints;
-using LastMileUY.API.Modules.Notificaciones.Application;
-using LastMileUY.API.Modules.Notificaciones.Endpoints;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using OpenTelemetry.Exporter;
-using Scalar.AspNetCore;
-using Serilog;
-using Serilog.Events;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Events;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -156,16 +157,12 @@ builder.Services
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddClaimsPrincipalFactory<UsuarioClaimsPrincipalFactory>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddErrorDescriber<IdentityErrorDescriberEs>();
 
 builder.Services.AddScoped<
     ISecurityStampValidator,
     UsuarioSecurityStampValidator>();
-
-builder.Services.Configure<SecurityStampValidatorOptions>(options =>
-{
-    options.ValidationInterval = TimeSpan.FromMinutes(1);
-});
 
 // Claves con las que ASP.NET cifra la cookie de sesión. Si se guardan en una carpeta
 // (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
@@ -178,19 +175,25 @@ if (!string.IsNullOrWhiteSpace(directorioClaves))
         .PersistKeysToFileSystem(new DirectoryInfo(directorioClaves));
 }
 
-// El operador que elige un usuario de comercio al entrar vive solo en la cookie (no en la base).
-// Identity rearma los claims desde la base cada tanto (validación del security stamp):
-// sin esto, el claim operador_id se perdería y el usuario de comercio empezaría a recibir 401.
+// Revalidar la sesión en cada solicitud autenticada.
+// Conservar el operador seleccionado por usuarios de comercio
+// cuando Identity reconstruye los claims.
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
+    options.ValidationInterval = TimeSpan.Zero;
+
     options.OnRefreshingPrincipal = context =>
     {
-        var operador = context.CurrentPrincipal?.FindFirst(ContextoOperadorHttp.ClaimOperadorId);
-        var identidad = context.NewPrincipal?.Identities.FirstOrDefault();
+        var operador = context.CurrentPrincipal?
+            .FindFirst(ContextoOperadorHttp.ClaimOperadorId);
+
+        var identidad = context.NewPrincipal?
+            .Identities.FirstOrDefault();
 
         if (operador is not null &&
             identidad is not null &&
-            !identidad.HasClaim(c => c.Type == ContextoOperadorHttp.ClaimOperadorId))
+            !identidad.HasClaim(c =>
+                c.Type == ContextoOperadorHttp.ClaimOperadorId))
         {
             identidad.AddClaim(new Claim(operador.Type, operador.Value));
         }
@@ -208,9 +211,9 @@ if (!string.IsNullOrWhiteSpace(conexionRedis))
 {
     // Una sola conexión a Redis para el caché y para los contadores de aciertos y fallos.
     // Si Redis no está o se cae, la API sigue desde la base sin esperarlo (ver ConexionRedis).
-    var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(ConexionRedis.Opciones(conexionRedis));
+    var redis = ConnectionMultiplexer.Connect(ConexionRedis.Opciones(conexionRedis));
 
-    builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redis);
+    builder.Services.AddSingleton<IConnectionMultiplexer>(redis);
     builder.Services.AddSingleton<IMetricasCache, MetricasCacheRedis>();
 
     // Al volver Redis borra lo cacheado: las invalidaciones de mientras estuvo caído se perdieron
@@ -218,7 +221,7 @@ if (!string.IsNullOrWhiteSpace(conexionRedis))
 
     builder.Services.AddStackExchangeRedisCache(options =>
     {
-        options.ConnectionMultiplexerFactory = () => Task.FromResult<StackExchange.Redis.IConnectionMultiplexer>(redis);
+        options.ConnectionMultiplexerFactory = () => Task.FromResult<IConnectionMultiplexer>(redis);
         // Prefijo de todas las claves de la app en Redis
         options.InstanceName = CasosDeCache.PrefijoRedis;
     });
@@ -276,6 +279,7 @@ builder.Services.AddScoped<SeguimientoPublicoService>();
 builder.Services.AddScoped<SuscripcionesAvisosService>();
 builder.Services.AddScoped<AvisosComercioService>();
 builder.Services.AddScoped<ConsultasMensajesFallidosService>();
+builder.Services.AddScoped<GestionUsuariosService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
@@ -375,10 +379,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
-app.MapControllers(); 
+app.MapControllers();
 
 // ENDPOINTS
 app.MapAuthEndpoints();
+app.MapUsuariosEndpoints();
 app.MapEnviosEndpoints();
 app.MapOperadorEndpoints();
 app.MapDestinatariosEndpoints();

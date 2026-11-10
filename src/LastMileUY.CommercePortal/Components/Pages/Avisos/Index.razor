@@ -1,8 +1,8 @@
 @page "/avisos"
-@attribute [Authorize]
-@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using LastMileUY.Contracts.Avisos
 @using LastMileUY.Contracts.Mensajeria
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @inject IAvisosApi AvisosApi
 @inject NavigationManager Navegacion

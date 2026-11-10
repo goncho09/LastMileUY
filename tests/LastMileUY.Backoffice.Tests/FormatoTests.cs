@@ -1,7 +1,7 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Contracts.Envios;
+
+namespace LastMileUY.Backoffice.Tests;
 
 public class FormatoTests
 {

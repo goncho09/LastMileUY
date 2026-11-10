@@ -1,10 +1,11 @@
-namespace LastMileUY.Worker.Tests;
-
 using System.Text.Json;
 using LastMileUY.Contracts.Avisos;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
+
+namespace LastMileUY.Worker.Tests;
+
 using static EntornoDelWorker;
 
 // El envío de los avisos pendientes, contra la base real y el receptor de prueba levantado de verdad
@@ -26,7 +27,7 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     {
         await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);
         await conexion.OpenAsync();
-       
+
         await using var comando = new NpgsqlCommand($"""
                                                      INSERT INTO "SuscripcionesAvisos"
                                                          ("Id", "OperadorId", "ComercioId", "TipoEvento",

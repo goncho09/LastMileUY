@@ -1,9 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+﻿using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Destinatarios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
-using LastMileUY.API.Modules.Comercios.Domain;
-using LastMileUY.API.Modules.Destinatarios.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace LastMileUY.API.Infrastructure.Persistence.Configurations;
 
@@ -65,7 +65,7 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
             direccion.Property(d => d.Referencia)
                 .HasMaxLength(300);
         });
-        
+
         // Relaciones del envío con las entidades principales.
         builder.HasOne<Operador>()
             .WithMany(o => o.Envios)

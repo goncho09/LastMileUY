@@ -1,5 +1,4 @@
-﻿
-using LastMileUY.API.Infrastructure.Multitenancy;
+﻿using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Mensajeria.Application;
 using LastMileUY.API.Modules.Mensajeria.Domain;

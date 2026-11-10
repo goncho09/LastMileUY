@@ -1,10 +1,10 @@
-namespace LastMileUY.DriverPWA.Tests;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Sincronizacion;
 using LastMileUY.DriverPWA.Services;
+
+namespace LastMileUY.DriverPWA.Tests;
 
 // Cómo la app manda entregas e intentos a la API de sincronización: cada operación se guarda primero
 // en la cola del celular, va sola en su pedido y lleva el mismo IdOperacion en cada reenvío, para
@@ -240,7 +240,7 @@ public class SincronizacionServiceTests
     }
 
     // navegador: lo guardado en el celular; si se pasa uno, es como volver a abrir la app
-    
+
     private static (SincronizacionService Servicio, NavegadorFalso Navegador) Servicio(
         ApiFalsa api, NavegadorFalso? navegador = null)
     {

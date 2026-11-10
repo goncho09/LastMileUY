@@ -1,7 +1,7 @@
-﻿namespace LastMileUY.API.Modules.Destinatarios.Domain;
-
-using LastMileUY.API.Modules.Comercios.Domain;
+﻿using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
+
+namespace LastMileUY.API.Modules.Destinatarios.Domain;
 
 public class Destinatario : IPerteneceAComercio
 {
@@ -22,6 +22,6 @@ public class Destinatario : IPerteneceAComercio
 
     public ICollection<Direccion> Direcciones { get; set; }
         = new List<Direccion>();
-    
+
     public ICollection<Envio> Envios { get; set; } = new List<Envio>();
 }

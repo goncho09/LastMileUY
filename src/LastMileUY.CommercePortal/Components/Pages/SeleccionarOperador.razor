@@ -1,9 +1,9 @@
 ﻿@page "/seleccionar-operador"
-@layout LastMileUY.CommercePortal.Components.Layout.AuthLayout
-@attribute [AllowAnonymous]
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
+@layout AuthLayout
+@attribute [AllowAnonymous]
 @inject IAutenticacionApi Autenticacion
 @inject SeleccionOperadorCookie SeleccionCookie
 @inject NavigationManager Navegacion

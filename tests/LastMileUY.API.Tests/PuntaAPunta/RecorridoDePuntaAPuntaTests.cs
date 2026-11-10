@@ -1,14 +1,15 @@
+using System.Net;
+using System.Net.Http.Json;
+using LastMileUY.Contracts.Auth;
+using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Entregas;
+using LastMileUY.Contracts.Envios;
+using LastMileUY.Contracts.Operadores;
 using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
 
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
-using System.Net;
-using System.Net.Http.Json;
-using LastMileUY.Contracts.Auth;
-using LastMileUY.Contracts.Comun;
-using LastMileUY.Contracts.Envios;
 using static ApiDePuntaAPunta;
 
 // Tarjeta "Tests" del sprint, probada por HTTP con los usuarios reales de cada perfil:
@@ -68,7 +69,7 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
             operacionProcesada.Resultado == "Aplicada",
             $"La sincronización no se aplicó: {operacionProcesada.Resultado} - {operacionProcesada.Mensaje}");
     }
-    
+
     private async Task RegistrarIntentoFallidoAsync(
         HttpClient operador,
         HttpClient repartidor,
@@ -96,7 +97,7 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
             "IntentoFallido",
             motivo.Id);
     }
-    
+
     // --- 1. Permisos con usuarios reales de cada perfil ---
 
     [Theory]
@@ -211,64 +212,64 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     // --- 3. Reglas distintas para los dos operadores ---
 
     [Fact]
-public async Task Con_el_mismo_recorrido_el_operador_1_bloquea_y_el_operador_2_permite_reprogramar()
-{
-    // Operador 1 permite 2 intentos fallidos; operador 2 permite 3.
-    var operador1 = await api.IniciarSesionAsync(Operador1);
-    var operador2 = await api.IniciarSesionAsync(Operador2);
+    public async Task Con_el_mismo_recorrido_el_operador_1_bloquea_y_el_operador_2_permite_reprogramar()
+    {
+        // Operador 1 permite 2 intentos fallidos; operador 2 permite 3.
+        var operador1 = await api.IniciarSesionAsync(Operador1);
+        var operador2 = await api.IniciarSesionAsync(Operador2);
 
-    var repartidor1 = await api.IniciarSesionAsync(Repartidor1);
-    var repartidor2 = await api.IniciarSesionAsync(Repartidor2);
+        var repartidor1 = await api.IniciarSesionAsync(Repartidor1);
+        var repartidor2 = await api.IniciarSesionAsync(Repartidor2);
 
-    var envioDe1 = await CrearEnvioAsync(operador1, api.IdComercio1);
-    var envioDe2 = await CrearEnvioAsync(operador2, api.IdComercio2);
+        var envioDe1 = await CrearEnvioAsync(operador1, api.IdComercio1);
+        var envioDe2 = await CrearEnvioAsync(operador2, api.IdComercio2);
 
-    // Primer intento: ambos envíos pasan a depósito.
-    await RecorrerAsync(operador1, envioDe1, "EnDeposito");
-    await RecorrerAsync(operador2, envioDe2, "EnDeposito");
+        // Primer intento: ambos envíos pasan a depósito.
+        await RecorrerAsync(operador1, envioDe1, "EnDeposito");
+        await RecorrerAsync(operador2, envioDe2, "EnDeposito");
 
-    // Primer intento fallido registrado desde la PWA.
-    await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
-    await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
+        // Primer intento fallido registrado desde la PWA.
+        await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
+        await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
 
-    // Ambos operadores todavía permiten reprogramar.
-    await RecorrerAsync(operador1, envioDe1, "Reprogramado");
-    await RecorrerAsync(operador2, envioDe2, "Reprogramado");
+        // Ambos operadores todavía permiten reprogramar.
+        await RecorrerAsync(operador1, envioDe1, "Reprogramado");
+        await RecorrerAsync(operador2, envioDe2, "Reprogramado");
 
-    // Segundo intento fallido registrado desde la PWA.
-    await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
-    await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
+        // Segundo intento fallido registrado desde la PWA.
+        await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
+        await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
 
-    // El operador 1 alcanzó el máximo; el operador 2 todavía no.
-    using var reprogramar1 =
-        await CambiarEstadoAsync(operador1, envioDe1, "Reprogramado");
+        // El operador 1 alcanzó el máximo; el operador 2 todavía no.
+        using var reprogramar1 =
+            await CambiarEstadoAsync(operador1, envioDe1, "Reprogramado");
 
-    using var reprogramar2 =
-        await CambiarEstadoAsync(operador2, envioDe2, "Reprogramado");
+        using var reprogramar2 =
+            await CambiarEstadoAsync(operador2, envioDe2, "Reprogramado");
 
-    var detalle1 = await operador1.GetFromJsonAsync<EnvioDetalleDto>(
-        $"api/envios/{envioDe1}");
+        var detalle1 = await operador1.GetFromJsonAsync<EnvioDetalleDto>(
+            $"api/envios/{envioDe1}");
 
-    Assert.Equal(HttpStatusCode.BadRequest, reprogramar1.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, reprogramar1.StatusCode);
 
-    Assert.Contains(
-        "tiene que pasar a devolución",
-        await reprogramar1.Content.ReadAsStringAsync());
+        Assert.Contains(
+            "tiene que pasar a devolución",
+            await reprogramar1.Content.ReadAsStringAsync());
 
-    Assert.Equal(HttpStatusCode.OK, reprogramar2.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, reprogramar2.StatusCode);
 
-    Assert.Equal(2, detalle1?.IntentosFallidos);
-    Assert.Equal(2, detalle1?.Regla?.MaximoIntentosEntrega);
-    Assert.Equal(["EnDevolucion"], detalle1?.EstadosSiguientes);
-}
+        Assert.Equal(2, detalle1?.IntentosFallidos);
+        Assert.Equal(2, detalle1?.Regla?.MaximoIntentosEntrega);
+        Assert.Equal(["EnDevolucion"], detalle1?.EstadosSiguientes);
+    }
 
     [Fact]
     public async Task Cada_operador_ve_su_propia_configuracion()
     {
         var operador1 = await (await api.IniciarSesionAsync(Operador1))
-            .GetFromJsonAsync<Contracts.Operadores.OperadorActualDto>("api/operador");
+            .GetFromJsonAsync<OperadorActualDto>("api/operador");
         var operador2 = await (await api.IniciarSesionAsync(Operador2))
-            .GetFromJsonAsync<Contracts.Operadores.OperadorActualDto>("api/operador");
+            .GetFromJsonAsync<OperadorActualDto>("api/operador");
 
         Assert.Equal("Operador Prueba 1", operador1?.Nombre);
         Assert.Equal("Operador Prueba 2", operador2?.Nombre);
@@ -406,122 +407,122 @@ public async Task Con_el_mismo_recorrido_el_operador_1_bloquea_y_el_operador_2_p
         cliente.PatchAsJsonAsync($"api/envios/{id}/estado",
             new CambiarEstadoRequest { Estado = estado, Descripcion = descripcion });
 
-    
-private async Task<int?> RecorrerAsync(
-    HttpClient cliente,
-    int id,
-    params string[] estados)
-{
-    int? rutaId = null;
-    var numeroRuta = 0;
 
-    foreach (var estado in estados)
+    private async Task<int?> RecorrerAsync(
+        HttpClient cliente,
+        int id,
+        params string[] estados)
     {
-        if (estado == "AsignadoARuta")
+        int? rutaId = null;
+        var numeroRuta = 0;
+
+        foreach (var estado in estados)
         {
-            // Obtener los recursos disponibles del operador.
-            var opciones = await cliente.GetFromJsonAsync<OpcionesRutaDto>(
-                "api/rutas/opciones");
-
-            Assert.NotNull(opciones);
-            Assert.NotEmpty(opciones.Repartidores);
-            Assert.NotEmpty(opciones.Vehiculos);
-
-            Assert.Contains(opciones.Envios, envio => envio.Id == id);
-
-            numeroRuta++;
-
-            // Cada ruta de prueba utiliza una fecha diferente
-            // para no colisionar con otras rutas del fixture.
-            var fecha = DateOnly.FromDateTime(DateTime.UtcNow)
-                .AddDays(365 + id * 3 + numeroRuta);
-
-            var request = new CrearRutaRequest
+            if (estado == "AsignadoARuta")
             {
-                Nombre = $"Ruta prueba envío {id} intento {numeroRuta}",
-                Fecha = fecha,
-                RepartidorId = opciones.Repartidores[0].Id,
-                VehiculoId = opciones.Vehiculos[0].Id,
-                EnvioIds = [id]
-            };
+                // Obtener los recursos disponibles del operador.
+                var opciones = await cliente.GetFromJsonAsync<OpcionesRutaDto>(
+                    "api/rutas/opciones");
 
-            using var respuesta = await cliente.PostAsJsonAsync(
-                "api/rutas",
-                request);
+                Assert.NotNull(opciones);
+                Assert.NotEmpty(opciones.Repartidores);
+                Assert.NotEmpty(opciones.Vehiculos);
 
-            var contenido = await respuesta.Content.ReadAsStringAsync();
+                Assert.Contains(opciones.Envios, envio => envio.Id == id);
 
-            Assert.True(
-                respuesta.IsSuccessStatusCode,
-                $"No se pudo crear la ruta: " +
-                $"{(int)respuesta.StatusCode} - {contenido}");
+                numeroRuta++;
 
-            var ruta = await respuesta.Content
-                .ReadFromJsonAsync<RutaDetalleDto>();
+                // Cada ruta de prueba utiliza una fecha diferente
+                // para no colisionar con otras rutas del fixture.
+                var fecha = DateOnly.FromDateTime(DateTime.UtcNow)
+                    .AddDays(365 + id * 3 + numeroRuta);
 
-            Assert.NotNull(ruta);
+                var request = new CrearRutaRequest
+                {
+                    Nombre = $"Ruta prueba envío {id} intento {numeroRuta}",
+                    Fecha = fecha,
+                    RepartidorId = opciones.Repartidores[0].Id,
+                    VehiculoId = opciones.Vehiculos[0].Id,
+                    EnvioIds = [id]
+                };
 
-            rutaId = ruta.Id;
+                using var respuesta = await cliente.PostAsJsonAsync(
+                    "api/rutas",
+                    request);
+
+                var contenido = await respuesta.Content.ReadAsStringAsync();
+
+                Assert.True(
+                    respuesta.IsSuccessStatusCode,
+                    $"No se pudo crear la ruta: " +
+                    $"{(int)respuesta.StatusCode} - {contenido}");
+
+                var ruta = await respuesta.Content
+                    .ReadFromJsonAsync<RutaDetalleDto>();
+
+                Assert.NotNull(ruta);
+
+                rutaId = ruta.Id;
+            }
+            else if (estado == "EnTransito")
+            {
+                Assert.True(
+                    rutaId.HasValue,
+                    "No se puede despachar un envío sin crear su ruta.");
+
+                using var respuesta = await cliente.PostAsync(
+                    $"api/rutas/{rutaId.Value}/despachar",
+                    null);
+
+                var contenido = await respuesta.Content.ReadAsStringAsync();
+
+                Assert.True(
+                    respuesta.IsSuccessStatusCode,
+                    $"No se pudo despachar la ruta: " +
+                    $"{(int)respuesta.StatusCode} - {contenido}");
+
+            }
+            else
+            {
+                // Los demás estados continúan usando
+                // el endpoint habitual del Backoffice.
+                using var respuesta = await CambiarEstadoAsync(
+                    cliente,
+                    id,
+                    estado);
+
+                var contenido = await respuesta.Content.ReadAsStringAsync();
+
+                Assert.True(
+                    respuesta.IsSuccessStatusCode,
+                    $"No se pudo pasar a {estado}: " +
+                    $"{(int)respuesta.StatusCode} - {contenido}");
+            }
         }
-        else if (estado == "EnTransito")
-        {
-            Assert.True(
-                rutaId.HasValue,
-                "No se puede despachar un envío sin crear su ruta.");
 
-            using var respuesta = await cliente.PostAsync(
-                $"api/rutas/{rutaId.Value}/despachar",
-                null);
-
-            var contenido = await respuesta.Content.ReadAsStringAsync();
-
-            Assert.True(
-                respuesta.IsSuccessStatusCode,
-                $"No se pudo despachar la ruta: " +
-                $"{(int)respuesta.StatusCode} - {contenido}");
-
-        }
-        else
-        {
-            // Los demás estados continúan usando
-            // el endpoint habitual del Backoffice.
-            using var respuesta = await CambiarEstadoAsync(
-                cliente,
-                id,
-                estado);
-
-            var contenido = await respuesta.Content.ReadAsStringAsync();
-
-            Assert.True(
-                respuesta.IsSuccessStatusCode,
-                $"No se pudo pasar a {estado}: " +
-                $"{(int)respuesta.StatusCode} - {contenido}");
-        }
+        return rutaId;
     }
 
-    return rutaId;
-}
+    private async Task<int> CrearEnvioComoOperador1Async() =>
+        await CrearEnvioAsync(
+            await api.IniciarSesionAsync(Operador1),
+            api.IdComercio1);
 
-private async Task<int> CrearEnvioComoOperador1Async() =>
-    await CrearEnvioAsync(
-        await api.IniciarSesionAsync(Operador1),
-        api.IdComercio1);
+    private async Task<int> CrearEnvioAsync(HttpClient cliente, int comercioId)
+    {
+        var (destinatario, direccion) =
+            await api.DestinatarioDeAsync(comercioId);
 
-private async Task<int> CrearEnvioAsync(HttpClient cliente, int comercioId)
-{
-    var (destinatario, direccion) =
-        await api.DestinatarioDeAsync(comercioId);
-
-    using var respuesta = await cliente.PostAsJsonAsync(
-        "api/envios",
-        new CrearEnvioRequest
-        {
-            ComercioId = comercioId,
-            DestinatarioId = destinatario,
-            DireccionId = direccion,
-            Bultos =
-            [
-                new CrearBultoRequest
+        using var respuesta = await cliente.PostAsJsonAsync(
+            "api/envios",
+            new CrearEnvioRequest
+            {
+                ComercioId = comercioId,
+                DestinatarioId = destinatario,
+                DireccionId = direccion,
+                Bultos =
+                [
+                    new CrearBultoRequest
                 {
                     PesoKg = 1,
                     LargoCm = 20,
@@ -529,17 +530,17 @@ private async Task<int> CrearEnvioAsync(HttpClient cliente, int comercioId)
                     AltoCm = 10,
                     Descripcion = "Bulto de prueba"
                 }
-            ]
-        });
+                ]
+            });
 
-    Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, respuesta.StatusCode);
 
-    var envio = await respuesta.Content.ReadFromJsonAsync<EnvioResponse>();
+        var envio = await respuesta.Content.ReadFromJsonAsync<EnvioResponse>();
 
-    Assert.NotNull(envio);
+        Assert.NotNull(envio);
 
-    return envio.Id;
-}
+        return envio.Id;
+    }
 
     private static async Task<PaginaDto<EnvioResumenDto>> ListarAsync(HttpClient cliente, string consulta) =>
         (await cliente.GetFromJsonAsync<PaginaDto<EnvioResumenDto>>($"api/envios?{consulta}"))!;

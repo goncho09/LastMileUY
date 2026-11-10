@@ -1,13 +1,14 @@
-namespace LastMileUY.API.Tests.Avisos;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
-using Infrastructure.Persistence;
-using Modules.Notificaciones.Application;
-using Modules.Notificaciones.Domain;
-using Multitenancy;
+using LastMileUY.API.Infrastructure.Persistence;
+using LastMileUY.API.Modules.Notificaciones.Application;
+using LastMileUY.API.Modules.Notificaciones.Domain;
+using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
-using static Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Avisos;
+
+using static BaseConDosOperadores;
 
 // Panel de avisos del comercio (historial y reenvío de fallidos), contra la base real con RLS.
 // La base es compartida entre los tests: cada uno crea sus propios avisos.
@@ -122,8 +123,8 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         // El historial no se pierde: el reenvío va a ser el intento 7
         Assert.Equal(6, aviso.CantidadIntentos);
     }
-    
-    
+
+
     [Fact]
     public async Task Dos_reenvios_concurrentes_solo_permiten_uno()
     {
@@ -173,7 +174,7 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         // Exactamente una solicitud debe aceptar el reenvío.
         Assert.Single(resultados, x => x);
 
-// La otra solicitud debe ser rechazada.
+        // La otra solicitud debe ser rechazada.
         Assert.Single(resultados, x => !x);
 
         // Comprobamos el estado final en la base de datos.

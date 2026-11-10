@@ -18,8 +18,8 @@ public static class Permisos
     public const string PoliticaOperacion = "OperacionLogistica";
 
     // Quién entra al Backoffice. El repartidor usa su app y el comercio su portal.
-    public static readonly string[] RolesBackoffice = [Administrador,Operador, Despachador];
-    
+    public static readonly string[] RolesBackoffice = [Administrador, Operador, Despachador];
+
     public static readonly string[] RolesAdministracionGlobal =
         [Administrador];
 

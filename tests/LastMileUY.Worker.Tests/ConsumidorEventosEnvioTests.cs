@@ -1,13 +1,14 @@
-using Npgsql;
-
-namespace LastMileUY.Worker.Tests;
-
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
+
+namespace LastMileUY.Worker.Tests;
+
 using static EntornoDelWorker;
 
 // El consumidor contra un RabbitMQ real, con un procesador de prueba que falla las veces que se le
@@ -24,7 +25,7 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
     private IConnection conexion = null!;
     private IChannel canal = null!;
     private NpgsqlDataSource dataSource = null!;
-    
+
 
     public async Task InitializeAsync()
     {
@@ -169,7 +170,7 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
             await prueba.QueueDeclarePassiveAsync(cola);
             return true;
         }
-        catch (RabbitMQ.Client.Exceptions.OperationInterruptedException)
+        catch (OperationInterruptedException)
         {
             return false;
         }

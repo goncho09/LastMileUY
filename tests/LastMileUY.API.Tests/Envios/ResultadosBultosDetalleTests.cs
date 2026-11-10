@@ -1,8 +1,5 @@
-namespace LastMileUY.API.Tests.Envios;
-
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
-using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Sincronizacion.Application;
@@ -14,7 +11,10 @@ using LastMileUY.Contracts.Sincronizacion;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Envios;
+
+using static BaseConDosOperadores;
 
 // El detalle del envío (Backoffice y portal del comercio) muestra qué pasó con cada bulto en cada
 // intento, y la prueba de entrega de cada intento respalda solo los bultos que se entregaron en él.

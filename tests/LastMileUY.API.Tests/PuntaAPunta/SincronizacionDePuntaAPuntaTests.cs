@@ -1,12 +1,12 @@
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Entregas;
 using LastMileUY.Contracts.Envios;
-using LastMileUY.Contracts.Rutas;
 using LastMileUY.Contracts.Sincronizacion;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
+
 using static ApiDePuntaAPunta;
 
 // Sincronización por HTTP con los usuarios reales: el repartidor manda una entrega con su firma

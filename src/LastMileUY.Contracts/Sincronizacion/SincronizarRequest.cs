@@ -51,8 +51,8 @@ public class OperacionRequest
     // Imágenes PNG o JPEG en base64, de hasta 1 MB cada una
     public string? FirmaBase64 { get; set; }
 
-    public string? FotoBase64 { get; set; } 
-    
+    public string? FotoBase64 { get; set; }
+
     // Entrega parcial: resultado individual de cada bulto.
     // Null para las operaciones tradicionales.
     public List<ResultadoBultoRequest>? ResultadosBultos { get; set; }

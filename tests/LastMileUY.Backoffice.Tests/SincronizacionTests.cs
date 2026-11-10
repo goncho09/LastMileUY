@@ -1,7 +1,7 @@
-namespace LastMileUY.Backoffice.Tests;
-
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
+using LastMileUY.Backoffice.Pages.Rutas;
 using LastMileUY.Backoffice.Pages.Sincronizacion;
 using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Contracts.Comun;
@@ -12,7 +12,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
-using DetalleDeRuta = LastMileUY.Backoffice.Pages.Rutas.DetalleModel;
+using IndexModel = LastMileUY.Backoffice.Pages.Sincronizacion.IndexModel;
+
+namespace LastMileUY.Backoffice.Tests;
+
+using DetalleDeRuta = DetalleModel;
 
 // Lo que llegó de la app del repartidor, en el Backoffice: el cliente HTTP, los datos de prueba,
 // la página Sincronización, la sección del detalle de la ruta y la descarga de la evidencia
@@ -164,7 +168,7 @@ public class SincronizacionTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var contenido = new ByteArrayContent(cuerpo);
-            contenido.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(tipo);
+            contenido.Headers.ContentType = new MediaTypeHeaderValue(tipo);
 
             return Task.FromResult(new HttpResponseMessage(codigo) { Content = contenido });
         }

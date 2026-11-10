@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Envios;
 
@@ -52,7 +51,7 @@ public class EnviosApiHttp(HttpClient http) : IEnviosApi
 
         return await respuesta.Content.ReadFromJsonAsync<EnvioDetalleDto>(ct);
     }
-    
+
     public async Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
         CancellationToken ct = default)
     {

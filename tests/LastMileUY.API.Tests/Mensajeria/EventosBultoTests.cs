@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Mensajeria;
-
 using System.Text.Json;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
@@ -8,7 +6,10 @@ using LastMileUY.API.Tests.Rutas;
 using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Mensajeria;
+
+using static BaseConDosOperadores;
 
 // Eventos de bulto en el outbox (entrega parcial, ver docs/mensajeria.md): cada bulto que cambia de
 // estado deja su mensaje en el mismo guardado que el cambio, con el código del bulto y el motivo.

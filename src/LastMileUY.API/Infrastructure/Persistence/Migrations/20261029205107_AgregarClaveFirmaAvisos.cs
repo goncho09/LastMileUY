@@ -10,7 +10,7 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            
+
             migrationBuilder.AddColumn<string>(
                 name: "ClaveFirma",
                 table: "SuscripcionesAvisos",
@@ -21,7 +21,7 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
             migrationBuilder.Sql("""
                                  CREATE EXTENSION IF NOT EXISTS pgcrypto;
                                  """);
-            
+
             // Generar una clave aleatoria distinta para cada
             // suscripción que ya existe en PostgreSQL.
             migrationBuilder.Sql("""

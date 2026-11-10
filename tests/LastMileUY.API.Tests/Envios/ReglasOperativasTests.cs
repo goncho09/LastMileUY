@@ -1,16 +1,17 @@
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Modules.Entregas.Domain;
+using LastMileUY.API.Modules.Envios.Application;
+using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.API.Tests.Multitenancy;
+using LastMileUY.Contracts.Envios;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Tests.Envios;
 
-using LastMileUY.API.Modules.Envios.Application;
-using LastMileUY.API.Modules.Envios.Domain;
-using Multitenancy;
-using LastMileUY.Contracts.Envios;
-using Microsoft.EntityFrameworkCore;
-using static Multitenancy.BaseConDosOperadores;
+using static BaseConDosOperadores;
 
 // Cada operador trabaja con sus propias reglas operativas. En la base de prueba,
 // el operador A permite 1 intento de entrega fallido y el B permite 2.
@@ -23,7 +24,7 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
             new Claim(ClaimTypes.NameIdentifier, "usuario-operador-1"),
             new Claim(ClaimTypes.Role, "Operador")
         ], "Test"));
-    
+
     [Fact]
     public async Task Con_los_intentos_agotados_no_se_puede_reprogramar()
     {
@@ -110,7 +111,7 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
             "AsignadoARuta", "EnTransito", "Entregado");
 
         await using var db = baseDeDatos.CrearContexto(OperadorB);
-        var intentos = await db.Set<Modules.Entregas.Domain.IntentoEntrega>()
+        var intentos = await db.Set<IntentoEntrega>()
             .Where(i => i.EnvioId == id)
             .OrderBy(i => i.NumeroIntento)
             .ToListAsync();
@@ -145,7 +146,7 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
     }
 
     // Pasa el envío por los estados indicados, cada uno en su propio pedido (como desde el Backoffice)
-    
+
     private async Task LlevarAsync(
         int operadorId,
         int id,
@@ -207,7 +208,7 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
         Assert.NotNull(detalle);
         return detalle;
     }
-    
+
     [Theory]
     [InlineData("AsignadoARuta")]
     [InlineData("EnTransito")]

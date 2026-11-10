@@ -13,7 +13,7 @@ public static class TransicionesEnvio
         // 3, 4, 13
         [EstadoEnvio.AsignadoARuta] = [EstadoEnvio.EnDeposito, EstadoEnvio.EnTransito, EstadoEnvio.Extraviado],
         // 5, 6, 7, 13
-        [EstadoEnvio.EnTransito] = [EstadoEnvio.Entregado,EstadoEnvio.EntregadoParcialmente, EstadoEnvio.NoEntregado, EstadoEnvio.EnDeposito, EstadoEnvio.Extraviado],
+        [EstadoEnvio.EnTransito] = [EstadoEnvio.Entregado, EstadoEnvio.EntregadoParcialmente, EstadoEnvio.NoEntregado, EstadoEnvio.EnDeposito, EstadoEnvio.Extraviado],
         // 8, 9
         [EstadoEnvio.NoEntregado] = [EstadoEnvio.Reprogramado, EstadoEnvio.EnDevolucion],
         // 10

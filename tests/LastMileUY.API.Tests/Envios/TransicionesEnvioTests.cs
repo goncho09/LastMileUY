@@ -1,6 +1,6 @@
-namespace LastMileUY.API.Tests.Envios;
-
 using LastMileUY.API.Modules.Envios.Domain;
+
+namespace LastMileUY.API.Tests.Envios;
 
 public class TransicionesEnvioTests
 {

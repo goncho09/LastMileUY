@@ -30,7 +30,7 @@ public class MensajesFallidosApiDePrueba : IMensajesFallidosApi
     {
         return Task.FromResult<MensajeFallidoDetalleResponse?>(null);
     }
-    
+
     public Task<bool> ReintentarAsync(
         Guid id,
         CancellationToken ct = default)

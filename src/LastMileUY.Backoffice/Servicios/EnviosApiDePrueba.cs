@@ -136,7 +136,7 @@ public class EnviosApiDePrueba : IEnviosApi
     {
         Canal = e.Canal
     };
-    
+
     public Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
         CancellationToken ct = default)
     {

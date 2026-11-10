@@ -11,7 +11,7 @@ public class Zona : IPerteneceAOperador
     public string? Descripcion { get; set; }
 
     public bool Activa { get; set; } = true;
-    
+
     public ICollection<FranjaHoraria> FranjasHorarias { get; set; }
         = new List<FranjaHoraria>();
 }

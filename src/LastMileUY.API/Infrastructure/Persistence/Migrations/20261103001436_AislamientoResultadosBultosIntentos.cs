@@ -8,7 +8,7 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
     public partial class AislamientoResultadosBultosIntentos : Migration
     {
         /// <inheritdoc />
-        
+
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("""

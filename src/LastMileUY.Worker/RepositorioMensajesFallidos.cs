@@ -1,13 +1,13 @@
-﻿using Npgsql;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
+using Npgsql;
 
 namespace LastMileUY.Worker;
 
 public sealed class RepositorioMensajesFallidos(
     NpgsqlDataSource dataSource)
 {
-    
+
     public static Guid GenerarIdIncidencia(
         string mensajeId,
         string contenido,
@@ -26,7 +26,7 @@ public sealed class RepositorioMensajesFallidos(
         return new Guid(hash.AsSpan(0, 16));
     }
 
-    
+
     public async Task<Guid> RegistrarAsync(
         string mensajeId,
         string? correlacionId,
@@ -89,8 +89,8 @@ public sealed class RepositorioMensajesFallidos(
 
         return id;
     }
-    
-    
+
+
     public async Task MarcarResueltoAsync(
         Guid incidenciaId,
         CancellationToken ct)
@@ -116,8 +116,8 @@ public sealed class RepositorioMensajesFallidos(
 
         await comando.ExecuteNonQueryAsync(ct);
     }
-    
-    
+
+
     public async Task MarcarFallidoNuevamenteAsync(
         Guid incidenciaId,
         string error,

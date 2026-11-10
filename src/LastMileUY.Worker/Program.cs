@@ -2,11 +2,11 @@ using LastMileUY.Contracts.Mensajeria;
 using LastMileUY.Worker;
 using Npgsql;
 using OpenTelemetry.Exporter;
-using Serilog;
-using Serilog.Events;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Events;
 
 var builder = Host.CreateApplicationBuilder(args);
 

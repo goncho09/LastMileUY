@@ -1,5 +1,3 @@
-namespace LastMileUY.API.Tests.Multitenancy;
-
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
@@ -13,6 +11,9 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
+namespace LastMileUY.API.Tests.Multitenancy;
+
 using static BaseConDosOperadores;
 
 // El seguimiento público muestra el avance de la entrega por bultos (entrega parcial, requerimiento 35):

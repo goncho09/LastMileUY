@@ -1,11 +1,11 @@
-namespace LastMileUY.Worker.Tests;
-
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+
+namespace LastMileUY.Worker.Tests;
 
 // El receptor de avisos de prueba (LastMileUY.ReceptorAvisos) escuchando de verdad en 127.0.0.1, en un
 // puerto libre: el worker le manda los avisos por la red, con el mismo manejador HTTP que en producción.
@@ -26,7 +26,7 @@ public sealed class ReceptorDePrueba : IAsyncDisposable
     }
 
     public Uri Direccion { get; }
-    
+
     public void RegistrarClave(int suscripcionId, string claveFirma)
     {
         fabrica.Services

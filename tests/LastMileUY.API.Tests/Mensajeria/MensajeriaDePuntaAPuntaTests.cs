@@ -1,11 +1,12 @@
-namespace LastMileUY.API.Tests.Mensajeria;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.API.Tests.PuntaAPunta;
 using LastMileUY.Contracts.Envios;
 using LastMileUY.Contracts.Mensajeria;
-using static LastMileUY.API.Tests.PuntaAPunta.ApiDePuntaAPunta;
+
+namespace LastMileUY.API.Tests.Mensajeria;
+
+using static ApiDePuntaAPunta;
 
 // De punta a punta, con PostgreSQL y RabbitMQ reales: lo que se hace por HTTP llega como evento a
 // RabbitMQ, con el identificador de correlación del pedido y sin datos personales.

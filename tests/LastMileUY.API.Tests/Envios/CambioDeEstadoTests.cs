@@ -1,7 +1,4 @@
 using System.Security.Claims;
-
-namespace LastMileUY.API.Tests.Envios;
-
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Domain;
@@ -9,7 +6,10 @@ using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Envios;
+
+using static BaseConDosOperadores;
 
 // Cambio de estado y alta de envíos contra la base real: historial, bultos, duplicados y concurrencia
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
@@ -24,7 +24,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
                 new Claim(ClaimTypes.Role, "Operador")
             ], "Test"));
     }
-    
+
     [Fact]
     public async Task Cambiar_el_estado_lo_guarda_y_lo_deja_en_el_historial()
     {
@@ -120,7 +120,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
     {
         await VincularOperadorConComercioAsync();
         await using var db = baseDeDatos.CrearContexto(OperadorA);
-        
+
         var request = new CrearEnvioRequest
         {
             ComercioId = 1,
@@ -161,7 +161,10 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
         await VincularOperadorConComercioAsync();
         var request = new CrearEnvioRequest
         {
-            ComercioId = 1, DestinatarioId = 1, DireccionId = 1, ReferenciaExterna = "PED-DUPLICADO"
+            ComercioId = 1,
+            DestinatarioId = 1,
+            DireccionId = 1,
+            ReferenciaExterna = "PED-DUPLICADO"
         };
 
         var usuario = new ClaimsPrincipal(
@@ -194,7 +197,9 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
         await using var db = baseDeDatos.CrearContexto(OperadorA);
         var request = new CrearEnvioRequest
         {
-            ComercioId = 1, DestinatarioId = 1, DireccionId = 1,
+            ComercioId = 1,
+            DestinatarioId = 1,
+            DireccionId = 1,
             Bultos = [new CrearBultoRequest { PesoKg = 0, LargoCm = 10, AnchoCm = 10, AltoCm = 10 }]
         };
 
@@ -204,15 +209,15 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
                 new Claim(ClaimTypes.NameIdentifier, "usuario-1"),
                 new Claim(ClaimTypes.Role, "Operador")
             ], "Test"));
-        
+
         await Assert.ThrowsAsync<ArgumentException>(() =>
             new CrearEnvioService(
                 db,
                 new ContextoOperadorFijo(OperadorA)
             ).EjecutarAsync(request, usuario));
     }
-    
-    
+
+
     [Theory]
     [InlineData("Entregado")]
     [InlineData("NoEntregado")]
@@ -250,7 +255,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
             ).EjecutarAsync(request, CrearUsuarioOperador());
 
             envioId = creado.Id;
-            
+
             // Preparar el envío en estado EnTransito
             var envioPreparado = await db.Envios
                 .SingleAsync(e => e.Id == envioId);

@@ -21,5 +21,5 @@ public class Direccion
     public string? Referencia { get; set; }
 
     public bool Activa { get; set; } = true;
-    
+
 }

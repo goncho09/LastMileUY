@@ -14,7 +14,7 @@ public static class EnviosEndpoints
         var group = app.MapGroup("/api/envios")
             .WithTags("Envíos")
             .RequireAuthorization();
-        
+
         // Listado paginado: ?pagina=1&tamanioPagina=20&estado=EnTransito&buscar=texto&canal=Portal
         group.MapGet("/", async (
                 ConsultasEnviosService consultas,
@@ -92,16 +92,16 @@ public static class EnviosEndpoints
                 CancellationToken cancellationToken) =>
             {
                 try
-                  {
-                  var envio = await service.EjecutarAsync(
-                      request,
-                      usuario,
-                      cancellationToken);
+                {
+                    var envio = await service.EjecutarAsync(
+                        request,
+                        usuario,
+                        cancellationToken);
 
-                  return Results.Created(
-                      $"/api/envios/{envio.Id}",
-                      envio);
-                  }
+                    return Results.Created(
+                        $"/api/envios/{envio.Id}",
+                        envio);
+                }
                 catch (UnauthorizedAccessException)
                 {
                     return Results.Forbid();
@@ -152,7 +152,7 @@ public static class EnviosEndpoints
                         {
                             mensaje = "El envío no existe."
                         });
-                    
+
                     return Results.Ok(await consultas.ObtenerDetalleAsync(id, cancellationToken));
                 }
                 catch (UnauthorizedAccessException)
@@ -176,8 +176,8 @@ public static class EnviosEndpoints
             })
             .RequireAuthorization(politica => politica.RequireRole("Operador", "Despachador"))
             .WithName("CambiarEstadoEnvio");
-        
-        
+
+
         group.MapGet("/actividad-reciente", async (
                 ConsultasEnviosService consultas,
                 IContextoOperador contextoOperador,
@@ -201,7 +201,7 @@ public static class EnviosEndpoints
             .RequireAuthorization(politica =>
                 politica.RequireRole("Operador", "Despachador"))
             .WithName("ObtenerActividadReciente");
-        
+
         return app;
     }
 }

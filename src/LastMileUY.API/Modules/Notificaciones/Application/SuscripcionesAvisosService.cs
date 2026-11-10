@@ -3,7 +3,6 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Notificaciones.Domain;
 using LastMileUY.Contracts.Avisos;
-using LastMileUY.Contracts.Mensajeria;
 using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Notificaciones.Application;
@@ -108,8 +107,8 @@ public class SuscripcionesAvisosService(
             suscripcion.Id, suscripcion.TipoEvento, suscripcion.UrlDestino, suscripcion.Activa, suscripcion.FechaCreacion,
             suscripcion.VersionContrato);
     }
-    
-    
+
+
     public async Task<SuscripcionAvisosCreadaDto?> RegenerarClaveAsync(
         int id,
         CancellationToken cancellationToken = default)

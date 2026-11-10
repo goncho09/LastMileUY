@@ -1,10 +1,11 @@
-namespace LastMileUY.API.Tests.PuntaAPunta;
-
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Comun;
 using LastMileUY.Contracts.Operadores;
 using LastMileUY.Contracts.Sincronizacion;
+
+namespace LastMileUY.API.Tests.PuntaAPunta;
+
 using static ApiDePuntaAPunta;
 
 // Reglas de entrega parcial por HTTP: quién las ve y las publica, y que cada operación

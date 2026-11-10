@@ -72,7 +72,7 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
     // Vuelve a dejar Pendiente un aviso Fallido: el worker lo manda en unos segundos, como un intento más
     // (queda en el historial). Si ese intento también falla, vuelve a Fallido sin otra ronda de reintentos.
     // null si no existe o es de otro comercio; ArgumentException si no se puede reenviar.
-   
+
     public async Task<AvisoResumenDto?> ReenviarAsync(
         int id,
         CancellationToken cancellationToken = default)

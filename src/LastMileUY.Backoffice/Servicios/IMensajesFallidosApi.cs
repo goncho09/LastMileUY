@@ -6,7 +6,7 @@ public interface IMensajesFallidosApi
 {
     Task<ResumenMensajesFallidosDto> ObtenerResumenAsync(
         CancellationToken ct = default);
-    
+
     Task<PaginaResponse<MensajeFallidoResponse>> ListarAsync(
         FiltroMensajesFallidos filtro,
         CancellationToken ct = default);
@@ -14,7 +14,7 @@ public interface IMensajesFallidosApi
     Task<MensajeFallidoDetalleResponse?> ObtenerDetalleAsync(
         Guid id,
         CancellationToken ct = default);
-    
+
     Task<bool> ReintentarAsync(
         Guid id,
         CancellationToken ct = default);
@@ -22,5 +22,4 @@ public interface IMensajesFallidosApi
 
 public record ResumenMensajesFallidosDto(
     int CantidadPendientes);
-    
-    
+

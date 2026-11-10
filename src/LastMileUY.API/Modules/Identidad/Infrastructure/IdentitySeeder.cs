@@ -11,7 +11,7 @@ namespace LastMileUY.API.Modules.Identidad.Infrastructure;
 
 public class IdentitySeeder
 {
-    
+
     public static async Task SeedRolesAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
@@ -50,100 +50,100 @@ public class IdentitySeeder
                 throw new InvalidOperationException(
                     $"No se pudo crear el rol '{nombre}': {errores}");
             }
-            
+
         }
-        
+
         Console.WriteLine("Roles inicializados correctamente");
     }
-    
-    
-public static async Task SeedAdminAsync(IServiceProvider services)
-{
-    using var scope = services.CreateScope();
 
-    var userManager = scope.ServiceProvider
-        .GetRequiredService<UserManager<Usuario>>();
 
-    var configuration = scope.ServiceProvider
-        .GetRequiredService<IConfiguration>();
-
-    var environment = scope.ServiceProvider
-        .GetRequiredService<IHostEnvironment>();
-
-    if (!environment.IsDevelopment() &&
-        !configuration.GetValue<bool>("SeedAdmin:Enabled"))
+    public static async Task SeedAdminAsync(IServiceProvider services)
     {
-        return;
-    }
+        using var scope = services.CreateScope();
 
-    var email = configuration["SeedAdmin:Email"];
-    var password = configuration["SeedAdmin:Password"];
+        var userManager = scope.ServiceProvider
+            .GetRequiredService<UserManager<Usuario>>();
 
-    if (string.IsNullOrWhiteSpace(email) ||
-        string.IsNullOrWhiteSpace(password))
-    {
-        return;
-    }
+        var configuration = scope.ServiceProvider
+            .GetRequiredService<IConfiguration>();
 
-    var usuario = await userManager.FindByEmailAsync(email);
+        var environment = scope.ServiceProvider
+            .GetRequiredService<IHostEnvironment>();
 
-    if (usuario is null)
-    {
-        usuario = new Usuario
+        if (!environment.IsDevelopment() &&
+            !configuration.GetValue<bool>("SeedAdmin:Enabled"))
         {
-            UserName = email,
-            Email = email,
-            Nombre = "Administrador",
-            Apellido = "Sistema",
-            EmailConfirmed = true,
-            Activo = true
-        };
-
-        var resultado = await userManager.CreateAsync(usuario, password);
-
-        if (!resultado.Succeeded)
-        {
-            throw new InvalidOperationException(
-                "No se pudo crear el administrador: " +
-                string.Join(", ", resultado.Errors.Select(e => e.Description)));
+            return;
         }
 
-        Console.WriteLine($"Administrador {email} creado");
-    }
-    else if (environment.IsDevelopment())
-    {
-        // Solo en Development: sincronizar la contraseña de prueba.
-        var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
+        var email = configuration["SeedAdmin:Email"];
+        var password = configuration["SeedAdmin:Password"];
 
-        var resultado = await userManager.ResetPasswordAsync(
-            usuario, token, password);
-
-        if (!resultado.Succeeded)
+        if (string.IsNullOrWhiteSpace(email) ||
+            string.IsNullOrWhiteSpace(password))
         {
-            throw new InvalidOperationException(
-                "No se pudo actualizar la contraseña del administrador: " +
-                string.Join(", ", resultado.Errors.Select(e => e.Description)));
+            return;
         }
-    }
 
-    // Asegurar que tenga el rol Administrador.
-    if (!await userManager.IsInRoleAsync(usuario, "Administrador"))
-    {
-        var resultadoRol = await userManager.AddToRoleAsync(
-            usuario, "Administrador");
+        var usuario = await userManager.FindByEmailAsync(email);
 
-        if (!resultadoRol.Succeeded)
+        if (usuario is null)
         {
-            throw new InvalidOperationException(
-                "No se pudo asignar el rol Administrador: " +
-                string.Join(", ", resultadoRol.Errors.Select(e => e.Description)));
+            usuario = new Usuario
+            {
+                UserName = email,
+                Email = email,
+                Nombre = "Administrador",
+                Apellido = "Sistema",
+                EmailConfirmed = true,
+                Activo = true
+            };
+
+            var resultado = await userManager.CreateAsync(usuario, password);
+
+            if (!resultado.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "No se pudo crear el administrador: " +
+                    string.Join(", ", resultado.Errors.Select(e => e.Description)));
+            }
+
+            Console.WriteLine($"Administrador {email} creado");
         }
+        else if (environment.IsDevelopment())
+        {
+            // Solo en Development: sincronizar la contraseña de prueba.
+            var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
+
+            var resultado = await userManager.ResetPasswordAsync(
+                usuario, token, password);
+
+            if (!resultado.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "No se pudo actualizar la contraseña del administrador: " +
+                    string.Join(", ", resultado.Errors.Select(e => e.Description)));
+            }
+        }
+
+        // Asegurar que tenga el rol Administrador.
+        if (!await userManager.IsInRoleAsync(usuario, "Administrador"))
+        {
+            var resultadoRol = await userManager.AddToRoleAsync(
+                usuario, "Administrador");
+
+            if (!resultadoRol.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "No se pudo asignar el rol Administrador: " +
+                    string.Join(", ", resultadoRol.Errors.Select(e => e.Description)));
+            }
+        }
+
+        Console.WriteLine("Admin inicializado correctamente");
     }
 
-    Console.WriteLine("Admin inicializado correctamente");
-}
 
-    
     // Crea dos operadores de prueba (si no existen) y devuelve sus Id.
     // Se buscan por nombre y el Id lo pone la base: si se fijara a mano,
     // la secuencia no avanza y el próximo operador creado chocaría con ese Id.

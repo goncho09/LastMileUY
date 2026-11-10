@@ -1,14 +1,14 @@
-namespace LastMileUY.API.Tests.Rutas;
-
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Operadores.Domain;
 using LastMileUY.API.Modules.Rutas.Application;
-using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Rutas;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
+
+namespace LastMileUY.API.Tests.Rutas;
+
+using static BaseConDosOperadores;
 
 // Hojas de ruta contra la base real: armado, validaciones (capacidad, franjas, duplicados),
 // orden de las paradas, despacho y descarga por el repartidor asignado.
@@ -393,7 +393,10 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         var tarde = new FranjaHoraria { Nombre = "Tarde", HoraInicio = new TimeOnly(14, 0), HoraFin = new TimeOnly(18, 0) };
         var inactiva = new FranjaHoraria
         {
-            Nombre = "Noche", HoraInicio = new TimeOnly(19, 0), HoraFin = new TimeOnly(21, 0), Activa = false
+            Nombre = "Noche",
+            HoraInicio = new TimeOnly(19, 0),
+            HoraFin = new TimeOnly(21, 0),
+            Activa = false
         };
 
         db.Zonas.Add(new Zona { Nombre = $"Zona {Guid.NewGuid():N}", FranjasHorarias = { manana, tarde, inactiva } });

@@ -27,7 +27,7 @@ public class BultoConfiguration : IEntityTypeConfiguration<Bulto>
 
         builder.Property(b => b.Descripcion)
             .HasMaxLength(500);
-        
+
         // Estado individual del bulto.
         builder.Property(b => b.Estado)
             .HasConversion<string>()

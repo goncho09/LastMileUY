@@ -1,11 +1,11 @@
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
 using Npgsql;
-using RabbitMQ.Client;
-using System.Diagnostics;
-using System.Text;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
+using RabbitMQ.Client;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
@@ -150,7 +150,7 @@ public class PublicadorOutbox(
 
             canal = await rabbit.CrearCanalAsync(cancellationToken);
         }
-        
+
         using var actividad = TelemetriaMensajeria.Actividades.StartActivity(
             "rabbitmq publish",
             ActivityKind.Producer);

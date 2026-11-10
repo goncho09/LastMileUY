@@ -1,6 +1,6 @@
-﻿namespace LastMileUY.API.Modules.Operadores.Domain;
+﻿using LastMileUY.API.Modules.Envios.Domain;
 
-using LastMileUY.API.Modules.Envios.Domain;
+namespace LastMileUY.API.Modules.Operadores.Domain;
 
 public class ReglaOperativa : IPerteneceAOperador
 {
@@ -23,7 +23,7 @@ public class ReglaOperativa : IPerteneceAOperador
     public bool RequiereDocumentoReceptor { get; set; }
 
     public int HorasParaIniciarDevolucion { get; set; }
-    
+
     public ModalidadEnvio Modalidad { get; set; }
 
     public int PlazoEntregaHoras { get; set; }

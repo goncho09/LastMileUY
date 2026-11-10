@@ -17,7 +17,7 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 maxLength: 30,
                 nullable: false,
                 defaultValue: "Pendiente");
-            
+
             migrationBuilder.Sql("""
                                  UPDATE "Bultos" AS b
                                  SET "Estado" = CASE

@@ -1,7 +1,7 @@
-namespace LastMileUY.DriverPWA.Tests;
-
 using System.Net;
 using LastMileUY.DriverPWA.Services;
+
+namespace LastMileUY.DriverPWA.Tests;
 
 // Las reglas de lo que la app guarda en el celular (docs/datos-locales.md): vencimiento y un solo
 // usuario. El cifrado lo hace el navegador (wwwroot/js/almacen.js); acá el navegador se simula con
@@ -117,7 +117,7 @@ public class AlmacenLocalTests
         Assert.Equal(1, navegador.VecesBorradoTodo);
     }
 
-  
+
     [Fact]
     public async Task Al_cerrar_sesion_no_se_borran_datos_si_la_api_no_responde()
     {

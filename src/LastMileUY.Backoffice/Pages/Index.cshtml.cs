@@ -1,4 +1,3 @@
-
 using LastMileUY.Backoffice.Servicios;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +16,7 @@ public class IndexModel(
     public int Incidencias { get; private set; }
 
     public string? Error { get; private set; }
-    
+
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
         // Los administradores van directamente a Mensajes fallidos
@@ -102,8 +101,8 @@ public class IndexModel(
             entregados.Total,
             noEntregados.Total + extraviados.Total);
     }
-    
-    
+
+
     public async Task<IActionResult> OnGetActividadAsync(
         CancellationToken ct)
     {
