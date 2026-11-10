@@ -1,43 +1,63 @@
 ﻿  services:
     postgres:
       ports: !reset [ ]
+      restart: unless-stopped
 
     redis:
       ports: !reset [ ]
-
+      restart: unless-stopped
+    
     rabbitmq:
       ports: !reset [ ]
       environment:
         RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Configurar RABBITMQ_PASSWORD}
-
+      restart: unless-stopped
+    
     lastmileuy.api:
-      ports:
+      ports: !override
         - "127.0.0.1:8080:8080"
       environment:
         ASPNETCORE_ENVIRONMENT: Production
         Avisos__PermitirDestinosLocales: "false"
+        SeedAdmin__Enabled: "false"
+      restart: unless-stopped
 
     lastmileuy.backoffice:
-      ports:
+      ports: !override
         - "127.0.0.1:8081:8080"
-
+      environment:
+        ASPNETCORE_ENVIRONMENT: Production
+      volumes: !override
+        - claves_backoffice:/claves
+      restart: unless-stopped
+    
     lastmileuy.commerceportal:
-      ports:
+      ports: !override
         - "127.0.0.1:8082:8080"
-
+      restart: unless-stopped
+    
     lastmileuy.driverpwa:
-      ports:
-        - "127.0.0.1:8083:80"
-
+      ports: !override
+         - "127.0.0.1:8083:80"
+      restart: unless-stopped
+    
     lastmileuy.publictracking:
-      ports:
+      ports: !override
         - "127.0.0.1:8084:8080"
-
+      restart: unless-stopped
+    
     lastmileuy.worker:
       environment:
         DOTNET_ENVIRONMENT: Production
         Avisos__PermitirDestinosLocales: "false"
-
+      restart: unless-stopped
+    
     grafana:
       environment:
         GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Configurar GRAFANA_ADMIN_PASSWORD}
+      restart: unless-stopped
+    
+    lastmileuy.receptoravisos:
+      environment:
+        ASPNETCORE_ENVIRONMENT: Production
+      restart: unless-stopped
