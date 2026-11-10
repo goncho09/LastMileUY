@@ -2,12 +2,16 @@ extern alias Portal;
 
 namespace LastMileUY.E2E.Tests;
 
+using System.Net.Http.Json;
+using LastMileUY.Contracts.Auth;
+using LastMileUY.Contracts.Envios;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using ProgramPortal = Portal::Program;
 
@@ -32,6 +36,8 @@ public class PortalComercioEnNavegador : IAsyncLifetime
 
     public string DireccionPortal { get; private set; } = string.Empty;
 
+    private string direccionApi = string.Empty;
+
     public async Task InitializeAsync()
     {
         await baseDeDatos.StartAsync();
@@ -40,7 +46,8 @@ public class PortalComercioEnNavegador : IAsyncLifetime
         api.UseKestrel(0);
         api.StartServer();
 
-        portal = new PortalReal(Direccion(api.Services), carpetaClaves);
+        direccionApi = Direccion(api.Services);
+        portal = new PortalReal(direccionApi, carpetaClaves);
         portal.UseKestrel(0);
         portal.StartServer();
         DireccionPortal = Direccion(portal.Services);
@@ -54,8 +61,8 @@ public class PortalComercioEnNavegador : IAsyncLifetime
     }
 
     // Una ventana nueva con la sesión del comercio de prueba. Ese comercio trabaja con dos operadores:
-    // después del login elige el primero
-    public async Task<IPage> IniciarSesionAsync()
+    // después del login elige el que se pida, o el primero
+    public async Task<IPage> IniciarSesionAsync(string? operador = null)
     {
         var contexto = await Navegador.NewContextAsync(new BrowserNewContextOptions
         {
@@ -74,12 +81,63 @@ public class PortalComercioEnNavegador : IAsyncLifetime
         if (pagina.Url.Contains("/seleccionar-operador", StringComparison.OrdinalIgnoreCase))
         {
             // El radio está oculto: se elige tocando la tarjeta del operador, como una persona
-            await pagina.Locator("label:has(input[name='Formulario.OperadorId'])").First.ClickAsync();
+            var tarjetas = pagina.Locator("label:has(input[name='Formulario.OperadorId'])");
+            await (operador is null ? tarjetas.First : tarjetas.Filter(new() { HasText = operador })).ClickAsync();
             await pagina.GetByRole(AriaRole.Button, new() { Name = "Continuar con el operador" }).ClickAsync();
             await pagina.WaitForURLAsync(url => !url.Contains("/seleccionar-operador", StringComparison.OrdinalIgnoreCase));
         }
 
         return pagina;
+    }
+
+    // Un envío de un bulto del Comercio Prueba 1 con el Operador Prueba 1, dado de alta por el operador
+    // de prueba directo en la API (la cookie es Secure y acá no hay https: se manda a mano)
+    public async Task<EnvioResponse> EnvioDelComercioAsync()
+    {
+        using var operador = new HttpClient(new CookieAMano()) { BaseAddress = new Uri(direccionApi + "/") };
+        using (var login = await operador.PostAsJsonAsync("api/auth/login",
+                   new LoginRequest { Email = AppRepartidorEnNavegador.Operador, Password = AppRepartidorEnNavegador.Clave }))
+        {
+            login.EnsureSuccessStatusCode();
+        }
+
+        var destino = await ConsultarAsync("""
+            SELECT c."Id", d."Id", di."Id"
+            FROM "Comercios" c
+            JOIN "Destinatarios" d ON d."ComercioId" = c."Id"
+            JOIN "Direcciones" di ON di."DestinatarioId" = d."Id"
+            WHERE c."Nombre" = 'Comercio Prueba 1'
+            ORDER BY d."Id", di."Id"
+            LIMIT 1
+            """);
+
+        using var alta = await operador.PostAsJsonAsync("api/envios", new CrearEnvioRequest
+        {
+            ComercioId = (int)destino[0],
+            DestinatarioId = (int)destino[1],
+            DireccionId = (int)destino[2],
+            Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10, Descripcion = "Caja" }]
+        });
+        alta.EnsureSuccessStatusCode();
+
+        return (await alta.Content.ReadFromJsonAsync<EnvioResponse>())!;
+    }
+
+    // Con el superusuario de la base (saltea RLS), para cargar lo que en la realidad escribe el worker.
+    // Devuelve la primera fila
+    public async Task<object[]> ConsultarAsync(string sql)
+    {
+        await using var conexion = new NpgsqlConnection(baseDeDatos.GetConnectionString());
+        await conexion.OpenAsync();
+        await using var comando = new NpgsqlCommand(sql, conexion);
+        await using var lector = await comando.ExecuteReaderAsync();
+
+        if (!await lector.ReadAsync())
+            throw new InvalidOperationException("La consulta no devolvió filas.");
+
+        var valores = new object[lector.FieldCount];
+        lector.GetValues(valores);
+        return valores;
     }
 
     private static string Direccion(IServiceProvider servicios) =>

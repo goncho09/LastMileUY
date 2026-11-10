@@ -9,9 +9,9 @@
 <div class="space-y-6">
     <!-- Filtro -->
     <div class="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-[#151927] p-4">
-        <label class="flex min-w-[220px] flex-col gap-1.5 text-xs font-medium text-slate-400">
-            Estado
-            <select @bind="estado" @bind:after="FiltrarAsync"
+        <div class="flex min-w-[220px] flex-col gap-1.5 text-xs font-medium text-slate-400">
+            <label for="filtro-estado-aviso">Estado</label>
+            <select id="filtro-estado-aviso" @bind="estado" @bind:after="FiltrarAsync"
                     class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20">
                 <option value="">Todos</option>
                 @foreach (var (valor, texto) in Estados)
@@ -19,7 +19,7 @@
                     <option value="@valor">@texto</option>
                 }
             </select>
-        </label>
+        </div>
     </div>
 
     @if (mensaje is not null)
