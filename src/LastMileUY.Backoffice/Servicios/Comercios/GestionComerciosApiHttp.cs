@@ -1,4 +1,5 @@
-﻿
+﻿using LastMileUY.Contracts.Administracion;
+
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Comercios;
@@ -23,7 +24,7 @@ public sealed class GestionComerciosApiHttp(HttpClient http)
     }
 
     public async Task<ComercioAdminDto> CrearAsync(
-        GuardarComercioAdminRequest request)
+        CrearComercioConUsuarioRequest request)
     {
         using var r = await http.PostAsJsonAsync(Ruta, request);
         await VerificarAsync(r);

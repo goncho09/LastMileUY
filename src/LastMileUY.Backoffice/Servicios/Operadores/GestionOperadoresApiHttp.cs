@@ -1,4 +1,5 @@
-﻿
+﻿using LastMileUY.Contracts.Administracion;
+
 using System.Net;
 using System.Net.Http.Json;
 using LastMileUY.Contracts.Operadores;
@@ -30,7 +31,7 @@ public sealed class GestionOperadoresApiHttp(HttpClient http)
     }
 
     public async Task<OperadorAdminDto> CrearAsync(
-        GuardarOperadorAdminRequest request)
+        CrearOperadorConUsuarioRequest request)
     {
         using var respuesta = await http.PostAsJsonAsync(Ruta, request);
 

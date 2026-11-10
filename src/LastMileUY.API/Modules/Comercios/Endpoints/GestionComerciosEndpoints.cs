@@ -1,4 +1,5 @@
-﻿
+﻿using LastMileUY.Contracts.Administracion;
+
 using LastMileUY.API.Modules.Comercios.Application;
 using LastMileUY.Contracts.Comercios;
 
@@ -27,12 +28,12 @@ public static class GestionComerciosEndpoints
         });
 
         grupo.MapPost("/", async (
-            GuardarComercioAdminRequest request,
+            CrearComercioConUsuarioRequest request,
             GestionComerciosService servicio, CancellationToken ct) =>
         {
             try
             {
-                var comercio = await servicio.CrearAsync(request, ct);
+                var comercio = await servicio.CrearConUsuarioAsync(request, ct);
                 return Results.Created(
                     $"/api/admin/comercios/{comercio.Id}", comercio);
             }

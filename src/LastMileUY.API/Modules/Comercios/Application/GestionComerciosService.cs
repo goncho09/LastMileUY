@@ -1,4 +1,6 @@
-﻿
+﻿using LastMileUY.Contracts.Administracion;
+using LastMileUY.API.Modules.Identidad.Application;
+
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.Contracts.Comercios;
@@ -6,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Comercios.Application;
 
-public sealed class GestionComerciosService(ApplicationDbContext db)
+public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuarioInicialService? altaUsuario = null)
 {
     
     public Task<List<ComercioAdminDto>> ListarAsync(
@@ -31,19 +33,32 @@ public sealed class GestionComerciosService(ApplicationDbContext db)
                 c.Email, c.Telefono, c.Activo, c.FechaCreacion))
             .FirstOrDefaultAsync(ct);
     
-    public async Task<ComercioAdminDto> CrearAsync(
-        GuardarComercioAdminRequest request,
-        CancellationToken ct)
+    public async Task<ComercioAdminDto> CrearConUsuarioAsync(
+        CrearComercioConUsuarioRequest request, CancellationToken ct)
+    {
+        var datos = new GuardarComercioAdminRequest(request.Nombre,
+            request.RazonSocial, request.RUT, request.Email, request.Telefono);
+        Validar(datos);
+        await ValidarRutUnicoAsync(datos.RUT, null, ct);
+        await using var transaccion = await db.Database.BeginTransactionAsync(ct);
+        var comercio = new Comercio();
+        Aplicar(comercio, datos);
+        db.Comercios.Add(comercio);
+        await db.SaveChangesAsync(ct);
+        await (altaUsuario ?? throw new InvalidOperationException("Servicio de alta no configurado.")).CrearAsync(request.Usuario, "Comercio", null, comercio.Id);
+        await transaccion.CommitAsync(ct);
+        return Convertir(comercio);
+    }
+
+    // Compatibilidad para pruebas y flujos internos; el endpoint público exige usuario inicial.
+    public async Task<ComercioAdminDto> CrearAsync(GuardarComercioAdminRequest request, CancellationToken ct)
     {
         Validar(request);
         await ValidarRutUnicoAsync(request.RUT, null, ct);
-
         var comercio = new Comercio();
         Aplicar(comercio, request);
-
         db.Comercios.Add(comercio);
         await db.SaveChangesAsync(ct);
-
         return Convertir(comercio);
     }
 
