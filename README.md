@@ -82,16 +82,36 @@ También prueban la **app del repartidor sin conexión**, en el navegador:
 - con la red cortada, la app se abre igual y se registra una entrega;
 - lo pendiente sigue ahí al recargar, y al volver la conexión la app la manda sola.
 
+Y el **portal del comercio**, con la API real: alta de destinatarios y direcciones, alta de envíos, el
+listado y el detalle de un envío, y las pantallas de avisos (suscripciones e historial con reenvío).
+
 La primera vez descargan Chromium (unos 150 MB, en la carpeta de Playwright del usuario).
 
 Cubren lo que no ven las pruebas de las páginas: lo que pasa en el navegador entre un pedido y otro.
-Al escribirlas encontraron dos fallas reales:
+Al escribirlas encontraron fallas reales:
 - quien no tenía permiso veía una página en blanco (404), porque la de "Sin permiso" no estaba en la
   dirección configurada;
-- después de "Ordenar por recorrido", el botón "Armar hoja de ruta" volvía a ordenar.
+- después de "Ordenar por recorrido", el botón "Armar hoja de ruta" volvía a ordenar;
+- con los datos de prueba, la página de usuarios del Backoffice daba error (le faltaba su versión en
+  memoria), y el aviso de "¿Desactivar usuario?" quedaba fuera de la pantalla (su CSS no estaba generado).
 
 El CI (`.github/workflows/ci.yml`) compila y corre todas las pruebas con cobertura en cada PR. Antes
-instala Chromium con sus dependencias del sistema.
+instala Chromium con sus dependencias del sistema, y comprueba que el CSS de Tailwind esté al día.
+
+## Estilos (Tailwind)
+
+El Backoffice, el portal y la app del repartidor usan Tailwind, y el CSS generado (`tailwind.css` en
+`wwwroot`) **va en el repositorio**: así ninguna imagen ni ningún arranque necesita Node. La contra es
+que, si una página usa una clase nueva, hay que volver a generarlo; si no, la clase no existe y la
+pantalla se ve mal sin ningún error. Desde la carpeta de la aplicación:
+
+```bash
+npm ci
+npx @tailwindcss/cli -i Styles/input.css -o wwwroot/css/tailwind.css
+```
+
+En el portal la salida es `wwwroot/tailwind.css`. El CI falla si el CSS subido no coincide con el que
+se genera.
 
 ## Documentación por módulo
 

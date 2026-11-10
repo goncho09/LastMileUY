@@ -13,6 +13,7 @@ public static class EstadosEnvio
         new("AsignadoARuta", "Asignado a ruta", "text-bg-primary"),
         new("EnTransito", "En tránsito", "text-bg-primary"),
         new("Entregado", "Entregado", "text-bg-success"),
+        new("EntregadoParcialmente", "Entregado parcialmente", "text-bg-warning"),
         new("NoEntregado", "No entregado", "text-bg-warning"),
         new("Reprogramado", "Reprogramado", "text-bg-warning"),
         new("EnDevolucion", "En devolución", "text-bg-dark"),

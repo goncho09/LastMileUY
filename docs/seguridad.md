@@ -14,7 +14,9 @@ Este documento junta en un solo lugar los controles de seguridad del sistema y p
   - `Secure`: solo viaja por https.
   - `SameSite=Lax`: no viaja en un POST desde otro sitio, lo que frena el CSRF contra la API. Pasa a `None` solo si se configura `AppRepartidor:Origenes`, en desarrollo.
   - Dura 8 horas y se renueva con el uso.
-- **Usuarios desactivados:** la sesión se revalida cada minuto (`UsuarioSecurityStampValidator`). Si se desactiva un usuario, pierde el acceso en ese plazo aunque tenga la cookie.
+- **Usuarios desactivados:** la sesión se revalida en cada pedido (`UsuarioSecurityStampValidator`, con `ValidationInterval` en cero): la API vuelve a leer el usuario de la base y comprueba su sello de seguridad y que siga activo. Al desactivarlo también se le cambia el sello. Así pierde el acceso en el pedido siguiente, aunque tenga la cookie.
+  - El costo es una consulta a la base por cada pedido con sesión, y la cookie se vuelve a emitir en cada respuesta.
+  - Si pesara, se puede subir el intervalo (antes era de 1 minuto). La contra es que un usuario desactivado conservaría el acceso durante ese plazo.
 - **Usuario de comercio con varios operadores:** elige con cuál trabaja al iniciar sesión. El operador elegido se valida contra la tabla `OperadoresComercios` y se guarda solo en la cookie. El token temporal para elegirlo dura 5 minutos y se usa una sola vez.
 - **Backoffice y portal:** cada uno tiene su propia cookie cifrada, y adentro va la cookie de la API, que reenvían en cada llamada. El `HttpClient` no guarda cookies (`UseCookies = false`), así que la sesión de un usuario no se le puede mandar a otro.
 
@@ -25,7 +27,7 @@ Cada endpoint declara qué perfiles lo pueden usar (`RequireRole`). Los perfiles
 | Perfil | Qué hace |
 |---|---|
 | Administrador | Es de toda la plataforma, no de un operador: revisa y reprocesa los mensajes fallidos y reinicia las métricas del caché. En el Backoffice solo ve esa parte; no entra a envíos, rutas ni sincronización |
-| Operador | Todo lo del operador, incluida su configuración |
+| Operador | Todo lo del operador, incluida su configuración y su personal: da de alta y desactiva despachadores, operarios de depósito y repartidores. No puede crear otros perfiles ni usuarios de otro operador |
 | Despachador | Envíos y hojas de ruta; no ve la configuración |
 | OperarioDeposito | Consulta envíos |
 | Repartidor | Solo sus hojas de ruta y la sincronización de sus entregas |

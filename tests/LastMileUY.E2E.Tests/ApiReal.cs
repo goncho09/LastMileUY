@@ -33,6 +33,9 @@ internal sealed class ApiReal(string cadenaDueno, string carpetaEvidencias) : We
         builder.UseSetting("SeedComercioPrueba:Email", "comercio@prueba.test");
         builder.UseSetting("SeedComercioPrueba:Password", AppRepartidorEnNavegador.Clave);
         builder.UseSetting("Evidencias:Directorio", carpetaEvidencias);
+        // Las URLs de los avisos se validan como en producción (desarrollo deja pasar http y la red local
+        // para el receptor de prueba; acá no corre el worker, nadie las llama)
+        builder.UseSetting("Avisos:PermitirDestinosLocales", "false");
     }
 }
 

@@ -12,6 +12,7 @@ public static class PresentacionEnvios
         ("AsignadoARuta", "Asignado a ruta"),
         ("EnTransito", "En tránsito"),
         ("Entregado", "Entregado"),
+        ("EntregadoParcialmente", "Entregado parcialmente"),
         ("NoEntregado", "No entregado"),
         ("Reprogramado", "Reprogramado"),
         ("EnDevolucion", "En devolución"),
@@ -27,7 +28,7 @@ public static class PresentacionEnvios
         "Entregado" => "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
         "EnTransito" or "AsignadoARuta" => "border-blue-500/25 bg-blue-500/10 text-blue-300",
         "NoEntregado" or "Extraviado" => "border-red-500/25 bg-red-500/10 text-red-300",
-        "Reprogramado" or "EnDevolucion" or "Devuelto" => "border-amber-500/25 bg-amber-500/10 text-amber-300",
+        "EntregadoParcialmente" or "Reprogramado" or "EnDevolucion" or "Devuelto" => "border-amber-500/25 bg-amber-500/10 text-amber-300",
         _ => "border-white/15 bg-white/5 text-slate-300"
     };
 
