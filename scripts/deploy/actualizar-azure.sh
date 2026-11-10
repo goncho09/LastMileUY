@@ -3,21 +3,21 @@
 set -Eeuo pipefail
 
 PROYECTO="/opt/lastmileuy"
-REPOSITORIO="ghcr.io/goncho09/lastmileuy"
-INDICADOR="${REPOSITORIO}-release:stable"
+REPO="ghcr.io/goncho09/lastmileuy"
+MARCADOR="${REPO}-release:stable"
 
-ESTADO="${PROYECTO}/.deploy-state"
-VERSION_INSTALADA="${ESTADO}/version"
-LOCK="/tmp/lastmileuy-deploy.lock"
+ESTADO="$PROYECTO/.deploy-state"
+VERSION_FILE="$ESTADO/version"
+LOCK="$ESTADO/deploy.lock"
 
 SERVICIOS=(
-  lastmileuy.api
-  lastmileuy.backoffice
-  lastmileuy.commerceportal
-  lastmileuy.driverpwa
-  lastmileuy.publictracking
-  lastmileuy.worker
-  lastmileuy.receptoravisos
+  api
+  backoffice
+  commerceportal
+  driverpwa
+  publictracking
+  worker
+  receptoravisos
 )
 
 cd "$PROYECTO"
@@ -25,8 +25,12 @@ mkdir -p "$ESTADO"
 
 exec 9>"$LOCK"
 flock -n 9 || {
-  echo "Ya hay un despliegue en curso."
+  echo "Ya existe un despliegue en ejecución."
   exit 0
+}
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
 }
 
 COMPOSE=(
@@ -37,122 +41,182 @@ COMPOSE=(
   -f compose.deploy.yaml
 )
 
+# Obtiene el SHA publicado después de CI.
 obtener_version() {
-  local contenedor
-  local version
+  local contenedor version
 
-  docker pull "$INDICADOR"
+  docker pull "$MARCADOR" >&2
 
-  contenedor=$(docker create "$INDICADOR")
+  contenedor=$(docker create "$MARCADOR")
 
-  version=$(
+  if ! version=$(
     docker cp "$contenedor:/version.txt" - |
       tar -xO -f - version.txt |
       tr -d '\r\n'
-  )
-
-  docker rm "$contenedor" >/dev/null
-
-  if [[ ! "$version" =~ ^[a-f0-9]{40}$ ]]; then
-    echo "ERROR: versión inválida." >&2
+  ); then
+    docker rm -f "$contenedor" >/dev/null
     return 1
   fi
+
+  docker rm -f "$contenedor" >/dev/null
+
+  [[ "$version" =~ ^[a-f0-9]{40}$ ]] || {
+    log "ERROR: versión inválida."
+    return 1
+  }
 
   printf '%s\n' "$version"
 }
 
-verificar_servicio() {
-  local servicio="$1"
-  local contenedor
+# Comprueba los contenedores de aplicación.
+verificar_contenedores() {
+  local servicio id estado
 
-  contenedor=$("${COMPOSE[@]}" ps -q "$servicio")
+  for servicio in "${SERVICIOS[@]}"; do
+    id=$("${COMPOSE[@]}" ps -q "lastmileuy.$servicio")
 
-  if [[ -z "$contenedor" ]]; then
-    echo "ERROR: no existe el contenedor $servicio"
-    return 1
-  fi
+    [[ -n "$id" ]] || return 1
 
-  if [[ "$(docker inspect -f '{{.State.Running}}' "$contenedor")" != "true" ]]; then
-    echo "ERROR: $servicio no está funcionando."
-    return 1
-  fi
+    estado=$(docker inspect -f '{{.State.Running}}' "$id")
+
+    if [[ "$estado" != "true" ]]; then
+      log "ERROR: lastmileuy.$servicio no está ejecutándose."
+      return 1
+    fi
+  done
 }
 
 verificar_http() {
   local nombre="$1"
   local url="$2"
-  local codigo
   local intento
 
-  for intento in {1..15}; do
-    codigo=$(curl -s -o /dev/null -w '%{http_code}' \
-      --max-time 5 "$url" || true)
-
-    if [[ "$codigo" =~ ^(200|301|302|307|308|401|403)$ ]]; then
-      echo "$nombre responde HTTP $codigo"
+  for intento in {1..20}; do
+    if curl --fail --silent --show-error \
+      --max-time 5 "$url" >/dev/null 2>&1; then
+      log "$nombre responde correctamente."
       return 0
     fi
-
     sleep 3
   done
 
-  echo "ERROR: $nombre no responde correctamente."
+  log "ERROR: $nombre no respondió correctamente."
   return 1
 }
 
+verificar_aplicacion() {
+  verificar_contenedores
+  verificar_http "API" "http://127.0.0.1:8080/health"
+  verificar_http "Backoffice" "http://127.0.0.1:8081/Login"
+}
+
+# Guarda imágenes exactas, sin sobrescribir las anteriores.
+guardar_respaldo() {
+  local servicio id imagen
+  local directorio="$1"
+
+  mkdir -p "$directorio"
+
+  for servicio in "${SERVICIOS[@]}"; do
+    id=$("${COMPOSE[@]}" ps -q "lastmileuy.$servicio")
+    [[ -n "$id" ]] || return 1
+
+    imagen=$(docker inspect -f '{{.Image}}' "$id")
+    printf '%s\n' "$imagen" > "$directorio/$servicio"
+  done
+}
+
+# Crea un override temporal con las imágenes respaldadas.
+crear_compose_rollback() {
+  local directorio="$1"
+  local archivo="$2"
+  local servicio imagen
+
+  printf 'services:\n' > "$archivo"
+
+  for servicio in "${SERVICIOS[@]}"; do
+    imagen=$(cat "$directorio/$servicio")
+
+    printf '  lastmileuy.%s:\n' "$servicio" >> "$archivo"
+    printf '    image: "%s"\n' "$imagen" >> "$archivo"
+    printf '    build: !reset null\n' >> "$archivo"
+  done
+}
+
+ROLLBACK=""
+DESPLIEGUE_INICIADO=false
+
+recuperar() {
+  local codigo=$?
+  trap - ERR
+
+  if [[ "$DESPLIEGUE_INICIADO" == true &&
+        -n "$ROLLBACK" &&
+        -f "$ROLLBACK" ]]; then
+
+    log "Falló el despliegue. Intentando rollback..."
+
+    if docker compose \
+      --env-file .env.azure \
+      -f compose.yaml \
+      -f docker-compose.azure.yml \
+      -f "$ROLLBACK" \
+      up -d --no-build --no-deps \
+      "${SERVICIOS[@]/#/lastmileuy.}"; then
+
+      log "Se restauraron los contenedores anteriores."
+    else
+      log "ERROR CRÍTICO: falló el rollback."
+    fi
+  fi
+
+  exit "$codigo"
+}
+
+trap recuperar ERR
+
+log "Consultando GHCR..."
+
 VERSION_NUEVA=$(obtener_version)
+VERSION_ACTUAL=$(cat "$VERSION_FILE" 2>/dev/null || true)
 
-VERSION_ACTUAL=""
-if [[ -f "$VERSION_INSTALADA" ]]; then
-  VERSION_ACTUAL=$(cat "$VERSION_INSTALADA")
-fi
+log "Instalada: ${VERSION_ACTUAL:-desconocida}"
+log "Disponible: $VERSION_NUEVA"
 
-echo "Versión instalada: ${VERSION_ACTUAL:-desconocida}"
-echo "Versión disponible: $VERSION_NUEVA"
-
-if [[ "$VERSION_ACTUAL" == "$VERSION_NUEVA" ]]; then
-  echo "LastMileUY ya está actualizado."
+if [[ "$VERSION_NUEVA" == "$VERSION_ACTUAL" ]]; then
+  log "No hay actualizaciones."
   exit 0
 fi
 
 export LASTMILEUY_VERSION="$VERSION_NUEVA"
 
-echo "Validando configuración..."
 "${COMPOSE[@]}" config --quiet
 
-echo "Descargando las 7 imágenes..."
-for servicio in "${SERVICIOS[@]}"; do
-  "${COMPOSE[@]}" pull "$servicio"
-done
-
-echo "Guardando referencias de imágenes anteriores..."
-
-declare -A IMAGENES_ANTERIORES
+log "Descargando imágenes..."
 
 for servicio in "${SERVICIOS[@]}"; do
-  contenedor=$("${COMPOSE[@]}" ps -q "$servicio" || true)
-
-  if [[ -n "$contenedor" ]]; then
-    IMAGENES_ANTERIORES["$servicio"]=$(
-      docker inspect -f '{{.Image}}' "$contenedor"
-    )
-  fi
+  "${COMPOSE[@]}" pull "lastmileuy.$servicio"
 done
 
-echo "Actualizando servicios..."
-"${COMPOSE[@]}" up -d --no-build --no-deps "${SERVICIOS[@]}"
+RESPALDO="$ESTADO/rollback-$VERSION_NUEVA"
+ROLLBACK="$ESTADO/rollback-$VERSION_NUEVA.yaml"
 
-echo "Verificando contenedores..."
-for servicio in "${SERVICIOS[@]}"; do
-  verificar_servicio "$servicio"
-done
+log "Guardando versión anterior..."
+guardar_respaldo "$RESPALDO"
+crear_compose_rollback "$RESPALDO" "$ROLLBACK"
 
-echo "Verificando endpoints HTTP..."
+log "Actualizando LastMileUY..."
+DESPLIEGUE_INICIADO=true
 
-verificar_http "API" "http://127.0.0.1:8080/health"
-verificar_http "Backoffice" "http://127.0.0.1:8081/Login"
+"${COMPOSE[@]}" up -d --no-build --no-deps \
+  "${SERVICIOS[@]/#/lastmileuy.}"
 
-printf '%s\n' "$VERSION_NUEVA" > "${VERSION_INSTALADA}.tmp"
-mv "${VERSION_INSTALADA}.tmp" "$VERSION_INSTALADA"
+log "Verificando funcionamiento..."
+verificar_aplicacion
 
-echo "Despliegue completado: $VERSION_NUEVA"
+printf '%s\n' "$VERSION_NUEVA" > "$VERSION_FILE.tmp"
+mv "$VERSION_FILE.tmp" "$VERSION_FILE"
+
+DESPLIEGUE_INICIADO=false
+
+log "Despliegue exitoso: $VERSION_NUEVA"
