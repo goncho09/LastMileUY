@@ -23,7 +23,7 @@ compose_base=(docker compose --project-directory "$PROYECTO" --env-file .env.azu
 obtener_version() {
   local cid version
   docker pull "$MARCADOR" >&2
-  cid=$(docker create "$MARCADOR")
+  cid=$(docker create "$MARCADOR" /version.txt)
   if ! version=$(docker cp "$cid:/version.txt" - | tar -xO -f - version.txt | tr -d '\r\n'); then
     docker rm -f "$cid" >/dev/null 2>&1 || true
     return 1
