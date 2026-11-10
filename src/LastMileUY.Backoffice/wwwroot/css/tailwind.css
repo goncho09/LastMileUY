@@ -237,6 +237,9 @@
   }
 }
 @layer utilities {
+  .pointer-events-none {
+    pointer-events: none;
+  }
   .collapse {
     visibility: collapse;
   }
@@ -285,6 +288,9 @@
   .top-0 {
     top: 0px;
   }
+  .top-1\/2 {
+    top: calc(1 / 2 * 100%);
+  }
   .top-50 {
     top: calc(var(--spacing) * 50);
   }
@@ -299,6 +305,9 @@
   }
   .bottom-100 {
     bottom: calc(var(--spacing) * 100);
+  }
+  .left-4 {
+    left: calc(var(--spacing) * 4);
   }
   .z-0 {
     z-index: 0;
@@ -816,11 +825,17 @@
   .min-w-0 {
     min-width: 0px;
   }
+  .min-w-\[220px\] {
+    min-width: 220px;
+  }
   .min-w-\[640px\] {
     min-width: 640px;
   }
   .min-w-\[650px\] {
     min-width: 650px;
+  }
+  .min-w-\[720px\] {
+    min-width: 720px;
   }
   .min-w-\[900px\] {
     min-width: 900px;
@@ -869,6 +884,10 @@
   }
   .border-collapse {
     border-collapse: collapse;
+  }
+  .-translate-y-1\/2 {
+    --tw-translate-y: calc(calc(1 / 2 * 100%) * -1);
+    translate: var(--tw-translate-x) var(--tw-translate-y);
   }
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
@@ -1487,6 +1506,9 @@
   .py-12 {
     padding-block: calc(var(--spacing) * 12);
   }
+  .py-14 {
+    padding-block: calc(var(--spacing) * 14);
+  }
   .ps-0 {
     padding-inline-start: 0px;
   }
@@ -1550,6 +1572,9 @@
   .pr-2 {
     padding-right: calc(var(--spacing) * 2);
   }
+  .pr-4 {
+    padding-right: calc(var(--spacing) * 4);
+  }
   .pb-0 {
     padding-bottom: 0px;
   }
@@ -1570,6 +1595,9 @@
   }
   .pb-6 {
     padding-bottom: calc(var(--spacing) * 6);
+  }
+  .pl-12 {
+    padding-left: calc(var(--spacing) * 12);
   }
   .text-center {
     text-align: center;
@@ -1950,6 +1978,14 @@
         background-color: color-mix(in oklab, var(--color-red-500) 10%, transparent);
       }
     }
+    .hover\:bg-red-500\/20:hover {
+      background-color: color-mix(in srgb, oklch(63.7% 0.237 25.331) 20%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-red-500\/20:hover {
+        background-color: color-mix(in oklab, var(--color-red-500) 20%, transparent);
+      }
+    }
     .hover\:bg-violet-500:hover {
       background-color: var(--color-violet-500);
     }
@@ -2044,6 +2080,12 @@
   }
   .focus-visible\:outline-violet-400:focus-visible {
     outline-color: var(--color-violet-400);
+  }
+  .disabled\:cursor-not-allowed:disabled {
+    cursor: not-allowed;
+  }
+  .disabled\:opacity-40:disabled {
+    opacity: 40%;
   }
   @media (prefers-reduced-motion: no-preference) {
     .motion-safe\:animate-lm-error-in {
@@ -2198,6 +2240,21 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+@property --tw-translate-x {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-translate-y {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-translate-z {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
 }
 @property --tw-rotate-x {
   syntax: "*";
@@ -2392,6 +2449,9 @@
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
+      --tw-translate-x: 0;
+      --tw-translate-y: 0;
+      --tw-translate-z: 0;
       --tw-rotate-x: initial;
       --tw-rotate-y: initial;
       --tw-rotate-z: initial;
