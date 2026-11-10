@@ -92,7 +92,7 @@ public class PortalComercioEnNavegador : IAsyncLifetime
 
     // Un envío de un bulto del Comercio Prueba 1 con el Operador Prueba 1, dado de alta por el operador
     // de prueba directo en la API (la cookie es Secure y acá no hay https: se manda a mano)
-    public async Task<EnvioResponse> EnvioDelComercioAsync()
+    public async Task<EnvioResponse> EnvioDelComercioAsync(string? referencia = null)
     {
         using var operador = new HttpClient(new CookieAMano()) { BaseAddress = new Uri(direccionApi + "/") };
         using (var login = await operador.PostAsJsonAsync("api/auth/login",
@@ -116,6 +116,7 @@ public class PortalComercioEnNavegador : IAsyncLifetime
             ComercioId = (int)destino[0],
             DestinatarioId = (int)destino[1],
             DireccionId = (int)destino[2],
+            ReferenciaExterna = referencia,
             Bultos = [new CrearBultoRequest { PesoKg = 1, LargoCm = 20, AnchoCm = 15, AltoCm = 10, Descripcion = "Caja" }]
         });
         alta.EnsureSuccessStatusCode();
