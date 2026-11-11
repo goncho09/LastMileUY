@@ -156,6 +156,17 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("Reprogramado", parcial.EstadoEnvio);
         Assert.Contains("vuelven a salir", parcial.Mensaje);
 
+        // La ruta anterior debe finalizar para liberar el envío.
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var estadoRutaAnterior = await db.Rutas
+                .Where(r => r.Id == ruta)
+                .Select(r => r.Estado)
+                .SingleAsync();
+
+            Assert.Equal(EstadoRuta.Finalizada, estadoRutaAnterior);
+        }
+
         // La ruta nueva lleva solo el bulto que no se entregó
         int rutaNueva;
         int pendiente;
@@ -223,6 +234,76 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             Assert.All(await db.Bultos.Where(b => b.EnvioId == envios[0]).ToListAsync(),
                 b => Assert.Equal(EstadoBulto.Entregado, b.Estado));
         }
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var estadoRutaNueva = await db.Rutas
+                .Where(r => r.Id == rutaNueva)
+                .Select(r => r.Estado)
+                .SingleAsync();
+
+            Assert.Equal(EstadoRuta.Finalizada, estadoRutaNueva);
+        }
+    }
+
+    [Fact]
+    public async Task Recargo_respeta_version_con_la_que_se_despacho_la_ruta()
+    {
+        // Primera versión: recargo de $150.
+        var reglaOriginal = await PublicarAsync(
+            OperadorB,
+            permite: true,
+            destino: "NuevaHojaDeRuta",
+            recargo: 150m);
+
+        // La ruta queda asociada a esa versión.
+        var (ruta, repartidor, envios) =
+            await DatosDeRutas.CrearRutaDespachadaAsync(
+                baseDeDatos,
+                OperadorB,
+                bultosPorEnvio: 2);
+
+        decimal costoInicial;
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            costoInicial = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+        }
+
+        // El administrador publica una nueva versión con $250.
+        await PublicarAsync(
+            OperadorB,
+            permite: true,
+            destino: "NuevaHojaDeRuta",
+            recargo: 250m);
+
+        // El repartidor sincroniza una entrega parcial.
+        var operacion = await EntregaParcialAsync(
+            ruta, envios[0], OperadorB);
+
+        var resultado = await SincronizarAsync(
+            repartidor, operacion, OperadorB);
+
+        Assert.Equal("Aplicada", resultado.Resultado);
+        Assert.Equal("Reprogramado", resultado.EstadoEnvio);
+
+        // Debe utilizar la versión original, no la nueva.
+        Assert.Equal(
+            reglaOriginal.Id,
+            await VersionAplicadaAsync(resultado.IdOperacion, OperadorB));
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var costoFinal = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+
+            Assert.Equal(costoInicial + 150m, costoFinal);
+        }
     }
 
     [Fact]
@@ -276,6 +357,161 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal(PostgresErrorCodes.InsufficientPrivilege, Assert.IsType<PostgresException>(error.InnerException).SqlState);
     }
 
+    [Fact]
+    public async Task Nueva_visita_aplica_recargo_una_sola_vez()
+    {
+        await PublicarAsync(
+            OperadorB,
+            permite: true,
+            destino: "NuevaHojaDeRuta",
+            recargo: 150m);
+
+        var (ruta, repartidor, envios) =
+            await DatosDeRutas.CrearRutaDespachadaAsync(
+                baseDeDatos,
+                OperadorB,
+                bultosPorEnvio: 2);
+
+        decimal costoInicial;
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            costoInicial = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+        }
+
+        var operacion = await EntregaParcialAsync(
+            ruta, envios[0], OperadorB);
+
+        var primera = await SincronizarAsync(
+            repartidor, operacion, OperadorB);
+
+        Assert.Equal("Aplicada", primera.Resultado);
+        Assert.Equal("Reprogramado", primera.EstadoEnvio);
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var costoFinal = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+
+            Assert.Equal(costoInicial + 150m, costoFinal);
+        }
+
+        // Reenviamos exactamente la misma operación offline.
+        await SincronizarAsync(repartidor, operacion, OperadorB);
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var costoFinal = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+
+            Assert.Equal(costoInicial + 150m, costoFinal);
+        }
+    }
+
+    [Fact]
+    public async Task Devolucion_no_aplica_recargo()
+    {
+        try
+        {
+            await PublicarAsync(
+                OperadorA,
+                permite: true,
+                destino: "Devolucion",
+                recargo: 0m);
+
+            var (ruta, repartidor, envios) =
+                await DatosDeRutas.CrearRutaDespachadaAsync(
+                    baseDeDatos,
+                    OperadorA,
+                    bultosPorEnvio: 2);
+
+            decimal costoInicial;
+
+            await using (var db = baseDeDatos.CrearContexto(OperadorA))
+            {
+                costoInicial = await db.Envios
+                    .Where(e => e.Id == envios[0])
+                    .Select(e => e.CostoEnvio ?? 0m)
+                    .SingleAsync();
+            }
+
+            var operacion = await EntregaParcialAsync(
+                ruta, envios[0], OperadorA);
+
+            var resultado = await SincronizarAsync(
+                repartidor, operacion, OperadorA);
+
+            Assert.Equal("Aplicada", resultado.Resultado);
+            Assert.Equal("EnDevolucion", resultado.EstadoEnvio);
+
+            await using (var db = baseDeDatos.CrearContexto(OperadorA))
+            {
+                var costoFinal = await db.Envios
+                    .Where(e => e.Id == envios[0])
+                    .Select(e => e.CostoEnvio ?? 0m)
+                    .SingleAsync();
+
+                Assert.Equal(costoInicial, costoFinal);
+            }
+        }
+        finally
+        {
+            await PublicarAsync(OperadorA, permite: true);
+        }
+    }
+
+    [Fact]
+    public async Task Nueva_visita_sin_recargo_mantiene_costo_original()
+    {
+        await PublicarAsync(
+            OperadorB,
+            permite: true,
+            destino: "NuevaHojaDeRuta",
+            recargo: 0m);
+
+        var (ruta, repartidor, envios) =
+            await DatosDeRutas.CrearRutaDespachadaAsync(
+                baseDeDatos,
+                OperadorB,
+                bultosPorEnvio: 2);
+
+        decimal costoInicial;
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            costoInicial = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+        }
+
+        var operacion = await EntregaParcialAsync(
+            ruta, envios[0], OperadorB);
+
+        var resultado = await SincronizarAsync(
+            repartidor, operacion, OperadorB);
+
+        Assert.Equal("Aplicada", resultado.Resultado);
+        Assert.Equal("Reprogramado", resultado.EstadoEnvio);
+
+        await using (var db = baseDeDatos.CrearContexto(OperadorB))
+        {
+            var costoFinal = await db.Envios
+                .Where(e => e.Id == envios[0])
+                .Select(e => e.CostoEnvio ?? 0m)
+                .SingleAsync();
+
+            Assert.Equal(costoInicial, costoFinal);
+        }
+    }
+
     // Como si la ruta se hubiera despachado antes de que existieran las versiones
     private async Task SinVersionAsync(int rutaId)
     {
@@ -288,7 +524,10 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
     }
 
     private async Task<ReglaEntregaParcialDto> PublicarAsync(
-        int operadorId, bool permite, string destino = "NuevaHojaDeRuta")
+        int operadorId,
+        bool permite,
+        string destino = "NuevaHojaDeRuta",
+        decimal recargo = 0m)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
 
@@ -297,6 +536,7 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             {
                 PermiteEntregaParcial = permite,
                 DestinoBultosPendientes = destino,
+                RecargoNuevaVisita = recargo,
                 Motivo = permite ? "Se permiten entregas parciales" : "No se permiten entregas parciales"
             },
             "usuario-1");
@@ -360,9 +600,11 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         return motivo.Id;
     }
 
-    private async Task<int?> VersionAplicadaAsync(Guid idOperacion)
+    private async Task<int?> VersionAplicadaAsync(
+        Guid idOperacion,
+        int operadorId = OperadorA)
     {
-        await using var db = baseDeDatos.CrearContexto(OperadorA);
+        await using var db = baseDeDatos.CrearContexto(operadorId);
 
         return await db.OperacionesSincronizadas
             .Where(o => o.IdOperacion == idOperacion)

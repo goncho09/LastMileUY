@@ -44,7 +44,7 @@ builder.Services.AddRazorPages(opciones =>
 
     opciones.Conventions.AuthorizeFolder(
         "/Operadores", Permisos.PoliticaAdministracionGlobal);
-    
+
     opciones.Conventions.AuthorizeFolder(
         "/Comercios", Permisos.PoliticaAdministracionGlobal);
 });

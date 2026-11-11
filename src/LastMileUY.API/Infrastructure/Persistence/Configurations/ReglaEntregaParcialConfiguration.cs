@@ -12,6 +12,11 @@ public class ReglaEntregaParcialConfiguration : IEntityTypeConfiguration<ReglaEn
 
         builder.HasKey(r => r.Id);
 
+        builder.Property(r => r.RecargoNuevaVisita)
+            .HasColumnType("numeric(10,2)")
+            .HasDefaultValue(0m)
+            .IsRequired();
+
         builder.HasOne<Operador>()
             .WithMany()
             .HasForeignKey(r => r.OperadorId)

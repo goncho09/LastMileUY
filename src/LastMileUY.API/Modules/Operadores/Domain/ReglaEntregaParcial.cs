@@ -23,6 +23,10 @@ public class ReglaEntregaParcial : IPerteneceAOperador
     // Qué pasa con los bultos que quedaron sin entregar
     public DestinoBultosPendientes DestinoBultosPendientes { get; set; }
 
+    // Importe fijo por nueva visita del envío.
+    // 0 significa que no se cobra recargo.
+    public decimal RecargoNuevaVisita { get; set; }
+
     // Por qué se publicó esta versión (lo escribe quien la publica)
     public string? Motivo { get; set; }
 

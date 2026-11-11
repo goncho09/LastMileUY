@@ -61,16 +61,22 @@ public class IndexModel(IOperadorApi operadorApi, ILogger<IndexModel> logger) : 
 
     // Publicar una versión nueva: después se redirige a la página (así recargar no la publica otra vez)
     public async Task<IActionResult> OnPostPublicarReglaEntregaParcialAsync(
-        bool permiteEntregaParcial, string? destinoBultosPendientes, string? motivo, CancellationToken ct)
+        bool permiteEntregaParcial,
+        string? destinoBultosPendientes,
+        decimal recargoNuevaVisita,
+        string? motivo,
+        CancellationToken ct)
     {
         try
         {
-            var regla = await operadorApi.PublicarReglaEntregaParcialAsync(new PublicarReglaEntregaParcialRequest
-            {
-                PermiteEntregaParcial = permiteEntregaParcial,
-                DestinoBultosPendientes = destinoBultosPendientes ?? string.Empty,
-                Motivo = motivo ?? string.Empty
-            }, ct);
+            var regla = await operadorApi.PublicarReglaEntregaParcialAsync(
+                new PublicarReglaEntregaParcialRequest
+                {
+                    PermiteEntregaParcial = permiteEntregaParcial,
+                    DestinoBultosPendientes = destinoBultosPendientes ?? string.Empty,
+                    RecargoNuevaVisita = recargoNuevaVisita,
+                    Motivo = motivo ?? string.Empty
+                }, ct);
 
             Aviso = $"Se publicó la versión {regla.Version}. Las hojas de ruta que se despachen desde ahora la usan; "
                 + "las que ya salieron siguen con la suya.";

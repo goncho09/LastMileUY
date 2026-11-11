@@ -8,10 +8,10 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
     public partial class ValidarVinculosActivosRls : Migration
     {
         /// <inheritdoc />
-        
-protected override void Up(MigrationBuilder migrationBuilder)
-{
-    migrationBuilder.Sql("""
+
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.Sql("""
         ALTER POLICY aislamiento_comercio
         ON public."Destinatarios"
         USING (
@@ -68,11 +68,11 @@ protected override void Up(MigrationBuilder migrationBuilder)
             END
         );
         """);
-}
+        }
 
-protected override void Down(MigrationBuilder migrationBuilder)
-{
-    migrationBuilder.Sql("""
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.Sql("""
         ALTER POLICY aislamiento_comercio
         ON public."Destinatarios"
         USING (
@@ -118,7 +118,7 @@ protected override void Down(MigrationBuilder migrationBuilder)
             END
         );
         """);
-}
+        }
 
     }
 }

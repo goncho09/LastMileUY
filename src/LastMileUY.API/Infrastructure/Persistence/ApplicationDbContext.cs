@@ -250,7 +250,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
         // Destinatarios: son del comercio. El usuario de un comercio ve los suyos;
         // el operador ve los de los comercios con los que trabaja.
-        
+
         modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
             ComercioActual != null
                 ? d.ComercioId == ComercioActual

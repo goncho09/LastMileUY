@@ -17,7 +17,7 @@ public sealed class ValidarVinculoComercioMiddleware(
             await siguiente(contexto);
             return;
         }
-        
+
         if (contexto.Request.Path.StartsWithSegments("/api/auth") &&
             (contexto.Request.Path.Value?.EndsWith(
                  "/logout", StringComparison.OrdinalIgnoreCase) == true ||

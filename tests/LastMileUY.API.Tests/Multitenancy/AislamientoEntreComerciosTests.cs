@@ -193,8 +193,8 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
             "Ejido", "55", null, "Montevideo", "Montevideo", null, null));
         return envio;
     }
-    
-    
+
+
     [Fact]
     public async Task Un_vinculo_inactivo_no_permite_ver_destinatarios_del_comercio()
     {
