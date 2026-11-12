@@ -9,9 +9,16 @@ public class ContextoOperadorHttp(IHttpContextAccessor httpContextAccessor) : IC
     public const string ClaimOperadorId = "operador_id";
     public const string ClaimComercioId = "comercio_id";
 
+    // Lo pone solo la autenticación con clave de prueba (AutenticacionClaveApi)
+    public const string ClaimAmbiente = "ambiente";
+    public const string AmbientePruebas = "pruebas";
+
     public int? OperadorId => LeerClaim(ClaimOperadorId);
 
     public int? ComercioId => LeerClaim(ClaimComercioId);
+
+    public bool EnAmbientePruebas =>
+        httpContextAccessor.HttpContext?.User.HasClaim(ClaimAmbiente, AmbientePruebas) == true;
 
     private int? LeerClaim(string tipo)
     {

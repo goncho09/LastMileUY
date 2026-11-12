@@ -50,6 +50,7 @@ public class FuncionalidadesService(ApplicationDbContext db)
     {
         var operadores = await db.Set<Operador>()
             .AsNoTracking()
+            .Where(o => !o.EsAmbientePruebas)
             .OrderBy(o => o.Nombre)
             .Select(o => new { o.Id, o.Nombre })
             .ToListAsync(cancellationToken);
@@ -85,7 +86,7 @@ public class FuncionalidadesService(ApplicationDbContext db)
             throw new ArgumentException($"No existe la funcionalidad '{clave}'.");
         }
 
-        if (!await db.Set<Operador>().AnyAsync(o => o.Id == operadorId, cancellationToken))
+        if (!await db.Set<Operador>().AnyAsync(o => o.Id == operadorId && !o.EsAmbientePruebas, cancellationToken))
         {
             return false;
         }

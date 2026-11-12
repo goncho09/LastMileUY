@@ -326,6 +326,14 @@ builder.Services.AddAuthorization(options =>
         .RequireAuthenticatedUser()
         .RequireRole("Comercio")
         .RequireClaim(AutenticacionClaveApi.ClaimClaveApiId));
+
+    // Solo claves del ambiente de pruebas (la simulación de estados)
+    options.AddPolicy(ApiPublicaV1Endpoints.PoliticaPruebas, politica => politica
+        .AddAuthenticationSchemes(AutenticacionClaveApi.Esquema)
+        .RequireAuthenticatedUser()
+        .RequireRole("Comercio")
+        .RequireClaim(AutenticacionClaveApi.ClaimClaveApiId)
+        .RequireClaim(ContextoOperadorHttp.ClaimAmbiente, ContextoOperadorHttp.AmbientePruebas));
 });
 
 
@@ -355,6 +363,9 @@ builder.Services.AddScoped<GestionOperadoresService>();
 builder.Services.AddScoped<GestionComerciosService>();
 builder.Services.AddScoped<ClavesApiService>();
 builder.Services.AddScoped<ImportarEnviosService>();
+builder.Services.AddScoped<AmbientePruebasService>();
+builder.Services.AddScoped<SimularEnvioService>();
+builder.Services.AddSingleton<AmbientePruebasService.Cache>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
@@ -381,11 +392,13 @@ builder.Services.AddRateLimiter(options =>
 
     // API pública: tope por clave, no por IP (varios comercios pueden salir por la misma IP, y un
     // comercio con mucho tráfico no frena a los demás). Diferenciado por tipo de pedido: un lote crea
-    // hasta 100 envíos, así que tiene un tope propio, más bajo. Los dos se ajustan en la configuración.
+    // hasta 100 envíos, así que tiene un tope propio, más bajo. Y por ambiente: las claves de prueba
+    // tienen la mitad, porque son para probar la integración, no para cargar en volumen.
+    // Todos se ajustan en la configuración.
     options.AddPolicy(ApiPublicaV1Endpoints.LimiteConsultas, contexto =>
-        LimitePorClave(contexto, "ApiPublica:PedidosPorMinuto", 120));
+        LimitePorClave(contexto, "PedidosPorMinuto", produccion: 120, pruebas: 60));
     options.AddPolicy(ApiPublicaV1Endpoints.LimiteLotes, contexto =>
-        LimitePorClave(contexto, "ApiPublica:LotesPorMinuto", 10));
+        LimitePorClave(contexto, "LotesPorMinuto", produccion: 10, pruebas: 5));
 
     // Retry-After: cuántos segundos esperar, para que el integrador no reintente a ciegas
     options.OnRejected = async (rechazo, ct) =>
@@ -398,14 +411,20 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
-RateLimitPartition<string> LimitePorClave(HttpContext contexto, string configuracion, int porDefecto) =>
-    RateLimitPartition.GetFixedWindowLimiter(
+// ApiPublica:PedidosPorMinuto, ApiPublica:Pruebas:PedidosPorMinuto, etc.
+RateLimitPartition<string> LimitePorClave(HttpContext contexto, string tope, int produccion, int pruebas)
+{
+    var enPruebas = contexto.User.HasClaim(ContextoOperadorHttp.ClaimAmbiente, ContextoOperadorHttp.AmbientePruebas);
+    var configuracion = enPruebas ? $"ApiPublica:Pruebas:{tope}" : $"ApiPublica:{tope}";
+
+    return RateLimitPartition.GetFixedWindowLimiter(
         $"{configuracion}:{contexto.User.FindFirstValue(AutenticacionClaveApi.ClaimClaveApiId) ?? contexto.Connection.RemoteIpAddress?.ToString()}",
         _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = builder.Configuration.GetValue(configuracion, porDefecto),
+            PermitLimit = builder.Configuration.GetValue(configuracion, enPruebas ? pruebas : produccion),
             Window = TimeSpan.FromMinutes(1)
         });
+}
 
 // Documentación de la API (OpenAPI + Scalar):
 // - "v1", la de la API pública: se publica siempre, también en producción (/api/v1/docs), porque es

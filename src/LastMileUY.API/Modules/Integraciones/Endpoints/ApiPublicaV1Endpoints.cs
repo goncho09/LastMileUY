@@ -23,6 +23,9 @@ public static class ApiPublicaV1Endpoints
     // Nombre de la política de autorización: clave de API de un comercio
     public const string Politica = "ApiPublica";
 
+    // Solo claves del ambiente de pruebas
+    public const string PoliticaPruebas = "ApiPublicaPruebas";
+
     // Topes de pedidos por clave (Program.cs): uno general y uno más bajo para los lotes, que pesan más
     public const string LimiteConsultas = "ApiPublicaConsultas";
     public const string LimiteLotes = "ApiPublicaLotes";
@@ -188,6 +191,41 @@ public static class ApiPublicaV1Endpoints
             .Produces(StatusCodes.Status404NotFound)
             .WithName("V1AgregarDireccion")
             .WithSummary("Agrega otra dirección de entrega a un destinatario");
+
+        // Ambiente de pruebas: solo con una clave de prueba (con una de verdad, 403)
+        var pruebas = v1.MapGroup("/pruebas").WithTags("Ambiente de pruebas")
+            .RequireAuthorization(PoliticaPruebas)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        pruebas.MapPost("/envios/{id:int}/simular", async (
+                int id,
+                SimularEstadoRequest request,
+                SimularEnvioService simular,
+                ConsultasEnviosService consultas,
+                CancellationToken ct) =>
+            {
+                try
+                {
+                    return await simular.SimularAsync(id, request.Estado, ct)
+                        ? Results.Ok(await consultas.ObtenerDetalleAsync(id, ct))
+                        : Results.NotFound();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+            })
+            .RequireRateLimiting(LimiteConsultas)
+            .Produces<EnvioDetalleDto>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithName("V1SimularEstado")
+            .WithSummary("Hace avanzar un envío de prueba hasta un estado (solo ambiente de pruebas)")
+            .WithDescription($"En el ambiente de pruebas no hay depósito ni repartidores: esto hace avanzar el envío por el recorrido normal hasta el estado pedido ({string.Join(", ", SimularEnvioService.EstadosSimulables)}), registrando cada cambio como en un envío de verdad. Con una clave de producción responde 403.");
 
         return app;
     }

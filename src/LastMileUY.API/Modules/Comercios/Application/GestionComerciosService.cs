@@ -91,7 +91,7 @@ public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuario
                  .IgnoreQueryFilters()
                  .AsNoTracking()
              on vinculo.OperadorId equals operador.Id
-         where vinculo.ComercioId == comercioId
+         where vinculo.ComercioId == comercioId && !operador.EsAmbientePruebas
          orderby operador.Nombre
          select new VinculoOperadorComercioDto(
              operador.Id, operador.Nombre, vinculo.Activo,
@@ -107,7 +107,7 @@ public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuario
 
         var existeOperador = await db.Operadores
             .IgnoreQueryFilters()
-            .AnyAsync(o => o.Id == operadorId, ct);
+            .AnyAsync(o => o.Id == operadorId && !o.EsAmbientePruebas, ct);
 
         if (!existeComercio || !existeOperador)
             return false;
@@ -142,6 +142,10 @@ public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuario
     public async Task<bool> DesvincularAsync(
         int comercioId, int operadorId, CancellationToken ct)
     {
+        // El vínculo con el ambiente de pruebas lo maneja el sistema (claves de prueba de la API pública)
+        if (await db.Operadores.AnyAsync(o => o.Id == operadorId && o.EsAmbientePruebas, ct))
+            return false;
+
         var vinculo = await db.OperadoresComercios
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(

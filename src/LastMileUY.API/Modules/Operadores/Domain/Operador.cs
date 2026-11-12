@@ -16,6 +16,11 @@ public class Operador
 
     public bool Activo { get; set; } = true;
 
+    // El operador del ambiente de pruebas de la API pública (docs/api-publica.md): uno solo, lo crea el
+    // sistema la primera vez que un comercio pide una clave de prueba. No tiene personal ni aparece en
+    // ningún listado: ahí van los envíos de prueba, aislados de los de verdad como los de otro operador
+    public bool EsAmbientePruebas { get; set; }
+
     public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
 
     // Identidad visual: el Backoffice se pinta con el color del operador y muestra su logo.

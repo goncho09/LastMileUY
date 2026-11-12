@@ -16,7 +16,8 @@ public sealed class AutenticacionClaveApi(
     IOptionsMonitor<AuthenticationSchemeOptions> opciones,
     ILoggerFactory registro,
     UrlEncoder codificador,
-    ApplicationDbContext db)
+    ApplicationDbContext db,
+    AmbientePruebasService ambientePruebas)
     : AuthenticationHandler<AuthenticationSchemeOptions>(opciones, registro, codificador)
 {
     public const string Esquema = "ClaveApi";
@@ -43,15 +44,32 @@ public sealed class AutenticacionClaveApi(
         if (guardada is null)
             return AuthenticateResult.Fail("Clave de API inválida o revocada.");
 
-        var identidad = new ClaimsIdentity(
-        [
+        // Una clave de prueba trabaja con el operador del ambiente de pruebas, nunca con el de verdad:
+        // así ve y crea solo datos de prueba. Lo decide la clave guardada, no algo del pedido
+        var operadorId = guardada.OperadorId;
+
+        if (guardada.EsPrueba)
+        {
+            if (await ambientePruebas.OperadorIdAsync(Context.RequestAborted) is not { } operadorPruebas)
+                return AuthenticateResult.Fail("El ambiente de pruebas no está disponible.");
+
+            operadorId = operadorPruebas;
+        }
+
+        var claims = new List<Claim>
+        {
             new Claim(ClaimTypes.NameIdentifier, $"clave-api:{guardada.Id}"),
             new Claim(ClaimTypes.Name, $"Clave de API «{guardada.Nombre}»"),
             new Claim(ClaimTypes.Role, "Comercio"),
-            new Claim(ContextoOperadorHttp.ClaimOperadorId, guardada.OperadorId.ToString()),
+            new Claim(ContextoOperadorHttp.ClaimOperadorId, operadorId.ToString()),
             new Claim(ContextoOperadorHttp.ClaimComercioId, guardada.ComercioId.ToString()),
             new Claim(ClaimClaveApiId, guardada.Id.ToString())
-        ], Esquema);
+        };
+
+        if (guardada.EsPrueba)
+            claims.Add(new Claim(ContextoOperadorHttp.ClaimAmbiente, ContextoOperadorHttp.AmbientePruebas));
+
+        var identidad = new ClaimsIdentity(claims, Esquema);
 
         return AuthenticateResult.Success(
             new AuthenticationTicket(new ClaimsPrincipal(identidad), Esquema));

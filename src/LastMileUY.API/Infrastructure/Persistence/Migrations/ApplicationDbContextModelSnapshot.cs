@@ -206,6 +206,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)");
 
+                    b.Property<bool>("EsPrueba")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
 
@@ -802,6 +805,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
+                    b.Property<bool>("EsPrueba")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
 
@@ -1216,6 +1222,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasPrecision(9, 6)
                         .HasColumnType("numeric(9,6)");
 
+                    b.Property<bool>("EsAmbientePruebas")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
 
@@ -1229,6 +1238,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(150)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EsAmbientePruebas")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Operadores_UnoDePruebas")
+                        .HasFilter("\"EsAmbientePruebas\"");
 
                     b.HasIndex("Nombre");
 

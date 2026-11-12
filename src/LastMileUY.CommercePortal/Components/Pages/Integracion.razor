@@ -40,6 +40,11 @@
             Hay un tope de 120 pedidos y 10 lotes de envíos por minuto por clave.
         </p>
         <p class="mt-2">
+            Para probar la integración sin crear envíos de verdad, usá una clave del
+            <span class="font-semibold text-amber-200">ambiente de pruebas</span>: lo que cargues con ella no le llega a tu
+            operador logístico ni aparece en el portal. Tiene la mitad del tope.
+        </p>
+        <p class="mt-2">
             @if (urlDocumentacion is not null)
             {
                 <a href="@urlDocumentacion" target="_blank" rel="noopener" class="font-semibold text-violet-300 hover:text-violet-200">Ver la documentación de la API ↗</a>
@@ -108,6 +113,15 @@
                        placeholder="Por ejemplo: Tienda online"
                        class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20" />
             </div>
+            @* El label va aparte del campo (for/id): si envuelve al select, su nombre accesible incluye las opciones *@
+            <div class="flex min-w-[200px] flex-col gap-1.5 text-xs font-medium text-slate-400">
+                <label for="clave-ambiente">Ambiente</label>
+                <select id="clave-ambiente" @bind="ambiente"
+                        class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20">
+                    <option value="@AmbientesApi.Produccion">Producción</option>
+                    <option value="@AmbientesApi.Pruebas">Pruebas</option>
+                </select>
+            </div>
             <button type="button" @onclick="CrearAsync" disabled="@(guardando || string.IsNullOrWhiteSpace(nombre))"
                     class="rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60">
                 @(guardando ? "Creando…" : "Crear clave")
@@ -145,6 +159,7 @@
                     <tr>
                         <th class="px-5 py-3 font-medium">Nombre</th>
                         <th class="px-5 py-3 font-medium">Clave</th>
+                        <th class="px-5 py-3 font-medium">Ambiente</th>
                         <th class="px-5 py-3 font-medium">Creada</th>
                         <th class="px-5 py-3 font-medium">Último uso</th>
                         <th class="px-5 py-3 font-medium">Estado</th>
@@ -157,6 +172,16 @@
                         <tr>
                             <td class="px-5 py-3 font-medium text-slate-200">@clave.Nombre</td>
                             <td class="px-5 py-3 font-mono text-xs text-slate-400">@clave.Prefijo…</td>
+                            <td class="px-5 py-3">
+                                @if (clave.EsPrueba)
+                                {
+                                    <span class="inline-flex rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-300">Pruebas</span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex rounded-full border border-violet-500/25 bg-violet-500/10 px-2.5 py-0.5 text-xs font-semibold text-violet-300">Producción</span>
+                                }
+                            </td>
                             <td class="px-5 py-3 text-slate-400">@Fecha(clave.FechaCreacion)</td>
                             <td class="px-5 py-3 text-slate-400">@(clave.UltimoUso is { } uso ? Fecha(uso) : "Nunca")</td>
                             <td class="px-5 py-3">
@@ -197,6 +222,7 @@
     private string? errorCarga;
     private string? error;
     private string nombre = string.Empty;
+    private string ambiente = AmbientesApi.Produccion;
     private bool guardando;
     private ClaveApiCreadaDto? creada;
     private bool copiada;
@@ -235,7 +261,7 @@
 
         try
         {
-            var resultado = await ClavesApi.CrearAsync(nombre.Trim());
+            var resultado = await ClavesApi.CrearAsync(nombre.Trim(), ambiente);
 
             if (resultado.Exito)
             {

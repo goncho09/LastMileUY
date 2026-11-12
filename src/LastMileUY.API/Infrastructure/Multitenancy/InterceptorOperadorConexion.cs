@@ -9,11 +9,14 @@ namespace LastMileUY.API.Infrastructure.Multitenancy;
 // app.codigo_seguimiento (seguimiento público) se vacía por lo mismo: el servicio que la usa la carga
 // solo dentro de su transacción, y esto es una barrera más por si alguna vez quedara cargada.
 // app.hash_clave_api (autenticación de la API pública) se vacía por lo mismo.
+// app.ambiente_pruebas: '1' con una clave de prueba de la API pública; si no, vacía. Separa los
+// destinatarios de prueba de los de verdad (política ambiente_destinatarios).
 public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : DbConnectionInterceptor
 {
     private const string Sql =
         "SELECT set_config('app.operador_id', @operador, false), set_config('app.comercio_id', @comercio, false), " +
-        "set_config('app.codigo_seguimiento', '', false), set_config('app.hash_clave_api', '', false)";
+        "set_config('app.codigo_seguimiento', '', false), set_config('app.hash_clave_api', '', false), " +
+        "set_config('app.ambiente_pruebas', @pruebas, false)";
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {
@@ -36,6 +39,11 @@ public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : D
         // Vacío = ninguno. Sin operador la política no devuelve filas; sin comercio no filtra por comercio.
         AgregarParametro(comando, "operador", contextoOperador.OperadorId);
         AgregarParametro(comando, "comercio", contextoOperador.ComercioId);
+
+        var pruebas = comando.CreateParameter();
+        pruebas.ParameterName = "pruebas";
+        pruebas.Value = contextoOperador.EnAmbientePruebas ? "1" : string.Empty;
+        comando.Parameters.Add(pruebas);
 
         return comando;
     }
