@@ -366,6 +366,7 @@ builder.Services.AddScoped<ImportarEnviosService>();
 builder.Services.AddScoped<AmbientePruebasService>();
 builder.Services.AddScoped<SimularEnvioService>();
 builder.Services.AddSingleton<AmbientePruebasService.Cache>();
+builder.Services.AddSingleton<IntentosFallidosClaveApi>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();

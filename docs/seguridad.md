@@ -24,6 +24,7 @@ Este documento junta en un solo lugar los controles de seguridad del sistema y p
   - Se guarda el hash, nunca la clave.
   - Se revocan desde el portal y dejan de funcionar en el pedido siguiente.
   - Tienen un tope de pedidos por clave, más bajo para los lotes y para las claves de prueba.
+  - Las claves inválidas tienen su propio freno por IP: pasados 30 fallos en un minuto, esa IP recibe `429` sin consultar la base.
   - Las claves de prueba trabajan con datos aislados de los reales: los envíos, con un operador de pruebas aparte; los destinatarios, con una marca que separan el filtro de EF y una política RLS. Una clave de producción no puede simular cambios de estado.
   - Detalle en [api-publica.md](api-publica.md).
 - **Backoffice y portal:** cada uno tiene su propia cookie cifrada, y adentro va la cookie de la API, que reenvían en cada llamada. El `HttpClient` no guarda cookies (`UseCookies = false`), así que la sesión de un usuario no se le puede mandar a otro.
@@ -111,4 +112,3 @@ Detalle en [seguimiento-publico.md](seguimiento-publico.md).
 
 - **Despliegue:** las contraseñas de los usuarios de base y las variables que hay que cambiar están en la sección "Antes de desplegar" del README.
 - **Primer administrador fuera de desarrollo:** se crea al arrancar la API con `SeedAdmin:Enabled=true` y `SeedAdmin:Email`/`SeedAdmin:Password`. Solo lo crea si no existe: fuera de desarrollo nunca le cambia la contraseña. Conviene apagarlo, o sacar la contraseña de la configuración, una vez creado.
-- **API pública, claves inválidas:** el tope de pedidos de `/api/v1` se aplica después de autenticar. Por eso, los pedidos con una clave inventada no se frenan, y cada uno cuesta una consulta a la base. Falta un tope por IP para los intentos fallidos, como el del seguimiento público.

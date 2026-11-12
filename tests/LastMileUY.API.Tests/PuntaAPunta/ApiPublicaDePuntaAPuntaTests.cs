@@ -1,6 +1,7 @@
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using System.Net;
+using Microsoft.AspNetCore.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using LastMileUY.Contracts.Comun;
@@ -83,6 +84,40 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.Unauthorized, otraClave.StatusCode);
         }
     }
+
+    [Fact]
+    public async Task Muchas_claves_invalidas_desde_una_IP_se_frenan_con_429_sin_afectar_a_otras_IP()
+    {
+        var buena = (await CrearClaveAsync(await api.IniciarSesionAsync(Comercio1, api.IdOperador1), "Misma IP")).Clave;
+
+        // Cada prueba con su IP inventada (documentación, RFC 5737): no frena a las demás pruebas
+        var atacante = IPAddress.Parse("203.0.113." + Random.Shared.Next(1, 250));
+
+        for (var i = 0; i < 30; i++)
+            Assert.Equal(StatusCodes.Status401Unauthorized, (await PedirAsync(atacante, "lmuy_live_inventada" + i)).Response.StatusCode);
+
+        var frenado = await PedirAsync(atacante, "lmuy_live_otra");
+        Assert.Equal(StatusCodes.Status429TooManyRequests, frenado.Response.StatusCode);
+        Assert.True(int.Parse(frenado.Response.Headers.RetryAfter!) > 0);
+
+        // Mientras dura, desde esa IP se frena cualquier clave (no se consulta la base)
+        Assert.Equal(StatusCodes.Status429TooManyRequests, (await PedirAsync(atacante, buena)).Response.StatusCode);
+
+        // Desde otra IP la clave buena anda
+        Assert.Equal(StatusCodes.Status200OK,
+            (await PedirAsync(IPAddress.Parse("198.51.100." + Random.Shared.Next(1, 250)), buena)).Response.StatusCode);
+    }
+
+    private Task<Microsoft.AspNetCore.Http.HttpContext> PedirAsync(IPAddress ip, string clave) =>
+        api.Server.SendAsync(contexto =>
+        {
+            contexto.Request.Method = "GET";
+            contexto.Request.Scheme = "https";
+            contexto.Request.Host = new Microsoft.AspNetCore.Http.HostString("localhost");
+            contexto.Request.Path = "/api/v1/destinatarios";
+            contexto.Request.Headers["X-Api-Key"] = clave;
+            contexto.Connection.RemoteIpAddress = ip;
+        });
 
     [Fact]
     public async Task Revocar_la_clave_corta_el_acceso_en_el_pedido_siguiente()

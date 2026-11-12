@@ -1,78 +1,80 @@
-﻿
-@model LastMileUY.Backoffice.Pages.Operadores.FormularioOperadorModel
+﻿@page "{id:int}"
+@model LastMileUY.Backoffice.Pages.Operadores.EditarModel
 
-<div asp-validation-summary="ModelOnly"
-     class="text-sm text-red-300"></div>
+@{
+    ViewData["Title"] = "Editar operador";
+}
 
-<div class="space-y-6">
+@* Antes este archivo tenía solo los campos del formulario, sin @page: el enlace "Editar" del listado
+   no llevaba a ninguna página. Ahora es la página, con el mismo formulario que el alta (_Formulario) *@
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
-    <!-- Nombre -->
     <div>
-        <label asp-for="Nombre"
-               class="mb-2 block text-sm font-medium text-slate-300">
-            Nombre del operador
-            <span class="text-red-400">*</span>
-        </label>
-
-        <input asp-for="Nombre"
-               maxlength="150"
-               required
-               placeholder="Ej. Logística del Sur"
-               class="w-full rounded-xl border border-white/10
-                      bg-[#10121a] px-4 py-3 text-sm text-white
-                      outline-none placeholder:text-slate-500
-                      transition-colors focus:border-violet-500" />
-
-        <span asp-validation-for="Nombre"
-              class="mt-1 block text-xs text-red-300"></span>
-    </div>
-
-    <!-- Color -->
-    <div>
-        <label asp-for="ColorPrimario"
-               class="mb-2 block text-sm font-medium text-slate-300">
-            Color primario
-        </label>
-
-        <input asp-for="ColorPrimario"
-               maxlength="7"
-               placeholder="#2563EB"
-               class="w-full rounded-xl border border-white/10
-                      bg-[#10121a] px-4 py-3 text-sm text-white
-                      outline-none placeholder:text-slate-500
-                      transition-colors focus:border-violet-500" />
-
-        <p class="mt-2 text-xs text-slate-500">
-            Ingresá un color hexadecimal, por ejemplo #2563EB.
-            Se utilizará para identificar visualmente al operador.
+        <p class="mb-2 text-sm font-medium text-violet-400">
+            Administración / Operadores
         </p>
 
-        <span asp-validation-for="ColorPrimario"
-              class="mt-1 block text-xs text-red-300"></span>
-    </div>
+        <h1 class="text-3xl font-bold tracking-tight text-white">
+            Editar operador
+        </h1>
 
-    <!-- Logo -->
-    <div>
-        <label asp-for="LogoUrl"
-               class="mb-2 block text-sm font-medium text-slate-300">
-            URL del logo
-        </label>
-
-        <input asp-for="LogoUrl"
-               type="url"
-               maxlength="500"
-               placeholder="https://ejemplo.com/logo.png"
-               class="w-full rounded-xl border border-white/10
-                      bg-[#10121a] px-4 py-3 text-sm text-white
-                      outline-none placeholder:text-slate-500
-                      transition-colors focus:border-violet-500" />
-
-        <p class="mt-2 text-xs text-slate-500">
-            Opcional. Podés indicar una imagen alojada en una URL pública.
+        <p class="mt-2 text-sm text-slate-400">
+            Modificá la información del operador #@Model.OperadorId.
         </p>
-
-        <span asp-validation-for="LogoUrl"
-              class="mt-1 block text-xs text-red-300"></span>
     </div>
 
+    <div class="max-w-3xl">
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+
+            <div class="flex flex-wrap items-center justify-between gap-3
+                        border-b border-white/10 px-6 py-5">
+
+                <div>
+                    <h2 class="text-base font-semibold text-white">
+                        Datos del operador
+                    </h2>
+
+                    <p class="mt-1 text-sm text-slate-400">
+                        Actualizá el nombre y la identidad visual.
+                    </p>
+                </div>
+
+                <span class="rounded-full border border-violet-500/20
+                             bg-violet-500/10 px-3 py-1.5
+                             text-xs font-medium text-violet-300">
+                    ID #@Model.OperadorId
+                </span>
+            </div>
+
+            <form method="post" class="space-y-6 p-6">
+
+                <partial name="/Pages/Shared/_ErroresFormulario.cshtml" />
+                <partial name="_Formulario" for="Formulario" />
+
+                <div class="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-6">
+
+                    <a asp-page="/Operadores/Index"
+                       class="inline-flex items-center justify-center rounded-xl
+                              border border-white/10 bg-white/5 px-5 py-3
+                              text-sm font-semibold text-slate-300 no-underline
+                              transition-colors hover:bg-white/10 hover:text-white">
+                        Cancelar
+                    </a>
+
+                    <button type="submit"
+                            class="inline-flex items-center justify-center gap-2
+                                   rounded-xl bg-violet-600 px-5 py-3
+                                   text-sm font-semibold text-white
+                                   transition-colors hover:bg-violet-500">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                             stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M5 3h12l4 4v14H3V3h2zM7 3v6h10V3M7 21v-8h10v8" />
+                        </svg>
+                        Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
 </div>
