@@ -17,6 +17,9 @@
       ports: !override
         - "127.0.0.1:8080:8080"
       environment:
+        # Los pedidos llegan por el proxy de la máquina, a través de la red de Docker: se confía en su
+        # X-Forwarded-For para ver la IP real del visitante (src/Compartido/ProxyInverso.cs)
+        ProxyInverso__RedesConfiables__0: "172.16.0.0/12"
         ASPNETCORE_ENVIRONMENT: Production
         Avisos__PermitirDestinosLocales: "false"
         SeedAdmin__Enabled: "false"
@@ -27,6 +30,7 @@
       ports: !override
         - "127.0.0.1:8081:8080"
       environment:
+        ProxyInverso__RedesConfiables__0: "172.16.0.0/12"
         ASPNETCORE_ENVIRONMENT: Production
       volumes: !override
         - claves_backoffice:/claves
@@ -35,6 +39,8 @@
     lastmileuy.commerceportal:
       ports: !override
         - "127.0.0.1:8082:8080"
+      environment:
+        ProxyInverso__RedesConfiables__0: "172.16.0.0/12"
       restart: unless-stopped
     
     lastmileuy.driverpwa:
@@ -45,6 +51,8 @@
     lastmileuy.publictracking:
       ports: !override
         - "127.0.0.1:8084:8080"
+      environment:
+        ProxyInverso__RedesConfiables__0: "172.16.0.0/12"
       restart: unless-stopped
     
     lastmileuy.worker:

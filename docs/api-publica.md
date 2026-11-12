@@ -195,3 +195,4 @@ Sin otro freno, cada intento costaría una consulta a la base. Por eso `Intentos
 - **El costo:** mientras dura se frena todo pedido con clave desde esa IP, también uno con una clave buena. Es el precio de no consultar la base, y dura como mucho un minuto.
 - **Adivinar una clave sigue siendo imposible** (256 bits). El freno es para que nadie use esto para cargar la base.
 - **Instancias:** el contador vive en la memoria de cada instancia, como los demás topes.
+- **Detrás del proxy de Azure** se cuenta por la IP real del visitante, no por la del proxy (ver "Detrás de un proxy inverso" en [seguridad.md](seguridad.md)). Si no, un solo abusador frenaría la API pública para todos los comercios.

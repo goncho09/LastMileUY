@@ -21,4 +21,9 @@
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
+  <!-- Código compartido con las demás aplicaciones web (src/Compartido) -->
+  <ItemGroup>
+    <Compile Include="../Compartido/ProxyInverso.cs" Link="Compartido/ProxyInverso.cs" />
+  </ItemGroup>
+
 </Project>
