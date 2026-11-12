@@ -77,6 +77,20 @@ public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = "Envíos del Sur" })).ToBeVisibleAsync();
     }
 
+    // "Sin permiso" mandaba a todos a envíos, que el administrador tampoco puede ver: ahora va al inicio,
+    // que lleva a cada perfil a lo suyo
+    [Fact]
+    public async Task Sin_permiso_el_administrador_vuelve_a_su_inicio()
+    {
+        var pagina = await backoffice.IniciarSesionAsync(Administrador);
+
+        await pagina.GotoAsync("/Operador");
+        await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "No tenés permiso para ver esta página" })).ToBeVisibleAsync();
+
+        await pagina.GetByRole(AriaRole.Link, new() { Name = "Ir al inicio" }).ClickAsync();
+        await pagina.WaitForURLAsync(url => url.Contains("mensajesfallidos", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static async Task CompletarUsuarioInicialAsync(IPage pagina, string email)
     {
         await pagina.GetByLabel("Nombre", new() { Exact = true }).FillAsync("Ana");
