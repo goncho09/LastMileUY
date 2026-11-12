@@ -17,6 +17,43 @@ flock -n 9 || { echo "Ya existe una actualización en ejecución."; exit 0; }
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
+crear_backup_postgres() {
+  local version="$1"
+  local directorio="$ESTADO/backups"
+  local archivo="$directorio/postgres-${version}-$(date -u +%Y%m%dT%H%M%SZ).dump"
+  local temporal="${archivo}.tmp"
+
+  mkdir -p "$directorio"
+  chmod 700 "$directorio"
+
+  log "Creando backup de PostgreSQL antes de migrar..."
+
+  if ! docker exec lastmileuy-postgres \
+    pg_dump -U lastmileuy -d lastmileuy -Fc > "$temporal"; then
+    rm -f "$temporal"
+    log "ERROR: falló el backup de PostgreSQL."
+    return 1
+  fi
+
+  if [[ ! -s "$temporal" ]]; then
+    rm -f "$temporal"
+    log "ERROR: el backup está vacío."
+    return 1
+  fi
+
+  if ! docker exec -i lastmileuy-postgres \
+    pg_restore --list < "$temporal" > /dev/null; then
+    rm -f "$temporal"
+    log "ERROR: no se pudo verificar el backup."
+    return 1
+  fi
+
+  chmod 600 "$temporal"
+  mv "$temporal" "$archivo"
+
+  log "Backup creado y catálogo verificado: $archivo"
+}
+
 compose_base=(docker compose --project-directory "$PROYECTO" --env-file .env.azure \
   -f compose.yaml -f docker-compose.azure.yml -f compose.deploy.yaml)
 
@@ -136,6 +173,9 @@ for servicio in "${SERVICIOS[@]}"; do
   "${compose_base[@]}" pull "lastmileuy.$servicio"
 done
 
+log "Guardando respaldo de las imágenes actuales..."
+ROLLBACK=$(crear_respaldo_y_override "$VERSION_NUEVA")
+
 log "Comprobando migraciones de la imagen nueva contra PostgreSQL..."
 set +e
 "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
@@ -143,15 +183,31 @@ set +e
 codigo_migraciones=$?
 set -e
 if [[ "$codigo_migraciones" -eq 10 ]]; then
-  log "Hay migraciones pendientes. Despliegue automático bloqueado; requiere respaldo y ejecución controlada."
-  exit 0
+  log "Hay migraciones pendientes."
+
+  crear_backup_postgres "$VERSION_NUEVA"
+
+  log "Aplicando migraciones de EF Core..."
+
+  if ! "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
+	  LastMileUY.API.dll --apply-migrations; then
+	  log "ERROR: falló la migración. No se actualizarán los contenedores."
+	  log "La base de datos puede haber cambiado parcialmente. Revisar el backup antes de reintentar."
+	  exit 1
+  fi
+
+  log "Aplicando migraciones de EF Core..."
+  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
+    LastMileUY.API.dll --apply-migrations
+  log "Comprobando que no quedan migraciones pendientes..."
+  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
+    LastMileUY.API.dll --check-migrations
+
+  log "Migraciones aplicadas correctamente."
 elif [[ "$codigo_migraciones" -ne 0 ]]; then
   log "No se pudo comprobar el estado de las migraciones (código $codigo_migraciones). Despliegue bloqueado."
   exit 1
 fi
-
-log "Guardando respaldo de las imágenes actuales..."
-ROLLBACK=$(crear_respaldo_y_override "$VERSION_NUEVA")
 
 DESPLIEGUE_OK=false
 rollback_si_falla() {
