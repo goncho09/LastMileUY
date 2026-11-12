@@ -64,6 +64,9 @@ builder.Services.AddHttpClient<IDestinatariosApi, DestinatariosApiHttp>(Configur
 builder.Services.AddHttpClient<IEnviosApi, EnviosApiHttp>(ConfigurarCliente)
     .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
 
+builder.Services.AddHttpClient<IClavesApi, ClavesApiHttp>(ConfigurarCliente)
+    .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
+
 builder.Services.AddHttpClient<IAvisosApi, AvisosApiHttp>(ConfigurarCliente)
     .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas);
 

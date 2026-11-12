@@ -13,6 +13,7 @@ using LastMileUY.API.Modules.Rutas.Domain;
 using LastMileUY.API.Modules.Seguimiento.Domain;
 using LastMileUY.API.Modules.Sincronizacion.Domain;
 using LastMileUY.API.Modules.Tarifas.Domain;
+using LastMileUY.API.Modules.Integraciones.Domain;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -88,6 +89,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     // Notificaciones
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<SuscripcionAvisos> SuscripcionesAvisos => Set<SuscripcionAvisos>();
+    public DbSet<ClaveApi> ClavesApi => Set<ClaveApi>();
     public DbSet<EntregaAviso> EntregasAvisos => Set<EntregaAviso>();
     public DbSet<IntentoAviso> IntentosAvisos => Set<IntentoAviso>();
 

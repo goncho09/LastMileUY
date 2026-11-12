@@ -786,6 +786,61 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Integraciones.Domain.ClaveApi", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ComercioId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CreadaPorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaRevocacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefijo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("UltimoUso")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComercioId");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("OperadorId", "ComercioId");
+
+                    b.ToTable("ClavesApi", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.MensajeFallido", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2186,6 +2241,21 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .WithMany("Usuarios")
                         .HasForeignKey("OperadorId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Integraciones.Domain.ClaveApi", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Comercios.Domain.Comercio", null)
+                        .WithMany()
+                        .HasForeignKey("ComercioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.MensajeReintentoOutbox", b =>

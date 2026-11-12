@@ -1,0 +1,60 @@
+using Microsoft.AspNetCore.OpenApi;
+using LastMileUY.API.Modules.Integraciones.Endpoints;
+using Microsoft.OpenApi;
+
+namespace LastMileUY.API.Modules.Integraciones.Application;
+
+// El documento OpenAPI de la API pública (/api/v1/openapi.json), que muestra Scalar en /api/v1/docs.
+// Solo trae los endpoints de /api/v1 (los del grupo "v1") y declara cómo se autentica: con la clave
+// en el encabezado X-Api-Key. Así la documentación sirve para probar los pedidos con una clave real.
+public static class DocumentacionApiPublica
+{
+    public static void Configurar(OpenApiOptions opciones)
+    {
+        opciones.ShouldInclude = descripcion => descripcion.GroupName == ApiPublicaV1Endpoints.Version;
+
+        opciones.AddDocumentTransformer((documento, _, _) =>
+        {
+            documento.Info = new OpenApiInfo
+            {
+                Title = "LastMileUY · API pública",
+                Version = "v1",
+                Description = """
+                    API para que el sistema de un comercio (tienda online, ERP) cargue y siga sus envíos.
+
+                    **Autenticación.** Cada pedido lleva una clave en el encabezado `X-Api-Key`. Las claves
+                    las crea el comercio en el portal (menú *Integración*): cada una vale para el comercio y
+                    el operador logístico con el que se creó, y se puede revocar en cualquier momento.
+
+                    **Versiones.** Todo está bajo `/api/v1`. Un cambio incompatible saldría en `/api/v2`, y
+                    la v1 seguiría funcionando.
+
+                    **Límites.** Por clave: 120 pedidos por minuto y 10 lotes por minuto. Al pasarlos la API
+                    responde 429 con el encabezado `Retry-After` (segundos a esperar).
+
+                    **Importación sin duplicados.** `POST /api/v1/envios/lote` usa la referencia externa
+                    (el número de pedido del comercio) para no crear el mismo envío dos veces: se puede
+                    reenviar el lote completo o una parte sin miedo.
+                    """
+            };
+
+            documento.Components ??= new OpenApiComponents();
+            documento.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+            documento.Components.SecuritySchemes[AutenticacionClaveApi.Esquema] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Header,
+                Name = AutenticacionClaveApi.Encabezado,
+                Description = "Clave de API del comercio (empieza con lmuy_). Se crea en el portal."
+            };
+
+            documento.Security ??= [];
+            documento.Security.Add(new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference(AutenticacionClaveApi.Esquema, documento)] = []
+            });
+
+            return Task.CompletedTask;
+        });
+    }
+}

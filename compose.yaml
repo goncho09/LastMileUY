@@ -143,6 +143,8 @@
     environment:
       # El portal del comercio habla con la API real; el login es contra la API
       Api__UrlBase: "http://lastmileuy.api:8080/"
+      # La dirección de la API que ven los integradores (enlace a /api/v1/docs/ en la pantalla Integración)
+      Api__UrlPublica: "http://localhost:8080/"
       DataProtection__Directorio: /claves
     volumes:
       - claves_portal:/claves
