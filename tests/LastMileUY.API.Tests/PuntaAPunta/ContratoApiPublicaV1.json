@@ -1,0 +1,1391 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "LastMileUY · API pública",
+    "description": "API para que el sistema de un comercio (tienda online, ERP) cargue y siga sus envíos.\n\n**Autenticación.** Cada pedido lleva una clave en el encabezado `X-Api-Key`. Las claves\nlas crea el comercio en el portal (menú *Integración*): cada una vale para el comercio y\nel operador logístico con el que se creó, y se puede revocar en cualquier momento.\n\n**Versiones.** Todo está bajo `/api/v1`. Un cambio incompatible saldría en `/api/v2`, y\nla v1 seguiría funcionando.\n\n**Límites.** Por clave: 120 pedidos por minuto y 10 lotes por minuto. Al pasarlos la API\nresponde 429 con el encabezado `Retry-After` (segundos a esperar).\n\n**Importación sin duplicados.** `POST /api/v1/envios/lote` usa la referencia externa\n(el número de pedido del comercio) para no crear el mismo envío dos veces: se puede\nreenviar el lote completo o una parte sin miedo.",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/v1/envios": {
+      "get": {
+        "tags": [
+          "Envíos"
+        ],
+        "summary": "Lista los envíos del comercio, del más nuevo al más viejo",
+        "description": "Filtros opcionales: estado (por ejemplo EnTransito) y buscar (código, referencia o destinatario). Tamaño de página máximo: 100.",
+        "operationId": "V1ListarEnvios",
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanioPagina",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "buscar",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaDtoOfEnvioResumenDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Envíos"
+        ],
+        "summary": "Crea un envío",
+        "description": "Si se manda una referencia externa que ya existe, responde 409 y no crea otro envío.",
+        "operationId": "V1CrearEnvio",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvioApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvioResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/envios/{id}": {
+      "get": {
+        "tags": [
+          "Envíos"
+        ],
+        "summary": "Detalle de un envío: estado, bultos, historial e intentos de entrega",
+        "operationId": "V1ObtenerEnvio",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvioDetalleDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/envios/lote": {
+      "post": {
+        "tags": [
+          "Envíos"
+        ],
+        "summary": "Importa hasta 100 envíos de una vez, sin duplicar",
+        "description": "Cada envío necesita su referencia externa. Reimportar el lote, entero o una parte, no crea envíos repetidos: las referencias que ya existían vuelven como \"Existente\" con el envío que estaba. Cada fila se procesa por separado: una inválida vuelve como \"Rechazado\" con el motivo y no frena a las demás.",
+        "operationId": "V1ImportarEnvios",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarEnviosRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportarEnviosResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/destinatarios": {
+      "get": {
+        "tags": [
+          "Destinatarios"
+        ],
+        "summary": "Lista los destinatarios del comercio con sus direcciones activas",
+        "operationId": "V1ListarDestinatarios",
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DestinatarioDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Destinatarios"
+        ],
+        "summary": "Da de alta un destinatario con su primera dirección",
+        "operationId": "V1CrearDestinatario",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearDestinatarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DestinatarioDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/destinatarios/{id}/direcciones": {
+      "post": {
+        "tags": [
+          "Destinatarios"
+        ],
+        "summary": "Agrega otra dirección de entrega a un destinatario",
+        "operationId": "V1AgregarDireccion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrearDireccionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DireccionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BultoDto": {
+        "required": [
+          "codigo",
+          "pesoKg",
+          "largoCm",
+          "anchoCm",
+          "altoCm",
+          "descripcion"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "pesoKg": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "largoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "anchoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "altoCm": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "descripcion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "estado": {
+            "type": "string"
+          }
+        }
+      },
+      "CrearBultoRequest": {
+        "type": "object",
+        "properties": {
+          "pesoKg": {
+            "maximum": 1000,
+            "minimum": 0.01,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "largoCm": {
+            "maximum": 1000,
+            "minimum": 0.1,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "anchoCm": {
+            "maximum": 1000,
+            "minimum": 0.1,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "altoCm": {
+            "maximum": 1000,
+            "minimum": 0.1,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "descripcion": {
+            "maxLength": 500,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CrearDestinatarioRequest": {
+        "required": [
+          "nombre",
+          "apellido",
+          "direccion"
+        ],
+        "type": "object",
+        "properties": {
+          "comercioId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "nombre": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "apellido": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 250,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "telefono": {
+            "maxLength": 30,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "direccion": {
+            "$ref": "#/components/schemas/CrearDireccionRequest"
+          }
+        }
+      },
+      "CrearDireccionRequest": {
+        "required": [
+          "calle",
+          "numero",
+          "ciudad",
+          "departamento"
+        ],
+        "type": "object",
+        "properties": {
+          "calle": {
+            "maxLength": 150,
+            "type": "string"
+          },
+          "numero": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "apartamento": {
+            "maxLength": 50,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ciudad": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "departamento": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "codigoPostal": {
+            "maxLength": 20,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "referencia": {
+            "maxLength": 300,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "latitud": {
+            "maximum": 90,
+            "minimum": -90,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "longitud": {
+            "maximum": 180,
+            "minimum": -180,
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "DestinatarioDto": {
+        "required": [
+          "nombre",
+          "apellido",
+          "telefono",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string"
+          },
+          "apellido": {
+            "type": "string"
+          },
+          "telefono": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DireccionDto": {
+        "required": [
+          "calle",
+          "numero",
+          "apartamento",
+          "ciudad",
+          "departamento",
+          "codigoPostal",
+          "referencia"
+        ],
+        "type": "object",
+        "properties": {
+          "calle": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "string"
+          },
+          "apartamento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ciudad": {
+            "type": "string"
+          },
+          "departamento": {
+            "type": "string"
+          },
+          "codigoPostal": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "referencia": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "EnvioApiRequest": {
+        "type": "object",
+        "properties": {
+          "referenciaExterna": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "destinatarioId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "direccionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "bultos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrearBultoRequest"
+            }
+          }
+        }
+      },
+      "EnvioDetalleDto": {
+        "required": [
+          "id",
+          "codigoSeguimiento",
+          "referenciaExterna",
+          "comercio",
+          "estado",
+          "modalidad",
+          "fechaCreacion",
+          "fechaEntrega",
+          "costoEnvio",
+          "destinatario",
+          "direccion",
+          "bultos",
+          "eventos"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "codigoSeguimiento": {
+            "type": "string"
+          },
+          "referenciaExterna": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "comercio": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "modalidad": {
+            "type": "string"
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fechaEntrega": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "costoEnvio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "destinatario": {
+            "$ref": "#/components/schemas/DestinatarioDto"
+          },
+          "direccion": {
+            "$ref": "#/components/schemas/DireccionDto"
+          },
+          "bultos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BultoDto"
+            }
+          },
+          "eventos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventoEnvioDto"
+            }
+          },
+          "estadosSiguientes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "regla": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReglaAplicadaDto"
+              }
+            ]
+          },
+          "intentosFallidos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "canal": {
+            "type": "string"
+          },
+          "fechaLimiteEntrega": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "intentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntentoEntregaDto"
+            }
+          }
+        }
+      },
+      "EnvioResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "codigoSeguimiento": {
+            "type": "string"
+          },
+          "comercioId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "destinatarioId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EnvioResumenDto": {
+        "required": [
+          "id",
+          "codigoSeguimiento",
+          "referenciaExterna",
+          "comercio",
+          "destinatario",
+          "ciudad",
+          "departamento",
+          "estado",
+          "modalidad",
+          "cantidadBultos",
+          "fechaCreacion"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "codigoSeguimiento": {
+            "type": "string"
+          },
+          "referenciaExterna": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "comercio": {
+            "type": "string"
+          },
+          "destinatario": {
+            "type": "string"
+          },
+          "ciudad": {
+            "type": "string"
+          },
+          "departamento": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "modalidad": {
+            "type": "string"
+          },
+          "cantidadBultos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canal": {
+            "type": "string"
+          }
+        }
+      },
+      "EventoEnvioDto": {
+        "required": [
+          "fechaHora",
+          "tipo",
+          "descripcion",
+          "origen"
+        ],
+        "type": "object",
+        "properties": {
+          "fechaHora": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "descripcion": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "origen": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportarEnviosRequest": {
+        "type": "object",
+        "properties": {
+          "envios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvioApiRequest"
+            }
+          }
+        }
+      },
+      "ImportarEnviosResponse": {
+        "required": [
+          "creados",
+          "existentes",
+          "rechazados",
+          "resultados"
+        ],
+        "type": "object",
+        "properties": {
+          "creados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "existentes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "rechazados": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "resultados": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultadoImportacionDto"
+            }
+          }
+        }
+      },
+      "IntentoEntregaDto": {
+        "required": [
+          "id",
+          "numeroIntento",
+          "fechaHora",
+          "resultado",
+          "motivo",
+          "observaciones",
+          "bultos",
+          "prueba"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "numeroIntento": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fechaHora": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resultado": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "observaciones": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bultos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResultadoBultoDto"
+            }
+          },
+          "prueba": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PruebaEntregaDto"
+              }
+            ]
+          }
+        }
+      },
+      "PaginaDtoOfEnvioResumenDto": {
+        "required": [
+          "items",
+          "total",
+          "pagina",
+          "tamanioPagina"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnvioResumenDto"
+            }
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tamanioPagina": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPaginas": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PruebaEntregaDto": {
+        "required": [
+          "nombreReceptor",
+          "tieneFirma",
+          "tieneFoto",
+          "bultosEntregados"
+        ],
+        "type": "object",
+        "properties": {
+          "nombreReceptor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tieneFirma": {
+            "type": "boolean"
+          },
+          "tieneFoto": {
+            "type": "boolean"
+          },
+          "bultosEntregados": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ReglaAplicadaDto": {
+        "required": [
+          "nombre",
+          "maximoIntentosEntrega",
+          "horasEntreIntentos",
+          "plazoEntregaHoras",
+          "requiereFirma",
+          "requiereFotografia",
+          "requiereDocumentoReceptor"
+        ],
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string"
+          },
+          "maximoIntentosEntrega": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "horasEntreIntentos": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "plazoEntregaHoras": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "requiereFirma": {
+            "type": "boolean"
+          },
+          "requiereFotografia": {
+            "type": "boolean"
+          },
+          "requiereDocumentoReceptor": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ResultadoBultoDto": {
+        "required": [
+          "codigo",
+          "entregado",
+          "motivo"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "entregado": {
+            "type": "boolean"
+          },
+          "motivo": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ResultadoImportacionDto": {
+        "required": [
+          "indice",
+          "referenciaExterna",
+          "resultado",
+          "envioId",
+          "codigoSeguimiento",
+          "mensaje"
+        ],
+        "type": "object",
+        "properties": {
+          "indice": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "referenciaExterna": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resultado": {
+            "type": "string"
+          },
+          "envioId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "codigoSeguimiento": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mensaje": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "ClaveApi": {
+        "type": "apiKey",
+        "description": "Clave de API del comercio (empieza con lmuy_). Se crea en el portal.",
+        "name": "X-Api-Key",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "ClaveApi": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Envíos"
+    },
+    {
+      "name": "Destinatarios"
+    }
+  ]
+}

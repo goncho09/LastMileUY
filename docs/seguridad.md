@@ -110,3 +110,4 @@ Detalle en [seguimiento-publico.md](seguimiento-publico.md).
 
 - **Despliegue:** las contraseñas de los usuarios de base y las variables que hay que cambiar están en la sección "Antes de desplegar" del README.
 - **Primer administrador fuera de desarrollo:** se crea al arrancar la API con `SeedAdmin:Enabled=true` y `SeedAdmin:Email`/`SeedAdmin:Password`. Solo lo crea si no existe: fuera de desarrollo nunca le cambia la contraseña. Conviene apagarlo, o sacar la contraseña de la configuración, una vez creado.
+- **API pública, claves inválidas:** el tope de pedidos de `/api/v1` se aplica después de autenticar. Por eso, los pedidos con una clave inventada no se frenan, y cada uno cuesta una consulta a la base. Falta un tope por IP para los intentos fallidos, como el del seguimiento público.

@@ -35,7 +35,7 @@ public static class DocumentacionApiPublica
                     **Importación sin duplicados.** `POST /api/v1/envios/lote` usa la referencia externa
                     (el número de pedido del comercio) para no crear el mismo envío dos veces: se puede
                     reenviar el lote completo o una parte sin miedo.
-                    """
+                    """.ReplaceLineEndings("\n") // igual en Windows y en Linux (el contrato se compara en las pruebas)
             };
 
             documento.Components ??= new OpenApiComponents();

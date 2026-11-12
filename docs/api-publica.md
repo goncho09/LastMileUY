@@ -70,6 +70,14 @@ Todo está bajo `/api/v1`.
 - **Qué puede cambiar dentro de la v1:** solo lo compatible, como agregar campos a una respuesta o un endpoint nuevo.
 - **Qué va a otra versión:** un cambio incompatible, como sacar o renombrar un campo, o cambiar una regla, saldría en `/api/v2`, con su propio documento OpenAPI, y la v1 seguiría funcionando.
 
+**Cómo se cuida:** la forma de la v1 (rutas, parámetros y campos) está guardada en
+`tests/LastMileUY.API.Tests/PuntaAPunta/ContratoApiPublicaV1.json`. La prueba
+`El_contrato_de_la_v1_no_cambia_sin_querer` compara el documento OpenAPI con ese archivo.
+La v1 devuelve los mismos objetos que usa el portal, así que, si alguien les cambia un campo para el portal, la prueba falla.
+Entonces hay dos caminos:
+- **Cambio compatible:** se actualiza el archivo a propósito, con `ACTUALIZAR_CONTRATO=1`.
+- **Cambio incompatible:** va en una v2.
+
 Los endpoints de `/api/v1` usan los mismos servicios que el portal, así que las validaciones y las reglas son las mismas. Lo que cambia es la forma del contrato:
 - **El comercio no se manda:** sale de la clave.
 - **Las rutas no cambian** aunque cambien las de la API interna.
@@ -134,4 +142,5 @@ Los topes viven en la memoria de cada instancia de la API: con varias instancias
 
 ## Pendiente
 
+- **Claves inválidas sin tope:** el tope de pedidos se aplica después de autenticar. Por eso, los pedidos con una clave inventada no se frenan, y cada uno cuesta una consulta a la base. Se podría sumar un tope por IP para los intentos fallidos, como el del seguimiento público.
 - **Ambiente de pruebas:** son claves de prueba que trabajan sobre datos aislados de los reales, para que el comercio pruebe su integración sin crear envíos de verdad. Va en un cambio aparte.

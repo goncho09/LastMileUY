@@ -281,6 +281,65 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Contains("text/html", pagina.Content.Headers.ContentType?.ToString());
     }
 
+    [Fact]
+    public async Task Dos_importaciones_del_mismo_lote_a_la_vez_no_duplican_envios()
+    {
+        var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
+        var portal = await api.IniciarSesionAsync(Comercio1, api.IdOperador1);
+        var sistemaA = ClienteConClave((await CrearClaveAsync(portal, "Importador A")).Clave);
+        var sistemaB = ClienteConClave((await CrearClaveAsync(portal, "Importador B")).Clave);
+
+        var lote = "PAR-" + Guid.NewGuid().ToString("N")[..8];
+        var pedido = new ImportarEnviosRequest
+        {
+            Envios = Enumerable.Range(1, 20).Select(i => Envio(destinatario, direccion, $"{lote}-{i}")).ToList()
+        };
+
+        // Las dos a la vez: chocan en las mismas referencias, y el índice único frena a la que llega segunda
+        var resultados = await Task.WhenAll(ImportarAsync(sistemaA, pedido), ImportarAsync(sistemaB, pedido));
+
+        Assert.All(resultados.SelectMany(r => r.Resultados), r =>
+            Assert.Contains(r.Resultado, new[] { ResultadosImportacion.Creado, ResultadosImportacion.Existente }));
+        Assert.Equal(20, resultados.Sum(r => r.Creados));
+        Assert.Equal(20, await api.ConsultarCantidadAsync(
+            $"SELECT count(*) FROM \"Envios\" WHERE \"ReferenciaExterna\" LIKE '{lote}-%'"));
+
+        // Para cada referencia, las dos respuestas apuntan al mismo envío
+        for (var i = 0; i < 20; i++)
+            Assert.Equal(resultados[0].Resultados[i].EnvioId, resultados[1].Resultados[i].EnvioId);
+    }
+
+    // Lo que garantiza "versionada": la forma de la v1 (rutas, parámetros, campos de pedidos y
+    // respuestas) está guardada en ContratoApiPublicaV1.json. Si un cambio la altera, esta prueba falla.
+    // Si el cambio es compatible (agrega un campo o un endpoint), se actualiza el archivo a propósito
+    // corriendo la prueba con ACTUALIZAR_CONTRATO=1. Si no es compatible, va en una /api/v2.
+    [Fact]
+    public async Task El_contrato_de_la_v1_no_cambia_sin_querer()
+    {
+        var archivo = Path.Combine(CarpetaDeEsteArchivo(), "ContratoApiPublicaV1.json");
+
+        using var respuesta = await api.ClienteSinSesion().GetAsync("api/v1/openapi.json");
+        var actual = System.Text.Json.Nodes.JsonNode.Parse(await respuesta.Content.ReadAsStringAsync())!.AsObject();
+
+        // La dirección del servidor depende de dónde corre la API: no es parte del contrato
+        actual.Remove("servers");
+
+        if (Environment.GetEnvironmentVariable("ACTUALIZAR_CONTRATO") == "1")
+        {
+            await File.WriteAllTextAsync(archivo,
+                actual.ToJsonString(new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) + "\n");
+        }
+
+        Assert.True(File.Exists(archivo), $"Falta {archivo}: generalo con ACTUALIZAR_CONTRATO=1.");
+        var guardado = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(archivo));
+
+        Assert.True(System.Text.Json.Nodes.JsonNode.DeepEquals(guardado, actual),
+            "El contrato de /api/v1 cambió. Si es compatible, actualizá ContratoApiPublicaV1.json con ACTUALIZAR_CONTRATO=1; si no, va en /api/v2.");
+    }
+
+    private static string CarpetaDeEsteArchivo([System.Runtime.CompilerServices.CallerFilePath] string ruta = "") =>
+        Path.GetDirectoryName(ruta)!;
+
     private static async Task<ClaveApiCreadaDto> CrearClaveAsync(HttpClient portal, string nombre)
     {
         using var respuesta = await portal.PostAsJsonAsync("api/claves-api", new CrearClaveApiRequest { Nombre = nombre });

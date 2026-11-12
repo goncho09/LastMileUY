@@ -64,6 +64,23 @@ public class PortalIntegracionTests(PortalComercioEnNavegador portal)
         Assert.Equal(HttpStatusCode.Unauthorized, await ConsultarConClaveAsync(clave));
     }
 
+    // La documentación navegable (Scalar) se abre sin sesión y carga el documento de la v1: se ven
+    // los endpoints de la API pública con su descripción
+    [Fact]
+    public async Task La_documentacion_de_la_api_publica_se_ve_en_el_navegador()
+    {
+        var contexto = await portal.Navegador.NewContextAsync(new BrowserNewContextOptions { Locale = "es-UY" });
+        var pagina = await contexto.NewPageAsync();
+
+        await pagina.GotoAsync(portal.DireccionApi + "/api/v1/docs/");
+
+        await Expect(pagina.GetByText("LastMileUY · API pública").First).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await Expect(pagina.GetByText("Importa hasta 100 envíos de una vez, sin duplicar").First).ToBeVisibleAsync();
+        await Expect(pagina.GetByText("X-Api-Key").First).ToBeVisibleAsync();
+
+        await contexto.CloseAsync();
+    }
+
     private async Task<HttpStatusCode> ConsultarConClaveAsync(string clave)
     {
         using var sistema = new HttpClient { BaseAddress = new Uri(portal.DireccionApi + "/") };
