@@ -1,6 +1,8 @@
 ﻿using LastMileUY.Contracts.Administracion;
 using LastMileUY.Contracts.Operadores;
 
+namespace LastMileUY.Backoffice.Servicios;
+
 public interface IGestionOperadoresApi
 {
     Task<List<OperadorAdminDto>> ListarAsync();

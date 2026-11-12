@@ -1,7 +1,10 @@
 ﻿@import "tailwindcss" source("../");
 
+/* Las animaciones van dentro de @theme: así Tailwind genera las clases animate-lm-*.
+   (lm-form-in estaba afuera y la clase animate-lm-form-in no existía: las páginas no se animaban) */
 @theme {
     --animate-lm-error-in: lm-error-in 350ms ease-out both;
+    --animate-lm-form-in: lm-form-in 500ms ease-out both;
 
     @keyframes lm-error-in {
         from {
@@ -14,18 +17,16 @@
             transform: translateY(0);
         }
     }
-}
 
---animate-lm-form-in: lm-form-in 500ms ease-out both;
+    @keyframes lm-form-in {
+        from {
+            opacity: 0;
+            transform: translateY(14px) scale(0.98);
+        }
 
-@keyframes lm-form-in {
-    from {
-        opacity: 0;
-        transform: translateY(14px) scale(0.98);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 }

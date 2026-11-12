@@ -109,8 +109,10 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IMensajesFallidosApi, MensajesFallidosApiDePrueba>();
     builder.Services.AddSingleton<IFuncionalidadesApi, FuncionalidadesApiDePrueba>();
     builder.Services.AddSingleton<IUsuariosApi, UsuariosApiDePrueba>();
-    builder.Services.AddScoped<IGestionOperadoresApi, GestionOperadoresApiDePrueba>();
-    builder.Services.AddScoped<IGestionComerciosApi, GestionComerciosApiDePrueba>();
+    // Singleton como los demás: con Scoped se creaban de nuevo en cada pedido y lo creado desaparecía
+    builder.Services.AddSingleton<GestionOperadoresApiDePrueba>();
+    builder.Services.AddSingleton<IGestionOperadoresApi>(s => s.GetRequiredService<GestionOperadoresApiDePrueba>());
+    builder.Services.AddSingleton<IGestionComerciosApi, GestionComerciosApiDePrueba>();
 
 }
 else

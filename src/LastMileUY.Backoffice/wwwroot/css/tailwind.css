@@ -8,6 +8,7 @@
       "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --color-red-200: oklch(88.5% 0.062 18.334);
     --color-red-300: oklch(80.8% 0.114 19.571);
     --color-red-400: oklch(70.4% 0.191 22.216);
     --color-red-500: oklch(63.7% 0.237 25.331);
@@ -86,6 +87,7 @@
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
     --animate-lm-error-in: lm-error-in 350ms ease-out both;
+    --animate-lm-form-in: lm-form-in 500ms ease-out both;
   }
 }
 @layer base {
@@ -1769,6 +1771,9 @@
   .text-emerald-400 {
     color: var(--color-emerald-400);
   }
+  .text-red-200 {
+    color: var(--color-red-200);
+  }
   .text-red-300 {
     color: var(--color-red-300);
   }
@@ -2091,6 +2096,9 @@
     .motion-safe\:animate-lm-error-in {
       animation: var(--animate-lm-error-in);
     }
+    .motion-safe\:animate-lm-form-in {
+      animation: var(--animate-lm-form-in);
+    }
   }
   @media (width >= 40rem) {
     .sm\:grid-cols-2 {
@@ -2229,16 +2237,17 @@
       grid-template-columns: repeat(12, minmax(0, 1fr));
     }
   }
-}
---animate-lm-form-in: lm-form-in 500ms ease-out both;
-@keyframes lm-form-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.98);
+  .\[\&_ul\]\:m-0 ul {
+    margin: 0px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+  .\[\&_ul\]\:list-none ul {
+    list-style-type: none;
+  }
+  .\[\&_ul\]\:p-0 ul {
+    padding: 0px;
+  }
+  .\[\&\.validation-summary-valid\]\:hidden.validation-summary-valid {
+    display: none;
   }
 }
 @property --tw-translate-x {
@@ -2444,6 +2453,16 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+@keyframes lm-form-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 @layer properties {

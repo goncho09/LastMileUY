@@ -186,6 +186,12 @@ normal hasta el estado pedido. Los estados posibles son `EnDeposito`, `AsignadoA
 - **Avisos HTTP:** las suscripciones se configuran en el portal con el operador elegido, y el operador de pruebas no se puede elegir.
 - **Seguimiento público:** un código de prueba sí se puede consultar en la página pública. Aparece con el operador "Ambiente de pruebas (API pública)".
 
-## Pendiente
+## Claves inválidas
 
-- **Claves inválidas sin tope:** el tope de pedidos se aplica después de autenticar. Por eso, los pedidos con una clave inventada no se frenan, y cada uno cuesta una consulta a la base. Se podría sumar un tope por IP para los intentos fallidos, como el del seguimiento público.
+El tope de pedidos va por clave y corre después de autenticar, así que una clave inventada nunca llega a él.
+Sin otro freno, cada intento costaría una consulta a la base. Por eso `IntentosFallidosClaveApi` cuenta los fallos por IP:
+
+- **Al pasar el tope:** pasados `ApiPublica:IntentosFallidosPorMinuto` fallos en un minuto (30 por defecto), esa IP recibe `429` con `Retry-After`, **sin consultar la base**, hasta que termina el minuto.
+- **El costo:** mientras dura se frena todo pedido con clave desde esa IP, también uno con una clave buena. Es el precio de no consultar la base, y dura como mucho un minuto.
+- **Adivinar una clave sigue siendo imposible** (256 bits). El freno es para que nadie use esto para cargar la base.
+- **Instancias:** el contador vive en la memoria de cada instancia, como los demás topes.
