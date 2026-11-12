@@ -10,7 +10,7 @@ namespace LastMileUY.API.Modules.Comercios.Application;
 
 public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuarioInicialService? altaUsuario = null)
 {
-    
+
     public Task<List<ComercioAdminDto>> ListarAsync(
         CancellationToken ct) =>
         db.Comercios
@@ -32,7 +32,7 @@ public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuario
                 c.Id, c.Nombre, c.RazonSocial, c.RUT,
                 c.Email, c.Telefono, c.Activo, c.FechaCreacion))
             .FirstOrDefaultAsync(ct);
-    
+
     public async Task<ComercioAdminDto> CrearConUsuarioAsync(
         CrearComercioConUsuarioRequest request, CancellationToken ct)
     {

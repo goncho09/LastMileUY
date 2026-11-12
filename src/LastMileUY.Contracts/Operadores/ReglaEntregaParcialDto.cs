@@ -10,6 +10,7 @@ public record ReglaEntregaParcialDto(
     bool PermiteEntregaParcial,
     // "NuevaHojaDeRuta" o "Devolucion"
     string DestinoBultosPendientes,
+    decimal RecargoNuevaVisita,
     string? Motivo,
     string PublicadaPor,
     DateTime FechaPublicacion);
@@ -22,6 +23,9 @@ public class PublicarReglaEntregaParcialRequest
     // "NuevaHojaDeRuta" o "Devolucion"
     [Required]
     public string DestinoBultosPendientes { get; set; } = string.Empty;
+
+    [Range(0, 99999999.99)]
+    public decimal RecargoNuevaVisita { get; set; } = 0;
 
     // Por qué se cambian las reglas: queda en el historial
     [Required]

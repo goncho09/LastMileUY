@@ -114,13 +114,29 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         Assert.Equal(["1", "2", "3", "4", "5"], numeros.Where(n => n != "").ToArray());
         await Expect(pagina.Locator("tbody tr").Last).ToContainTextAsync("R4T8Y2U6P9HZ");
         var codigos = await pagina.Locator("tbody tr label").AllInnerTextsAsync();
-
+        
+        
+        await pagina.GetByLabel("Fecha")
+            .FillAsync(DateTime.UtcNow.AddDays(2).ToString("yyyy-MM-dd"));
         await pagina.GetByLabel("Nombre").FillAsync("Centro desde el navegador");
         await pagina.GetByLabel("Repartidor").SelectOptionAsync(new SelectOptionValue { Label = "Lucía Méndez" });
         await pagina.GetByLabel("Vehículo").SelectOptionAsync(new SelectOptionValue { Index = 2 });
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Armar hoja de ruta" }).ClickAsync();
 
-        await Expect(pagina).ToHaveURLAsync(new Regex("/Rutas/Detalle/", RegexOptions.IgnoreCase));
+        try
+        {
+            await Expect(pagina).ToHaveURLAsync(
+                new Regex("/Rutas/Detalle/", RegexOptions.IgnoreCase));
+        }
+        catch
+        {
+            var contenido = await pagina.Locator("body").InnerTextAsync();
+
+            throw new Xunit.Sdk.XunitException(
+                $"La creación de la ruta no redirigió.\n" +
+                $"URL: {pagina.Url}\n" +
+                $"Contenido de la página:\n{contenido}");
+        }
         await Expect(pagina.GetByRole(AriaRole.Status)).ToContainTextAsync("con 5 paradas");
 
         // Las paradas salen en el orden sugerido

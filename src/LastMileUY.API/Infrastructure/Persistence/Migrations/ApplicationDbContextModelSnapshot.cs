@@ -1214,6 +1214,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
+                    b.Property<decimal>("RecargoNuevaVisita")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric(10,2)")
+                        .HasDefaultValue(0m);
+
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 

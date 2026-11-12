@@ -44,6 +44,21 @@ public class ReglasEntregaParcialService(ApplicationDbContext db, IContextoOpera
                 $"El destino '{request.DestinoBultosPendientes}' no existe: tiene que ser NuevaHojaDeRuta o Devolucion.");
         }
 
+        if (request.RecargoNuevaVisita < 0 ||
+            request.RecargoNuevaVisita > 99999999.99m ||
+            decimal.Round(request.RecargoNuevaVisita, 2) != request.RecargoNuevaVisita)
+        {
+            throw new ArgumentException(
+                "El recargo debe ser positivo o cero y tener como máximo dos decimales.");
+        }
+
+        if (destino == DestinoBultosPendientes.Devolucion &&
+            request.RecargoNuevaVisita != 0)
+        {
+            throw new ArgumentException(
+                "No se puede configurar un recargo de nueva visita cuando el destino es devolución.");
+        }
+
         var motivo = request.Motivo?.Trim();
 
         if (string.IsNullOrEmpty(motivo))
@@ -68,6 +83,7 @@ public class ReglasEntregaParcialService(ApplicationDbContext db, IContextoOpera
                 Version = ultima + 1,
                 PermiteEntregaParcial = request.PermiteEntregaParcial,
                 DestinoBultosPendientes = destino,
+                RecargoNuevaVisita = request.RecargoNuevaVisita,
                 Motivo = motivo,
                 PublicadaPorId = usuarioId
             };
@@ -101,6 +117,7 @@ public class ReglasEntregaParcialService(ApplicationDbContext db, IContextoOpera
             regla.Version,
             regla.PermiteEntregaParcial,
             regla.DestinoBultosPendientes.ToString(),
+            regla.RecargoNuevaVisita,
             regla.Motivo,
             publicadaPor,
             regla.FechaPublicacion);

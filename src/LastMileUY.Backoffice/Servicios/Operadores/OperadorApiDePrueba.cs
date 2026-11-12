@@ -21,7 +21,7 @@ public class OperadorApiDePrueba : IOperadorApi
     // En memoria, la más nueva primero (se pierde al reiniciar)
     private readonly List<ReglaEntregaParcialDto> reglasEntregaParcial =
     [
-        new(1, 1, true, "NuevaHojaDeRuta", "Versión inicial de los datos de prueba", "Operador de prueba",
+        new(1, 1, true, "NuevaHojaDeRuta" ,0m,"Versión inicial de los datos de prueba" ,"Operador de prueba",
             DateTime.UtcNow.AddDays(-7))
     ];
 
@@ -73,7 +73,7 @@ public class OperadorApiDePrueba : IOperadorApi
         {
             var version = reglasEntregaParcial[0].Version + 1;
             var regla = new ReglaEntregaParcialDto(version, version, request.PermiteEntregaParcial,
-                request.DestinoBultosPendientes, request.Motivo.Trim(), "Operador de prueba", DateTime.UtcNow);
+                request.DestinoBultosPendientes, 0m, request.Motivo.Trim(), "Operador de prueba", DateTime.UtcNow);
 
             reglasEntregaParcial.Insert(0, regla);
             return Task.FromResult(regla);

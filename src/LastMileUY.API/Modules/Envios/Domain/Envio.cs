@@ -176,9 +176,24 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
         {
             if (MotivoDeRechazo(EstadoEnvio.Reprogramado, regla) is null)
             {
-                CambiarEstado(EstadoEnvio.Reprogramado, "Sistema",
-                    $"Bultos pendientes: vuelven a salir en otra hoja de ruta ({version}).",
-                    responsableId, regla, ocurrido);
+                var recargo = reglaEntregaParcial.RecargoNuevaVisita;
+
+                CambiarEstado(
+                    EstadoEnvio.Reprogramado,
+                    "Sistema",
+                    $"Bultos pendientes: vuelven a salir en otra hoja de ruta ({version}). "
+                    + (recargo > 0
+                        ? $"Recargo por nueva visita: ${recargo:0.00}."
+                        : "Sin recargo por nueva visita."),
+                    responsableId,
+                    regla,
+                    ocurrido);
+
+                if (recargo > 0)
+                {
+                    CostoEnvio = (CostoEnvio ?? 0m) + recargo;
+                }
+
                 return;
             }
 
