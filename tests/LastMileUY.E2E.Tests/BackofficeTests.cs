@@ -120,7 +120,20 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await pagina.GetByLabel("Vehículo").SelectOptionAsync(new SelectOptionValue { Index = 2 });
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Armar hoja de ruta" }).ClickAsync();
 
-        await Expect(pagina).ToHaveURLAsync(new Regex("/Rutas/Detalle/", RegexOptions.IgnoreCase));
+        try
+        {
+            await Expect(pagina).ToHaveURLAsync(
+                new Regex("/Rutas/Detalle/", RegexOptions.IgnoreCase));
+        }
+        catch
+        {
+            var contenido = await pagina.Locator("body").InnerTextAsync();
+
+            throw new Xunit.Sdk.XunitException(
+                $"La creación de la ruta no redirigió.\n" +
+                $"URL: {pagina.Url}\n" +
+                $"Contenido de la página:\n{contenido}");
+        }
         await Expect(pagina.GetByRole(AriaRole.Status)).ToContainTextAsync("con 5 paradas");
 
         // Las paradas salen en el orden sugerido
