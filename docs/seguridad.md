@@ -23,7 +23,8 @@ Este documento junta en un solo lugar los controles de seguridad del sistema y p
   - Las claves solo sirven en `/api/v1`, y ahí no sirve la cookie.
   - Se guarda el hash, nunca la clave.
   - Se revocan desde el portal y dejan de funcionar en el pedido siguiente.
-  - Tienen un tope de pedidos por clave, más bajo para los lotes.
+  - Tienen un tope de pedidos por clave, más bajo para los lotes y para las claves de prueba.
+  - Las claves de prueba trabajan con datos aislados de los reales: los envíos, con un operador de pruebas aparte; los destinatarios, con una marca que separan el filtro de EF y una política RLS. Una clave de producción no puede simular cambios de estado.
   - Detalle en [api-publica.md](api-publica.md).
 - **Backoffice y portal:** cada uno tiene su propia cookie cifrada, y adentro va la cookie de la API, que reenvían en cada llamada. El `HttpClient` no guarda cookies (`UseCookies = false`), así que la sesión de un usuario no se le puede mandar a otro.
 

@@ -22,6 +22,12 @@ public class OperadorConfiguration : IEntityTypeConfiguration<Operador>
         // Facilita buscar operadores por nombre.
         builder.HasIndex(o => o.Nombre);
 
+        // Un solo operador del ambiente de pruebas (si dos pedidos lo crean a la vez, el segundo choca acá)
+        builder.HasIndex(o => o.EsAmbientePruebas)
+            .IsUnique()
+            .HasFilter("\"EsAmbientePruebas\"")
+            .HasDatabaseName("IX_Operadores_UnoDePruebas");
+
         // El color se escribe tal cual en el CSS del Backoffice: la base solo acepta #RRGGBB
         builder.Property(o => o.ColorPrimario)
             .HasMaxLength(7);

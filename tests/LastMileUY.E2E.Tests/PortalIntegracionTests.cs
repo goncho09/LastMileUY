@@ -64,6 +64,30 @@ public class PortalIntegracionTests(PortalComercioEnNavegador portal)
         Assert.Equal(HttpStatusCode.Unauthorized, await ConsultarConClaveAsync(clave));
     }
 
+    // Una clave del ambiente de pruebas: se elige al crearla, se distingue en la tabla y funciona contra
+    // la API (con su propio listado de envíos, vacío de los de verdad)
+    [Fact]
+    public async Task Crea_una_clave_del_ambiente_de_pruebas()
+    {
+        var pagina = await portal.IniciarSesionAsync();
+        var nombre = $"Pruebas {Random.Shared.Next(1000, 9999)}";
+
+        await pagina.GotoAsync("/integracion");
+        await pagina.GetByLabel("Nombre", new() { Exact = true }).FillAsync(nombre);
+        await pagina.GetByLabel("Ambiente", new() { Exact = true }).SelectOptionAsync(new SelectOptionValue { Label = "Pruebas" });
+        await pagina.GetByRole(AriaRole.Button, new() { Name = "Crear clave" }).ClickAsync();
+
+        var campo = pagina.GetByLabel("Clave de API", new() { Exact = true });
+        await Expect(campo).ToHaveValueAsync(new Regex("^lmuy_test_\\S{40,}$"));
+        var clave = await campo.InputValueAsync();
+
+        var fila = pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = nombre });
+        await Expect(fila).ToContainTextAsync("Pruebas");
+        await Expect(fila).ToContainTextAsync("Activa");
+
+        Assert.Equal(HttpStatusCode.OK, await ConsultarConClaveAsync(clave));
+    }
+
     // La documentación navegable (Scalar) se abre sin sesión y carga el documento de la v1: se ven
     // los endpoints de la API pública con su descripción
     [Fact]

@@ -36,6 +36,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     public int? ComercioActual => contextoOperador.ComercioId;
 
+    // Clave de prueba de la API pública: solo ve los destinatarios de prueba (y los demás no los ven)
+    public bool EnAmbientePruebasActual => contextoOperador.EnAmbientePruebas;
+
 
     // Operadores
     public DbSet<Operador> Operadores => Set<Operador>();
@@ -254,12 +257,14 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         // el operador ve los de los comercios con los que trabaja.
 
         modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
-            ComercioActual != null
+            (ComercioActual != null
                 ? d.ComercioId == ComercioActual
                 : OperadoresComercios.Any(oc =>
                     oc.ComercioId == d.ComercioId &&
                     oc.OperadorId == OperadorActual &&
-                    oc.Activo));
+                    oc.Activo))
+            // Los de prueba (API pública) solo en el ambiente de pruebas, y al revés
+            && d.EsPrueba == EnAmbientePruebasActual);
 
         modelBuilder.Entity<Direccion>().HasQueryFilter(x =>
             Destinatarios.Any(d => d.Id == x.DestinatarioId));
@@ -341,6 +346,21 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             {
                 throw new InvalidOperationException(
                     $"No se puede cambiar el comercio de {entrada.Entity.GetType().Name}.");
+            }
+        }
+
+        // Ambiente de la API pública: un destinatario nuevo es de prueba si lo crea una clave de prueba, y
+        // eso no lo decide el pedido ni se puede cambiar después (la política RLS lo vuelve a controlar)
+        foreach (var entrada in ChangeTracker.Entries<Destinatario>())
+        {
+            if (entrada.State == EntityState.Added)
+            {
+                entrada.Entity.EsPrueba = EnAmbientePruebasActual;
+            }
+            else if (entrada.State == EntityState.Modified
+                     && entrada.Property(e => e.EsPrueba).IsModified)
+            {
+                throw new InvalidOperationException("No se puede pasar un destinatario de un ambiente a otro.");
             }
         }
     }

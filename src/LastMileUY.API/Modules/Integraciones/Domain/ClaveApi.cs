@@ -29,6 +29,10 @@ public class ClaveApi : IPerteneceAOperador, IPerteneceAComercio
     // Usuario del comercio que la creó
     public string CreadaPorId { get; set; } = string.Empty;
 
+    // Clave del ambiente de pruebas: trabaja con el operador de pruebas, no con OperadorId (que es el
+    // operador con el que se creó, para que el comercio la vea en el portal junto a las demás)
+    public bool EsPrueba { get; set; }
+
     // Se actualiza como mucho una vez por minuto, para no escribir en cada pedido
     public DateTime? UltimoUso { get; set; }
 

@@ -117,6 +117,8 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("SeedComercioPrueba:Email", Comercio1);
         builder.UseSetting("SeedComercioPrueba:Password", Clave);
         builder.UseSetting("Evidencias:Directorio", DirectorioEvidencias);
+        // Muchas pruebas crean claves de API para el mismo comercio
+        builder.UseSetting("ApiPublica:ClavesActivas", "1000");
         builder.UseSetting("ConnectionStrings:RabbitMQ", rabbit.GetConnectionString());
         builder.UseSetting("ConnectionStrings:Outbox", new NpgsqlConnectionStringBuilder(contenedor.GetConnectionString())
         {
@@ -286,6 +288,29 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 
             await canal.BasicPublishAsync("", cola, mandatory: false, propiedades, Encoding.UTF8.GetBytes(cuerpo));
         }
+    }
+
+    // Una consulta como el usuario de la aplicación (lastmileuy_app, sujeto a RLS), con las variables de
+    // sesión que carga la API en cada conexión. Para probar la barrera de la base sin pasar por EF
+    public async Task<long> ContarComoAplicacionAsync(string variables, string sql)
+    {
+        var cadena = new NpgsqlConnectionStringBuilder(contenedor.GetConnectionString())
+        {
+            Username = "lastmileuy_app",
+            Password = "lastmileuy_app_dev"
+        }.ConnectionString;
+
+        await using var conexion = new NpgsqlConnection(cadena);
+        await conexion.OpenAsync();
+
+        if (!string.IsNullOrWhiteSpace(variables))
+        {
+            await using var preparar = new NpgsqlCommand(variables, conexion);
+            await preparar.ExecuteNonQueryAsync();
+        }
+
+        await using var comando = new NpgsqlCommand(sql, conexion);
+        return Convert.ToInt64(await comando.ExecuteScalarAsync());
     }
 
     // SQL con el superusuario (saltea RLS): para armar datos que la API no deja crear

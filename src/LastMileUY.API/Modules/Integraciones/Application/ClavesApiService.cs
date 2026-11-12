@@ -10,16 +10,24 @@ namespace LastMileUY.API.Modules.Integraciones.Application;
 
 // Las claves de la API pública del comercio logueado (con el operador que eligió en el portal).
 // No filtra por comercio a mano: el filtro de EF y el RLS ya dejan ver solo las suyas.
-public class ClavesApiService(ApplicationDbContext db, IContextoOperador contexto)
+public class ClavesApiService(
+    ApplicationDbContext db,
+    IContextoOperador contexto,
+    AmbientePruebasService ambientePruebas,
+    IConfiguration configuracion)
 {
-    // Comienzo de toda clave: identifica de dónde es si aparece pegada en un log o un repositorio
+    // Comienzo de toda clave: identifica de dónde es si aparece pegada en un log o un repositorio.
+    // Después dice el ambiente, para que no se confunda una de prueba con una de verdad
     public const string Inicio = "lmuy_";
+    public const string InicioProduccion = "lmuy_live_";
+    public const string InicioPruebas = "lmuy_test_";
 
-    // Largo del prefijo visible: "lmuy_" y 8 caracteres de la parte secreta
-    private const int LargoPrefijo = 13;
+    // Largo del prefijo visible: el comienzo con el ambiente y 6 caracteres de la parte secreta
+    private const int LargoPrefijo = 16;
 
-    // Tope de claves activas por comercio y operador: una por sistema que se integra, sobra
-    public const int MaximoActivas = 10;
+    // Tope de claves activas por comercio y operador (ApiPublica:ClavesActivas): una por sistema que se
+    // integra, y 10 sobra
+    private int MaximoActivas => configuracion.GetValue("ApiPublica:ClavesActivas", 10);
 
     public static string CalcularHash(string clave) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(clave))).ToLowerInvariant();
@@ -32,7 +40,8 @@ public class ClavesApiService(ApplicationDbContext db, IContextoOperador context
             .AsNoTracking()
             .OrderBy(c => c.FechaRevocacion != null)
             .ThenByDescending(c => c.Id)
-            .Select(c => new ClaveApiDto(c.Id, c.Nombre, c.Prefijo, c.FechaCreacion, c.UltimoUso, c.FechaRevocacion))
+            .Select(c => new ClaveApiDto(c.Id, c.Nombre, c.Prefijo, c.FechaCreacion, c.UltimoUso, c.FechaRevocacion,
+                c.EsPrueba ? AmbientesApi.Pruebas : AmbientesApi.Produccion))
             .ToListAsync(ct);
     }
 
@@ -48,8 +57,20 @@ public class ClavesApiService(ApplicationDbContext db, IContextoOperador context
         if (await db.ClavesApi.CountAsync(c => c.FechaRevocacion == null, ct) >= MaximoActivas)
             throw new ArgumentException($"Ya tenés {MaximoActivas} claves activas: revocá alguna que no uses.");
 
+        var esPrueba = (request.Ambiente ?? AmbientesApi.Produccion) switch
+        {
+            AmbientesApi.Produccion => false,
+            AmbientesApi.Pruebas => true,
+            _ => throw new ArgumentException($"El ambiente tiene que ser {AmbientesApi.Produccion} o {AmbientesApi.Pruebas}.")
+        };
+
+        // Una clave de prueba trabaja con el operador del ambiente de pruebas: se crea (si hace falta) y
+        // se vincula con el comercio ahora, así el primer pedido con la clave ya funciona
+        if (esPrueba)
+            await ambientePruebas.PrepararParaComercioAsync(comercioId, ct);
+
         // 32 bytes al azar (256 bits): no se puede adivinar, así que alcanza con un hash rápido para guardarla
-        var clave = Inicio + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+        var clave = (esPrueba ? InicioPruebas : InicioProduccion) + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
         var nueva = new ClaveApi
@@ -59,7 +80,8 @@ public class ClavesApiService(ApplicationDbContext db, IContextoOperador context
             Nombre = nombre,
             Prefijo = clave[..LargoPrefijo],
             Hash = CalcularHash(clave),
-            CreadaPorId = usuarioId
+            CreadaPorId = usuarioId,
+            EsPrueba = esPrueba
         };
 
         db.ClavesApi.Add(nueva);
@@ -119,7 +141,8 @@ public class ClavesApiService(ApplicationDbContext db, IContextoOperador context
     }
 
     private static ClaveApiDto Convertir(ClaveApi c) =>
-        new(c.Id, c.Nombre, c.Prefijo, c.FechaCreacion, c.UltimoUso, c.FechaRevocacion);
+        new(c.Id, c.Nombre, c.Prefijo, c.FechaCreacion, c.UltimoUso, c.FechaRevocacion,
+            c.EsPrueba ? AmbientesApi.Pruebas : AmbientesApi.Produccion);
 
     // Solo un usuario de comercio con un operador elegido
     private (int OperadorId, int ComercioId) ComercioActual() =>

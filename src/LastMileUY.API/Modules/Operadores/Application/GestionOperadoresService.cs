@@ -16,6 +16,8 @@ public sealed class GestionOperadoresService(
     {
         return await db.Operadores
             .AsNoTracking()
+            // El operador del ambiente de pruebas (API pública) no se administra: lo maneja el sistema
+            .Where(o => !o.EsAmbientePruebas)
             .OrderBy(o => o.Nombre)
             .Select(o => new OperadorAdminDto(
                 o.Id, o.Nombre, o.Activo,
@@ -28,7 +30,7 @@ public sealed class GestionOperadoresService(
     {
         return await db.Operadores
             .AsNoTracking()
-            .Where(o => o.Id == id)
+            .Where(o => o.Id == id && !o.EsAmbientePruebas)
             .Select(o => new OperadorAdminDto(
                 o.Id, o.Nombre, o.Activo,
                 o.FechaCreacion, o.ColorPrimario, o.LogoUrl))
@@ -78,7 +80,7 @@ public sealed class GestionOperadoresService(
         Validar(request);
 
         var operador = await db.Operadores
-            .FirstOrDefaultAsync(o => o.Id == id, ct);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.EsAmbientePruebas, ct);
 
         if (operador is null)
             return false;

@@ -17,11 +17,11 @@ public class ClavesApiHttp(HttpClient http, SesionActual sesion)
         return await respuesta.Content.ReadFromJsonAsync<List<ClaveApiDto>>(ct) ?? [];
     }
 
-    public async Task<ResultadoClaveCreada> CrearAsync(string nombre, CancellationToken ct = default)
+    public async Task<ResultadoClaveCreada> CrearAsync(string nombre, string ambiente, CancellationToken ct = default)
     {
         using var pedido = new HttpRequestMessage(HttpMethod.Post, Ruta)
         {
-            Content = JsonContent.Create(new CrearClaveApiRequest { Nombre = nombre })
+            Content = JsonContent.Create(new CrearClaveApiRequest { Nombre = nombre, Ambiente = ambiente })
         };
         using var respuesta = await EnviarAsync(pedido, ct);
 

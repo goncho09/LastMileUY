@@ -1,8 +1,8 @@
 # API pública para comercios
 
 Es la API para que el sistema de un comercio, como una tienda online o un ERP, cargue y siga sus envíos sin
-pasar por el portal. Tiene documentación navegable, versión en la ruta, una clave por comercio y topes de
-pedidos por clave.
+pasar por el portal. Tiene documentación navegable, versión en la ruta, una clave por comercio, topes de
+pedidos por clave y un ambiente de pruebas con datos aislados de los reales.
 
 Código:
 - API: `src/LastMileUY.API/Modules/Integraciones`. Ahí están los endpoints de `/api/v1`, las claves, la
@@ -31,11 +31,11 @@ En el portal, la pantalla Integración muestra el enlace a la documentación cua
 
 - **Quién las crea:** el comercio, desde el portal, en el menú *Integración*. Cada clave vale para su comercio y para el operador con el que inició sesión, igual que la sesión del portal. Si trabaja con dos operadores, crea una clave con cada uno.
 - **Cuándo se ve:** la clave completa se muestra **una sola vez**, al crearla.
-- **Qué se guarda:** la base guarda el hash SHA-256 de la clave, y además el comienzo (`lmuy_` y 8 caracteres), para reconocerla en la pantalla.
+- **Qué se guarda:** la base guarda el hash SHA-256 de la clave, y además el comienzo (`lmuy_live_` o `lmuy_test_` y 6 caracteres), para reconocerla en la pantalla.
 - **Por qué alcanza con SHA-256:** la clave tiene 256 bits al azar, así que no se puede adivinar. No hace falta un hash lento como el de las contraseñas.
 - **Cómo se usa:** va en el encabezado `X-Api-Key`.
 - **Revocación:** se revoca desde la misma pantalla y deja de funcionar en el pedido siguiente. No se borra: queda el registro, con la fecha de creación, el último uso y la revocación.
-- **Tope:** hasta 10 claves activas por comercio y operador.
+- **Tope:** hasta 10 claves activas por comercio y operador (`ApiPublica:ClavesActivas`).
 
 ### Cómo se autentica un pedido
 
@@ -110,7 +110,7 @@ Así el comercio puede corregir las filas rechazadas y volver a mandar el lote e
 
 ```http
 POST /api/v1/envios/lote
-X-Api-Key: lmuy_...
+X-Api-Key: lmuy_live_...
 Content-Type: application/json
 
 { "envios": [
@@ -128,19 +128,64 @@ Content-Type: application/json
 ## Límites de pedidos
 
 El tope es **por clave**, no por IP. Varios comercios pueden salir por la misma IP, y un comercio con mucho
-tráfico no frena a los demás. Además, está diferenciado por tipo de pedido:
+tráfico no frena a los demás. Además, está diferenciado por tipo de pedido y por ambiente:
 
-| Política | Endpoints | Tope por minuto | Configuración |
-|---|---|---|---|
-| `ApiPublicaConsultas` | todos menos el lote | 120 | `ApiPublica:PedidosPorMinuto` |
-| `ApiPublicaLotes` | `POST /api/v1/envios/lote` | 10 | `ApiPublica:LotesPorMinuto` |
+| Política | Endpoints | Producción, por minuto | Pruebas, por minuto | Configuración |
+|---|---|---|---|---|
+| `ApiPublicaConsultas` | todos menos el lote | 120 | 60 | `ApiPublica:PedidosPorMinuto`, `ApiPublica:Pruebas:PedidosPorMinuto` |
+| `ApiPublicaLotes` | `POST /api/v1/envios/lote` | 10 | 5 | `ApiPublica:LotesPorMinuto`, `ApiPublica:Pruebas:LotesPorMinuto` |
 
-Un lote puede crear hasta 100 envíos, así que pesa mucho más que una consulta: por eso tiene su propio tope.
+- **Por qué el lote tiene su propio tope:** un lote puede crear hasta 100 envíos, así que pesa mucho más que una consulta.
+- **Por qué las claves de prueba tienen la mitad:** sirven para probar la integración, no para cargar en volumen.
 Al pasarlo, la API responde `429` con el encabezado `Retry-After`, que indica los segundos a esperar, para que el sistema del comercio no reintente a ciegas.
 
 Los topes viven en la memoria de cada instancia de la API: con varias instancias, cada una cuenta los suyos.
 
+## Ambiente de pruebas
+
+Sirve para que el comercio pruebe su integración sin crear envíos de verdad.
+
+- **Cómo se pide:** al crear la clave en el portal se elige el ambiente **Pruebas**. La clave empieza con `lmuy_test_`; las de producción, con `lmuy_live_`.
+- **Qué endpoints usa:** los mismos, en la misma dirección. Lo que cambia son los datos con los que trabaja.
+
+### Cómo se aíslan los datos
+
+- **Envíos:** el ambiente de pruebas es **un operador más**, marcado con `EsAmbientePruebas`.
+  - Con una clave de prueba, la identidad del pedido lleva ese operador en lugar del real. Por eso los envíos que crea son suyos, y quedan separados por la misma barrera que separa a dos operadores (filtro de EF + RLS, ADR-01).
+  - No hubo que tocar ninguna consulta de envíos, rutas o sincronización: para el operador real, esos envíos no existen y nunca salen en una ruta.
+  - La referencia externa puede repetirse entre los dos ambientes, porque el índice único incluye al operador.
+- **Destinatarios:** son del comercio, no del operador, así que necesitan su propia marca, `EsPrueba`. Hay dos barreras:
+  - **Filtro de EF:** con una clave de prueba solo se ven los de prueba, y en cualquier otro caso solo los de verdad. Eso incluye las claves de producción, el portal y el personal del operador.
+  - **RLS:** la política `ambiente_destinatarios`, restrictiva, compara `EsPrueba` con la variable `app.ambiente_pruebas`. La variable la carga el interceptor de la conexión: `1` con una clave de prueba y vacía en cualquier otro caso. Sin la variable se ven los de verdad, así que ninguna conexión que no sepa del ambiente pierde datos.
+  - **La marca no la decide el pedido:** la pone el contexto de EF al crear el destinatario, según quién lo crea, y no se puede cambiar después. La política también controla que coincida al insertar.
+- **Las direcciones** siguen a su destinatario.
+
+### El operador de pruebas
+
+- **Cuándo se crea:** la primera vez que un comercio pide una clave de prueba. Hay uno solo, garantizado por un índice único parcial.
+- **El vínculo:** al crear la clave se vincula con ese comercio, así el primer pedido ya funciona.
+- **No aparece en ningún lado:**
+  - ni para elegir en el login del portal;
+  - ni en la administración de operadores, funcionalidades o vínculos;
+  - el vínculo no se puede desactivar desde la administración.
+- **Clave y operador son distintos:** la clave guarda el operador con el que se creó, para que el comercio la vea y la revoque en el portal junto a las demás. Pero trabaja con el operador de pruebas.
+- **Varios comercios en pruebas:** entre ellos se separan por comercio, como en producción.
+
+### Simular el recorrido
+
+En pruebas no hay depósito, rutas ni repartidores, así que un envío quedaría siempre en Admitido.
+`POST /api/v1/pruebas/envios/{id}/simular` con `{ "estado": "Entregado" }` lo hace avanzar por el recorrido
+normal hasta el estado pedido. Los estados posibles son `EnDeposito`, `AsignadoARuta`, `EnTransito`, `Entregado` y `NoEntregado`.
+
+- **Mismas reglas:** cada paso pasa por `Envio.CambiarEstado`, así que vale la misma tabla de transiciones (req. 11). De Entregado, por ejemplo, no se vuelve atrás.
+- **Historial:** cada paso queda registrado con origen "Simulación".
+- **Solo con clave de prueba:** la política `ApiPublicaPruebas` lo exige. El servicio lo vuelve a controlar, y además solo busca envíos del operador de pruebas. Con una clave de producción, la respuesta es `403` y el envío no cambia.
+
+### Qué no cubre
+
+- **Avisos HTTP:** las suscripciones se configuran en el portal con el operador elegido, y el operador de pruebas no se puede elegir.
+- **Seguimiento público:** un código de prueba sí se puede consultar en la página pública. Aparece con el operador "Ambiente de pruebas (API pública)".
+
 ## Pendiente
 
 - **Claves inválidas sin tope:** el tope de pedidos se aplica después de autenticar. Por eso, los pedidos con una clave inventada no se frenan, y cada uno cuesta una consulta a la base. Se podría sumar un tope por IP para los intentos fallidos, como el del seguimiento público.
-- **Ambiente de pruebas:** son claves de prueba que trabajan sobre datos aislados de los reales, para que el comercio pruebe su integración sin crear envíos de verdad. Va en un cambio aparte.

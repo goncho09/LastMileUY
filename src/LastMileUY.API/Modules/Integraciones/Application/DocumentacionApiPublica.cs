@@ -29,8 +29,14 @@ public static class DocumentacionApiPublica
                     **Versiones.** Todo está bajo `/api/v1`. Un cambio incompatible saldría en `/api/v2`, y
                     la v1 seguiría funcionando.
 
-                    **Límites.** Por clave: 120 pedidos por minuto y 10 lotes por minuto. Al pasarlos la API
-                    responde 429 con el encabezado `Retry-After` (segundos a esperar).
+                    **Ambiente de pruebas.** Las claves de prueba (empiezan con `lmuy_test_`) usan los mismos
+                    endpoints, pero trabajan con datos aislados: los envíos y destinatarios que crean no llegan
+                    al operador logístico ni se mezclan con los de verdad. Como en pruebas nadie mueve los
+                    envíos, `POST /api/v1/pruebas/envios/{id}/simular` los hace avanzar de estado.
+
+                    **Límites.** Por clave, por minuto: 120 pedidos y 10 lotes con una clave de producción, y la
+                    mitad (60 y 5) con una de prueba. Al pasarlos la API responde 429 con el encabezado
+                    `Retry-After` (segundos a esperar).
 
                     **Importación sin duplicados.** `POST /api/v1/envios/lote` usa la referencia externa
                     (el número de pedido del comercio) para no crear el mismo envío dos veces: se puede
@@ -45,7 +51,7 @@ public static class DocumentacionApiPublica
                 Type = SecuritySchemeType.ApiKey,
                 In = ParameterLocation.Header,
                 Name = AutenticacionClaveApi.Encabezado,
-                Description = "Clave de API del comercio (empieza con lmuy_). Se crea en el portal."
+                Description = "Clave de API del comercio: lmuy_live_… (producción) o lmuy_test_… (ambiente de pruebas). Se crea en el portal."
             };
 
             documento.Security ??= [];
