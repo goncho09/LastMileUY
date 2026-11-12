@@ -36,6 +36,9 @@ public class PortalComercioEnNavegador : IAsyncLifetime
 
     public string DireccionPortal { get; private set; } = string.Empty;
 
+    // La API real (para lo que en la realidad hace el sistema del comercio con su clave)
+    public string DireccionApi => direccionApi;
+
     private string direccionApi = string.Empty;
 
     public async Task InitializeAsync()

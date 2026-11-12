@@ -8,11 +8,12 @@ namespace LastMileUY.API.Infrastructure.Multitenancy;
 // Se cargan las dos siempre: la conexión vuelve al pool y la usa otro pedido.
 // app.codigo_seguimiento (seguimiento público) se vacía por lo mismo: el servicio que la usa la carga
 // solo dentro de su transacción, y esto es una barrera más por si alguna vez quedara cargada.
+// app.hash_clave_api (autenticación de la API pública) se vacía por lo mismo.
 public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : DbConnectionInterceptor
 {
     private const string Sql =
         "SELECT set_config('app.operador_id', @operador, false), set_config('app.comercio_id', @comercio, false), " +
-        "set_config('app.codigo_seguimiento', '', false)";
+        "set_config('app.codigo_seguimiento', '', false), set_config('app.hash_clave_api', '', false)";
 
     public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData)
     {

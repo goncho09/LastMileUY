@@ -124,6 +124,7 @@ se genera.
 | [docs/mensajeria.md](docs/mensajeria.md) | Outbox, RabbitMQ, worker, avisos HTTP a comercios |
 | [docs/seguridad.md](docs/seguridad.md) | Autenticación, permisos, validación de entradas, SSRF y pendientes conocidos |
 | [docs/funcionalidades.md](docs/funcionalidades.md) | Funcionalidades por operador (banderas): cuáles hay, quién las cambia y qué cortan |
+| [docs/api-publica.md](docs/api-publica.md) | API pública para comercios: claves, versiones, importación sin duplicados, topes y documentación navegable |
 
 ## Antes de desplegar fuera de desarrollo
 

@@ -1,0 +1,328 @@
+@page "/integracion"
+@using LastMileUY.Contracts.Integraciones
+@using static Servicios.PresentacionEnvios
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@inject IClavesApi ClavesApi
+@inject NavigationManager Navegacion
+@inject IConfiguration Configuracion
+@inject ILogger<Integracion> Logger
+@inject IJSRuntime JS
+
+<PageTitle>Integración | LastMileUY</PageTitle>
+
+<div class="space-y-8">
+    <div>
+        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+            Portal de Comercios
+        </div>
+        <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Integración</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+            Claves para que el sistema de tu comercio (tienda online, ERP) cargue y consulte envíos por la
+            API pública, sin entrar al portal. Cada clave vale para el operador logístico de esta sesión.
+        </p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(operadorNombre))
+    {
+        <div class="flex flex-wrap items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3 text-sm">
+            <span class="text-slate-400">Operador logístico:</span>
+            <span class="font-semibold text-violet-200">@operadorNombre</span>
+        </div>
+    }
+
+    <section class="rounded-2xl border border-white/10 bg-[#151927] p-6 text-sm text-slate-300">
+        <h2 class="text-lg font-semibold text-white">Cómo se usa</h2>
+        <p class="mt-2">
+            Cada pedido lleva la clave en el encabezado <code class="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-violet-200">X-Api-Key</code>.
+            Los pedidos van a <code class="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-violet-200">/api/v1</code>.
+            Hay un tope de 120 pedidos y 10 lotes de envíos por minuto por clave.
+        </p>
+        <p class="mt-2">
+            @if (urlDocumentacion is not null)
+            {
+                <a href="@urlDocumentacion" target="_blank" rel="noopener" class="font-semibold text-violet-300 hover:text-violet-200">Ver la documentación de la API ↗</a>
+            }
+            else
+            {
+                <span>La documentación está en <code class="font-mono text-xs">/api/v1/docs/</code> de la API.</span>
+            }
+        </p>
+    </section>
+
+    @if (creada is not null)
+    {
+        <section class="rounded-2xl border border-emerald-500/25 bg-[#151927] p-6" aria-labelledby="clave-creada-titulo">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 id="clave-creada-titulo" class="text-lg font-semibold text-emerald-300">Clave creada</h2>
+                    <p class="mt-1 text-sm text-slate-400">@creada.Datos.Nombre</p>
+                </div>
+                <button type="button" @onclick="CerrarClave" class="text-sm text-slate-400 hover:text-white">Cerrar</button>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
+                <p class="text-sm font-semibold text-amber-200">Copiala ahora</p>
+                <p class="mt-1 text-xs text-slate-400">
+                    Guardala en el sistema que se va a conectar. No se puede volver a ver: si se pierde, revocala y creá otra.
+                </p>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <input type="text" readonly value="@creada.Clave" aria-label="Clave de API"
+                           class="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 font-mono text-xs text-white" />
+                    <button type="button" @onclick="CopiarAsync"
+                            class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white hover:bg-violet-500">
+                        @(copiada ? "Copiada" : "Copiar clave")
+                    </button>
+                </div>
+            </div>
+        </section>
+    }
+
+    @if (aRevocar is not null)
+    {
+        <section class="rounded-2xl border border-red-500/30 bg-[#151927] p-5">
+            <h2 class="text-lg font-semibold text-red-300">¿Revocar la clave «@aRevocar.Nombre»?</h2>
+            <p class="mt-2 text-sm text-slate-300">
+                El sistema que la use va a dejar de poder conectarse enseguida. No se puede deshacer.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <button type="button" @onclick="RevocarAsync" disabled="@revocando"
+                        class="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50">
+                    @(revocando ? "Revocando…" : "Confirmar revocación")
+                </button>
+                <button type="button" @onclick="() => aRevocar = null" disabled="@revocando"
+                        class="rounded-xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-50">
+                    Cancelar
+                </button>
+            </div>
+        </section>
+    }
+
+    <section class="rounded-2xl border border-white/10 bg-[#151927] p-6">
+        <h2 class="text-lg font-semibold text-white">Nueva clave</h2>
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+            <div class="flex min-w-[260px] flex-1 flex-col gap-1.5 text-xs font-medium text-slate-400">
+                <label for="clave-nombre">Nombre</label>
+                <input id="clave-nombre" type="text" maxlength="100" @bind="nombre" @bind:event="oninput"
+                       placeholder="Por ejemplo: Tienda online"
+                       class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20" />
+            </div>
+            <button type="button" @onclick="CrearAsync" disabled="@(guardando || string.IsNullOrWhiteSpace(nombre))"
+                    class="rounded-xl bg-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60">
+                @(guardando ? "Creando…" : "Crear clave")
+            </button>
+        </div>
+    </section>
+
+    @if (error is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">@error</div>
+    }
+
+    @if (claves is null)
+    {
+        @if (errorCarga is null)
+        {
+            <p class="text-sm text-slate-400">Cargando claves…</p>
+        }
+        else
+        {
+            <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">@errorCarga</div>
+        }
+    }
+    else if (claves.Count == 0)
+    {
+        <section class="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
+            <h2 class="text-lg font-semibold text-white">Todavía no tenés claves</h2>
+        </section>
+    }
+    else
+    {
+        <div class="overflow-x-auto rounded-2xl border border-white/10 bg-[#151927]">
+            <table class="w-full min-w-[680px] text-left text-sm">
+                <thead class="border-b border-white/10 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                        <th class="px-5 py-3 font-medium">Nombre</th>
+                        <th class="px-5 py-3 font-medium">Clave</th>
+                        <th class="px-5 py-3 font-medium">Creada</th>
+                        <th class="px-5 py-3 font-medium">Último uso</th>
+                        <th class="px-5 py-3 font-medium">Estado</th>
+                        <th class="px-5 py-3"><span class="sr-only">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    @foreach (var clave in claves)
+                    {
+                        <tr>
+                            <td class="px-5 py-3 font-medium text-slate-200">@clave.Nombre</td>
+                            <td class="px-5 py-3 font-mono text-xs text-slate-400">@clave.Prefijo…</td>
+                            <td class="px-5 py-3 text-slate-400">@Fecha(clave.FechaCreacion)</td>
+                            <td class="px-5 py-3 text-slate-400">@(clave.UltimoUso is { } uso ? Fecha(uso) : "Nunca")</td>
+                            <td class="px-5 py-3">
+                                @if (clave.Activa)
+                                {
+                                    <span class="inline-flex rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-300">Activa</span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-slate-400">Revocada</span>
+                                }
+                            </td>
+                            <td class="px-5 py-3 text-right">
+                                @if (clave.Activa)
+                                {
+                                    <button type="button" @onclick="() => { error = null; aRevocar = clave; }"
+                                            aria-label="@($"Revocar la clave {clave.Nombre}")"
+                                            class="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/10">
+                                        Revocar
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> EstadoAutenticacion { get; set; } = default!;
+
+    private string? operadorNombre;
+    private string? urlDocumentacion;
+    private List<ClaveApiDto>? claves;
+    private string? errorCarga;
+    private string? error;
+    private string nombre = string.Empty;
+    private bool guardando;
+    private ClaveApiCreadaDto? creada;
+    private bool copiada;
+    private ClaveApiDto? aRevocar;
+    private bool revocando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        operadorNombre = (await EstadoAutenticacion).User.FindFirst(ClaimsPortal.OperadorNombre)?.Value;
+
+        // La dirección de la API que ven los integradores (en Docker la del portal es interna)
+        if (Configuracion["Api:UrlPublica"] is { Length: > 0 } publica)
+            urlDocumentacion = publica.TrimEnd('/') + "/api/v1/docs/";
+
+        try
+        {
+            claves = await ClavesApi.ListarAsync();
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudieron cargar las claves de API");
+            errorCarga = "No se pudieron cargar las claves. Probá recargar la página.";
+        }
+    }
+
+    private async Task CrearAsync()
+    {
+        error = null;
+        creada = null;
+        copiada = false;
+        guardando = true;
+
+        try
+        {
+            var resultado = await ClavesApi.CrearAsync(nombre.Trim());
+
+            if (resultado.Exito)
+            {
+                creada = resultado.Creada;
+                claves?.Insert(0, creada!.Datos);
+                nombre = string.Empty;
+            }
+            else
+            {
+                error = resultado.Error;
+            }
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo crear la clave de API");
+            error = "No se pudo crear la clave. Probá de nuevo.";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task RevocarAsync()
+    {
+        if (aRevocar is null || revocando)
+            return;
+
+        var id = aRevocar.Id;
+        revocando = true;
+
+        try
+        {
+            var revocada = await ClavesApi.RevocarAsync(id);
+
+            if (revocada is null)
+            {
+                error = "La clave no existe o no es de tu comercio.";
+            }
+            else if (claves?.FindIndex(c => c.Id == id) is >= 0 and var indice)
+            {
+                claves[indice] = revocada;
+            }
+
+            aRevocar = null;
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo revocar la clave de API {Id}", id);
+            error = "No se pudo revocar la clave. Probá de nuevo.";
+        }
+        finally
+        {
+            revocando = false;
+        }
+    }
+
+    private async Task CopiarAsync()
+    {
+        if (creada is null)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", creada.Clave);
+            copiada = true;
+        }
+        catch (JSException)
+        {
+            error = "No se pudo copiar automáticamente. Seleccioná la clave y copiala a mano.";
+        }
+    }
+
+    private void CerrarClave()
+    {
+        creada = null;
+        copiada = false;
+    }
+
+    private void IrAlLogin() =>
+        Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+}

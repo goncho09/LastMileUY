@@ -18,6 +18,13 @@ Este documento junta en un solo lugar los controles de seguridad del sistema y p
   - El costo es una consulta a la base por cada pedido con sesión, y la cookie se vuelve a emitir en cada respuesta.
   - Si pesara, se puede subir el intervalo (antes era de 1 minuto). La contra es que un usuario desactivado conservaría el acceso durante ese plazo.
 - **Usuario de comercio con varios operadores:** elige con cuál trabaja al iniciar sesión. El operador elegido se valida contra la tabla `OperadoresComercios` y se guarda solo en la cookie. El token temporal para elegirlo dura 5 minutos y se usa una sola vez.
+- **Vínculo comercio–operador:** `ValidarVinculoComercioMiddleware` revisa en cada pedido de un comercio que el vínculo con el operador, el comercio y el operador sigan activos. Si no, responde `403`, aunque la sesión siga abierta. Para un usuario de comercio son dos consultas a la base por pedido: esta y la revalidación de la sesión. Para este volumen no pesa.
+- **API pública:** el sistema del comercio se autentica con una clave en el encabezado `X-Api-Key`, en un esquema aparte de la cookie.
+  - Las claves solo sirven en `/api/v1`, y ahí no sirve la cookie.
+  - Se guarda el hash, nunca la clave.
+  - Se revocan desde el portal y dejan de funcionar en el pedido siguiente.
+  - Tienen un tope de pedidos por clave, más bajo para los lotes.
+  - Detalle en [api-publica.md](api-publica.md).
 - **Backoffice y portal:** cada uno tiene su propia cookie cifrada, y adentro va la cookie de la API, que reenvían en cada llamada. El `HttpClient` no guarda cookies (`UseCookies = false`), así que la sesión de un usuario no se le puede mandar a otro.
 
 ## Qué puede hacer cada uno: autorización
@@ -31,7 +38,7 @@ Cada endpoint declara qué perfiles lo pueden usar (`RequireRole`). Los perfiles
 | Despachador | Envíos y hojas de ruta; no ve la configuración |
 | OperarioDeposito | Consulta envíos |
 | Repartidor | Solo sus hojas de ruta y la sincronización de sus entregas |
-| Comercio | Sus envíos, destinatarios y suscripciones a avisos |
+| Comercio | Sus envíos, destinatarios, suscripciones a avisos y claves de la API pública |
 
 Además de mirar el perfil, también se controla de quién es cada recurso. La hoja de ruta tiene que ser del repartidor que la pide, y la ruta de una operación sincronizada también.
 
@@ -103,3 +110,4 @@ Detalle en [seguimiento-publico.md](seguimiento-publico.md).
 
 - **Despliegue:** las contraseñas de los usuarios de base y las variables que hay que cambiar están en la sección "Antes de desplegar" del README.
 - **Primer administrador fuera de desarrollo:** se crea al arrancar la API con `SeedAdmin:Enabled=true` y `SeedAdmin:Email`/`SeedAdmin:Password`. Solo lo crea si no existe: fuera de desarrollo nunca le cambia la contraseña. Conviene apagarlo, o sacar la contraseña de la configuración, una vez creado.
+- **API pública, claves inválidas:** el tope de pedidos de `/api/v1` se aplica después de autenticar. Por eso, los pedidos con una clave inventada no se frenan, y cada uno cuesta una consulta a la base. Falta un tope por IP para los intentos fallidos, como el del seguimiento público.

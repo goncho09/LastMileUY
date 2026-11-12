@@ -29,8 +29,11 @@ using LastMileUY.API.Modules.Seguimiento.Application;
 using LastMileUY.API.Modules.Seguimiento.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Application;
 using LastMileUY.API.Modules.Sincronizacion.Endpoints;
+using LastMileUY.API.Modules.Integraciones.Application;
+using LastMileUY.API.Modules.Integraciones.Endpoints;
 using LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 using LastMileUY.Contracts.Mensajeria;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -308,9 +311,22 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
+// API pública (docs/api-publica.md): el sistema del comercio se autentica con una clave (X-Api-Key).
+// Es un esquema aparte del de la cookie: solo lo usan los endpoints con la política ApiPublica (/api/v1),
+// y esos endpoints no aceptan la cookie
+builder.Services.AddAuthentication()
+    .AddScheme<AuthenticationSchemeOptions, AutenticacionClaveApi>(AutenticacionClaveApi.Esquema, null);
+
 // Las políticas por perfil van en cada endpoint (RequireAuthorization). Antes lo registraba de rebote
 // AddControllers, que se sacó porque la API no tiene controllers
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(ApiPublicaV1Endpoints.Politica, politica => politica
+        .AddAuthenticationSchemes(AutenticacionClaveApi.Esquema)
+        .RequireAuthenticatedUser()
+        .RequireRole("Comercio")
+        .RequireClaim(AutenticacionClaveApi.ClaimClaveApiId));
+});
 
 
 builder.Services.AddScoped<CrearEnvioService>();
@@ -337,6 +353,8 @@ builder.Services.AddScoped<GestionUsuariosService>();
 builder.Services.AddScoped<AltaUsuarioInicialService>();
 builder.Services.AddScoped<GestionOperadoresService>();
 builder.Services.AddScoped<GestionComerciosService>();
+builder.Services.AddScoped<ClavesApiService>();
+builder.Services.AddScoped<ImportarEnviosService>();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAlmacenEvidencias, AlmacenEvidenciasEnDisco>();
@@ -360,10 +378,45 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = builder.Configuration.GetValue("Seguimiento:ConsultasPorMinuto", 120),
                 Window = TimeSpan.FromMinutes(1)
             }));
+
+    // API pública: tope por clave, no por IP (varios comercios pueden salir por la misma IP, y un
+    // comercio con mucho tráfico no frena a los demás). Diferenciado por tipo de pedido: un lote crea
+    // hasta 100 envíos, así que tiene un tope propio, más bajo. Los dos se ajustan en la configuración.
+    options.AddPolicy(ApiPublicaV1Endpoints.LimiteConsultas, contexto =>
+        LimitePorClave(contexto, "ApiPublica:PedidosPorMinuto", 120));
+    options.AddPolicy(ApiPublicaV1Endpoints.LimiteLotes, contexto =>
+        LimitePorClave(contexto, "ApiPublica:LotesPorMinuto", 10));
+
+    // Retry-After: cuántos segundos esperar, para que el integrador no reintente a ciegas
+    options.OnRejected = async (rechazo, ct) =>
+    {
+        if (rechazo.Lease.TryGetMetadata(MetadataName.RetryAfter, out var espera))
+            rechazo.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(espera.TotalSeconds)).ToString();
+
+        await rechazo.HttpContext.Response.WriteAsJsonAsync(
+            new { mensaje = "Demasiados pedidos: esperá un momento y volvé a intentar." }, ct);
+    };
 });
 
-// Documentación de la API (OpenAPI + Scalar): solo en desarrollo, ver abajo
-builder.Services.AddOpenApi();
+RateLimitPartition<string> LimitePorClave(HttpContext contexto, string configuracion, int porDefecto) =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        $"{configuracion}:{contexto.User.FindFirstValue(AutenticacionClaveApi.ClaimClaveApiId) ?? contexto.Connection.RemoteIpAddress?.ToString()}",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = builder.Configuration.GetValue(configuracion, porDefecto),
+            Window = TimeSpan.FromMinutes(1)
+        });
+
+// Documentación de la API (OpenAPI + Scalar):
+// - "v1", la de la API pública: se publica siempre, también en producción (/api/v1/docs), porque es
+//   la que leen los integradores de los comercios. Solo trae los endpoints de /api/v1.
+// - "interna", la del resto de la API (portal, Backoffice, app del repartidor): solo en desarrollo.
+builder.Services.AddOpenApi(ApiPublicaV1Endpoints.Version, DocumentacionApiPublica.Configurar);
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddOpenApi("interna");
+}
 
 // CORS: solo hace falta cuando la app del repartidor se sirve desde otro origen que la API
 // (en desarrollo, con dotnet watch). En Docker nginx le pasa /api a la API y es el mismo origen.
@@ -406,11 +459,20 @@ if (!app.Environment.IsDevelopment() &&
     await IdentitySeeder.SeedAdminAsync(app.Services);
 }
 
-// Solo en desarrollo: la documentación de la API (Scalar) y los datos de prueba
+// Documentación navegable de la API pública, en todos los ambientes (ver docs/api-publica.md)
+app.MapOpenApi("/api/v1/openapi.json");
+app.MapScalarApiReference("/api/v1/docs", opciones => opciones
+    .WithTitle("LastMileUY · API pública v1")
+    .AddDocument(ApiPublicaV1Endpoints.Version, "API pública v1", "/api/v1/openapi.json")
+    .AddPreferredSecuritySchemes(AutenticacionClaveApi.Esquema));
+
+// Solo en desarrollo: la documentación de toda la API (Scalar en /scalar) y los datos de prueba
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(opciones => opciones
+        .AddDocument("interna", "API interna")
+        .AddDocument(ApiPublicaV1Endpoints.Version, "API pública v1"));
     await IdentitySeeder.SeedAdminAsync(app.Services);
     await IdentitySeeder.SeedOperadorPruebaAsync(app.Services);
     await IdentitySeeder.SeedComercioPruebaAsync(app.Services);
@@ -458,6 +520,8 @@ app.MapAvisosEndpoints();
 app.MapCacheEndpoints();
 app.MapGestionComerciosEndpoints();
 app.MapGestionOperadoresEndpoints();
+app.MapClavesApiEndpoints();
+app.MapApiPublicaV1Endpoints();
 
 // Habilitar consulta de mensajes fallidos cuando RabbitMQ está configurado.
 if (!string.IsNullOrWhiteSpace(conexionRabbit))
