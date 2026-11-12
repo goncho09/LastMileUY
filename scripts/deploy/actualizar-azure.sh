@@ -196,9 +196,6 @@ if [[ "$codigo_migraciones" -eq 10 ]]; then
 	  exit 1
   fi
 
-  log "Aplicando migraciones de EF Core..."
-  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
-    LastMileUY.API.dll --apply-migrations
   log "Comprobando que no quedan migraciones pendientes..."
   "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
     LastMileUY.API.dll --check-migrations
