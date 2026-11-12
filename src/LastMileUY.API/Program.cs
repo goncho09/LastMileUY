@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+using LastMileUY.Compartido;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using LastMileUY.API.Infrastructure.Cache;
 using LastMileUY.API.Infrastructure.Correlacion;
@@ -457,7 +458,13 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHealthChecks();
 
+// La IP real del visitante detrás del proxy inverso (src/Compartido/ProxyInverso.cs)
+builder.Services.AgregarProxyInverso(builder.Configuration);
+
 var app = builder.Build();
+
+// Primero de todo: los topes por IP, los logs y las redirecciones ven la IP y el esquema reales
+app.UsarProxyInverso();
 
 // Las métricas propias arrancan en 0, para que el tablero técnico vea desde el primer evento.
 // Recién cuando arrancó el host: OpenTelemetry empieza a escuchar las métricas al arrancar, y lo que

@@ -1,3 +1,4 @@
+using LastMileUY.Compartido;
 using System.Threading.RateLimiting;
 using LastMileUY.Backoffice.Servicios;
 using LastMileUY.Backoffice.SignalR;
@@ -255,7 +256,13 @@ builder.Services.AddRateLimiter(options =>
 });
 
 
+// La IP real del visitante detrás del proxy inverso (src/Compartido/ProxyInverso.cs)
+builder.Services.AgregarProxyInverso(builder.Configuration);
+
 var app = builder.Build();
+
+// Primero de todo: los topes por IP, los logs y las redirecciones ven la IP y el esquema reales
+app.UsarProxyInverso();
 
 // Pipeline de cada pedido
 if (!app.Environment.IsDevelopment())

@@ -8,7 +8,7 @@ Este documento junta en un solo lugar los controles de seguridad del sistema y p
 - **Bloqueo por intentos:** el login usa `lockoutOnFailure: true`. Después de 5 contraseñas mal, la cuenta queda bloqueada 5 minutos (valores por defecto de Identity). La respuesta siempre es un `401` igual, sin decir si el email existe, si está bloqueada o si está inactiva.
 - **Tope de intentos por visitante:** el bloqueo por cuenta no frena que alguien pruebe una contraseña contra muchas cuentas. Por eso el Backoffice y el portal aceptan hasta 10 envíos del login por minuto y por IP (`Login:IntentosPorMinuto`). Al pasarse responden `429` con un mensaje. En el portal, la elección de operador comparte ese cupo, porque también inicia la sesión.
   - El tope va en cada aplicación y no en la API porque a la API todos los intentos le llegan desde la IP del servidor del Backoffice o del portal.
-  - Detrás de un proxy inverso, todos los visitantes llegarían con la IP del proxy: habría que configurar `ForwardedHeaders` para tomar la IP real.
+  - Detrás de un proxy inverso se toma la IP real del visitante: ver "Detrás de un proxy inverso", más abajo.
 - **Sesión:** cookie `LastMileUY.Auth` con estas propiedades:
   - `HttpOnly`: JavaScript no la puede leer.
   - `Secure`: solo viaja por https.
@@ -90,6 +90,28 @@ Del otro lado, el comercio tiene que poder saber que el aviso es nuestro y que n
 - tiene un tope de consultas por minuto y por IP (`429` al pasarlo).
 
 Detalle en [seguimiento-publico.md](seguimiento-publico.md).
+
+## Detrás de un proxy inverso
+
+En Azure, cada aplicación escucha solo dentro de la máquina, y un proxy le pasa los pedidos que llegan de internet.
+Sin nada más, todos los pedidos parecerían venir de la IP del proxy, y los topes por IP serían uno solo para todos:
+- el freno a claves de API inválidas;
+- el login del Backoffice y del portal;
+- el seguimiento público.
+
+Con un visitante abusando, se frenaría a todos los demás.
+
+`src/Compartido/ProxyInverso.cs` lo resuelve en las cuatro aplicaciones web (API, Backoffice, portal y seguimiento). Es un solo archivo, enlazado en cada proyecto.
+- **Qué toma del proxy:** la IP original, que viene en `X-Forwarded-For`, y si el pedido llegó por https, `X-Forwarded-Proto`. Así la documentación de la API arma sus direcciones con https.
+- **Solo de un proxy confiable:**
+  - la propia máquina, siempre;
+  - las redes o IPs de `ProxyInverso:RedesConfiables` y `ProxyInverso:ProxiesConfiables`.
+
+  Si se creyera de cualquiera, un atacante se inventaría una IP distinta en cada pedido y nunca llegaría al tope.
+- **Una sola IP:** se toma la última que agregó el proxy (`ForwardLimit = 1`). Las anteriores las pudo haber escrito el propio visitante.
+- **En Azure** se confía en la red de Docker (`172.16.0.0/12`, en `docker-compose.azure.yml`). El proxy de la máquina llega a los contenedores a través de ella, y desde internet nadie entra a esa red: los puertos están publicados solo en `127.0.0.1`.
+- **Configuración mal escrita:** una red o IP mal escrita frena el arranque, en lugar de ignorarse en silencio.
+- **El proxy tiene que mandar `X-Forwarded-For`.** nginx y Caddy lo hacen con la configuración habitual de proxy inverso.
 
 ## Navegador
 
