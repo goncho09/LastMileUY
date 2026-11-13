@@ -1,0 +1,181 @@
+@page
+@model LastMileUY.Backoffice.Pages.Configuracion.CuadroTarifarioModel
+@{
+    var cuadro = Model.Cuadro;
+    ViewData["Title"] = cuadro is null ? "Cuadro tarifario" : $"Cuadro tarifario, versión {cuadro.Version}";
+    var editando = Model.Editar is not null;
+    var descripcion = cuadro is null
+        ? "No se encontró la versión."
+        : $"Rige desde el {cuadro.VigenciaDesde:dd/MM/yyyy}{(cuadro.VigenciaHasta is { } hasta ? $" hasta el {hasta:dd/MM/yyyy}" : "")}. " +
+          (cuadro.Editable ? "Todavía no empezó: podés cambiar sus tarifas." : "Ya rige o ya venció: para cambiar precios creá una versión nueva.");
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <a asp-page="Tarifas" class="inline-flex text-sm text-violet-300 no-underline hover:text-violet-200">← Volver a las versiones</a>
+
+    <partial name="_Encabezado" model="@((cuadro is null ? "Cuadro tarifario" : $"Versión {cuadro.Version}", descripcion, Model.Error))" />
+
+    @if (cuadro is not null)
+    {
+        <div class="grid gap-6 @(cuadro.Editable ? "xl:grid-cols-[minmax(0,1fr)_420px]" : "")">
+
+            <section class="@Estilos.Tarjeta" aria-labelledby="titulo-tarifas">
+                <div class="@Estilos.EncabezadoTarjeta flex items-center justify-between gap-3">
+                    <h2 id="titulo-tarifas" class="text-base font-semibold text-white">Tarifas</h2>
+                    <span class="@TarifasModel.ClaseEstado(cuadro.Estado)">@cuadro.Estado</span>
+                </div>
+
+                @if (cuadro.Tarifas.Count == 0)
+                {
+                    <p class="px-6 py-10 text-center text-sm text-slate-400">Esta versión todavía no tiene tarifas.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="@Estilos.Tabla">
+                            <thead class="@Estilos.CabeceraTabla">
+                                <tr>
+                                    <th scope="col" class="@Estilos.Celda">Tarifa</th>
+                                    <th scope="col" class="@Estilos.Celda">Peso</th>
+                                    <th scope="col" class="@Estilos.Celda">Volumen</th>
+                                    <th scope="col" class="@Estilos.Celda">Precio</th>
+                                    @if (cuadro.Editable)
+                                    {
+                                        <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                @foreach (var tarifa in cuadro.Tarifas)
+                                {
+                                    <tr class="@(tarifa.Activa ? "" : "opacity-60")">
+                                        <td class="@Estilos.Celda">
+                                            <p class="font-medium text-white">
+                                                @tarifa.Nombre
+                                                @if (!tarifa.Activa)
+                                                {
+                                                    <span class="ml-2 @Estilos.Inactivo">Inactiva</span>
+                                                }
+                                            </p>
+                                            <p class="mt-1 text-xs text-slate-400">@tarifa.Zona · @ReglasOperativasModel.TextoModalidad(tarifa.Modalidad)</p>
+                                        </td>
+                                        <td class="@Estilos.Celda text-slate-300">@Formato.Numero(tarifa.PesoMinimoKg) a @Formato.Numero(tarifa.PesoMaximoKg) kg</td>
+                                        <td class="@Estilos.Celda text-slate-300">@Formato.Volumen(tarifa.VolumenMinimoM3) a @Formato.Volumen(tarifa.VolumenMaximoM3)</td>
+                                        <td class="@Estilos.Celda text-slate-300">
+                                            @Formato.Pesos(tarifa.PrecioBase)
+                                            <span class="block text-xs text-slate-400">+ @Formato.Pesos(tarifa.PrecioPorKgAdicional) por kg adicional</span>
+                                        </td>
+                                        @if (cuadro.Editable)
+                                        {
+                                            <td class="@Estilos.Celda">
+                                                <div class="flex justify-end gap-2">
+                                                    <a asp-page="CuadroTarifario" asp-route-id="@cuadro.Id" asp-route-editar="@tarifa.Id"
+                                                       class="@Estilos.BotonSecundario" aria-label="Editar la tarifa @tarifa.Nombre">Editar</a>
+                                                    <form method="post" asp-page-handler="CambiarActiva" asp-route-id="@cuadro.Id">
+                                                        <input type="hidden" name="tarifaId" value="@tarifa.Id" />
+                                                        <input type="hidden" name="activa" value="@(tarifa.Activa ? "false" : "true")" />
+                                                        <button type="submit" class="@Estilos.BotonSecundario"
+                                                                aria-label="@(tarifa.Activa ? "Desactivar" : "Activar") la tarifa @tarifa.Nombre">
+                                                            @(tarifa.Activa ? "Desactivar" : "Activar")
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+
+            @if (cuadro.Editable)
+            {
+                <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-formulario">
+                    <div class="@Estilos.EncabezadoTarjeta">
+                        <h2 id="titulo-formulario" class="text-base font-semibold text-white">@(editando ? "Editar tarifa" : "Nueva tarifa")</h2>
+                    </div>
+
+                    @if (Model.Zonas.Count == 0)
+                    {
+                        <p class="p-6 text-sm text-slate-400">
+                            Primero cargá una zona en <a asp-page="Zonas" class="text-violet-300 hover:text-violet-200">Zonas de cobertura</a>.
+                        </p>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="Guardar" asp-route-id="@cuadro.Id" asp-route-editar="@Model.Editar" class="space-y-5 p-6">
+                            <div>
+                                <label asp-for="Formulario.Nombre" class="@Estilos.Etiqueta">Nombre <span class="text-red-400">*</span></label>
+                                <input asp-for="Formulario.Nombre" maxlength="150" placeholder="Ej. Hasta 5 kg" class="@Estilos.Campo" />
+                                <span asp-validation-for="Formulario.Nombre" class="@Estilos.ErrorCampo"></span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label asp-for="Formulario.ZonaId" class="@Estilos.Etiqueta">Zona <span class="text-red-400">*</span></label>
+                                    <select asp-for="Formulario.ZonaId" class="@Estilos.Campo">
+                                        @foreach (var zona in Model.Zonas)
+                                        {
+                                            <option value="@zona.Id">@zona.Nombre@(zona.Activa ? "" : " (inactiva)")</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Formulario.ZonaId" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.Modalidad" class="@Estilos.Etiqueta">Modalidad <span class="text-red-400">*</span></label>
+                                    <select asp-for="Formulario.Modalidad" class="@Estilos.Campo">
+                                        @foreach (var (valor, texto) in ReglasOperativasModel.Modalidades)
+                                        {
+                                            <option value="@valor">@texto</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.PesoMinimoKg" class="@Estilos.Etiqueta">Peso desde (kg)</label>
+                                    <input asp-for="Formulario.PesoMinimoKg" type="number" min="0" step="0.01" class="@Estilos.Campo" />
+                                    <span asp-validation-for="Formulario.PesoMinimoKg" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.PesoMaximoKg" class="@Estilos.Etiqueta">Peso hasta (kg)</label>
+                                    <input asp-for="Formulario.PesoMaximoKg" type="number" min="0.01" step="0.01" class="@Estilos.Campo" />
+                                    <span asp-validation-for="Formulario.PesoMaximoKg" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.VolumenMinimoM3" class="@Estilos.Etiqueta">Volumen desde (m³)</label>
+                                    <input asp-for="Formulario.VolumenMinimoM3" type="number" min="0" step="0.001" class="@Estilos.Campo" />
+                                    <span asp-validation-for="Formulario.VolumenMinimoM3" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.VolumenMaximoM3" class="@Estilos.Etiqueta">Volumen hasta (m³)</label>
+                                    <input asp-for="Formulario.VolumenMaximoM3" type="number" min="0.001" step="0.001" class="@Estilos.Campo" />
+                                    <span asp-validation-for="Formulario.VolumenMaximoM3" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.PrecioBase" class="@Estilos.Etiqueta">Precio base ($)</label>
+                                    <input asp-for="Formulario.PrecioBase" type="number" min="0" step="0.01" class="@Estilos.Campo" />
+                                    <span asp-validation-for="Formulario.PrecioBase" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                                <div>
+                                    <label asp-for="Formulario.PrecioPorKgAdicional" class="@Estilos.Etiqueta">$ por kg adicional</label>
+                                    <input asp-for="Formulario.PrecioPorKgAdicional" type="number" min="0" step="0.01" class="@Estilos.Campo" />
+                                    <span asp-validation-for="Formulario.PrecioPorKgAdicional" class="@Estilos.ErrorCampo"></span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap justify-end gap-3">
+                                @if (editando)
+                                {
+                                    <a asp-page="CuadroTarifario" asp-route-id="@cuadro.Id" class="@Estilos.BotonSecundario">Cancelar</a>
+                                }
+                                <button type="submit" class="@Estilos.BotonPrincipal">@(editando ? "Guardar cambios" : "Agregar tarifa")</button>
+                            </div>
+                        </form>
+                    }
+                </section>
+            }
+        </div>
+    }
+</div>

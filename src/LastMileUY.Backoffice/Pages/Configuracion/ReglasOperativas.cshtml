@@ -1,0 +1,162 @@
+@page
+@model LastMileUY.Backoffice.Pages.Configuracion.ReglasOperativasModel
+@{
+    ViewData["Title"] = "Reglas operativas";
+    var editando = Model.Editar is not null;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <partial name="_Encabezado" model="@(("Reglas operativas", "Cuántos intentos de entrega hay, cada cuánto, el plazo y qué evidencia se pide. Rige una sola regla por modalidad: activar una desactiva la otra.", Model.Error))" />
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-reglas">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-reglas" class="text-base font-semibold text-white">Reglas</h2>
+            </div>
+
+            @if (Model.Reglas.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">
+                    No hay reglas: los envíos no tienen límite de intentos ni plazo.
+                </p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="@Estilos.Tabla">
+                        <thead class="@Estilos.CabeceraTabla">
+                            <tr>
+                                <th scope="col" class="@Estilos.Celda">Regla</th>
+                                <th scope="col" class="@Estilos.Celda">Intentos</th>
+                                <th scope="col" class="@Estilos.Celda">Plazos</th>
+                                <th scope="col" class="@Estilos.Celda">Evidencia</th>
+                                <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var regla in Model.Reglas)
+                            {
+                                var evidencia = new[]
+                                {
+                                    regla.RequiereFirma ? "Firma" : null,
+                                    regla.RequiereFotografia ? "Foto" : null,
+                                    regla.RequiereDocumentoReceptor ? "Documento" : null
+                                }.OfType<string>().ToList();
+
+                                <tr>
+                                    <td class="@Estilos.Celda">
+                                        <p class="font-medium text-white">
+                                            @regla.Nombre
+                                            <span class="ml-2 @(regla.Activa ? Estilos.Activo : Estilos.Inactivo)">@(regla.Activa ? "Vigente" : "Inactiva")</span>
+                                        </p>
+                                        <p class="mt-1 text-xs text-slate-400">@ReglasOperativasModel.TextoModalidad(regla.Modalidad)@(regla.Descripcion is null ? "" : $" · {regla.Descripcion}")</p>
+                                    </td>
+                                    <td class="@Estilos.Celda text-slate-300">@regla.MaximoIntentosEntrega, cada @regla.HorasEntreIntentos h</td>
+                                    <td class="@Estilos.Celda text-slate-300">
+                                        Entrega en @regla.PlazoEntregaHoras h<br />
+                                        <span class="text-xs text-slate-400">Devolución a las @regla.HorasParaIniciarDevolucion h</span>
+                                    </td>
+                                    <td class="@Estilos.Celda text-slate-300">@(evidencia.Count == 0 ? "Ninguna" : string.Join(", ", evidencia))</td>
+                                    <td class="@Estilos.Celda">
+                                        <div class="flex justify-end gap-2">
+                                            <a asp-page="ReglasOperativas" asp-route-editar="@regla.Id" class="@Estilos.BotonSecundario"
+                                               aria-label="Editar la regla @regla.Nombre">Editar</a>
+                                            <form method="post" asp-page-handler="CambiarActiva">
+                                                <input type="hidden" name="id" value="@regla.Id" />
+                                                <input type="hidden" name="activa" value="@(regla.Activa ? "false" : "true")" />
+                                                <button type="submit" class="@Estilos.BotonSecundario"
+                                                        aria-label="@(regla.Activa ? "Desactivar" : "Activar") la regla @regla.Nombre">
+                                                    @(regla.Activa ? "Desactivar" : "Activar")
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-formulario">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-formulario" class="text-base font-semibold text-white">@(editando ? "Editar regla" : "Nueva regla")</h2>
+                @if (!editando)
+                {
+                    <p class="mt-1 text-sm text-slate-400">La nueva regla pasa a ser la vigente de su modalidad.</p>
+                }
+            </div>
+
+            <form method="post" asp-page-handler="Guardar" asp-route-editar="@Model.Editar" class="space-y-5 p-6">
+                <div>
+                    <label asp-for="Formulario.Nombre" class="@Estilos.Etiqueta">Nombre <span class="text-red-400">*</span></label>
+                    <input asp-for="Formulario.Nombre" maxlength="150" placeholder="Ej. Estándar 48 h" class="@Estilos.Campo" />
+                    <span asp-validation-for="Formulario.Nombre" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div>
+                    <label asp-for="Formulario.Modalidad" class="@Estilos.Etiqueta">Modalidad <span class="text-red-400">*</span></label>
+                    <select asp-for="Formulario.Modalidad" class="@Estilos.Campo">
+                        @foreach (var (valor, texto) in ReglasOperativasModel.Modalidades)
+                        {
+                            <option value="@valor">@texto</option>
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label asp-for="Formulario.Descripcion" class="@Estilos.Etiqueta">Descripción</label>
+                    <input asp-for="Formulario.Descripcion" maxlength="500" class="@Estilos.Campo" />
+                    <span asp-validation-for="Formulario.Descripcion" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Formulario.MaximoIntentosEntrega" class="@Estilos.Etiqueta">Intentos máximos</label>
+                        <input asp-for="Formulario.MaximoIntentosEntrega" type="number" min="1" max="10" class="@Estilos.Campo" />
+                        <span asp-validation-for="Formulario.MaximoIntentosEntrega" class="@Estilos.ErrorCampo"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Formulario.HorasEntreIntentos" class="@Estilos.Etiqueta">Horas entre intentos</label>
+                        <input asp-for="Formulario.HorasEntreIntentos" type="number" min="0" max="720" class="@Estilos.Campo" />
+                        <span asp-validation-for="Formulario.HorasEntreIntentos" class="@Estilos.ErrorCampo"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Formulario.PlazoEntregaHoras" class="@Estilos.Etiqueta">Plazo de entrega (h)</label>
+                        <input asp-for="Formulario.PlazoEntregaHoras" type="number" min="1" max="720" class="@Estilos.Campo" />
+                        <span asp-validation-for="Formulario.PlazoEntregaHoras" class="@Estilos.ErrorCampo"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Formulario.HorasParaIniciarDevolucion" class="@Estilos.Etiqueta">Devolución a las (h)</label>
+                        <input asp-for="Formulario.HorasParaIniciarDevolucion" type="number" min="0" max="720" class="@Estilos.Campo" />
+                        <span asp-validation-for="Formulario.HorasParaIniciarDevolucion" class="@Estilos.ErrorCampo"></span>
+                    </div>
+                </div>
+
+                <fieldset class="space-y-3">
+                    <legend class="@Estilos.Etiqueta">Evidencia que se pide al entregar</legend>
+                    <label class="flex items-center gap-3 text-sm text-slate-300">
+                        <input asp-for="Formulario.RequiereFirma" class="@Estilos.Casilla" /> Firma del receptor
+                    </label>
+                    <label class="flex items-center gap-3 text-sm text-slate-300">
+                        <input asp-for="Formulario.RequiereFotografia" class="@Estilos.Casilla" /> Foto
+                    </label>
+                    <label class="flex items-center gap-3 text-sm text-slate-300">
+                        <input asp-for="Formulario.RequiereDocumentoReceptor" class="@Estilos.Casilla" /> Documento del receptor
+                    </label>
+                </fieldset>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    @if (editando)
+                    {
+                        <a asp-page="ReglasOperativas" class="@Estilos.BotonSecundario">Cancelar</a>
+                    }
+                    <button type="submit" class="@Estilos.BotonPrincipal">@(editando ? "Guardar cambios" : "Crear regla")</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

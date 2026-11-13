@@ -101,7 +101,7 @@ public record TarifaDto(
     decimal PrecioPorKgAdicional,
     bool Activa);
 
-public record CrearCuadroTarifarioRequest(DateOnly VigenciaDesde, bool CopiarTarifasDelVigente);
+public record CrearCuadroTarifarioRequest(DateOnly VigenciaDesde, bool CopiarTarifasDeLaAnterior);
 
 public record GuardarTarifaRequest(
     string Nombre,

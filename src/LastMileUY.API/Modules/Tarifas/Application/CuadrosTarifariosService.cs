@@ -62,7 +62,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
             VigenciaDesde = desde
         };
 
-        if (request.CopiarTarifasDelVigente && anterior is not null)
+        if (request.CopiarTarifasDeLaAnterior && anterior is not null)
         {
             foreach (var tarifa in anterior.Tarifas.Where(t => t.Activa))
             {
