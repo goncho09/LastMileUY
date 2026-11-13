@@ -2,28 +2,28 @@
 
 <div class="w-full overflow-x-auto">
     <table class="w-full min-w-[1000px] border-collapse text-left text-sm">
-        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
             <tr>
-                <th scope="col" class="px-5 py-4">Pasó en el celular</th>
-                <th scope="col" class="px-4 py-4">Llegó</th>
-                <th scope="col" class="px-4 py-4">Operación</th>
-                <th scope="col" class="px-4 py-4">Envío</th>
+                <th scope="col" class="px-4 py-3">Pasó en el celular</th>
+                <th scope="col" class="px-4 py-3">Llegó</th>
+                <th scope="col" class="px-4 py-3">Operación</th>
+                <th scope="col" class="px-4 py-3">Envío</th>
                 @if (Model.MostrarRuta)
                 {
-                    <th scope="col" class="px-4 py-4">Ruta</th>
+                    <th scope="col" class="px-4 py-3">Ruta</th>
                 }
-                <th scope="col" class="px-4 py-4">Repartidor</th>
-                <th scope="col" class="px-4 py-4">Resultado</th>
-                <th scope="col" class="px-5 py-4">Evidencia</th>
+                <th scope="col" class="px-4 py-3">Repartidor</th>
+                <th scope="col" class="px-4 py-3">Resultado</th>
+                <th scope="col" class="px-4 py-3">Evidencia</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-white/5">
             @foreach (var operacion in Model.Operaciones)
             {
-                <tr class="align-top transition-colors hover:bg-white/[0.035]">
-                    <td class="whitespace-nowrap px-5 py-4 text-slate-300">@Formato.Fecha(operacion.FechaHoraDispositivo)</td>
-                    <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">@Formato.Fecha(operacion.FechaRecepcion)</td>
-                    <td class="whitespace-nowrap px-4 py-4 text-slate-200">
+                <tr class="align-top transition-colors hover:bg-white/[0.025]">
+                    <td class="whitespace-nowrap px-4 py-3 text-slate-300">@Formato.Fecha(operacion.FechaHoraDispositivo)</td>
+                    <td class="whitespace-nowrap px-4 py-3 text-xs text-slate-400">@Formato.Fecha(operacion.FechaRecepcion)</td>
+                    <td class="whitespace-nowrap px-4 py-3 text-slate-200">
                         @ResultadosSincronizacion.TipoOperacion(operacion.Tipo)
                         @if (operacion.VersionReglasEntregaParcial is { } version)
                         {
@@ -32,7 +32,7 @@
                             </p>
                         }
                     </td>
-                    <td class="whitespace-nowrap px-4 py-4">
+                    <td class="whitespace-nowrap px-4 py-3">
                         @if (operacion.CodigoSeguimiento is not null)
                         {
                             <a asp-page="/Envios/Detalle" asp-route-id="@operacion.EnvioId"
@@ -47,21 +47,21 @@
                     </td>
                     @if (Model.MostrarRuta)
                     {
-                        <td class="whitespace-nowrap px-4 py-4">
+                        <td class="whitespace-nowrap px-4 py-3">
                             <a asp-page="/Rutas/Detalle" asp-route-id="@operacion.RutaId"
                                class="text-slate-300 no-underline hover:text-white">
                                 Ruta @operacion.RutaId
                             </a>
                         </td>
                     }
-                    <td class="px-4 py-4 text-slate-300">@operacion.Repartidor</td>
-                    <td class="max-w-md px-4 py-4">
-                        <span class="inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium @ResultadosSincronizacion.ClaseCss(operacion.Resultado)">
+                    <td class="px-4 py-3 text-slate-300">@operacion.Repartidor</td>
+                    <td class="max-w-md px-4 py-3">
+                        <span class="inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-xs font-medium @ResultadosSincronizacion.ClaseCss(operacion.Resultado)">
                             @ResultadosSincronizacion.Texto(operacion.Resultado)
                         </span>
                         <p class="mt-1.5 text-xs text-slate-400">@operacion.Mensaje</p>
                     </td>
-                    <td class="whitespace-nowrap px-5 py-4 text-xs">
+                    <td class="whitespace-nowrap px-4 py-3 text-xs">
                         @if (operacion.IntentoEntregaId is { } intento && (operacion.TieneFirma || operacion.TieneFoto))
                         {
                             <div class="flex gap-3">

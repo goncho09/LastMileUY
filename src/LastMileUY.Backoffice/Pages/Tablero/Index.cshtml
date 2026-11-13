@@ -9,11 +9,11 @@
 
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <p class="mb-2 text-sm font-medium text-violet-400">
+            <p class="mb-1.5 text-xs font-medium text-slate-500">
                 Observabilidad
             </p>
 
-            <h1 class="text-3xl font-bold tracking-tight text-white">
+            <h1 class="text-2xl font-semibold tracking-tight text-white">
                 Tablero técnico
             </h1>
 
@@ -38,27 +38,27 @@
     @if (Model.Metricas.Count > 0)
     {
         <section class="grid gap-4 sm:grid-cols-3">
-            <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+            <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Aciertos</p>
-                <p class="mt-2 text-3xl font-bold text-emerald-300">@Model.TotalAciertos</p>
+                <p class="mt-2 text-2xl font-semibold text-emerald-300">@Model.TotalAciertos</p>
                 <p class="mt-1 text-xs text-slate-500">Respondidos desde el caché</p>
             </div>
 
-            <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+            <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Fallos</p>
-                <p class="mt-2 text-3xl font-bold text-amber-300">@Model.TotalFallos</p>
+                <p class="mt-2 text-2xl font-semibold text-amber-300">@Model.TotalFallos</p>
                 <p class="mt-1 text-xs text-slate-500">Tuvieron que consultar la base</p>
             </div>
 
-            <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+            <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-400">% de aciertos</p>
-                <p class="mt-2 text-3xl font-bold text-violet-300">@Model.PorcentajeTotal.ToString("0.#")%</p>
+                <p class="mt-2 text-2xl font-semibold text-violet-300">@Model.PorcentajeTotal.ToString("0.#")%</p>
                 <p class="mt-1 text-xs text-slate-500">Entre todos los casos</p>
             </div>
         </section>
 
-        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
-            <div class="border-b border-white/10 px-6 py-5">
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
+            <div class="border-b border-white/[0.07] px-5 py-4">
                 <h2 class="text-base font-semibold text-white">Por caso cacheado</h2>
             </div>
 
@@ -67,7 +67,7 @@
                 {
                     var total = metrica.Aciertos + metrica.Fallos;
 
-                    <div class="grid gap-4 px-6 py-5 lg:grid-cols-[1.4fr_1fr_1fr_1fr_2fr] lg:items-center">
+                    <div class="grid gap-4 px-5 py-4 lg:grid-cols-[1.4fr_1fr_1fr_1fr_2fr] lg:items-center">
                         <div>
                             <p class="font-semibold text-white">@metrica.Nombre</p>
                         </div>
@@ -104,7 +104,7 @@
     }
     else if (Model.Error is null)
     {
-        <div class="rounded-xl border border-white/10 bg-[#171923] px-5 py-4 text-sm text-slate-400">
+        <div class="rounded-xl border border-white/[0.07] bg-surface px-5 py-4 text-sm text-slate-400">
             Todavía no hay lecturas registradas.
         </div>
     }

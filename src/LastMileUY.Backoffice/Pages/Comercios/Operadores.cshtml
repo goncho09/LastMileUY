@@ -21,11 +21,11 @@
             Volver a comercios
         </a>
 
-        <p class="mb-2 text-sm font-medium text-violet-400">
+        <p class="mb-1.5 text-xs font-medium text-slate-500">
             Administración / Comercios / Operadores
         </p>
 
-        <h1 class="text-3xl font-bold tracking-tight text-white">
+        <h1 class="text-2xl font-semibold tracking-tight text-white">
             @Model.Comercio.Nombre
         </h1>
 
@@ -52,9 +52,9 @@
         </div>
     }
 
-    <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+    <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-        <div class="border-b border-white/10 px-6 py-5">
+        <div class="border-b border-white/[0.07] px-5 py-4">
             <h2 class="text-base font-semibold text-white">
                 Vincular operador
             </h2>
@@ -77,9 +77,9 @@
 
                 <select asp-for="OperadorId"
                         required
-                        class="w-full rounded-xl border border-white/10
-                               bg-[#10121a] px-4 py-3 text-sm text-white
-                               outline-none focus:border-violet-500">
+                        class="w-full rounded-xl border border-white/[0.07]
+                               bg-field px-4 py-3 text-sm text-white
+                               outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20">
 
                     <option value="">Seleccionar operador</option>
 
@@ -95,7 +95,7 @@
             <button type="submit"
                     disabled="@(Model.Disponibles.Count == 0)"
                     class="inline-flex items-center justify-center gap-2
-                           rounded-xl bg-violet-600 px-5 py-3
+                           rounded-md bg-violet-600 px-4 py-2
                            text-sm font-semibold text-white
                            transition-colors hover:bg-violet-500
                            disabled:cursor-not-allowed disabled:opacity-40">
@@ -116,9 +116,9 @@
         }
     </section>
 
-    <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+    <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-        <div class="border-b border-white/10 px-6 py-5">
+        <div class="border-b border-white/[0.07] px-5 py-4">
             <h2 class="text-base font-semibold text-white">
                 Vínculos existentes
             </h2>
@@ -144,12 +144,12 @@
             <div class="w-full overflow-x-auto">
                 <table class="w-full min-w-[720px] text-left text-sm">
 
-                    <thead class="bg-[#11131b] text-xs font-semibold
+                    <thead class="bg-sidebar text-xs font-semibold
                                   uppercase tracking-wider text-slate-400">
                         <tr>
                             <th scope="col" class="px-6 py-4">Operador</th>
-                            <th scope="col" class="px-5 py-4">Vinculación</th>
-                            <th scope="col" class="px-5 py-4">Estado</th>
+                            <th scope="col" class="px-4 py-3">Vinculación</th>
+                            <th scope="col" class="px-4 py-3">Estado</th>
                             <th scope="col" class="px-6 py-4">Acciones</th>
                         </tr>
                     </thead>
@@ -157,9 +157,9 @@
                     <tbody class="divide-y divide-white/5">
                         @foreach (var vinculo in Model.Vinculos)
                         {
-                            <tr class="transition-colors hover:bg-white/[0.035]">
+                            <tr class="transition-colors hover:bg-white/[0.025]">
 
-                                <td class="px-6 py-5 font-semibold text-white">
+                                <td class="px-5 py-4 font-semibold text-white">
                                     @vinculo.OperadorNombre
                                 </td>
 
@@ -186,7 +186,7 @@
                                     }
                                 </td>
 
-                                <td class="px-6 py-5">
+                                <td class="px-5 py-4">
                                     @if (vinculo.Activo)
                                     {
                                         <form method="post"

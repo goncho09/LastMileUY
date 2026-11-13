@@ -1,11 +1,11 @@
 @model LastMileUY.Backoffice.Pages.Shared.UsuarioInicialFormulario
-<section class="space-y-4 border-t border-white/10 pt-6">
+<section class="space-y-4 border-t border-white/[0.07] pt-6">
     <h3 class="text-base font-semibold text-white">Usuario de acceso inicial</h3>
     <p class="text-sm text-slate-400">Se creará automáticamente con la empresa. La contraseña debe tener al menos 8 caracteres, mayúscula, minúscula y número.</p>
     <div class="grid gap-4 md:grid-cols-2">
-        <div><label asp-for="Nombre" class="mb-2 block text-sm text-slate-300">Nombre</label><input asp-for="Nombre" required maxlength="150" class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-white" /><span asp-validation-for="Nombre" class="text-sm text-red-300"></span></div>
-        <div><label asp-for="Apellido" class="mb-2 block text-sm text-slate-300">Apellido</label><input asp-for="Apellido" required maxlength="150" class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-white" /><span asp-validation-for="Apellido" class="text-sm text-red-300"></span></div>
+        <div><label asp-for="Nombre" class="mb-2 block text-sm text-slate-300">Nombre</label><input asp-for="Nombre" required maxlength="150" class="w-full rounded-xl border border-white/[0.07] bg-field px-4 py-3 text-white" /><span asp-validation-for="Nombre" class="text-sm text-red-300"></span></div>
+        <div><label asp-for="Apellido" class="mb-2 block text-sm text-slate-300">Apellido</label><input asp-for="Apellido" required maxlength="150" class="w-full rounded-xl border border-white/[0.07] bg-field px-4 py-3 text-white" /><span asp-validation-for="Apellido" class="text-sm text-red-300"></span></div>
     </div>
-    <div><label asp-for="Email" class="mb-2 block text-sm text-slate-300">Email para iniciar sesión</label><input asp-for="Email" type="email" required maxlength="250" autocomplete="off" class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-white" /><span asp-validation-for="Email" class="text-sm text-red-300"></span></div>
-    <div><label asp-for="Password" class="mb-2 block text-sm text-slate-300">Contraseña inicial</label><input asp-for="Password" type="password" required minlength="8" autocomplete="new-password" class="w-full rounded-xl border border-white/10 bg-[#10121a] px-4 py-3 text-white" /><span asp-validation-for="Password" class="text-sm text-red-300"></span></div>
+    <div><label asp-for="Email" class="mb-2 block text-sm text-slate-300">Email para iniciar sesión</label><input asp-for="Email" type="email" required maxlength="250" autocomplete="off" class="w-full rounded-xl border border-white/[0.07] bg-field px-4 py-3 text-white" /><span asp-validation-for="Email" class="text-sm text-red-300"></span></div>
+    <div><label asp-for="Password" class="mb-2 block text-sm text-slate-300">Contraseña inicial</label><input asp-for="Password" type="password" required minlength="8" autocomplete="new-password" class="w-full rounded-xl border border-white/[0.07] bg-field px-4 py-3 text-white" /><span asp-validation-for="Password" class="text-sm text-red-300"></span></div>
 </section>

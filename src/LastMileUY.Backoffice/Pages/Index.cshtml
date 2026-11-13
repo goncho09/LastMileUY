@@ -10,11 +10,11 @@
 
     <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <p class="mb-2 text-sm font-medium text-violet-400">
+            <p class="mb-1.5 text-xs font-medium text-slate-500">
                 Panel de control
             </p>
 
-            <h1 class="text-3xl font-bold tracking-tight text-white">
+            <h1 class="text-2xl font-semibold tracking-tight text-white">
                 Bienvenido a LastMileUY
             </h1>
 
@@ -24,9 +24,8 @@
         </div>
 
         <a asp-page="/Envios/Index"
-           class="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white no-underline transition-colors hover:bg-violet-500 hover:text-white">
+           class="inline-flex items-center justify-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white no-underline transition-colors hover:bg-violet-500 hover:text-white">
             Ver envíos
-            <span aria-hidden="true">→</span>
         </a>
     </div>
 
@@ -40,13 +39,13 @@
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
-        <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <p class="text-sm text-slate-400">
                 Envíos totales
             </p>
 
             <p id="total-envios"
-               class="mt-4 text-3xl font-bold text-white">
+               class="mt-4 text-2xl font-semibold text-white">
                 @Model.TotalEnvios
             </p>
 
@@ -55,13 +54,13 @@
             </p>
         </div>
 
-        <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <p class="text-sm text-slate-400">
                 En tránsito
             </p>
 
             <p id="en-transito"
-               class="mt-4 text-3xl font-bold text-white">
+               class="mt-4 text-2xl font-semibold text-white">
                 @Model.EnTransito
             </p>
 
@@ -70,13 +69,13 @@
             </p>
         </div>
 
-        <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <p class="text-sm text-slate-400">
                 Entregados
             </p>
 
             <p id="entregados"
-               class="mt-4 text-3xl font-bold text-white">
+               class="mt-4 text-2xl font-semibold text-white">
                 @Model.Entregados
             </p>
 
@@ -85,13 +84,13 @@
             </p>
         </div>
 
-        <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <div class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <p class="text-sm text-slate-400">
                 Incidencias
             </p>
 
             <p id="incidencias"
-               class="mt-4 text-3xl font-bold text-white">
+               class="mt-4 text-2xl font-semibold text-white">
                 @Model.Incidencias
             </p>
 
@@ -104,7 +103,7 @@
 
     <div class="grid gap-5 lg:grid-cols-3">
 
-        <section class="min-w-0 rounded-2xl border border-white/10 bg-[#171923] p-6 lg:col-span-2">
+        <section class="min-w-0 rounded-2xl border border-white/[0.07] bg-surface p-6 lg:col-span-2">
 
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-white">
@@ -114,7 +113,7 @@
                 <span id="estado-signalr"
       role="status"
       aria-live="polite"
-      class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 shadow-sm shadow-emerald-500/10">
+      class="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
     <span id="punto-signalr"
           class="relative flex h-2.5 w-2.5">
         <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
@@ -129,7 +128,7 @@
             </p>
 
             <div id="actividad-vacia"
-                 class="mt-6 flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-4 text-center">
+                 class="mt-6 flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.07] px-4 text-center">
                 <p class="text-sm text-slate-400">
                     Cargando actividad...
                 </p>
@@ -144,7 +143,7 @@
 
         </section>
 
-        <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <section class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <h2 class="text-lg font-semibold text-white">
                 Accesos rápidos
             </h2>
@@ -155,9 +154,8 @@
 
             <div class="mt-6 space-y-3">
                 <a asp-page="/Envios/Index"
-                   class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-medium text-slate-200 no-underline transition-colors hover:border-violet-500/30 hover:bg-violet-500/10 hover:text-white">
+                   class="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/5 px-4 py-4 text-sm font-medium text-slate-200 no-underline transition-colors hover:border-violet-500/30 hover:bg-violet-500/10 hover:text-white">
                     Gestionar envíos
-                    <span aria-hidden="true">→</span>
                 </a>
             </div>
         </section>
@@ -209,7 +207,7 @@
                 const item = document.createElement("li");
 
                 item.className =
-                    "rounded-xl border border-white/10 bg-white/5 p-4";
+                    "rounded-xl border border-white/[0.07] bg-white/5 p-4";
 
                 const cabecera = document.createElement("div");
 

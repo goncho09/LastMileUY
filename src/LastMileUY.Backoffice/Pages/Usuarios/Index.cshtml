@@ -9,7 +9,7 @@
 <div class="mx-auto max-w-7xl space-y-8 p-6">
 
     <div>
-        <h1 class="text-3xl font-bold text-white">
+        <h1 class="text-2xl font-semibold text-white">
             Gestión de usuarios
         </h1>
         <p class="mt-2 text-slate-400">
@@ -33,7 +33,7 @@
         </div>
     }
 
-    <section class="rounded-2xl border border-white/10 bg-[#151823] p-6">
+    <section class="rounded-2xl border border-white/[0.07] bg-surface-2 p-6">
         <h2 class="mb-5 text-xl font-semibold">
             Crear usuario
         </h2>
@@ -47,7 +47,7 @@
                     Nombre
                 </label>
                 <input asp-for="Nuevo.Nombre" required maxlength="100"
-                       class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white" />
+                       class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white" />
             </div>
 
             <div>
@@ -56,7 +56,7 @@
                     Apellido
                 </label>
                 <input asp-for="Nuevo.Apellido" required maxlength="100"
-                       class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white" />
+                       class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white" />
             </div>
 
             <div>
@@ -66,7 +66,7 @@
                 </label>
                 <input asp-for="Nuevo.Email" type="email" required
                        autocomplete="off"
-                       class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white" />
+                       class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white" />
             </div>
 
             <div>
@@ -76,7 +76,7 @@
                 </label>
                 <input asp-for="Nuevo.Password" type="password" required
                        autocomplete="new-password"
-                       class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white" />
+                       class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white" />
 
 <p class="mt-2 text-xs text-slate-400">
     Mínimo 8 caracteres, una mayúscula, una minúscula y un número.
@@ -89,7 +89,7 @@
                     Rol
                 </label>
                 <select asp-for="Nuevo.Rol"
-                        class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white">
+                        class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white">
                     <option value="Despachador">Despachador</option>
                     <option value="OperarioDeposito">Operario de depósito</option>
                     <option value="Repartidor">Repartidor</option>
@@ -106,7 +106,7 @@
     </section>
 
     
-    <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#151823]">
+    <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface-2">
         <div class="space-y-5 p-6">
             <div>
                 <h2 class="text-xl font-semibold">Personal registrado</h2>
@@ -121,17 +121,17 @@
                 var inactivos = Model.Usuarios.Count - activos;
 
                 <div class="grid grid-cols-3 gap-3">
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="rounded-xl border border-white/[0.07] bg-white/5 p-4">
                         <p class="text-sm text-slate-400">Total</p>
-                        <p class="text-2xl font-bold">@Model.Usuarios.Count</p>
+                        <p class="text-2xl font-semibold">@Model.Usuarios.Count</p>
                     </div>
                     <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                         <p class="text-sm text-slate-400">Activos</p>
-                        <p class="text-2xl font-bold text-emerald-400">@activos</p>
+                        <p class="text-2xl font-semibold text-emerald-400">@activos</p>
                     </div>
                     <div class="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
                         <p class="text-sm text-slate-400">Inactivos</p>
-                        <p class="text-2xl font-bold text-red-400">@inactivos</p>
+                        <p class="text-2xl font-semibold text-red-400">@inactivos</p>
                     </div>
                 </div>
 
@@ -139,10 +139,10 @@
                     <input id="buscarUsuarios" type="search"
                            placeholder="Buscar nombre o correo..."
                            aria-label="Buscar usuarios"
-                           class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white" />
+                           class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white" />
 
                     <select id="filtrarRol" aria-label="Filtrar por rol"
-                            class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white">
+                            class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white">
                         <option value="">Todos los roles</option>
                         <option value="Despachador">Despachador</option>
                         <option value="OperarioDeposito">Operario de depósito</option>
@@ -150,7 +150,7 @@
                     </select>
 
                     <select id="filtrarEstado" aria-label="Filtrar por estado"
-                            class="w-full rounded-lg border border-white/10 bg-[#0c0e14] p-3 text-white">
+                            class="w-full rounded-lg border border-white/[0.07] bg-canvas p-3 text-white">
                         <option value="">Todos los estados</option>
                         <option value="activo">Activos</option>
                         <option value="inactivo">Inactivos</option>
@@ -190,7 +190,7 @@
                     <tbody id="tablaUsuarios">
                     @foreach (var usuario in Model.Usuarios)
                     {
-                        <tr class="fila-usuario border-t border-white/10"
+                        <tr class="fila-usuario border-t border-white/[0.07]"
                             data-busqueda="@($"{usuario.Nombre} {usuario.Apellido} {usuario.Email}".ToLowerInvariant())"
                             data-rol="@usuario.Rol"
                             data-estado="@(usuario.Activo ? "activo" : "inactivo")">
@@ -251,7 +251,7 @@
      aria-modal="true"
      aria-labelledby="tituloModalDesactivar">
 
-    <div class="w-full max-w-md rounded-2xl border border-white/10 bg-[#151823] p-6 shadow-2xl">
+    <div class="w-full max-w-md rounded-2xl border border-white/[0.07] bg-surface-2 p-6">
         <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 text-red-400">
             <svg class="h-6 w-6" fill="none" stroke="currentColor"
                  stroke-width="1.8" viewBox="0 0 24 24"

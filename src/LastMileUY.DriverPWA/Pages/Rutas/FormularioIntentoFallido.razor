@@ -4,14 +4,14 @@
 @inject SincronizacionService Sincronizacion
 @inject IJSRuntime JS
 
-<div class="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
+<div class="mt-4 rounded-lg border border-line bg-slate-50 p-4">
 
     <div class="mb-5">
-        <h3 class="text-lg font-bold text-violet-900">
+        <h3 class="text-base font-semibold text-slate-900">
             Registrar entrega fallida
         </h3>
 
-        <p class="mt-1 text-sm text-violet-700">
+        <p class="mt-1 text-sm text-slate-700">
             Seleccioná el motivo por el que no se pudo completar la entrega.
         </p>
     </div>
@@ -26,7 +26,7 @@
             </label>
 
             <select id="motivo-@EnvioId"
-                    class="w-full rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:opacity-60"
+                    class="campo disabled:opacity-60"
                     disabled="@(enviando || mensajePendiente is not null)"
                     @bind="motivoSeleccionado">
 
@@ -42,7 +42,7 @@
 
             @if (motivosCargados && motivos.Count == 0)
             {
-                <p class="mt-2 text-sm text-violet-700">
+                <p class="mt-2 text-sm text-slate-700">
                     No hay motivos disponibles.
                 </p>
             }
@@ -56,7 +56,7 @@
             </label>
 
             <textarea id="observaciones-@EnvioId"
-                      class="w-full resize-y rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:opacity-60"
+                      class="campo resize-y placeholder:text-slate-400 disabled:opacity-60"
                       rows="3"
                       maxlength="1000"
                       placeholder="Agregá detalles sobre el intento..."
@@ -66,7 +66,7 @@
 
         @if (error is not null)
         {
-            <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+            <div class="aviso aviso-error text-sm"
                  role="alert">
                 @error
             </div>
@@ -74,7 +74,7 @@
 
         @if (mensajePendiente is not null)
         {
-            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4"
+            <div class="aviso aviso-alerta"
                  role="status">
 
                 <p class="text-sm font-semibold text-amber-900">
@@ -90,7 +90,7 @@
         <div class="grid gap-3 pt-2">
 
             <button type="button"
-                    class="w-full rounded-xl bg-violet-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    class="boton boton-principal disabled:cursor-not-allowed"
                     disabled="@(enviando || motivoSeleccionado == 0 || mensajePendiente is not null)"
                     @onclick="Enviar">
 
@@ -102,7 +102,7 @@
             </button>
 
             <button type="button"
-                    class="w-full rounded-xl border border-violet-200 bg-white px-5 py-3 font-medium text-violet-700 transition hover:bg-violet-100 disabled:opacity-50"
+                    class="boton boton-secundario"
                     disabled="@enviando"
                     @onclick="OnCancelar">
                 @(mensajePendiente is not null ? "Volver" : "Cancelar")

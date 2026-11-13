@@ -8,8 +8,8 @@
 <div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
     <div>
-        <p class="mb-2 text-sm font-medium text-violet-400">Administración / Plataforma</p>
-        <h1 class="text-3xl font-bold tracking-tight text-white">Funcionalidades por operador</h1>
+        <p class="mb-1.5 text-xs font-medium text-slate-500">Administración / Plataforma</p>
+        <h1 class="text-2xl font-semibold tracking-tight text-white">Funcionalidades por operador</h1>
         <p class="mt-2 max-w-3xl text-sm text-slate-400">
             Prendé o apagá partes del sistema para cada operador. El cambio vale enseguida, sin desplegar de nuevo.
         </p>
@@ -31,8 +31,8 @@
 
     @foreach (var operador in Model.Operadores)
     {
-        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#151821]" aria-labelledby="operador-@operador.OperadorId">
-            <h2 id="operador-@operador.OperadorId" class="border-b border-white/10 px-6 py-4 text-lg font-semibold text-white">
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-labelledby="operador-@operador.OperadorId">
+            <h2 id="operador-@operador.OperadorId" class="border-b border-white/[0.07] px-6 py-4 text-lg font-semibold text-white">
                 @operador.Operador
             </h2>
 
@@ -62,7 +62,7 @@
                             <button type="submit"
                                     aria-label="@(funcionalidad.Activa ? "Apagar" : "Prender") @funcionalidad.Nombre para @operador.Operador"
                                     class="@(funcionalidad.Activa
-                                               ? "rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10"
+                                               ? "rounded-xl border border-white/[0.07] bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10"
                                                : "rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500")">
                                 @(funcionalidad.Activa ? "Apagar" : "Prender")
                             </button>
