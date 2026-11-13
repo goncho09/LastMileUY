@@ -847,6 +847,48 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("ClavesApi", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.CorreoSeguimiento", b =>
+                {
+                    b.Property<Guid>("EventoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ComercioId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EnvioId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("FechaEnvio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReservaHasta")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReservaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UltimoError")
+                        .HasColumnType("text");
+
+                    b.HasKey("EventoId");
+
+                    b.HasIndex("OperadorId", "ComercioId", "Estado");
+
+                    b.ToTable("CorreosSeguimiento", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Mensajeria.Domain.MensajeFallido", b =>
                 {
                     b.Property<Guid>("Id")

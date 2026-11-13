@@ -11,4 +11,8 @@ public static class TopologiaMensajeria
     public const string PatronEventosBulto = "bulto.#";
 
     public const string EncabezadoCorrelacion = "X-Correlation-Id";
+
+    public const string ColaCorreos = "lastmileuy.correos";
+
+    public const string PatronEnvioAdmitido = TiposEvento.EnvioAdmitido;
 }

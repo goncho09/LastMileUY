@@ -59,6 +59,7 @@
       environment:
         DOTNET_ENVIRONMENT: Production
         Avisos__PermitirDestinosLocales: "false"
+        Correo__UrlSeguimiento: https://seguimiento.20-226-58-41.sslip.io
       restart: unless-stopped
     
     grafana:
