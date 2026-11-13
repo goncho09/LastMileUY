@@ -8,11 +8,11 @@
 <div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
     <div>
-        <p class="mb-2 text-sm font-medium text-violet-400">
+        <p class="mb-1.5 text-xs font-medium text-slate-500">
             Administración / Operadores
         </p>
 
-        <h1 class="text-3xl font-bold tracking-tight text-white">
+        <h1 class="text-2xl font-semibold tracking-tight text-white">
             Editar operador
         </h1>
 
@@ -22,10 +22,10 @@
     </div>
 
     <div class="max-w-3xl">
-        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
             <div class="flex flex-wrap items-center justify-between gap-3
-                        border-b border-white/10 px-6 py-5">
+                        border-b border-white/[0.07] px-5 py-4">
 
                 <div>
                     <h2 class="text-base font-semibold text-white">
@@ -49,11 +49,11 @@
                 <partial name="/Pages/Shared/_ErroresFormulario.cshtml" />
                 <partial name="_Formulario" for="Formulario" />
 
-                <div class="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-6">
+                <div class="flex flex-wrap justify-end gap-3 border-t border-white/[0.07] pt-6">
 
                     <a asp-page="/Operadores/Index"
                        class="inline-flex items-center justify-center rounded-xl
-                              border border-white/10 bg-white/5 px-5 py-3
+                              border border-white/[0.07] bg-white/5 px-5 py-3
                               text-sm font-semibold text-slate-300 no-underline
                               transition-colors hover:bg-white/10 hover:text-white">
                         Cancelar
@@ -61,7 +61,7 @@
 
                     <button type="submit"
                             class="inline-flex items-center justify-center gap-2
-                                   rounded-xl bg-violet-600 px-5 py-3
+                                   rounded-md bg-violet-600 px-4 py-2
                                    text-sm font-semibold text-white
                                    transition-colors hover:bg-violet-500">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor"

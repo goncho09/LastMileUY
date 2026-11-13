@@ -14,7 +14,7 @@
             ← Volver a mensajes fallidos
         </a>
 
-        <h1 class="mt-4 text-3xl font-bold tracking-tight text-white">
+        <h1 class="mt-4 text-2xl font-semibold tracking-tight text-white">
             Detalle de mensaje fallido
         </h1>
 
@@ -43,7 +43,7 @@
             _ => "border-slate-500/20 bg-slate-500/10 text-slate-300"
         };
 
-        <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <section class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-white">
                     Información general
@@ -140,15 +140,15 @@
             </dl>
         </section>
 
-        <section class="rounded-2xl border border-red-500/20 bg-[#171923] p-6">
+        <section class="rounded-2xl border border-red-500/20 bg-surface p-6">
             <h2 class="text-lg font-semibold text-white">
                 Último error
             </h2>
 
-            <pre class="mt-4 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[#10121a] p-5 font-mono text-xs leading-relaxed text-red-300">@(mensaje.UltimoError ?? "No se registró un error.")</pre>
+            <pre class="mt-4 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-field p-5 font-mono text-xs leading-relaxed text-red-300">@(mensaje.UltimoError ?? "No se registró un error.")</pre>
         </section>
 
-        <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
+        <section class="rounded-2xl border border-white/[0.07] bg-surface p-6">
             <h2 class="text-lg font-semibold text-white">
                 Contenido original del mensaje
             </h2>
@@ -157,7 +157,7 @@
                 Datos originales recibidos por el Worker.
             </p>
 
-            <pre class="mt-4 max-h-[500px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-[#10121a] p-5 font-mono text-xs leading-relaxed text-slate-300">@mensaje.Contenido</pre>
+            <pre class="mt-4 max-h-[500px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-field p-5 font-mono text-xs leading-relaxed text-slate-300">@mensaje.Contenido</pre>
         </section>
     }
 </div>

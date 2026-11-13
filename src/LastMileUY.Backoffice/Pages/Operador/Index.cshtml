@@ -10,11 +10,11 @@
 <div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
     <div>
-        <p class="mb-2 text-sm font-medium text-violet-400">
+        <p class="mb-1.5 text-xs font-medium text-slate-500">
             Configuración del operador
         </p>
 
-        <h1 class="text-3xl font-bold tracking-tight text-white">
+        <h1 class="text-2xl font-semibold tracking-tight text-white">
             Mi operador
         </h1>
 
@@ -35,9 +35,9 @@
         var color = IdentidadOperador.ColorSeguro(operador.ColorPrimario);
         var logo = IdentidadOperador.LogoSeguro(operador.LogoUrl);
 
-        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4">
                 <div>
                     <h2 class="text-base font-semibold text-white">
                         Identidad del operador
@@ -54,8 +54,8 @@
 
             <div class="grid gap-8 p-6 lg:grid-cols-3">
 
-                <div class="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#11131b] p-8 text-center">
-                    <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                <div class="flex flex-col items-center justify-center rounded-2xl border border-white/[0.07] bg-sidebar p-8 text-center">
+                    <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/[0.07] bg-white/5">
                         @if (logo is not null)
                         {
                             <img src="@logo"
@@ -64,7 +64,7 @@
                         }
                         else
                         {
-                            <span class="text-3xl font-bold text-violet-300">
+                            <span class="text-2xl font-semibold text-violet-300">
                                 @(string.IsNullOrWhiteSpace(operador.Nombre)
                                     ? "O"
                                     : operador.Nombre.Substring(0, 1).ToUpperInvariant())
@@ -72,7 +72,7 @@
                         }
                     </div>
 
-                    <h3 class="mt-5 text-lg font-bold text-white">
+                    <h3 class="mt-5 text-lg font-semibold text-white">
                         @operador.Nombre
                     </h3>
 
@@ -87,7 +87,7 @@
 
                 <div class="space-y-6 lg:col-span-2">
 
-                    <div class="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+                    <div class="rounded-xl border border-white/[0.07] bg-white/[0.025] p-5">
                         <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
                             Nombre
                         </p>
@@ -96,13 +96,13 @@
                         </p>
                     </div>
 
-                    <div class="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+                    <div class="rounded-xl border border-white/[0.07] bg-white/[0.025] p-5">
                         <p class="mb-3 text-xs font-medium uppercase tracking-wider text-slate-500">
                             Color principal
                         </p>
 
                         <div class="flex flex-wrap items-center gap-3">
-                            <span class="h-9 w-9 shrink-0 rounded-xl border border-white/10"
+                            <span class="h-9 w-9 shrink-0 rounded-xl border border-white/[0.07]"
                                   style="background-color: @color">
                             </span>
 
@@ -120,7 +120,7 @@
                         </div>
                     </div>
 
-                    <div class="rounded-xl border border-white/10 bg-white/[0.025] p-5">
+                    <div class="rounded-xl border border-white/[0.07] bg-white/[0.025] p-5">
                         <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
                             Logo
                         </p>
@@ -135,9 +135,9 @@
             </div>
         </section>
 
-        <section id="deposito" class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+        <section id="deposito" class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4">
                 <div>
                     <h2 class="text-base font-semibold text-white">
                         Depósito
@@ -149,7 +149,7 @@
                     </p>
                 </div>
 
-                <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                <span class="rounded-full border border-white/[0.07] bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
                     @(operador.Deposito is null ? "Sin cargar" : "Cargado")
                 </span>
             </div>
@@ -178,7 +178,7 @@
                         <input id="latitud" name="latitud" inputmode="decimal" autocomplete="off"
                                value="@(operador.Deposito is null ? "" : IndexModel.Grados(operador.Deposito.Latitud))"
                                placeholder="-34.9011"
-                               class="w-44 rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white outline-none focus:border-violet-500" />
+                               class="w-44 rounded-xl border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20" />
                     </div>
 
                     <div>
@@ -186,18 +186,18 @@
                         <input id="longitud" name="longitud" inputmode="decimal" autocomplete="off"
                                value="@(operador.Deposito is null ? "" : IndexModel.Grados(operador.Deposito.Longitud))"
                                placeholder="-56.1645"
-                               class="w-44 rounded-xl border border-[#343747] bg-[#10121a] px-4 py-3 text-sm text-white outline-none focus:border-violet-500" />
+                               class="w-44 rounded-xl border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20" />
                     </div>
 
                     <button type="submit"
-                            class="rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
+                            class="rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500">
                         Guardar depósito
                     </button>
 
                     @if (operador.Deposito is { } deposito)
                     {
                         <button type="submit" name="borrar" value="true"
-                                class="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white">
+                                class="rounded-xl border border-white/[0.07] bg-white/5 px-5 py-3 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white">
                             Borrar
                         </button>
 
@@ -211,9 +211,9 @@
             </div>
         </section>
 
-        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4">
                 <div>
                     <h2 class="text-base font-semibold text-white">
                         Reglas operativas
@@ -225,7 +225,7 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                    <span class="rounded-full border border-white/[0.07] bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
                         @operador.Reglas.Count reglas
                     </span>
                     <a asp-page="/Configuracion/ReglasOperativas"
@@ -262,14 +262,14 @@
                 <div class="w-full overflow-x-auto">
                     <table class="w-full min-w-[1050px] text-left text-sm">
 
-                        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
                             <tr>
                                 <th scope="col" class="px-6 py-4">Modalidad</th>
-                                <th scope="col" class="px-5 py-4">Regla</th>
-                                <th scope="col" class="px-5 py-4 text-right">Intentos</th>
-                                <th scope="col" class="px-5 py-4 text-right">Entre intentos</th>
-                                <th scope="col" class="px-5 py-4 text-right">Plazo de entrega</th>
-                                <th scope="col" class="px-5 py-4 text-right">Inicio devolución</th>
+                                <th scope="col" class="px-4 py-3">Regla</th>
+                                <th scope="col" class="px-4 py-3 text-right">Intentos</th>
+                                <th scope="col" class="px-4 py-3 text-right">Entre intentos</th>
+                                <th scope="col" class="px-4 py-3 text-right">Plazo de entrega</th>
+                                <th scope="col" class="px-4 py-3 text-right">Inicio devolución</th>
                                 <th scope="col" class="px-6 py-4">Al entregar pide</th>
                             </tr>
                         </thead>
@@ -277,9 +277,9 @@
                         <tbody class="divide-y divide-white/5">
                             @foreach (var regla in operador.Reglas)
                             {
-                                <tr class="transition-colors hover:bg-white/[0.035]">
+                                <tr class="transition-colors hover:bg-white/[0.025]">
 
-                                    <td class="px-6 py-5">
+                                    <td class="px-5 py-4">
                                         @if (regla.Modalidad == "Urgente")
                                         {
                                             <span class="inline-flex rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-300">
@@ -323,7 +323,7 @@
                                         @regla.HorasParaIniciarDevolucion h
                                     </td>
 
-                                    <td class="px-6 py-5 text-slate-300">
+                                    <td class="px-5 py-4 text-slate-300">
                                         @Formato.Requisitos(
                                             regla.RequiereFirma,
                                             regla.RequiereFotografia,
@@ -340,9 +340,9 @@
 
         var vigente = Model.ReglasEntregaParcial.FirstOrDefault();
 
-        <section id="entrega-parcial" class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+        <section id="entrega-parcial" class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4">
                 <div>
                     <h2 class="text-base font-semibold text-white">
                         Reglas de entrega parcial
@@ -354,7 +354,7 @@
                     </p>
                 </div>
 
-                <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                <span class="rounded-full border border-white/[0.07] bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300">
                     @(vigente is null ? "Sin versiones" : $"Versión {vigente.Version} vigente")
                 </span>
             </div>
@@ -389,7 +389,7 @@
                     <div class="grid gap-6 lg:grid-cols-5">
 
                         <form method="post" asp-page-handler="PublicarReglaEntregaParcial"
-                              class="space-y-5 rounded-xl border border-white/10 bg-[#11131b] p-5 lg:col-span-2">
+                              class="space-y-5 rounded-xl border border-white/[0.07] bg-sidebar p-5 lg:col-span-2">
 
                             <h3 class="text-sm font-semibold text-white">
                                 Publicar una versión nueva
@@ -412,7 +412,7 @@
                                     Bultos que quedan sin entregar
                                 </label>
                                 <select id="destinoBultosPendientes" name="destinoBultosPendientes"
-                                        class="w-full rounded-lg border border-white/10 bg-[#171923] px-3 py-2 text-sm text-slate-200">
+                                        class="w-full rounded-lg border border-white/[0.07] bg-surface px-3 py-2 text-sm text-slate-200">
                                     @foreach (var destino in new[] { "NuevaHojaDeRuta", "Devolucion" })
                                     {
                                         <option value="@destino" selected="@(vigente?.DestinoBultosPendientes == destino)">
@@ -436,7 +436,7 @@
                                        step="0.01"
                                        required
                                        value="@(vigente?.RecargoNuevaVisita ?? 0m)"
-                                       class="w-full rounded-lg border border-white/10 bg-[#171923] px-3 py-2 text-sm text-slate-200" />
+                                       class="w-full rounded-lg border border-white/[0.07] bg-surface px-3 py-2 text-sm text-slate-200" />
 
                                 <p class="mt-1 text-xs text-slate-500">
                                     0 = sin recargo. Solo se aplica cuando se elige nueva hoja de ruta.
@@ -449,7 +449,7 @@
                                 </label>
                                 <textarea id="motivo" name="motivo" rows="3" maxlength="500" required
                                           placeholder="Por ejemplo: los bultos que quedan se devuelven al comercio"
-                                          class="w-full rounded-lg border border-white/10 bg-[#171923] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600"></textarea>
+                                          class="w-full rounded-lg border border-white/[0.07] bg-surface px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600"></textarea>
                                 <p class="mt-1 text-xs text-slate-500">Queda en el historial.</p>
                             </div>
 
@@ -462,7 +462,7 @@
                         <div class="lg:col-span-3">
                             @if (Model.ReglasEntregaParcial.Count == 0)
                             {
-                                <p class="rounded-xl border border-white/10 bg-white/[0.025] p-5 text-sm leading-relaxed text-slate-400">
+                                <p class="rounded-xl border border-white/[0.07] bg-white/[0.025] p-5 text-sm leading-relaxed text-slate-400">
                                     Todavía no hay versiones publicadas: las entregas parciales se permiten
                                     y los bultos que quedan vuelven a salir.
                                 </p>
@@ -471,7 +471,7 @@
                             {
                                 <div class="w-full overflow-x-auto">
                                     <table class="w-full min-w-[640px] text-left text-sm">
-                                        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
                                             <tr>
                                                 <th scope="col" class="px-4 py-3">Versión</th>
                                                 <th scope="col" class="px-4 py-3">Parciales</th>
@@ -486,7 +486,7 @@
                                             @foreach (var regla in Model.ReglasEntregaParcial)
                                             {
                                                 <tr class="align-top">
-                                                    <td class="px-4 py-4 font-semibold text-slate-200">
+                                                    <td class="px-4 py-3 font-semibold text-slate-200">
                                                         @regla.Version
                                                         @if (regla.Id == vigente!.Id)
                                                         {
@@ -495,21 +495,21 @@
                                                             </span>
                                                         }
                                                     </td>
-                                                    <td class="px-4 py-4 text-slate-300">
+                                                    <td class="px-4 py-3 text-slate-300">
                                                         @(regla.PermiteEntregaParcial ? "Permitidas" : "No permitidas")
                                                     </td>
-                                                    <td class="px-4 py-4 text-slate-300">
+                                                    <td class="px-4 py-3 text-slate-300">
                                                         @IndexModel.TextoDestino(regla.DestinoBultosPendientes)
                                                     </td>
-                                                    <td class="px-4 py-4 text-slate-300">
+                                                    <td class="px-4 py-3 text-slate-300">
                                                         @(regla.RecargoNuevaVisita > 0
                                                             ? $"$ {regla.RecargoNuevaVisita:N2}"
                                                             : "Sin recargo")
                                                     </td>
-                                                    <td class="max-w-xs px-4 py-4 text-xs leading-relaxed text-slate-400">
+                                                    <td class="max-w-xs px-4 py-3 text-xs leading-relaxed text-slate-400">
                                                         @(regla.Motivo ?? "—")
                                                     </td>
-                                                    <td class="px-4 py-4 text-xs text-slate-400">
+                                                    <td class="px-4 py-3 text-xs text-slate-400">
                                                         <p>@Formato.Fecha(regla.FechaPublicacion)</p>
                                                         <p class="mt-1 text-slate-500">@regla.PublicadaPor</p>
                                                     </td>
@@ -527,7 +527,7 @@
     }
     else
     {
-        <div class="rounded-xl border border-white/10 bg-[#171923] px-6 py-8 text-sm text-slate-400">
+        <div class="rounded-xl border border-white/[0.07] bg-surface px-6 py-8 text-sm text-slate-400">
             No hay información del operador disponible.
         </div>
     }

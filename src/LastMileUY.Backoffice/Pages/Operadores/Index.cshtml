@@ -10,11 +10,11 @@
 
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <p class="mb-2 text-sm font-medium text-violet-400">
+            <p class="mb-1.5 text-xs font-medium text-slate-500">
                 Administración / Operadores
             </p>
 
-            <h1 class="text-3xl font-bold tracking-tight text-white">
+            <h1 class="text-2xl font-semibold tracking-tight text-white">
                 Operadores
             </h1>
 
@@ -25,7 +25,7 @@
 
         <a asp-page="/Operadores/Crear"
            class="inline-flex items-center gap-2 rounded-xl bg-violet-600
-                  px-5 py-3 text-sm font-semibold text-white no-underline
+                  px-4 py-2 text-sm font-medium text-white no-underline
                   transition-colors hover:bg-violet-500">
             <svg class="h-4 w-4" fill="none" stroke="currentColor"
                  stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -53,9 +53,9 @@
     }
     else
     {
-        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
 
-            <div class="border-b border-white/10 px-6 py-5">
+            <div class="border-b border-white/[0.07] px-5 py-4">
                 <h2 class="text-base font-semibold text-white">
                     Operadores registrados
                 </h2>
@@ -64,7 +64,7 @@
                 </p>
             </div>
 
-            <div class="border-b border-white/10 p-6">
+            <div class="border-b border-white/[0.07] p-6">
                 <label for="buscarOperador"
                        class="mb-2 block text-sm font-medium text-slate-300">
                     Buscar operador
@@ -81,10 +81,10 @@
                     <input id="buscarOperador"
                            type="search"
                            placeholder="Buscar por nombre..."
-                           class="w-full rounded-xl border border-white/10
-                                  bg-[#10121a] py-3 pr-4 pl-12 text-sm text-white
+                           class="w-full rounded-xl border border-white/[0.07]
+                                  bg-field py-3 pr-4 pl-12 text-sm text-white
                                   outline-none placeholder:text-slate-500
-                                  focus:border-violet-500" />
+                                  focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20" />
                 </div>
             </div>
 
@@ -103,12 +103,12 @@
             {
                 <div class="w-full overflow-x-auto">
                     <table class="w-full min-w-[720px] text-left text-sm">
-                        <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
                             <tr>
                                 <th scope="col" class="px-6 py-4">ID</th>
-                                <th scope="col" class="px-5 py-4">Operador</th>
-                                <th scope="col" class="px-5 py-4">Estado</th>
-                                <th scope="col" class="px-5 py-4">Fecha de creación</th>
+                                <th scope="col" class="px-4 py-3">Operador</th>
+                                <th scope="col" class="px-4 py-3">Estado</th>
+                                <th scope="col" class="px-4 py-3">Fecha de creación</th>
                                 <th scope="col" class="px-6 py-4">Acciones</th>
                             </tr>
                         </thead>
@@ -117,9 +117,9 @@
                             @foreach (var operador in Model.Operadores)
                             {
                                 <tr data-nombre="@operador.Nombre.ToLowerInvariant()"
-                                    class="transition-colors hover:bg-white/[0.035]">
+                                    class="transition-colors hover:bg-white/[0.025]">
 
-                                    <td class="px-6 py-5 text-slate-400">
+                                    <td class="px-5 py-4 text-slate-400">
                                         @operador.Id
                                     </td>
 
@@ -150,7 +150,7 @@
                                         @operador.FechaCreacion.ToString("dd/MM/yyyy")
                                     </td>
 
-                                    <td class="px-6 py-5">
+                                    <td class="px-5 py-4">
                                         <a asp-page="/Operadores/Editar"
                                            asp-route-id="@operador.Id"
                                            class="text-sm font-semibold text-violet-300

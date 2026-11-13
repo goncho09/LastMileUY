@@ -6,39 +6,32 @@
 @inject ColaOperacionesService Cola
 
 <PageTitle>Mi jornada | LastMileUY</PageTitle>
-
 @if (comprobandoSesion)
 {
-    <div class="p-4 text-center">
+    <div class="p-4 text-center text-sm text-slate-500">
         Comprobando sesión...
     </div>
 }
 else
 {
-   
+    <div class="min-h-dvh bg-canvas pb-24">
 
+        <header class="bg-violet-700 px-5 pb-14 pt-6 text-white">
 
-    <div class="min-h-dvh bg-[#f5f3fb] pb-28">
-
-        <header class="relative overflow-hidden bg-gradient-to-br from-violet-800 via-violet-700 to-indigo-700 px-5 pb-16 pt-8 text-white">
-
-            <div class="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10"></div>
-            <div class="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-indigo-400/20"></div>
-
-            <div class="relative mx-auto max-w-4xl">
+            <div class="mx-auto max-w-2xl">
 
                 <div class="flex items-center justify-between gap-3">
 
                     <div class="flex items-center gap-3">
-                        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 text-xl">
-                            🚚
+                        <div class="flex h-9 w-9 items-center justify-center rounded-md bg-white/12">
+                            <Icono Nombre="camion" Clase="h-5 w-5" />
                         </div>
 
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-widest text-violet-200">
+                            <p class="text-xs font-medium text-violet-200">
                                 LastMileUY
                             </p>
-                            <h1 class="text-xl font-bold">
+                            <h1 class="text-lg leading-tight font-semibold">
                                 Mi jornada
                             </h1>
                         </div>
@@ -47,13 +40,13 @@ else
                     <button type="button"
                             @onclick="CerrarSesion"
                             disabled="@cerrandoSesion"
-                            class="flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium transition hover:bg-white/20 disabled:opacity-50">
+                            class="flex items-center gap-2 rounded-md border border-white/25 px-3 py-1.5 text-sm font-medium transition-colors active:bg-white/10 disabled:opacity-50">
 
                         <svg xmlns="http://www.w3.org/2000/svg"
-                             width="18" height="18" viewBox="0 0 24 24"
+                             width="16" height="16" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor"
                              stroke-width="2" stroke-linecap="round"
-                             stroke-linejoin="round">
+                             stroke-linejoin="round" aria-hidden="true">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16 17 21 12 16 7"/>
                             <line x1="21" y1="12" x2="9" y2="12"/>
@@ -64,12 +57,12 @@ else
 
                 </div>
 
-                <div class="mt-9">
+                <div class="mt-8">
                     <p class="text-sm text-violet-200">Panel del repartidor</p>
-                    <h2 class="mt-1 text-3xl font-bold tracking-tight">
-                        ¡Buen viaje! 👋
+                    <h2 class="mt-1 text-2xl font-semibold">
+                        ¡Buen viaje!
                     </h2>
-                    <p class="mt-2 text-sm text-violet-100">
+                    <p class="mt-1 text-sm text-violet-100">
                         Organizá tus entregas y seguí tu jornada.
                     </p>
                 </div>
@@ -77,32 +70,32 @@ else
             </div>
         </header>
 
-        <main class="relative mx-auto -mt-9 max-w-4xl space-y-7 px-4">
+        <main class="mx-auto -mt-8 max-w-2xl space-y-6 px-4">
 
             @if (errorSesion is not null)
             {
-                <div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <div class="aviso aviso-error text-sm">
                     @errorSesion
                 </div>
             }
 
-            <section class="rounded-3xl border border-violet-100 bg-white p-5 shadow-lg shadow-violet-900/5">
+            <section class="rounded-lg border border-line bg-white p-5">
 
                 <div class="flex items-start gap-4">
-                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-3xl">
-                        📍
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700">
+                        <Icono Nombre="ruta" Clase="h-5 w-5" />
                     </div>
 
                     <div class="flex-1">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-violet-600">
+                        <p class="text-xs font-medium text-slate-500">
                             Tu trabajo
                         </p>
 
-                        <h3 class="mt-1 text-xl font-bold text-slate-900">
+                        <h3 class="mt-0.5 text-lg font-semibold text-slate-900">
                             Mis rutas
                         </h3>
 
-                        <p class="mt-2 text-sm leading-relaxed text-slate-500">
+                        <p class="mt-1 text-sm leading-relaxed text-slate-500">
                             Consultá tus recorridos, paradas y entregas asignadas.
                         </p>
                     </div>
@@ -110,15 +103,15 @@ else
 
                 <button type="button"
                         @onclick="IrARutas"
-                        class="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-700 px-5 py-4 font-semibold text-white shadow-md shadow-violet-700/20 transition hover:bg-violet-800">
+                        class="boton boton-principal mt-5">
 
                     Ver mis rutas
 
                     <svg xmlns="http://www.w3.org/2000/svg"
-                         width="18" height="18" viewBox="0 0 24 24"
+                         width="16" height="16" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor"
                          stroke-width="2" stroke-linecap="round"
-                         stroke-linejoin="round">
+                         stroke-linejoin="round" aria-hidden="true">
                         <path d="M5 12h14"/>
                         <path d="m12 5 7 7-7 7"/>
                     </svg>
@@ -127,73 +120,73 @@ else
             </section>
 
             <section>
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-lg font-bold text-slate-900">
+                <div class="mb-3 flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-900">
                         Resumen de hoy
                     </h3>
-                    <span class="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700">
+                    <span class="text-xs font-medium text-slate-500">
                         Mi actividad
                     </span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
 
-                    <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-violet-100 text-xl">
-                            📦
+                    <div class="rounded-lg border border-line bg-white p-4">
+                        <div class="flex items-center gap-2 text-slate-500">
+                            <Icono Nombre="paquete" Clase="h-4 w-4" />
+                            <p class="text-sm">Asignadas</p>
                         </div>
-                        <p class="text-3xl font-bold text-slate-900">—</p>
-                        <p class="mt-1 text-sm text-slate-500">Asignadas</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-xl">
-                            ✓
+                    <div class="rounded-lg border border-line bg-white p-4">
+                        <div class="flex items-center gap-2 text-slate-500">
+                            <Icono Nombre="check" Clase="h-4 w-4 text-emerald-600" />
+                            <p class="text-sm">Completadas</p>
                         </div>
-                        <p class="text-3xl font-bold text-emerald-600">—</p>
-                        <p class="mt-1 text-sm text-slate-500">Completadas</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-amber-100 text-xl">
-                            ◷
+                    <div class="rounded-lg border border-line bg-white p-4">
+                        <div class="flex items-center gap-2 text-slate-500">
+                            <Icono Nombre="reloj" Clase="h-4 w-4 text-amber-600" />
+                            <p class="text-sm">Pendientes</p>
                         </div>
-                        <p class="text-3xl font-bold text-amber-600">—</p>
-                        <p class="mt-1 text-sm text-slate-500">Pendientes</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
                     </div>
 
-                    <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-                        <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-xl">
-                            ↻
+                    <div class="rounded-lg border border-line bg-white p-4">
+                        <div class="flex items-center gap-2 text-slate-500">
+                            <Icono Nombre="sync" Clase="h-4 w-4 text-violet-600" />
+                            <p class="text-sm">Sin sincronizar</p>
                         </div>
-                        <p class="text-3xl font-bold text-indigo-600">—</p>
-                        <p class="mt-1 text-sm text-slate-500">Sin sincronizar</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
                     </div>
 
                 </div>
             </section>
         </main>
 
-        <nav class="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+        <nav class="fixed bottom-0 left-0 right-0 z-20 border-t border-line bg-white px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 
             <div class="mx-auto flex max-w-md items-center justify-around">
 
-                <div class="flex flex-col items-center gap-1 text-violet-700">
-                    <span class="text-2xl">⌂</span>
-                    <span class="text-xs font-bold">Inicio</span>
+                <div class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-violet-700">
+                    <Icono Nombre="inicio" Clase="h-5 w-5" />
+                    <span class="text-xs font-medium">Inicio</span>
                 </div>
 
                 <button type="button"
                         @onclick="IrARutas"
-                        class="flex flex-col items-center gap-1 text-slate-500 transition hover:text-violet-700">
-                    <span class="text-xl">🚚</span>
+                        class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-slate-500 transition-colors active:text-violet-700">
+                    <Icono Nombre="camion" Clase="h-5 w-5" />
                     <span class="text-xs font-medium">Rutas</span>
                 </button>
 
                 <button type="button"
                         @onclick="@(() => Navigation.NavigateTo("/operaciones"))"
-                        class="flex flex-col items-center gap-1 text-slate-500 transition hover:text-violet-700">
-                    <span class="text-xl">↻</span>
+                        class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-slate-500 transition-colors active:text-violet-700">
+                    <Icono Nombre="sync" Clase="h-5 w-5" />
                     <span class="text-xs font-medium">Operaciones</span>
                 </button>
 
