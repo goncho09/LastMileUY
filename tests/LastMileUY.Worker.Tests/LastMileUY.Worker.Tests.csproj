@@ -23,9 +23,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\LastMileUY.Worker\LastMileUY.Worker.csproj"/>
-        <!-- El receptor de avisos de prueba, levantado de verdad (Kestrel) para mandarle avisos -->
         <ProjectReference Include="..\..\src\LastMileUY.ReceptorAvisos\LastMileUY.ReceptorAvisos.csproj"/>
-        <!-- Solo para crear la base con las migraciones de la API -->
         <ProjectReference Include="..\..\src\LastMileUY.API\LastMileUY.API.csproj"/>
     </ItemGroup>
 
