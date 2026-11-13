@@ -1,0 +1,124 @@
+@page
+@model LastMileUY.Backoffice.Pages.Configuracion.FranjasHorariasModel
+@{
+    ViewData["Title"] = "Franjas horarias";
+    var editando = Model.Editar is not null;
+    var zona = Model.ZonaElegida;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <partial name="_Encabezado" model="@(("Franjas horarias", "Los horarios en los que se entrega en cada zona.", Model.Error))" />
+
+    @if (Model.Zonas.Count == 0)
+    {
+        <section class="@Estilos.Tarjeta px-6 py-10 text-center text-sm text-slate-400">
+            Primero cargá una zona en <a asp-page="Zonas" class="text-violet-300 hover:text-violet-200">Zonas de cobertura</a>.
+        </section>
+    }
+    else
+    {
+        <form method="get" class="flex flex-wrap items-end gap-3">
+            <div class="min-w-64">
+                <label for="zona" class="@Estilos.Etiqueta">Zona</label>
+                <select id="zona" name="zona" class="@Estilos.Campo" onchange="this.form.submit()">
+                    @foreach (var z in Model.Zonas)
+                    {
+                        <option value="@z.Id" selected="@(z.Id == zona?.Id)">@z.Nombre@(z.Activa ? "" : " (inactiva)")</option>
+                    }
+                </select>
+            </div>
+            <noscript><button type="submit" class="@Estilos.BotonSecundario">Ver</button></noscript>
+        </form>
+
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+
+            <section class="@Estilos.Tarjeta" aria-labelledby="titulo-franjas">
+                <div class="@Estilos.EncabezadoTarjeta">
+                    <h2 id="titulo-franjas" class="text-base font-semibold text-white">Franjas de @zona!.Nombre</h2>
+                </div>
+
+                @if (zona.Franjas.Count == 0)
+                {
+                    <p class="px-6 py-10 text-center text-sm text-slate-400">Esta zona todavía no tiene franjas.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="@Estilos.Tabla">
+                            <thead class="@Estilos.CabeceraTabla">
+                                <tr>
+                                    <th scope="col" class="@Estilos.Celda">Franja</th>
+                                    <th scope="col" class="@Estilos.Celda">Horario</th>
+                                    <th scope="col" class="@Estilos.Celda">Estado</th>
+                                    <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                @foreach (var franja in zona.Franjas)
+                                {
+                                    <tr>
+                                        <td class="@Estilos.Celda font-medium text-white">@franja.Nombre</td>
+                                        <td class="@Estilos.Celda text-slate-300">@Formato.Hora(franja.HoraInicio) a @Formato.Hora(franja.HoraFin)</td>
+                                        <td class="@Estilos.Celda">
+                                            <span class="@(franja.Activa ? Estilos.Activo : Estilos.Inactivo)">@(franja.Activa ? "Activa" : "Inactiva")</span>
+                                        </td>
+                                        <td class="@Estilos.Celda">
+                                            <div class="flex justify-end gap-2">
+                                                <a asp-page="FranjasHorarias" asp-route-zona="@zona.Id" asp-route-editar="@franja.Id"
+                                                   class="@Estilos.BotonSecundario" aria-label="Editar la franja @franja.Nombre">Editar</a>
+                                                <form method="post" asp-page-handler="CambiarActiva" asp-route-zona="@zona.Id">
+                                                    <input type="hidden" name="id" value="@franja.Id" />
+                                                    <input type="hidden" name="activa" value="@(franja.Activa ? "false" : "true")" />
+                                                    <button type="submit" class="@Estilos.BotonSecundario"
+                                                            aria-label="@(franja.Activa ? "Desactivar" : "Activar") la franja @franja.Nombre">
+                                                        @(franja.Activa ? "Desactivar" : "Activar")
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+
+            <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-formulario">
+                <div class="@Estilos.EncabezadoTarjeta">
+                    <h2 id="titulo-formulario" class="text-base font-semibold text-white">@(editando ? "Editar franja" : "Nueva franja")</h2>
+                </div>
+
+                <form method="post" asp-page-handler="Guardar" asp-route-zona="@zona.Id" asp-route-editar="@Model.Editar" class="space-y-5 p-6">
+                    <div>
+                        <label asp-for="Formulario.Nombre" class="@Estilos.Etiqueta">Nombre <span class="text-red-400">*</span></label>
+                        <input asp-for="Formulario.Nombre" maxlength="100" placeholder="Ej. Mañana" class="@Estilos.Campo" />
+                        <span asp-validation-for="Formulario.Nombre" class="@Estilos.ErrorCampo"></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label asp-for="Formulario.HoraInicio" class="@Estilos.Etiqueta">Desde <span class="text-red-400">*</span></label>
+                            <input asp-for="Formulario.HoraInicio" type="time" class="@Estilos.Campo" />
+                            <span asp-validation-for="Formulario.HoraInicio" class="@Estilos.ErrorCampo"></span>
+                        </div>
+                        <div>
+                            <label asp-for="Formulario.HoraFin" class="@Estilos.Etiqueta">Hasta <span class="text-red-400">*</span></label>
+                            <input asp-for="Formulario.HoraFin" type="time" class="@Estilos.Campo" />
+                            <span asp-validation-for="Formulario.HoraFin" class="@Estilos.ErrorCampo"></span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-end gap-3">
+                        @if (editando)
+                        {
+                            <a asp-page="FranjasHorarias" asp-route-zona="@zona.Id" class="@Estilos.BotonSecundario">Cancelar</a>
+                        }
+                        <button type="submit" class="@Estilos.BotonPrincipal">@(editando ? "Guardar cambios" : "Crear franja")</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    }
+</div>

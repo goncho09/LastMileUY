@@ -1,0 +1,92 @@
+@page
+@model LastMileUY.Backoffice.Pages.Configuracion.TarifasModel
+@{
+    ViewData["Title"] = "Cuadro tarifario";
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <partial name="_Encabezado" model="@(("Cuadro tarifario", "Los precios por zona, modalidad y peso. Cada cambio de precios es una versión nueva con su fecha de inicio: lo que ya rige no se edita.", Model.Error))" />
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-versiones">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-versiones" class="text-base font-semibold text-white">Versiones</h2>
+            </div>
+
+            @if (Model.Cuadros.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">Todavía no hay ningún cuadro tarifario.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="@Estilos.Tabla">
+                        <thead class="@Estilos.CabeceraTabla">
+                            <tr>
+                                <th scope="col" class="@Estilos.Celda">Versión</th>
+                                <th scope="col" class="@Estilos.Celda">Rige</th>
+                                <th scope="col" class="@Estilos.Celda">Tarifas</th>
+                                <th scope="col" class="@Estilos.Celda">Estado</th>
+                                <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var cuadro in Model.Cuadros)
+                            {
+                                <tr>
+                                    <td class="@Estilos.Celda font-medium text-white">Versión @cuadro.Version</td>
+                                    <td class="@Estilos.Celda text-slate-300">
+                                        Desde el @Formato.Fecha(cuadro.VigenciaDesde)
+                                        @if (cuadro.VigenciaHasta is { } hasta)
+                                        {
+                                            <span>hasta el @Formato.Fecha(hasta)</span>
+                                        }
+                                    </td>
+                                    <td class="@Estilos.Celda text-slate-300">@cuadro.Tarifas.Count(t => t.Activa)</td>
+                                    <td class="@Estilos.Celda"><span class="@TarifasModel.ClaseEstado(cuadro.Estado)">@cuadro.Estado</span></td>
+                                    <td class="@Estilos.Celda">
+                                        <div class="flex justify-end">
+                                            <a asp-page="CuadroTarifario" asp-route-id="@cuadro.Id" class="@Estilos.BotonSecundario"
+                                               aria-label="@(cuadro.Editable ? "Editar" : "Ver") la versión @cuadro.Version">
+                                                @(cuadro.Editable ? "Editar tarifas" : "Ver tarifas")
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-formulario">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-formulario" class="text-base font-semibold text-white">Nueva versión</h2>
+                <p class="mt-1 text-sm text-slate-400">La versión anterior deja de regir el día que empieza esta.</p>
+            </div>
+
+            <form method="post" asp-page-handler="Crear" class="space-y-5 p-6">
+                <div>
+                    <label asp-for="Formulario.VigenciaDesde" class="@Estilos.Etiqueta">Rige desde <span class="text-red-400">*</span></label>
+                    <input asp-for="Formulario.VigenciaDesde" type="date" class="@Estilos.Campo" />
+                    <span asp-validation-for="Formulario.VigenciaDesde" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                @if (Model.Cuadros.Count > 0)
+                {
+                    <label class="flex items-center gap-3 text-sm text-slate-300">
+                        <input asp-for="Formulario.CopiarTarifas" class="@Estilos.Casilla" />
+                        Arrancar con las tarifas de la última versión
+                    </label>
+                }
+
+                <div class="flex justify-end">
+                    <button type="submit" class="@Estilos.BotonPrincipal">Crear versión</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 using LastMileUY.Compartido;
 using System.Threading.RateLimiting;
 using LastMileUY.Backoffice.Servicios;
@@ -16,6 +18,7 @@ builder.Services.AddRazorPages(opciones =>
     // Permisos
     opciones.Conventions.AuthorizeFolder("/", Permisos.PoliticaBackoffice);
     opciones.Conventions.AuthorizeFolder("/Operador", Permisos.PoliticaConfiguracion);
+    opciones.Conventions.AuthorizeFolder("/Configuracion", Permisos.PoliticaConfiguracion);
     // Tablero técnico (métricas del caché): mismo perfil que la configuración del operador
     opciones.Conventions.AuthorizeFolder("/Tablero", Permisos.PoliticaConfiguracion);
     opciones.Conventions.AuthorizeFolder(
@@ -114,6 +117,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<GestionOperadoresApiDePrueba>();
     builder.Services.AddSingleton<IGestionOperadoresApi>(s => s.GetRequiredService<GestionOperadoresApiDePrueba>());
     builder.Services.AddSingleton<IGestionComerciosApi, GestionComerciosApiDePrueba>();
+    builder.Services.AddSingleton<IConfiguracionApi, ConfiguracionApiDePrueba>();
 
 }
 else
@@ -126,6 +130,14 @@ else
     static HttpMessageHandler SinCookiesCompartidas() => new SocketsHttpHandler { UseCookies = false };
 
     builder.Services.AddTransient<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IConfiguracionApi, ConfiguracionApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IEnviosApi, EnviosApiHttp>(cliente =>
         {
@@ -284,6 +296,13 @@ app.Use((contexto, siguiente) =>
 });
 
 app.UseRateLimiter();
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(CultureInfo.InvariantCulture),
+    SupportedCultures = [CultureInfo.InvariantCulture],
+    SupportedUICultures = [CultureInfo.InvariantCulture]
+});
 
 app.UseRouting();
 

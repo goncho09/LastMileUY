@@ -1,0 +1,85 @@
+@page
+@model LastMileUY.Backoffice.Pages.Configuracion.MotivosNoEntregaModel
+@{
+    ViewData["Title"] = "Motivos de no entrega";
+    var editando = Model.Editar is not null;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <partial name="_Encabezado" model="@(("Motivos de no entrega", "Las razones que el repartidor puede elegir en la app cuando no pudo entregar. Los inactivos dejan de aparecer.", Model.Error))" />
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-motivos">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-motivos" class="text-base font-semibold text-white">Motivos</h2>
+            </div>
+
+            @if (Model.Motivos.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">Todavía no cargaste ningún motivo.</p>
+            }
+            else
+            {
+                <ul class="divide-y divide-white/5">
+                    @foreach (var motivo in Model.Motivos)
+                    {
+                        <li class="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+                            <div class="min-w-0 max-w-2xl">
+                                <p class="font-medium text-white">
+                                    @motivo.Nombre
+                                    <span class="ml-2 @(motivo.Activo ? Estilos.Activo : Estilos.Inactivo)">@(motivo.Activo ? "Activo" : "Inactivo")</span>
+                                </p>
+                                @if (motivo.Descripcion is not null)
+                                {
+                                    <p class="mt-1 text-sm text-slate-400">@motivo.Descripcion</p>
+                                }
+                            </div>
+                            <div class="flex gap-2">
+                                <a asp-page="MotivosNoEntrega" asp-route-editar="@motivo.Id" class="@Estilos.BotonSecundario"
+                                   aria-label="Editar el motivo @motivo.Nombre">Editar</a>
+                                <form method="post" asp-page-handler="CambiarActivo">
+                                    <input type="hidden" name="id" value="@motivo.Id" />
+                                    <input type="hidden" name="activo" value="@(motivo.Activo ? "false" : "true")" />
+                                    <button type="submit" class="@Estilos.BotonSecundario"
+                                            aria-label="@(motivo.Activo ? "Desactivar" : "Activar") el motivo @motivo.Nombre">
+                                        @(motivo.Activo ? "Desactivar" : "Activar")
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-formulario">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-formulario" class="text-base font-semibold text-white">@(editando ? "Editar motivo" : "Nuevo motivo")</h2>
+            </div>
+
+            <form method="post" asp-page-handler="Guardar" asp-route-editar="@Model.Editar" class="space-y-5 p-6">
+                <div>
+                    <label asp-for="Formulario.Nombre" class="@Estilos.Etiqueta">Motivo <span class="text-red-400">*</span></label>
+                    <input asp-for="Formulario.Nombre" maxlength="150" placeholder="Ej. Destinatario ausente" class="@Estilos.Campo" />
+                    <span asp-validation-for="Formulario.Nombre" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div>
+                    <label asp-for="Formulario.Descripcion" class="@Estilos.Etiqueta">Descripción</label>
+                    <textarea asp-for="Formulario.Descripcion" maxlength="500" rows="3" class="@Estilos.Campo"></textarea>
+                    <span asp-validation-for="Formulario.Descripcion" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    @if (editando)
+                    {
+                        <a asp-page="MotivosNoEntrega" class="@Estilos.BotonSecundario">Cancelar</a>
+                    }
+                    <button type="submit" class="@Estilos.BotonPrincipal">@(editando ? "Guardar cambios" : "Agregar motivo")</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

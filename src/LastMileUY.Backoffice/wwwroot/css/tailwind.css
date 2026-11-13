@@ -251,6 +251,17 @@
   .visible {
     visibility: visible;
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
   .absolute {
     position: absolute;
   }
@@ -695,6 +706,9 @@
   .h-auto {
     height: auto;
   }
+  .h-fit {
+    height: fit-content;
+  }
   .h-full {
     height: 100%;
   }
@@ -827,6 +841,9 @@
   .min-w-0 {
     min-width: 0px;
   }
+  .min-w-64 {
+    min-width: calc(var(--spacing) * 64);
+  }
   .min-w-\[220px\] {
     min-width: 220px;
   }
@@ -905,6 +922,9 @@
   }
   .resize {
     resize: both;
+  }
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1263,6 +1283,12 @@
     border-color: color-mix(in srgb, #fff 15%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--color-white) 15%, transparent);
+    }
+  }
+  .border-white\/20 {
+    border-color: color-mix(in srgb, #fff 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-white) 20%, transparent);
     }
   }
   .bg-\[\#0c0e14\] {
@@ -1838,6 +1864,9 @@
   .accent-violet-500 {
     accent-color: var(--color-violet-500);
   }
+  .accent-violet-600 {
+    accent-color: var(--color-violet-600);
+  }
   .\[color-scheme\:dark\] {
     color-scheme: dark;
   }
@@ -2235,6 +2264,12 @@
     }
     .xl\:grid-cols-12 {
       grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+    .xl\:grid-cols-\[minmax\(0\,1fr\)_380px\] {
+      grid-template-columns: minmax(0,1fr) 380px;
+    }
+    .xl\:grid-cols-\[minmax\(0\,1fr\)_420px\] {
+      grid-template-columns: minmax(0,1fr) 420px;
     }
   }
   .\[\&_ul\]\:m-0 ul {

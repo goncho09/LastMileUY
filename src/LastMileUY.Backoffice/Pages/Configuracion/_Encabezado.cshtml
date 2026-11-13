@@ -1,0 +1,21 @@
+@model (string Titulo, string Descripcion, string? Error)
+
+<div>
+    <p class="mb-2 text-sm font-medium text-violet-400">Configuración del operador</p>
+    <h1 class="text-3xl font-bold tracking-tight text-white">@Model.Titulo</h1>
+    <p class="mt-2 max-w-3xl text-sm text-slate-400">@Model.Descripcion</p>
+</div>
+
+@if (ViewContext.TempData["Aviso"] is string aviso)
+{
+    <div role="status" class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
+        @aviso
+    </div>
+}
+
+@if (Model.Error is not null)
+{
+    <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+        @Model.Error
+    </div>
+}

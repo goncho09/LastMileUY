@@ -1,0 +1,104 @@
+@page
+@model LastMileUY.Backoffice.Pages.Configuracion.ZonasModel
+@{
+    ViewData["Title"] = "Zonas de cobertura";
+    var editando = Model.Editar is not null;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
+
+    <partial name="_Encabezado" model="@(("Zonas de cobertura", "Las zonas donde reparte tu empresa. Cada zona tiene sus franjas horarias y sus tarifas.", Model.Error))" />
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-zonas">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-zonas" class="text-base font-semibold text-white">Zonas</h2>
+            </div>
+
+            @if (Model.Zonas.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">Todavía no cargaste ninguna zona.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="@Estilos.Tabla">
+                        <thead class="@Estilos.CabeceraTabla">
+                            <tr>
+                                <th scope="col" class="@Estilos.Celda">Zona</th>
+                                <th scope="col" class="@Estilos.Celda">Franjas</th>
+                                <th scope="col" class="@Estilos.Celda">Estado</th>
+                                <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var zona in Model.Zonas)
+                            {
+                                <tr>
+                                    <td class="@Estilos.Celda">
+                                        <p class="font-medium text-white">@zona.Nombre</p>
+                                        @if (zona.Descripcion is not null)
+                                        {
+                                            <p class="mt-1 text-xs text-slate-400">@zona.Descripcion</p>
+                                        }
+                                    </td>
+                                    <td class="@Estilos.Celda text-slate-300">
+                                        <a asp-page="FranjasHorarias" asp-route-zona="@zona.Id" class="text-violet-300 hover:text-violet-200">
+                                            @zona.Franjas.Count(f => f.Activa) activas
+                                        </a>
+                                    </td>
+                                    <td class="@Estilos.Celda">
+                                        <span class="@(zona.Activa ? Estilos.Activo : Estilos.Inactivo)">@(zona.Activa ? "Activa" : "Inactiva")</span>
+                                    </td>
+                                    <td class="@Estilos.Celda">
+                                        <div class="flex justify-end gap-2">
+                                            <a asp-page="Zonas" asp-route-editar="@zona.Id" class="@Estilos.BotonSecundario"
+                                               aria-label="Editar la zona @zona.Nombre">Editar</a>
+                                            <form method="post" asp-page-handler="CambiarActiva">
+                                                <input type="hidden" name="id" value="@zona.Id" />
+                                                <input type="hidden" name="activa" value="@(zona.Activa ? "false" : "true")" />
+                                                <button type="submit" class="@Estilos.BotonSecundario"
+                                                        aria-label="@(zona.Activa ? "Desactivar" : "Activar") la zona @zona.Nombre">
+                                                    @(zona.Activa ? "Desactivar" : "Activar")
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-formulario">
+            <div class="@Estilos.EncabezadoTarjeta">
+                <h2 id="titulo-formulario" class="text-base font-semibold text-white">@(editando ? "Editar zona" : "Nueva zona")</h2>
+            </div>
+
+            <form method="post" asp-page-handler="Guardar" asp-route-editar="@Model.Editar" class="space-y-5 p-6">
+                <div>
+                    <label asp-for="Formulario.Nombre" class="@Estilos.Etiqueta">Nombre <span class="text-red-400">*</span></label>
+                    <input asp-for="Formulario.Nombre" maxlength="150" placeholder="Ej. Centro" class="@Estilos.Campo" />
+                    <span asp-validation-for="Formulario.Nombre" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div>
+                    <label asp-for="Formulario.Descripcion" class="@Estilos.Etiqueta">Descripción</label>
+                    <textarea asp-for="Formulario.Descripcion" maxlength="500" rows="3" placeholder="Barrios que cubre" class="@Estilos.Campo"></textarea>
+                    <span asp-validation-for="Formulario.Descripcion" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3">
+                    @if (editando)
+                    {
+                        <a asp-page="Zonas" class="@Estilos.BotonSecundario">Cancelar</a>
+                    }
+                    <button type="submit" class="@Estilos.BotonPrincipal">@(editando ? "Guardar cambios" : "Crear zona")</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
