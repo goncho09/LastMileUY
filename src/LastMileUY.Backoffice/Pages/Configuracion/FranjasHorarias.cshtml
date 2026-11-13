@@ -8,7 +8,7 @@
 
 <div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
-    <partial name="_Encabezado" model="@(("Franjas horarias", "Los horarios en los que se entrega en cada zona. Al armar una hoja de ruta se respetan.", Model.Error))" />
+    <partial name="_Encabezado" model="@(("Franjas horarias", "Los horarios en los que se entrega en cada zona.", Model.Error))" />
 
     @if (Model.Zonas.Count == 0)
     {

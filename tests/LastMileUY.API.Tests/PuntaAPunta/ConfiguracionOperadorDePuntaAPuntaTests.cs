@@ -155,6 +155,36 @@ public class ConfiguracionOperadorDePuntaAPuntaTests(ApiDePuntaAPunta api)
     }
 
     [Fact]
+    public async Task Pasar_una_regla_activa_a_otra_modalidad_deja_una_sola_vigente_en_esa_modalidad()
+    {
+        var operador = await api.IniciarSesionAsync(Operador1);
+        var antes = (await operador.GetFromJsonAsync<List<ReglaOperativaConfiguracionDto>>("api/operador/reglas-operativas"))!;
+        var estandar = antes.Single(r => r.Activa && r.Modalidad == "Estandar");
+        var urgente = antes.Single(r => r.Activa && r.Modalidad == "Urgente");
+
+        try
+        {
+            using var creada = await operador.PostAsJsonAsync("api/operador/reglas-operativas",
+                new GuardarReglaOperativaRequest(Unico("Cambia"), null, "Estandar", 2, 24, 48, 72, true, false, false));
+            var nueva = (await creada.Content.ReadFromJsonAsync<ReglaOperativaConfiguracionDto>())!;
+
+            using var editada = await operador.PutAsJsonAsync($"api/operador/reglas-operativas/{nueva.Id}",
+                new GuardarReglaOperativaRequest(nueva.Nombre, null, "Urgente", 1, 4, 12, 24, true, true, false));
+
+            Assert.Equal(HttpStatusCode.NoContent, editada.StatusCode);
+            var despues = (await operador.GetFromJsonAsync<List<ReglaOperativaConfiguracionDto>>("api/operador/reglas-operativas"))!;
+            Assert.Equal(nueva.Id, Assert.Single(despues, r => r.Activa && r.Modalidad == "Urgente").Id);
+        }
+        finally
+        {
+            using var e = await operador.PutAsJsonAsync($"api/operador/reglas-operativas/{estandar.Id}/activa", new CambiarActivoRequest(true));
+            using var u = await operador.PutAsJsonAsync($"api/operador/reglas-operativas/{urgente.Id}/activa", new CambiarActivoRequest(true));
+            Assert.Equal(HttpStatusCode.NoContent, e.StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, u.StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task Un_cuadro_programado_se_edita_y_uno_nuevo_cierra_la_vigencia_del_anterior()
     {
         var operador = await api.IniciarSesionAsync(Operador1);

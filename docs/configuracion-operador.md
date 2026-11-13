@@ -2,14 +2,16 @@
 
 Pantallas del Backoffice, en el menú **Configuración**, para que cada operador cargue sus propios datos de trabajo. Solo las usa el perfil **Operador**. El despachador no las ve y la API le responde 403.
 
-| Pantalla | Qué se carga | Dónde se usa |
+| Pantalla | Qué se carga | Dónde se usa hoy |
 | --- | --- | --- |
-| Zonas de cobertura | Las zonas donde reparte la empresa | Las franjas y las tarifas cuelgan de una zona |
-| Franjas horarias | Los horarios de entrega de cada zona | Al armar y ordenar una hoja de ruta |
-| Cuadro tarifario | Precios por zona, modalidad, peso y volumen | Base para cobrar los envíos |
+| Zonas de cobertura | Las zonas donde reparte la empresa | Catálogo: las franjas y las tarifas cuelgan de una zona |
+| Franjas horarias | Los horarios de entrega de cada zona | Catálogo (ver la nota de abajo) |
+| Cuadro tarifario | Precios por zona, modalidad, peso y volumen | Catálogo (ver la nota de abajo) |
 | Vehículos | Matrícula, tipo y capacidad de la flota | Al armar una hoja de ruta (solo se ofrecen los disponibles) |
 | Reglas operativas | Intentos, plazos y evidencia por modalidad | Al registrar una entrega y al calcular la devolución |
 | Motivos de no entrega | Las razones de una entrega fallida | La app del repartidor los descarga para elegir uno |
+
+**Todavía no se aplican a los envíos.** Al crear un envío no se le asigna zona, franja ni precio. Estas pantallas cargan los datos; el cálculo del precio y la elección de franja en el alta son el paso siguiente. El armado de rutas y el orden sugerido ya respetan la franja de un envío que la tenga.
 
 ## Reglas comunes
 
@@ -29,7 +31,7 @@ Los precios no se editan en el lugar. Cada cambio es una **versión nueva** con 
 
 - La versión nueva empieza a regir **desde mañana o más adelante**, y siempre después de la última. Ese día la anterior deja de regir.
 - Mientras no empezó (**Programado**), se le pueden agregar, cambiar o desactivar tarifas. Puede arrancar con una copia de las tarifas de la versión anterior.
-- Cuando ya rige (**Vigente**) o terminó (**Vencido**), queda de solo lectura y la API responde 409. Así un envío siempre se puede cobrar con el cuadro que regía en su fecha.
+- Cuando ya rige (**Vigente**) o terminó (**Vencido**), queda de solo lectura y la API responde 409. Así, cuando se cobren los envíos, cada uno va a poder usar el cuadro que regía en su fecha.
 - Las fechas se toman en hora de Uruguay: una versión empieza a las 00:00 de ese día.
 
 ## API

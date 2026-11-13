@@ -43,11 +43,12 @@ public class ReglasOperativasService(ApplicationDbContext db, IContextoOperador 
         if (regla is null)
             return false;
 
-        Aplicar(regla, request);
+        Aplicar(new ReglaOperativa(), request);
 
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
         if (regla.Activa)
-            await DesactivarOtrasAsync(regla.Modalidad, regla.Id, ct);
+            await DesactivarOtrasAsync(ConfiguracionComun.Modalidad(request.Modalidad), regla.Id, ct);
+        Aplicar(regla, request);
         await db.GuardarAsync(Repetida, ct);
         await transaccion.CommitAsync(ct);
         return true;
