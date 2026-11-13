@@ -15,7 +15,6 @@
 @code {
     [SupplyParameterFromQuery] public string? Codigo { get; set; }
 
-    // El formulario vuelve acá con ?codigo=: se pasa a la página del envío
     protected override void OnInitialized()
     {
         if (!string.IsNullOrWhiteSpace(Codigo))

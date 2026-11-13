@@ -4,8 +4,6 @@ using LastMileUY.API.Modules.Operadores.Domain;
 
 namespace LastMileUY.API.Tests.Envios;
 
-// Qué pasa con los bultos que quedaron sin entregar después de una entrega parcial,
-// según la política del operador (Envio.AplicarPoliticaBultosPendientes)
 public class PoliticaBultosPendientesTests
 {
     private static readonly ReglaOperativa DosIntentos = new() { Nombre = "Estándar", MaximoIntentosEntrega = 2 };
@@ -24,7 +22,6 @@ public class PoliticaBultosPendientesTests
         Assert.Contains("v3", envio.Eventos.Last().Descripcion);
     }
 
-    // Manda el límite de intentos de la regla operativa: no se reprograma sin fin
     [Fact]
     public void Con_nueva_hoja_de_ruta_pero_sin_intentos_disponibles_va_a_devolucion()
     {
@@ -57,7 +54,6 @@ public class PoliticaBultosPendientesTests
         Assert.Equal(EstadoEnvio.Reprogramado, envio.Estado);
     }
 
-    // Al terminar la devolución vuelven al comercio solo los que no se entregaron
     [Fact]
     public void Al_quedar_devuelto_los_bultos_no_entregados_quedan_devueltos_y_los_entregados_no_cambian()
     {
@@ -77,7 +73,6 @@ public class PoliticaBultosPendientesTests
         DestinoBultosPendientes = destino
     };
 
-    // Dos bultos en tránsito: el 1 se entrega y el 2 no
     private static Envio EnvioEntregadoParcialmente()
     {
         var envio = new Envio();

@@ -8,9 +8,6 @@
 @inject NavigationManager Navegacion
 @inject ILogger<Detalle> Logger
 
-@* Un envío del comercio: en qué estado está cada bulto y qué pasó en cada intento de entrega.
-   La prueba de entrega de cada intento respalda solo los bultos que se entregaron en él. *@
-
 <PageTitle>@(envio is null ? "Envío" : $"Envío {envio.CodigoSeguimiento}") | LastMileUY</PageTitle>
 
 <div class="space-y-6">

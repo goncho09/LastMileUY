@@ -8,7 +8,6 @@ using LastMileUY.Contracts.Mensajeria;
 
 namespace LastMileUY.Worker;
 
-// Un aviso listo para mandar (lo arma DespachadorAvisos con lo que hay en EntregasAvisos)
 public record AvisoPendiente(
     int Id,
     Guid AvisoId,
@@ -19,18 +18,10 @@ public record AvisoPendiente(
     string? CorrelacionId,
     string ClaveFirma,
     int SuscripcionId,
-    // Versión del contrato de la suscripción (VersionesAvisos)
     int Version = VersionesAvisos.V1);
 
-// Exitoso: el comercio respondió 2xx. CodigoHttp es null si no llegó a responder.
 public record ResultadoEnvio(bool Exitoso, int? CodigoHttp, string? Error, TimeSpan Duracion);
 
-// Manda un aviso por HTTP al comercio: POST a la URL de la suscripción, con el evento en JSON.
-// - Encabezados: X-Aviso-Id (para descartar repetidos), X-Aviso-Tipo, X-Aviso-Intento, X-Aviso-Version y
-//   X-Correlation-Id.
-// - Cuenta como entregado solo una respuesta 2xx. Cualquier otra cosa (otro código, sin respuesta,
-//   tiempo agotado, destino no permitido) es un fallo con su motivo, y nunca una excepción.
-// - No sigue redirecciones: podrían llevar a una dirección interna.
 public class ClienteAvisos(HttpClient http)
 {
     public static readonly TimeSpan TiempoMaximo = TimeSpan.FromSeconds(10);
@@ -110,14 +101,12 @@ public class ClienteAvisos(HttpClient http)
         return null;
     }
 
-    // El manejador del HttpClient: sin redirecciones y revisando la dirección al conectarse. Revisar la
-    // URL antes no alcanza: un nombre público puede resolver a una IP interna (y cambiar entre una
-    // consulta y otra).
     public static SocketsHttpHandler CrearManejador(bool permitirLocales) => new()
     {
         AllowAutoRedirect = false,
         UseCookies = false,
         ConnectTimeout = TimeSpan.FromSeconds(5),
+        // Se valida al conectar, con la IP ya resuelta, para que un DNS que cambia no esquive el control (SSRF).
         ConnectCallback = async (contexto, cancellationToken) =>
         {
             var destino = contexto.InitialRequestMessage.RequestUri;

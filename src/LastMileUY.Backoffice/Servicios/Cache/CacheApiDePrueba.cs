@@ -2,7 +2,6 @@ using LastMileUY.Contracts.Cache;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Números fijos para trabajar el tablero sin la API (Api:UsarDatosDePrueba = true)
 public class CacheApiDePrueba : ICacheApi
 {
     public Task<List<MetricaCacheDto>> ObtenerMetricasAsync(CancellationToken ct = default) =>

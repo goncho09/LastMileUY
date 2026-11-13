@@ -6,20 +6,10 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
-// Playwright también tiene una clase Program: esta es la del Backoffice
 using ProgramBackoffice = global::Program;
 
-// El Backoffice de verdad, escuchando en un puerto (Kestrel), con los datos de prueba en memoria
-// (Api:UsarDatosDePrueba: no necesita la API ni la base), y un Chromium real que lo usa como una
-// persona: hace clic, completa formularios y lee lo que se ve. Cada prueba abre su propio contexto
-// del navegador (como una ventana de incógnito): no comparte la sesión con las demás.
-//
-// La primera vez descarga Chromium (unos 150 MB, en la carpeta de Playwright del usuario); después
-// lo reutiliza. En el CI lo instala el paso "Navegador para las pruebas" del workflow.
 public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, IAsyncLifetime
 {
-    // Con los datos de prueba cualquier contraseña entra; el email decide el perfil
-    // (ver AutenticacionApiDePrueba)
     public const string Operador = "operador@prueba.test";
     public const string Despachador = "despachador@prueba.test";
     public const string Administrador = "administrador@prueba.test";
@@ -31,7 +21,6 @@ public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, I
 
     public string Direccion { get; private set; } = string.Empty;
 
-    // Las claves de la cookie de sesión van a una carpeta temporal, no al proyecto
     private readonly string directorioClaves =
         Path.Combine(Path.GetTempPath(), "lastmileuy-e2e-claves-" + Guid.NewGuid().ToString("N"));
 
@@ -58,12 +47,9 @@ public class BackofficeEnNavegador : WebApplicationFactory<ProgramBackoffice>, I
         builder.UseEnvironment("Development");
         builder.UseSetting("Api:UsarDatosDePrueba", "true");
         builder.UseSetting("DataProtection:Directorio", directorioClaves);
-        // Cada prueba inicia sesión, y todas desde la misma IP: con el tope de producción (10 por minuto)
-        // la undécima se quedaba en el login con un 429
         builder.UseSetting("Login:IntentosPorMinuto", "1000");
     }
 
-    // Una ventana nueva con la sesión iniciada con ese email. ancho: para probar en celular
     public async Task<IPage> IniciarSesionAsync(string email, int ancho = 1280, int alto = 900)
     {
         var contexto = await Navegador.NewContextAsync(new BrowserNewContextOptions

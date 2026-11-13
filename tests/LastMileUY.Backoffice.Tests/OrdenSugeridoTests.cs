@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using IndexOperador = LastMileUY.Backoffice.Pages.Operador.IndexModel;
 
-// "Ordenar por recorrido" al armar una hoja de ruta, y el depósito en "Mi operador"
 public class OrdenSugeridoTests
 {
     private static readonly DateOnly Manana = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
@@ -31,19 +30,15 @@ public class OrdenSugeridoTests
         var sugerencia = pagina.Sugerencia!;
         Assert.True(sugerencia.DesdeDeposito);
 
-        // Las de la mañana (201 y 204) antes que las de la tarde; el 202 no tiene ubicación: al final
         Assert.Equal([201, 204], sugerencia.EnvioIds.Take(2).Order());
         Assert.Equal(202, sugerencia.EnvioIds[^1]);
         Assert.Equal(["R4T8Y2U6P9HZ"], sugerencia.SinUbicacion);
 
-        // Los números de orden quedan cargados en ese orden, y la pantalla los muestra primero
         Assert.Equal(sugerencia.EnvioIds, pagina.Orden.OrderBy(o => o.Value).Select(o => o.Key));
         Assert.Equal(sugerencia.EnvioIds, pagina.EnviosEnPantalla.Take(5).Select(e => e.Id));
 
-        // No se armó nada todavía
         Assert.Equal(0, (await api.ListarAsync(new FiltroRutas())).Total);
 
-        // Con esos números, la ruta sale en ese orden (y respeta las franjas)
         var armar = await pagina.OnPostAsync(CancellationToken.None);
         Assert.Null(pagina.Error);
         var ruta = await api.ObtenerAsync((int)Assert.IsType<RedirectToPageResult>(armar).RouteValues!["id"]!);
@@ -95,8 +90,6 @@ public class OrdenSugeridoTests
 
         Assert.Equal("El envío 9 no existe.", error.Message);
     }
-
-    // --- Depósito en "Mi operador" ---
 
     [Theory]
     [InlineData("-34.9011", -34.9011)]

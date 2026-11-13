@@ -5,7 +5,6 @@ namespace LastMileUY.API.Tests.Destinatarios;
 
 using static BaseConDosOperadores;
 
-// Listado de destinatarios para el alta de envíos, contra la base real con RLS
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ConsultasDestinatariosTests(BaseConDosOperadores baseDeDatos)
 {

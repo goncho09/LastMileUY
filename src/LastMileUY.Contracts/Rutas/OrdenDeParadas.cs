@@ -1,44 +1,25 @@
 namespace LastMileUY.Contracts.Rutas;
 
-// Un punto en el mapa, en grados decimales (los de cualquier GPS o mapa: WGS84)
 public record Coordenadas(decimal Latitud, decimal Longitud)
 {
     public static bool EsValida(decimal latitud, decimal longitud) =>
         latitud is >= -90 and <= 90 && longitud is >= -180 and <= 180;
 }
 
-// Una parada para ordenar: dónde queda (null si la dirección no tiene ubicación) y a qué hora
-// empieza su franja horaria (null si no tiene)
 public record ParadaAOrdenar(int Id, Coordenadas? Coordenadas, TimeOnly? InicioFranja);
 
-// Kilómetros en línea recta del recorrido: desde el depósito (si el operador lo cargó) hasta la
-// última parada con ubicación. KmActual es el del orden que se recibió; KmSugerido, el de Ids.
 public record OrdenCalculado(
     IReadOnlyList<int> Ids,
     double KmActual,
     double KmSugerido,
     IReadOnlyList<int> SinUbicacion);
 
-// Sugiere el orden de visita de una hoja de ruta para recorrer menos kilómetros
-// (docs/hojas-de-ruta.md, "Orden sugerido"):
-// 1. Vecino más cercano: desde el depósito, siempre a la parada más cercana que se pueda visitar.
-// 2. Mejoras locales, mientras alguna acorte el recorrido:
-//    - "2-opt": dar vuelta un tramo (saca los cruces);
-//    - "or-opt": sacar de 1 a 3 paradas seguidas y ponerlas en otro lugar.
-// 3. Se prueba arrancando por varias paradas (las más cercanas al depósito) y también mejorando el
-//    orden recibido, y se queda el más corto. Así nunca queda peor que lo que armó el despachador.
-// En todo momento respeta las franjas horarias (las paradas con franja van en orden de horario,
-// la misma regla que controla la API al armar la ruta). Las paradas sin ubicación no se pueden
-// ubicar en el recorrido: van al final, o antes de la primera franja posterior a la suya.
-// Es una sugerencia: el despachador la puede cambiar antes de armar la ruta.
 public static class OrdenDeParadas
 {
     private const double RadioTierraKm = 6371.0;
 
-    // Por cuántas paradas distintas se prueba arrancar
     private const int Arranques = 8;
 
-    // Tope de mejoras por recorrido, para que nunca se quede dando vueltas (con 100 paradas sobra)
     private const int MaximoMejoras = 20_000;
 
     private const double Tolerancia = 1e-9;
@@ -55,7 +36,6 @@ public static class OrdenDeParadas
         int[]? mejor = null;
         var mejorKm = double.MaxValue;
 
-        // Primero el recibido: ante un empate se queda ese, para no cambiar lo que no hace falta
         if (problema.RespetaFranjas(recibido))
         {
             mejor = problema.Mejorar(recibido);
@@ -84,7 +64,6 @@ public static class OrdenDeParadas
             sinUbicacion.Select(p => p.Id).ToList());
     }
 
-    // Las paradas con franja tienen que ir en orden de horario; las que no tienen, en cualquier lugar
     public static bool RespetaFranjas(IEnumerable<ParadaAOrdenar> enOrden)
     {
         TimeOnly? anterior = null;
@@ -100,7 +79,6 @@ public static class OrdenDeParadas
         return true;
     }
 
-    // Distancia en línea recta entre dos puntos (fórmula del haversine)
     public static double DistanciaKm(Coordenadas a, Coordenadas b)
     {
         var lat1 = Radianes(a.Latitud);
@@ -113,7 +91,6 @@ public static class OrdenDeParadas
         return 2 * RadioTierraKm * Math.Asin(Math.Min(1, Math.Sqrt(h)));
     }
 
-    // Recorrido de las paradas en ese orden (todas con ubicación), desde el depósito si hay
     public static double Km(IReadOnlyList<ParadaAOrdenar> enOrden, Coordenadas? deposito)
     {
         var total = 0.0;
@@ -130,8 +107,6 @@ public static class OrdenDeParadas
         return total;
     }
 
-    // Las sin ubicación, en el orden recibido: al final, salvo que tengan franja y haya paradas de
-    // una franja posterior; en ese caso, justo antes de la primera de esas
     private static List<ParadaAOrdenar> ConSinUbicacion(List<ParadaAOrdenar> recorrido, List<ParadaAOrdenar> sinUbicacion)
     {
         var resultado = new List<ParadaAOrdenar>(recorrido);
@@ -153,9 +128,6 @@ public static class OrdenDeParadas
 
     private static double Radianes(decimal grados) => (double)grados * Math.PI / 180.0;
 
-    // Las paradas con ubicación, por posición (0..n-1), con las distancias calculadas una sola vez.
-    // Un recorrido es un arreglo de posiciones. Inicio (-1) es el depósito y Fin (-2) es después de
-    // la última parada: el recorrido no vuelve al depósito.
     private sealed class Problema
     {
         private const int Inicio = -1;
@@ -183,7 +155,6 @@ public static class OrdenDeParadas
                 desdeDeposito = paradas.Select(p => DistanciaKm(deposito, p.Coordenadas!)).ToArray();
         }
 
-        // Lo que suma ir de a hasta b. Sin depósito, la primera parada no suma nada
         private double Tramo(int a, int b)
         {
             if (b == Fin)
@@ -212,8 +183,6 @@ public static class OrdenDeParadas
         public bool RespetaFranjas(int[] recorrido) =>
             OrdenDeParadas.RespetaFranjas(recorrido.Select(i => paradas[i]));
 
-        // Por dónde se prueba arrancar: las que pueden ir primeras (por las franjas), las más
-        // cercanas al depósito (sin depósito, en el orden recibido)
         public IEnumerable<int> Arranques()
         {
             var candidatas = Candidatas(Enumerable.Range(0, paradas.Count).ToList());
@@ -222,7 +191,6 @@ public static class OrdenDeParadas
                 .Take(OrdenDeParadas.Arranques);
         }
 
-        // Desde la primera, siempre a la parada más cercana que se pueda visitar
         public int[] VecinoMasCercano(int primera)
         {
             var restantes = Enumerable.Range(0, paradas.Count).Where(i => i != primera).ToList();
@@ -240,7 +208,6 @@ public static class OrdenDeParadas
             return [.. recorrido];
         }
 
-        // Las que se pueden visitar ahora: las sin franja y las de la franja más temprana que queda
         private IEnumerable<int> Candidatas(List<int> restantes)
         {
             var primeraFranja = restantes.Select(i => paradas[i].InicioFranja).Where(f => f is not null).Min();
@@ -248,9 +215,6 @@ public static class OrdenDeParadas
             return restantes.Where(i => paradas[i].InicioFranja is null || paradas[i].InicioFranja == primeraFranja);
         }
 
-        // Aplica la primera mejora que encuentra (2-opt u or-opt) y vuelve a buscar, hasta que
-        // ninguna acorte el recorrido. Cada cambio se evalúa por lo que suma y resta en sus
-        // extremos, sin recalcular todo; las franjas se controlan solo si acorta.
         public int[] Mejorar(int[] recorrido)
         {
             for (var mejoras = 0; mejoras < MaximoMejoras; mejoras++)
@@ -266,8 +230,6 @@ public static class OrdenDeParadas
             return recorrido;
         }
 
-        // 2-opt: dar vuelta el tramo de la posición i a la j. Cambian solo las dos puntas:
-        // (antes de i → i) y (j → después de j) pasan a (antes de i → j) y (i → después de j)
         private int[]? DandoVuelta(int[] r)
         {
             var n = r.Length;
@@ -295,8 +257,6 @@ public static class OrdenDeParadas
             return null;
         }
 
-        // Or-opt: sacar las paradas de la posición desde a desde + largo - 1 y ponerlas, en el mismo
-        // orden, entre otras dos (x e y) del resto del recorrido
         private int[]? Moviendo(int[] r)
         {
             var n = r.Length;

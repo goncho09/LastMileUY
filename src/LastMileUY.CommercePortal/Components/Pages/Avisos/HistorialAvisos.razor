@@ -5,9 +5,7 @@
 @inject NavigationManager Navegacion
 @inject ILogger<HistorialAvisos> Logger
 
-@* Historial de entregas de los avisos del comercio y reenvío de los fallidos (letra 6.9) *@
 <div class="space-y-6">
-    <!-- Filtro -->
     <div class="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-[#151927] p-4">
         <div class="flex min-w-[220px] flex-col gap-1.5 text-xs font-medium text-slate-400">
             <label for="filtro-estado-aviso">Estado</label>
@@ -79,7 +77,6 @@
                             <td class="px-5 py-3 text-slate-200">
                                 @if (aviso.CodigoBulto is { } codigoBulto)
                                 {
-                                    @* Aviso de bulto (v2): el estado es el del bulto *@
                                     <p class="text-xs text-slate-500">Bulto @codigoBulto</p>
                                     <span class="text-slate-400">@TextoEstadoEnvio(aviso.EstadoEnvioAnterior ?? "") →</span> <span class="font-semibold">@TextoEstadoEnvio(aviso.EstadoEnvio ?? "")</span>
                                     @if (aviso.MotivoNoEntrega is { } motivoBulto)
@@ -142,7 +139,6 @@
                                     }
                                     else if (detalle.Intentos.Count == 0)
                                     {
-                                        @* Avisos anteriores al historial de intentos: solo se guardaba el último resultado *@
                                         <p class="text-sm text-slate-400">
                                             Se intentó mandar @detalle.Aviso.CantidadIntentos @(detalle.Aviso.CantidadIntentos == 1 ? "vez" : "veces")@(detalle.Aviso.FechaUltimoIntento is { } ultimaVez ? $"; la última, el {Fecha(ultimaVez, conSegundos: true)}" : "").
                                             No hay detalle de cada intento.
@@ -190,7 +186,6 @@
             </table>
         </div>
 
-        <!-- Paginado -->
         <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
             <span>@pagina.Total @(pagina.Total == 1 ? "aviso" : "avisos") · página @pagina.Pagina de @Math.Max(1, pagina.TotalPaginas)</span>
             <div class="flex gap-2">
@@ -282,7 +277,6 @@
         {
             var cargado = await AvisosApi.ObtenerAvisoAsync(id);
 
-            // Si mientras tanto se abrió otro, no se pisa
             if (abierto == id)
                 detalle = cargado;
         }
@@ -346,7 +340,6 @@
         _ => tipo
     };
 
-    // Estado del aviso (si le llegó al sistema del comercio), no del paquete
     private static string TextoEstado(string estado) => estado switch
     {
         "Pendiente" => "Enviando…",
@@ -355,11 +348,8 @@
         _ => estado
     };
 
-    // Estado del envío (o del bulto), con los mismos textos que el resto del portal
     private static string TextoEstadoEnvio(string estado) => PresentacionEnvios.TextoEstado(estado);
 
-    // Sin datos técnicos: si el sistema del comercio contestó con un error, el código ayuda a
-    // encontrar el problema; si no contestó, alcanza con decirlo
     private static string Detalle(IntentoAvisoDto intento) => intento switch
     {
         { Exitoso: true } => "—",
@@ -374,7 +364,6 @@
         _ => "border-amber-500/25 bg-amber-500/10 text-amber-300"
     };
 
-    // La API guarda las fechas en UTC; se muestran en hora de Uruguay
     private static readonly TimeZoneInfo? ZonaUruguay = BuscarZona();
 
     private static TimeZoneInfo? BuscarZona()

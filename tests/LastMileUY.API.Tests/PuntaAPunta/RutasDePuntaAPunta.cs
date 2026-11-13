@@ -5,12 +5,8 @@ using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
-// Arma una ruta por HTTP como lo hacen el operador y el despachador desde el Backoffice:
-// envíos nuevos del comercio 1, pasados a depósito, en una ruta del repartidor 1.
-// diasAdelante: cada prueba usa su propia fecha, porque el repartidor tiene una sola ruta abierta por día.
 public static class RutasDePuntaAPunta
 {
-    // Devuelve el primer envío de la ruta; RutaConEnviosAsync, todos
     public static async Task<(int RutaId, int EnvioId)> RutaPlanificadaAsync(
         ApiDePuntaAPunta api, HttpClient operador, HttpClient despachador, int diasAdelante)
     {
@@ -77,8 +73,6 @@ public static class RutasDePuntaAPunta
         return ((await ruta.Content.ReadFromJsonAsync<RutaDetalleDto>())!.Id, envioIds);
     }
 
-
-    // La misma ruta, ya despachada: los envíos quedan en tránsito y el repartidor la puede descargar
     public static async Task<(int RutaId, int EnvioId)> RutaDespachadaAsync(
         ApiDePuntaAPunta api, HttpClient operador, HttpClient despachador, int diasAdelante)
     {

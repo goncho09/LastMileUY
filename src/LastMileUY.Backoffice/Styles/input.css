@@ -1,7 +1,5 @@
 ﻿@import "tailwindcss" source("../");
 
-/* Las animaciones van dentro de @theme: así Tailwind genera las clases animate-lm-*.
-   (lm-form-in estaba afuera y la clase animate-lm-form-in no existía: las páginas no se animaban) */
 @theme {
     --animate-lm-error-in: lm-error-in 350ms ease-out both;
     --animate-lm-form-in: lm-form-in 500ms ease-out both;

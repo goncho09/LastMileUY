@@ -3,7 +3,6 @@ using LastMileUY.Contracts.Comun;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// API de suscripciones, gestión de claves HMAC, historial y reenvío de avisos.
 public interface IAvisosApi
 {
     Task<List<SuscripcionAvisosDto>> ListarSuscripcionesAsync(
@@ -31,14 +30,12 @@ public record ResultadoReenvio(AvisoResumenDto? Aviso, string? Error)
     public bool Exito => Aviso is not null;
 }
 
-// Incluye la clave HMAC que se muestra una sola vez.
 public record ResultadoCreacionSuscripcion(
     SuscripcionAvisosCreadaDto? Suscripcion, string? Error)
 {
     public bool Exito => Suscripcion is not null;
 }
 
-// No contiene la clave secreta.
 public record ResultadoSuscripcion(
     SuscripcionAvisosDto? Suscripcion, string? Error)
 {

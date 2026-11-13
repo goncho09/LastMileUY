@@ -22,8 +22,6 @@ public class Direccion
 
     public bool Activa { get; set; } = true;
 
-    // Dónde queda en el mapa (grados decimales). Opcional: sin ella, el envío no entra en el orden
-    // sugerido de la hoja de ruta (docs/hojas-de-ruta.md)
     public decimal? Latitud { get; set; }
 
     public decimal? Longitud { get; set; }

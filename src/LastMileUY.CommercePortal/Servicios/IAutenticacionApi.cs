@@ -2,8 +2,6 @@ using LastMileUY.Contracts.Auth;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// Login del usuario de comercio contra la API y manejo del operador con el que trabaja.
-// Recibe la cookie de la API a mano porque se usa desde páginas sin interactividad (con HttpContext).
 public interface IAutenticacionApi
 {
     Task<ResultadoLogin> IniciarSesionAsync(
@@ -40,7 +38,6 @@ public record ResultadoLogin(
     List<OperadorDisponibleDto>? Operadores = null,
     string? TokenTemporal = null);
 
-// Quién entró, con qué comercio y operador, y la cookie que le dio la API
 public record SesionApi(
     string Nombre,
     string Email,

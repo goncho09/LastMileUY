@@ -18,8 +18,6 @@ namespace LastMileUY.Backoffice.Tests;
 
 using DetalleDeRuta = DetalleModel;
 
-// Lo que llegó de la app del repartidor, en el Backoffice: el cliente HTTP, los datos de prueba,
-// la página Sincronización, la sección del detalle de la ruta y la descarga de la evidencia
 public class SincronizacionTests
 {
     [Fact]
@@ -105,14 +103,12 @@ public class SincronizacionTests
         });
         var pagina = Detalle(rutas);
 
-        // Planificada: todavía no puede haber nada de la app, ni se consulta
         await pagina.OnGetAsync(ruta.Id, CancellationToken.None);
         Assert.Empty(pagina.Operaciones);
 
         await rutas.DespacharAsync(ruta.Id);
         await pagina.OnGetAsync(ruta.Id, CancellationToken.None);
 
-        // Las 4 operaciones de prueba son de la ruta 1
         Assert.Equal(4, pagina.Operaciones.Count);
     }
 
@@ -144,7 +140,6 @@ public class SincronizacionTests
         Assert.Contains("amber", ResultadosSincronizacion.ClaseCss("Conflicto"));
         Assert.Equal("Intento fallido", ResultadosSincronizacion.TipoOperacion("IntentoFallido"));
         Assert.Equal("Entrega parcial", ResultadosSincronizacion.TipoOperacion("EntregaParcial"));
-        // Uno desconocido se muestra tal cual, en gris
         Assert.Equal("Otro", ResultadosSincronizacion.Texto("Otro"));
         Assert.Contains("slate", ResultadosSincronizacion.ClaseCss("Otro"));
     }

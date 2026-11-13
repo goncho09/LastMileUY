@@ -3,16 +3,9 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace LastMileUY.API.Infrastructure.Multitenancy;
 
-// Cada vez que EF abre una conexión, carga en PostgreSQL las variables app.operador_id y app.comercio_id.
-// Las políticas RLS comparan contra esas variables (segunda barrera del ADR-01).
-// Se cargan las dos siempre: la conexión vuelve al pool y la usa otro pedido.
-// app.codigo_seguimiento (seguimiento público) se vacía por lo mismo: el servicio que la usa la carga
-// solo dentro de su transacción, y esto es una barrera más por si alguna vez quedara cargada.
-// app.hash_clave_api (autenticación de la API pública) se vacía por lo mismo.
-// app.ambiente_pruebas: '1' con una clave de prueba de la API pública; si no, vacía. Separa los
-// destinatarios de prueba de los de verdad (política ambiente_destinatarios).
 public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : DbConnectionInterceptor
 {
+    // Cada conexión arranca con el operador del pedido: las políticas RLS de PostgreSQL filtran con estas variables.
     private const string Sql =
         "SELECT set_config('app.operador_id', @operador, false), set_config('app.comercio_id', @comercio, false), " +
         "set_config('app.codigo_seguimiento', '', false), set_config('app.hash_clave_api', '', false), " +
@@ -36,7 +29,6 @@ public class InterceptorOperadorConexion(IContextoOperador contextoOperador) : D
         var comando = connection.CreateCommand();
         comando.CommandText = Sql;
 
-        // Vacío = ninguno. Sin operador la política no devuelve filas; sin comercio no filtra por comercio.
         AgregarParametro(comando, "operador", contextoOperador.OperadorId);
         AgregarParametro(comando, "comercio", contextoOperador.ComercioId);
 

@@ -8,9 +8,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Reglas de entrega parcial por HTTP: quién las ve y las publica, y que cada operación
-// sincronizada diga con qué versión se evaluó. Lo que se publica acá permite las parciales,
-// para no cambiarles el comportamiento a las otras pruebas que comparten la API.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class ReglasEntregaParcialDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -21,7 +18,6 @@ public class ReglasEntregaParcialDePuntaAPuntaTests(ApiDePuntaAPunta api)
     {
         var operador = await api.IniciarSesionAsync(Operador1);
 
-        // Los datos de prueba ya traen la versión 1
         var antes = (await operador.GetFromJsonAsync<List<ReglaEntregaParcialDto>>("api/operador/reglas-entrega-parcial"))!;
         Assert.NotEmpty(antes);
 
@@ -61,7 +57,6 @@ public class ReglasEntregaParcialDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
     }
 
-    // Es configuración del operador: el despachador y el repartidor no la ven ni la cambian
     [Theory]
     [InlineData(Despachador1)]
     [InlineData(Repartidor1)]
@@ -89,7 +84,6 @@ public class ReglasEntregaParcialDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var despachador = await api.IniciarSesionAsync(Despachador1);
         var repartidor = await api.IniciarSesionAsync(Repartidor1);
 
-        // La ruta sale con la versión vigente; después se publica otra, que no la cambia
         var vigente = (await operador.GetFromJsonAsync<List<ReglaEntregaParcialDto>>("api/operador/reglas-entrega-parcial"))![0];
         var (rutaId, envioId) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 30);
 

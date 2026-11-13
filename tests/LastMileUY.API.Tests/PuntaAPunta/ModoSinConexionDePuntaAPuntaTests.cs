@@ -13,17 +13,6 @@ using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.JSInterop;
 using static ApiDePuntaAPunta;
 
-// El modo sin conexión completo, de punta a punta: la app del repartidor (sus servicios reales: hoja de
-// ruta, escaneo de bultos, cola de operaciones y almacén local) contra la API real, con una red que se
-// corta y una app que se cierra y se vuelve a abrir. Lo único simulado es el navegador: lo que la app
-// guarda en IndexedDB queda en memoria (NavegadorEnMemoria) y sobrevive a cerrar la app, como en el celular.
-//
-// Cubre lo que tiene que pasar en la calle:
-// - una jornada sin señal: se descarga la hoja con conexión, se entrega, se entrega en parte y se registra
-//   un intento fallido sin conexión, se cierra la app, y al volver la señal todo llega en orden y una sola vez;
-// - se corta la respuesta: la API aplicó la entrega pero el celular no se enteró; el reenvío no la repite;
-// - mientras tanto cambió el Backoffice: manda el servidor y la operación queda como conflicto;
-// - se vence la sesión: lo pendiente no se pierde y sale al volver a entrar.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -36,13 +25,11 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var despachador = await api.IniciarSesionAsync(Despachador1);
         await PermitirEntregasParcialesAsync(operador);
 
-        // Cuatro paradas de dos bultos. La cuarta queda para después, así la ruta sigue abierta
         var (rutaId, envios) = await RutasDePuntaAPunta.RutaConEnviosAsync(
             api, operador, despachador, diasAdelante: 50, cantidadEnvios: 4, bultosPorEnvio: 2);
         await RutasDePuntaAPunta.DespacharAsync(despachador, rutaId);
         var (completa, parcial, fallida) = (envios[0], envios[1], envios[2]);
 
-        // Con conexión, al empezar el día: inicia sesión y descarga la hoja y los motivos
         var celular = new Celular(api);
         var app = celular.Abrir();
         Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
@@ -51,7 +38,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var motivos = await app.Sincronizacion.ObtenerMotivosAsync();
         Assert.NotEmpty(motivos);
 
-        // Se va la señal y se cierra la app: al abrirla, la hoja y los motivos salen del celular
         celular.Red.Cortar();
         app = celular.Abrir();
         var hoja = (await app.Rutas.ObtenerRutaAsync(rutaId))!;
@@ -63,7 +49,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var hace20 = DateTime.UtcNow.AddMinutes(-20);
         var hace10 = DateTime.UtcNow.AddMinutes(-10);
 
-        // Parada 1: escanea los dos bultos y entrega
         await app.Bultos.GuardarAsync(rutaId, completa, [.. bultos[completa].Select(b => b.Id)]);
         var decision = await DecidirAsync(app, rutaId, completa, bultos[completa], hoja, motivoDelResto: null);
         Assert.Equal("Entrega", decision.Tipo);
@@ -71,7 +56,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Entrega(decision, rutaId, completa, hace30));
         Assert.True(estado.Pendiente);
 
-        // Parada 2: escanea uno solo; el otro no se entrega, con su motivo
         var entregado = bultos[parcial][0];
         var noEntregado = bultos[parcial][1];
         await app.Bultos.GuardarAsync(rutaId, parcial, [entregado.Id]);
@@ -80,7 +64,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.True((await app.Sincronizacion.GuardarOperacionAsync(
             Entrega(decision, rutaId, parcial, hace20))).Pendiente);
 
-        // Parada 3: no está nadie
         Assert.True((await app.Sincronizacion.GuardarOperacionAsync(new OperacionRequest
         {
             Tipo = "IntentoFallido",
@@ -92,12 +75,10 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
             MotivoNoEntregaId = motivos[0].Id
         })).Pendiente);
 
-        // Nada salió del celular: el servidor sigue viendo los envíos en tránsito
         Assert.True(celular.Red.PedidosSinSalir > 0);
         foreach (var id in envios)
             Assert.Equal("EnTransito", (await DetalleAsync(operador, id)).Estado);
 
-        // Se cierra la app otra vez: las tres siguen ahí, con lo que se marcó de cada bulto
         app = celular.Abrir();
         Assert.Equal(3, (await app.Cola.ObtenerPendientesAsync()).Count);
         var guardada = (await app.Sincronizacion.ObtenerPendienteAsync(parcial))!;
@@ -105,7 +86,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
             [new ResultadoBultoRequest(entregado.Id, true), new ResultadoBultoRequest(noEntregado.Id, false, motivos[0].Id)],
             guardada.ResultadosBultos!);
 
-        // Vuelve la señal: se mandan todas, de la más vieja a la más nueva
         celular.Red.Conectar();
         Assert.Equal((3, 0), await app.Sincronizacion.SincronizarPendientesAsync());
 
@@ -116,7 +96,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal([completa, parcial, fallida], mias.Select(o => o.EnvioId));
         Assert.All(mias, o => Assert.Equal("Aplicada", o.Resultado));
 
-        // En el servidor quedó lo que pasó en la calle, con la hora en que pasó (no la de la sincronización)
         var detalleCompleta = await DetalleAsync(operador, completa);
         Assert.Equal("Entregado", detalleCompleta.Estado);
         Assert.All(detalleCompleta.Bultos, b => Assert.Equal("Entregado", b.Estado));
@@ -134,8 +113,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal("NoEntregado", intentoFallido.Resultado);
         Assert.Equal(hace10, intentoFallido.FechaHora, TimeSpan.FromSeconds(1));
 
-        // Y el celular se puso al día: sin pendientes, la entrega confirmada y la hoja actualizada
-        // (se lee sin conexión para ver la que quedó guardada)
         Assert.Empty(await app.Cola.ObtenerPendientesAsync());
         Assert.True(await app.Confirmadas.EstaConfirmadoAsync(completa));
         celular.Red.Cortar();
@@ -154,13 +131,11 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var hoja = (await app.Rutas.ObtenerRutaAsync(rutaId))!;
         var parada = Assert.Single(hoja.Paradas);
 
-        // La entrega llega a la API, pero la respuesta se pierde en el camino
         celular.Red.PerderRespuestas();
         var decision = await DecidirAsync(app, rutaId, envioId, parada.Bultos!, hoja, motivoDelResto: null, escanearTodos: true);
         Assert.True((await app.Sincronizacion.GuardarOperacionAsync(Entrega(decision, rutaId, envioId, DateTime.UtcNow))).Pendiente);
         Assert.Equal("Entregado", (await DetalleAsync(operador, envioId)).Estado);
 
-        // Para el celular sigue pendiente: al reenviarla, la API la reconoce y no la aplica de nuevo
         celular.Red.Conectar();
         var pendiente = Assert.Single(await app.Cola.ObtenerPendientesAsync());
         var estado = await app.Sincronizacion.ReintentarOperacionAsync(pendiente.IdOperacion);
@@ -185,7 +160,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var decision = await DecidirAsync(app, rutaId, envioId, hoja.Paradas[0].Bultos!, hoja, motivoDelResto: null, escanearTodos: true);
         Assert.True((await app.Sincronizacion.GuardarOperacionAsync(Entrega(decision, rutaId, envioId, DateTime.UtcNow))).Pendiente);
 
-        // Mientras el repartidor no tiene señal, el operador lo da por extraviado
         using (var cambio = await operador.PatchAsJsonAsync($"api/envios/{envioId}/estado",
                    new CambiarEstadoRequest { Estado = "Extraviado", Descripcion = "No aparece en el camión" }))
         {
@@ -196,7 +170,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var pendiente = Assert.Single(await app.Cola.ObtenerPendientesAsync());
         var estado = await app.Sincronizacion.ReintentarOperacionAsync(pendiente.IdOperacion);
 
-        // Es un resultado final: sale de la cola, no se reintenta, y no se pisa lo del Backoffice
         Assert.False(estado.Pendiente);
         Assert.Equal("Conflicto", estado.Resultado!.Resultado);
         Assert.Equal("Extraviado", estado.Resultado.EstadoEnvio);
@@ -207,7 +180,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal("Extraviado", detalle.Estado);
         Assert.Empty(detalle.Intentos);
 
-        // El repartidor lo ve entre sus conflictos
         var conflictos = await app.Sincronizacion.ObtenerMisOperacionesAsync("Conflicto", 1);
         Assert.Contains(conflictos.Items, o => o.IdOperacion == pendiente.IdOperacion);
     }
@@ -225,21 +197,17 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var decision = await DecidirAsync(app, rutaId, envioId, hoja.Paradas[0].Bultos!, hoja, motivoDelResto: null, escanearTodos: true);
         Assert.True((await app.Sincronizacion.GuardarOperacionAsync(Entrega(decision, rutaId, envioId, DateTime.UtcNow))).Pendiente);
 
-        // Vuelve la señal, pero la sesión ya no vale (se perdió la cookie)
         celular.PerderSesion();
         celular.Red.Conectar();
         app = celular.Abrir();
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => app.Sincronizacion.SincronizarPendientesAsync());
         Assert.Single(await app.Cola.ObtenerPendientesAsync());
 
-        // El mismo repartidor vuelve a entrar: lo guardado es suyo, así que no se borra, y sale
         Assert.True(await app.Auth.LoginAsync(Repartidor1, Clave));
         Assert.Equal((1, 0), await app.Sincronizacion.SincronizarPendientesAsync());
         Assert.Equal("Entregado", (await DetalleAsync(operador, envioId)).Estado);
     }
 
-    // Lo que hace el formulario de entrega: arranca con los bultos escaneados como entregados y,
-    // a los que no, les pone el motivo; con eso decide si es entrega o entrega parcial
     private static async Task<ResultadoPorBulto.Decision> DecidirAsync(
         App app, int rutaId, int envioId, IReadOnlyList<BultoRutaDto> bultos, RutaDetalleDto hoja,
         int? motivoDelResto, bool escanearTodos = false)
@@ -281,7 +249,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         return (operador, rutaId, envioId);
     }
 
-    // Las otras pruebas que comparten la API pueden haber publicado una versión que no las permite
     private static async Task PermitirEntregasParcialesAsync(HttpClient operador)
     {
         using var respuesta = await operador.PostAsJsonAsync("api/operador/reglas-entrega-parcial",
@@ -298,8 +265,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
     private static async Task<EnvioDetalleDto> DetalleAsync(HttpClient operador, int envioId) =>
         (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envioId}"))!;
 
-    // Un celular con la app instalada. Lo que guarda la app (IndexedDB) y la cookie de sesión siguen ahí
-    // aunque se cierre la app; Abrir() la vuelve a abrir, con servicios nuevos sobre lo mismo guardado.
     private sealed class Celular
     {
         private readonly ApiDePuntaAPunta api;
@@ -316,10 +281,8 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
         public App Abrir() => new(http, navegador);
 
-        // Como si la cookie hubiera vencido: lo guardado y la señal siguen igual, pero sin sesión
         public void PerderSesion() => http = Cliente();
 
-        // La red va primero: si está cortada, el pedido no llega ni a las cookies
         private HttpClient Cliente() =>
             api.CreateDefaultClient(new Uri("https://localhost/"), new RedDelCelular(this), new CookieContainerHandler());
 
@@ -330,7 +293,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         }
     }
 
-    // Los servicios de la app, armados como en su Program.cs
     private sealed class App
     {
         public App(HttpClient http, IJSRuntime navegador)
@@ -352,8 +314,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         public AuthService Auth { get; }
     }
 
-    // La señal del celular. Cortada: el pedido no sale (como fetch sin red, la app recibe HttpRequestException).
-    // Perdiendo respuestas: el pedido llega a la API, pero la respuesta no vuelve.
     private sealed class Red
     {
         private enum Modo { Conectada, Cortada, PierdeRespuestas }
@@ -387,7 +347,6 @@ public class ModoSinConexionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         }
     }
 
-    // Hace de wwwroot/js/almacen.js (IndexedDB): guarda en memoria lo que la app le pide
     private sealed class NavegadorEnMemoria : IJSRuntime
     {
         private readonly Dictionary<string, string> datos = [];

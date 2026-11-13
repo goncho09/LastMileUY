@@ -10,21 +10,15 @@ using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Servicios
-// Todo el Backoffice pide sesión con un perfil del Backoffice, salvo el login, la salida y las páginas de error.
-// La configuración del operador además pide el perfil Operador (ver Permisos).
 builder.Services.AddRazorPages(opciones =>
 {
-    // Permisos
     opciones.Conventions.AuthorizeFolder("/", Permisos.PoliticaBackoffice);
     opciones.Conventions.AuthorizeFolder("/Operador", Permisos.PoliticaConfiguracion);
     opciones.Conventions.AuthorizeFolder("/Configuracion", Permisos.PoliticaConfiguracion);
-    // Tablero técnico (métricas del caché): mismo perfil que la configuración del operador
     opciones.Conventions.AuthorizeFolder("/Tablero", Permisos.PoliticaConfiguracion);
     opciones.Conventions.AuthorizeFolder(
         "/Usuarios", Permisos.PoliticaConfiguracion);
 
-    // Páginas públicas
     opciones.Conventions.AllowAnonymousToPage("/Login");
     opciones.Conventions.AllowAnonymousToPage("/Logout");
     opciones.Conventions.AllowAnonymousToPage("/AccesoDenegado");
@@ -42,7 +36,6 @@ builder.Services.AddRazorPages(opciones =>
     opciones.Conventions.AuthorizeFolder(
         "/MensajesFallidos", Permisos.PoliticaAdministracionGlobal);
 
-    // Banderas de funcionalidad por operador: son de la plataforma
     opciones.Conventions.AuthorizeFolder(
         "/Funcionalidades", Permisos.PoliticaAdministracionGlobal);
 
@@ -63,8 +56,6 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Permisos.PoliticaOperacion,
         politica => politica.RequireRole(Permisos.RolesOperacion));
 
-// Sesión propia del Backoffice (cookie cifrada). Adentro va la cookie de la API,
-// que se reenvía en cada llamada (ver ReenviarCookieApi).
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(opciones =>
     {
@@ -73,7 +64,6 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         opciones.Cookie.SameSite = SameSiteMode.Lax;
         opciones.LoginPath = "/login";
         opciones.AccessDeniedPath = "/acceso-denegado";
-        // Igual que la sesión de la API: 8 horas. Si la API la corta antes, se vuelve al login.
         opciones.ExpireTimeSpan = TimeSpan.FromHours(8);
         opciones.SlidingExpiration = false;
     });
@@ -81,15 +71,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSignalR();
 
-// Tablero en vivo: escucha los eventos de envío en RabbitMQ. Sin RabbitMQ (por ejemplo, con los datos
-// de prueba) el Backoffice funciona igual, sin las actualizaciones en vivo.
 if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("RabbitMQ")))
 {
     builder.Services.AddHostedService<ConsumidorEventosEnvio>();
 }
 
-// Claves con las que se cifra la cookie de sesión. Si se guardan en una carpeta
-// (en Docker, un volumen), las sesiones sobreviven a reiniciar o recrear el contenedor.
 var directorioClaves = builder.Configuration["DataProtection:Directorio"];
 
 if (!string.IsNullOrWhiteSpace(directorioClaves))
@@ -99,7 +85,6 @@ if (!string.IsNullOrWhiteSpace(directorioClaves))
         .PersistKeysToFileSystem(new DirectoryInfo(directorioClaves));
 }
 
-// De dónde salen los envíos y las hojas de ruta: datos de prueba en memoria o la API real por HTTP.
 var api = builder.Configuration.GetSection("Api");
 
 if (api.GetValue<bool>("UsarDatosDePrueba"))
@@ -113,7 +98,6 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IMensajesFallidosApi, MensajesFallidosApiDePrueba>();
     builder.Services.AddSingleton<IFuncionalidadesApi, FuncionalidadesApiDePrueba>();
     builder.Services.AddSingleton<IUsuariosApi, UsuariosApiDePrueba>();
-    // Singleton como los demás: con Scoped se creaban de nuevo en cada pedido y lo creado desaparecía
     builder.Services.AddSingleton<GestionOperadoresApiDePrueba>();
     builder.Services.AddSingleton<IGestionOperadoresApi>(s => s.GetRequiredService<GestionOperadoresApiDePrueba>());
     builder.Services.AddSingleton<IGestionComerciosApi, GestionComerciosApiDePrueba>();
@@ -125,8 +109,7 @@ else
     var urlBase = new Uri(api["UrlBase"]
         ?? throw new InvalidOperationException("Falta configurar Api:UrlBase."));
 
-    // UseCookies = false: la cookie de cada usuario se pone a mano en cada pedido.
-    // Si no, el HttpClient compartido guardaría la cookie de un usuario y se la mandaría a otro.
+    // Sin contenedor de cookies compartido: cada pedido lleva solo la cookie de su propio usuario.
     static HttpMessageHandler SinCookiesCompartidas() => new SocketsHttpHandler { UseCookies = false };
 
     builder.Services.AddTransient<ReenviarCookieApi>();
@@ -237,9 +220,6 @@ builder.Services.Configure<RouteOptions>(options =>
     options.LowercaseQueryStrings = true;
 });
 
-// Tope de intentos de inicio de sesión por visitante (429 al pasarlo). La API bloquea la cuenta después
-// de 5 contraseñas mal, pero eso no frena probar una contraseña contra muchas cuentas. Y a la API todos
-// los intentos le llegan desde la IP de este servidor: el freno por persona va acá (ver docs/seguridad.md).
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -253,7 +233,6 @@ builder.Services.AddRateLimiter(options =>
 
     var intentosPorMinuto = builder.Configuration.GetValue("Login:IntentosPorMinuto", 10);
 
-    // Solo cuenta los envíos del formulario de login; el resto del Backoffice no tiene tope
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(contexto =>
         HttpMethods.IsPost(contexto.Request.Method)
         && contexto.Request.Path.Equals("/login", StringComparison.OrdinalIgnoreCase)
@@ -267,27 +246,20 @@ builder.Services.AddRateLimiter(options =>
             : RateLimitPartition.GetNoLimiter("sin-tope"));
 });
 
-
-// La IP real del visitante detrás del proxy inverso (src/Compartido/ProxyInverso.cs)
 builder.Services.AgregarProxyInverso(builder.Configuration);
 
 var app = builder.Build();
 
-// Primero de todo: los topes por IP, los logs y las redirecciones ven la IP y el esquema reales
 app.UsarProxyInverso();
 
-// Pipeline de cada pedido
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // HSTS: el navegador recuerda 30 días (valor por defecto) que el sitio va solo por https
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 
-// Encabezados de seguridad (ver docs/seguridad.md): el navegador no adivina el tipo de contenido
-// y a otros sitios no les llega la dirección de la página que los enlaza
 app.Use((contexto, siguiente) =>
 {
     contexto.Response.Headers.XContentTypeOptions = "nosniff";
@@ -309,7 +281,6 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Si la API dice que la sesión venció, se cierra la del Backoffice y se vuelve al login
 app.Use(async (contexto, siguiente) =>
 {
     try
@@ -334,5 +305,4 @@ app.MapHub<EnviosHub>("/hubs/envios");
 
 app.Run();
 
-// Para las pruebas de navegador (tests/LastMileUY.E2E.Tests), que levantan el Backoffice con WebApplicationFactory
 public partial class Program;

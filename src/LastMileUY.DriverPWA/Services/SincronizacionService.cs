@@ -6,12 +6,6 @@ using LastMileUY.Contracts.Sincronizacion;
 
 namespace LastMileUY.DriverPWA.Services;
 
-// Entregas e intentos fallidos: la app los manda por la API de sincronización
-// (POST /api/sincronizacion, ver docs/sincronizacion.md). Así la API controla la evidencia que pide
-// la regla, descarta los reenvíos y el Backoffice ve cada operación.
-// Cada operación se guarda primero en la cola del celular (ColaOperacionesService) con su
-// IdOperacion: si no llega a la API, queda ahí y el reenvío lleva el mismo id, para que la API no la
-// aplique dos veces. Con un resultado final sale de la cola.
 public class SincronizacionService(
     HttpClient http,
     AlmacenLocal almacen,
@@ -49,8 +43,6 @@ public class SincronizacionService(
 
             if (!resultado.Reintentar)
             {
-                // Solo bloqueamos permanentemente las entregas exitosas.
-                // Los intentos fallidos no se guardan como entregas confirmadas.
                 if (resultado.Resultado == "Aplicada" &&
                     operacion.Tipo == "Entrega")
                 {
@@ -65,11 +57,9 @@ public class SincronizacionService(
                 }
                 catch (HttpRequestException)
                 {
-                    // El resultado de la operación ya es definitivo.
                 }
                 catch (TaskCanceledException)
                 {
-                    // Conservamos la caché anterior.
                 }
             }
 
@@ -94,7 +84,6 @@ public class SincronizacionService(
         return pendientes.Any(x => x.EnvioId == envioId);
     }
 
-    // La operación de ese envío que todavía no llegó a la API, con lo que se guardó de cada bulto
     public async Task<OperacionRequest?> ObtenerPendienteAsync(int envioId)
     {
         var pendientes = await cola.ObtenerPendientesAsync();
@@ -135,8 +124,6 @@ public class SincronizacionService(
         }
     }
 
-    // Lo que mandó este repartidor y qué pasó con cada cosa, lo más nuevo primero.
-    // resultado: null (todas), "Aplicada", "Rechazada" o "Conflicto".
     public async Task<PaginaDto<OperacionSincronizadaDto>> ObtenerMisOperacionesAsync(string? resultado, int pagina)
     {
         var url = $"api/sincronizacion/mias?pagina={pagina}"
@@ -153,18 +140,14 @@ public class SincronizacionService(
                ?? new PaginaDto<OperacionSincronizadaDto>([], 0, pagina, 20);
     }
 
-    // Guarda una operación localmente antes de intentar sincronizarla.
-    // Si no hay conexión, permanece en la cola para enviarla después.
     public async Task<EstadoEnvioOperacion> GuardarOperacionAsync(
         OperacionRequest operacion)
     {
-        // La operación se guarda antes de intentar enviarla.
         operacion = await cola.AgregarAsync(operacion);
 
         return await EnviarOperacionGuardadaAsync(operacion);
     }
 
-    // Reintenta una operación existente sin generar otro IdOperacion.
     public async Task<EstadoEnvioOperacion> ReintentarOperacionAsync(
         Guid idOperacion)
     {
@@ -180,13 +163,10 @@ public class SincronizacionService(
         return await EnviarOperacionGuardadaAsync(operacion);
     }
 
-    // Una sola sincronización a la vez: la disparan la pantalla de operaciones y el reenvío
-    // automático del layout (ReenvioAutomatico), y coinciden al volver la conexión
     private readonly SemaphoreSlim sincronizando = new(1, 1);
 
     public async Task<(int Enviadas, int Pendientes)> SincronizarPendientesAsync()
     {
-        // Si ya hay una en curso, esta no envía nada: las pendientes las manda la otra
         if (!await sincronizando.WaitAsync(0))
             return (0, (await cola.ObtenerPendientesAsync()).Count);
 
@@ -199,8 +179,6 @@ public class SincronizacionService(
             {
                 var resultado = await ReintentarOperacionAsync(operacion.IdOperacion);
 
-                // Si la API dio un resultado definitivo, la operación
-                // ya fue eliminada de la cola por EnviarOperacionGuardadaAsync.
                 if (!resultado.Pendiente)
                     enviadas++;
             }

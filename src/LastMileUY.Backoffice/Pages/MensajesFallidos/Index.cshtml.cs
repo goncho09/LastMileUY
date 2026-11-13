@@ -37,7 +37,6 @@ public class IndexModel(
             Pagina = 1;
         }
 
-        // Resumen de la cola RabbitMQ
         try
         {
             Resumen = await mensajesApi.ObtenerResumenAsync(ct);
@@ -53,7 +52,6 @@ public class IndexModel(
             ErrorResumen = "No se pudo consultar el estado de la cola.";
         }
 
-        // Listado de incidencias almacenadas en PostgreSQL
         try
         {
             var filtro = new FiltroMensajesFallidos
@@ -113,8 +111,6 @@ public class IndexModel(
         });
     }
 
-
-    // Conserva los filtros al cambiar de página
     public Dictionary<string, string?> RutaPagina(int pagina) => new()
     {
         ["estado"] = Estado,

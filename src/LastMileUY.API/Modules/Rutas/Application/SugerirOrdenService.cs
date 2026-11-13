@@ -6,10 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Rutas.Application;
 
-// El orden sugerido para las paradas de una ruta que se está armando (POST /api/rutas/sugerir-orden).
-// No guarda nada: el despachador lo ve, lo cambia si quiere y después arma la ruta como siempre.
-// El cálculo está en OrdenDeParadas (Contracts, para que el Backoffice de prueba use el mismo).
-// Igual que al armar la ruta, un envío de otro operador "no existe" (EF + RLS).
 public class SugerirOrdenService(ApplicationDbContext db, IContextoOperador contexto)
 {
     public async Task<SugerenciaOrdenDto> SugerirAsync(
@@ -68,7 +64,6 @@ public class SugerirOrdenService(ApplicationDbContext db, IContextoOperador cont
             DesdeDeposito: deposito is not null);
     }
 
-    // Operadores no tiene RLS ni filtro de EF: se filtra a mano por el operador actual
     private async Task<Coordenadas?> DepositoAsync(CancellationToken cancellationToken)
     {
         if (contexto.OperadorId is not int operadorId)

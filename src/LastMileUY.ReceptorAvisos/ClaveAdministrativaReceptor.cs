@@ -34,11 +34,9 @@ public sealed class ClaveAdministrativaReceptor
             return;
         }
 
-        // Se genera solamente si todavía no existe.
         var claveNueva = Convert.ToHexString(
             RandomNumberGenerator.GetBytes(32));
 
-        // CreateNew evita sobrescribir una clave existente.
         try
         {
             using var archivo = new FileStream(
@@ -52,7 +50,6 @@ public sealed class ClaveAdministrativaReceptor
         }
         catch (IOException) when (File.Exists(rutaAdministrativa))
         {
-            // Otro proceso pudo crearla al mismo tiempo.
             claveNueva = File.ReadAllText(rutaAdministrativa).Trim();
         }
 

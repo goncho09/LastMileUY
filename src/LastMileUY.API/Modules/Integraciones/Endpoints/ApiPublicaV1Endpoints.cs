@@ -12,21 +12,14 @@ using DireccionDto = LastMileUY.Contracts.Destinatarios.DireccionDto;
 
 namespace LastMileUY.API.Modules.Integraciones.Endpoints;
 
-// API pública para el sistema del comercio (docs/api-publica.md). Versionada en la ruta: lo que está
-// en /api/v1 no cambia de forma incompatible; un cambio así iría en /api/v2 y la v1 seguiría andando.
-// Solo con clave de API (X-Api-Key), nunca con la cookie del portal. Por dentro usa los mismos
-// servicios que el portal, así que las reglas (validaciones, RLS, filtros, eventos) son las mismas.
 public static class ApiPublicaV1Endpoints
 {
     public const string Version = "v1";
 
-    // Nombre de la política de autorización: clave de API de un comercio
     public const string Politica = "ApiPublica";
 
-    // Solo claves del ambiente de pruebas
     public const string PoliticaPruebas = "ApiPublicaPruebas";
 
-    // Topes de pedidos por clave (Program.cs): uno general y uno más bajo para los lotes, que pesan más
     public const string LimiteConsultas = "ApiPublicaConsultas";
     public const string LimiteLotes = "ApiPublicaLotes";
 
@@ -192,7 +185,6 @@ public static class ApiPublicaV1Endpoints
             .WithName("V1AgregarDireccion")
             .WithSummary("Agrega otra dirección de entrega a un destinatario");
 
-        // Ambiente de pruebas: solo con una clave de prueba (con una de verdad, 403)
         var pruebas = v1.MapGroup("/pruebas").WithTags("Ambiente de pruebas")
             .RequireAuthorization(PoliticaPruebas)
             .ProducesProblem(StatusCodes.Status403Forbidden);

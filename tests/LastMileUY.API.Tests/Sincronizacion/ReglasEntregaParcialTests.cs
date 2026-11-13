@@ -20,11 +20,6 @@ namespace LastMileUY.API.Tests.Sincronizacion;
 
 using static BaseConDosOperadores;
 
-// Reglas de entrega parcial versionadas, contra la base real con RLS:
-// - las versiones se numeran por operador y no se pueden modificar ni borrar (lo frena la base);
-// - una entrega se evalúa con la versión con la que salió su hoja de ruta, no con la vigente al sincronizar.
-// La base es compartida: las pruebas que publican una versión que no permite parciales
-// dejan publicada al final otra que sí, para no cambiarles el comportamiento a las demás.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
 {
@@ -51,8 +46,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         Assert.DoesNotContain(deB, r => r.Id == primera.Id || r.Id == segunda.Id);
     }
 
-    // Es lo que hace confiable el historial: ni un error en el código puede reescribir
-    // las reglas con las que ya se evaluaron entregas
     [Theory]
     [InlineData("""UPDATE "ReglasEntregaParcial" SET "PermiteEntregaParcial" = NOT "PermiteEntregaParcial" """)]
     [InlineData("""DELETE FROM "ReglasEntregaParcial" """)]
@@ -92,7 +85,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(
                 baseDeDatos, OperadorA, bultosPorEnvio: 2);
 
-            // Mientras el repartidor está en la calle, el operador vuelve a permitirlas
             await PublicarAsync(OperadorA, permite: true);
 
             var resultado = await SincronizarAsync(repartidor, await EntregaParcialAsync(ruta, envios[0]));
@@ -122,11 +114,9 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             var resultado = await SincronizarAsync(repartidor, await EntregaParcialAsync(ruta, envios[0]));
 
             Assert.Equal("Aplicada", resultado.Resultado);
-            // La regla del operador A permite un solo intento: lo pendiente no puede volver a salir
             Assert.Equal("EnDevolucion", resultado.EstadoEnvio);
             Assert.Equal(conParciales.Id, await VersionAplicadaAsync(resultado.IdOperacion));
 
-            // Una ruta nueva ya sale con la versión que no las permite
             var (rutaNueva, repartidorNuevo, enviosNuevos) = await DatosDeRutas.CrearRutaDespachadaAsync(
                 baseDeDatos, OperadorA, bultosPorEnvio: 2);
             var enLaNueva = await SincronizarAsync(repartidorNuevo, await EntregaParcialAsync(rutaNueva, enviosNuevos[0]));
@@ -139,10 +129,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         }
     }
 
-    // --- Política para los bultos pendientes y manifiesto de la hoja de ruta ---
-
-    // El ciclo completo: entrega parcial, el envío se reprograma, sale en otra ruta solo con lo que faltaba
-    // y ahí se termina de entregar. El operador B permite dos intentos.
     [Fact]
     public async Task Con_nueva_hoja_de_ruta_lo_pendiente_sale_en_otra_ruta_con_solo_esos_bultos()
     {
@@ -156,7 +142,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("Reprogramado", parcial.EstadoEnvio);
         Assert.Contains("vuelven a salir", parcial.Mensaje);
 
-        // La ruta anterior debe finalizar para liberar el envío.
         await using (var db = baseDeDatos.CrearContexto(OperadorB))
         {
             var estadoRutaAnterior = await db.Rutas
@@ -167,7 +152,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             Assert.Equal(EstadoRuta.Finalizada, estadoRutaAnterior);
         }
 
-        // La ruta nueva lleva solo el bulto que no se entregó
         int rutaNueva;
         int pendiente;
 
@@ -197,19 +181,16 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
                 .ToListAsync();
             Assert.Equal([pendiente], manifiesto);
 
-            // La hoja muestra lo que lleva la parada, no todo el envío (cada bulto pesa 2 kg)
             var hoja = await new ConsultasRutasService(db).ObtenerDetalleAsync(rutaNueva);
             var parada = Assert.Single(hoja!.Paradas);
             Assert.Equal(1, parada.CantidadBultos);
             Assert.Equal(2, parada.PesoKg);
             Assert.Equal([pendiente], parada.Bultos!.Select(b => b.Id));
 
-            // La ruta vieja sigue mostrando los dos bultos con los que salió
             var hojaVieja = await new ConsultasRutasService(db).ObtenerDetalleAsync(ruta);
             Assert.Equal(2, Assert.Single(hojaVieja!.Paradas).CantidadBultos);
         }
 
-        // Sale la ruta nueva y se entrega lo que faltaba: el envío queda entregado completo
         string repartidorDeLaNueva;
 
         await using (var db = baseDeDatos.CrearContexto(OperadorB))
@@ -249,14 +230,12 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public async Task Recargo_respeta_version_con_la_que_se_despacho_la_ruta()
     {
-        // Primera versión: recargo de $150.
         var reglaOriginal = await PublicarAsync(
             OperadorB,
             permite: true,
             destino: "NuevaHojaDeRuta",
             recargo: 150m);
 
-        // La ruta queda asociada a esa versión.
         var (ruta, repartidor, envios) =
             await DatosDeRutas.CrearRutaDespachadaAsync(
                 baseDeDatos,
@@ -273,14 +252,12 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
                 .SingleAsync();
         }
 
-        // El administrador publica una nueva versión con $250.
         await PublicarAsync(
             OperadorB,
             permite: true,
             destino: "NuevaHojaDeRuta",
             recargo: 250m);
 
-        // El repartidor sincroniza una entrega parcial.
         var operacion = await EntregaParcialAsync(
             ruta, envios[0], OperadorB);
 
@@ -290,7 +267,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("Aplicada", resultado.Resultado);
         Assert.Equal("Reprogramado", resultado.EstadoEnvio);
 
-        // Debe utilizar la versión original, no la nueva.
         Assert.Equal(
             reglaOriginal.Id,
             await VersionAplicadaAsync(resultado.IdOperacion, OperadorB));
@@ -326,7 +302,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         }
     }
 
-    // Una ruta que salió antes de que el operador publicara reglas: lo decide el despachador
     [Fact]
     public async Task Si_la_ruta_salio_sin_version_el_envio_queda_entregado_parcialmente()
     {
@@ -341,7 +316,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         Assert.Null(await VersionAplicadaAsync(resultado.IdOperacion));
     }
 
-    // La base no deja que una parada lleve un bulto de otro envío
     [Fact]
     public async Task Una_parada_no_puede_llevar_un_bulto_de_otro_envio()
     {
@@ -401,7 +375,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             Assert.Equal(costoInicial + 150m, costoFinal);
         }
 
-        // Reenviamos exactamente la misma operación offline.
         await SincronizarAsync(repartidor, operacion, OperadorB);
 
         await using (var db = baseDeDatos.CrearContexto(OperadorB))
@@ -512,7 +485,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         }
     }
 
-    // Como si la ruta se hubiera despachado antes de que existieran las versiones
     private async Task SinVersionAsync(int rutaId)
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);
@@ -557,8 +529,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
         return Assert.Single(respuesta.Resultados);
     }
 
-    // Entrega el primer bulto y deja el otro sin entregar, con toda la evidencia que pueden pedir
-    // las reglas de prueba (A pide firma; B, foto y documento)
     private async Task<OperacionRequest> EntregaParcialAsync(int rutaId, int envioId, int operadorId = OperadorA)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
@@ -612,7 +582,6 @@ public class ReglasEntregaParcialTests(BaseConDosOperadores baseDeDatos)
             .SingleAsync();
     }
 
-    // Las imágenes no importan acá: se descartan
     private class SinAlmacen : IAlmacenEvidencias
     {
         public Task<string> GuardarAsync(int operadorId, Imagen imagen, CancellationToken ct = default) =>

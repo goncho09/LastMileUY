@@ -43,10 +43,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 columns: new[] { "EntregaAvisoId", "NumeroIntento" },
                 unique: true);
 
-            // Como las demás tablas hijas (ADR-01, migración AislamientoCompleto): un intento se ve solo si se
-            // ve su aviso, que a su vez se ve solo si se ve su envío. El worker carga el operador antes de
-            // anotar el intento, así que pasa el WITH CHECK. Los permisos de lastmileuy_app salen de los
-            // ALTER DEFAULT PRIVILEGES.
             migrationBuilder.Sql("""
                 ALTER TABLE "IntentosAvisos" ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE "IntentosAvisos" FORCE ROW LEVEL SECURITY;

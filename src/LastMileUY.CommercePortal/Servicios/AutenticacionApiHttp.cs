@@ -4,8 +4,6 @@ using LastMileUY.Contracts.Auth;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// POST api/auth/login (con el operador elegido, si hace falta) y después GET api/auth/me.
-// La API responde con su cookie de sesión (Set-Cookie): se guarda para reenviarla en cada llamada.
 public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
 {
     public async Task<ResultadoLogin> IniciarSesionAsync(
@@ -21,7 +19,6 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
             case HttpStatusCode.Unauthorized:
                 return new ResultadoLogin(EstadoLogin.CredencialesInvalidas);
 
-            // El comercio trabaja con varios operadores: hay que elegir uno
             case HttpStatusCode.Conflict:
                 var requerido = await login.Content.ReadFromJsonAsync<OperadorRequeridoResponse>(ct);
 
@@ -109,7 +106,6 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
 
         respuesta.EnsureSuccessStatusCode();
 
-        // La API renovó la sesión con el nuevo operador: viene una cookie nueva
         return await ObtenerSesionAsync(LeerCookieObligatoria(respuesta), ct);
     }
 
@@ -121,7 +117,6 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
         using var _ = await http.SendAsync(pedido, ct);
     }
 
-    // Con la cookie nueva pregunta quién es y con qué comercio/operador quedó la sesión
     private async Task<ResultadoLogin> ObtenerSesionAsync(string cookieApi, CancellationToken ct)
     {
         using var pedido = new HttpRequestMessage(HttpMethod.Get, "api/auth/me");
@@ -133,7 +128,6 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
         var usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioAutenticadoResponse>(ct)
             ?? throw new InvalidOperationException("La API no devolvió los datos del usuario.");
 
-        // El portal es solo para usuarios de comercio
         if (usuario.ComercioId is not int comercioId || usuario.OperadorId is not int operador)
         {
             return new ResultadoLogin(
@@ -156,7 +150,6 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
         LeerCookies(respuesta)
         ?? throw new InvalidOperationException("La API no devolvió la cookie de sesión.");
 
-    // Arma el encabezado Cookie con todo lo que vino en Set-Cookie ("nombre=valor; nombre2=valor2")
     public static string? LeerCookies(HttpResponseMessage respuesta)
     {
         if (!respuesta.Headers.TryGetValues("Set-Cookie", out var encabezados))
@@ -183,7 +176,6 @@ public class AutenticacionApiHttp(HttpClient http) : IAutenticacionApi
         }
         catch (JsonException)
         {
-            // El cuerpo no era el JSON esperado: se usa el mensaje genérico
         }
 
         return "La operación fue rechazada por el servidor.";

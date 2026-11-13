@@ -12,7 +12,6 @@ public class RendicionConfiguration : IEntityTypeConfiguration<Rendicion>
 
         builder.HasKey(r => r.Id);
 
-        // Cada rendición corresponde a una única ruta.
         builder.HasOne<Ruta>()
             .WithOne(r => r.Rendicion)
             .HasForeignKey<Rendicion>(r => r.RutaId)
@@ -21,7 +20,6 @@ public class RendicionConfiguration : IEntityTypeConfiguration<Rendicion>
         builder.Property(r => r.Observaciones)
             .HasMaxLength(1000);
 
-        // Una ruta solo puede tener una rendición.
         builder.HasIndex(r => r.RutaId)
             .IsUnique();
     }

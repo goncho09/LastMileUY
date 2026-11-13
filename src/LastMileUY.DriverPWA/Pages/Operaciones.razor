@@ -9,9 +9,6 @@
 
 <PageTitle>Mis operaciones | LastMileUY</PageTitle>
 
-@* Lo que mandó el repartidor y qué pasó con cada cosa en el servidor: registrada, rechazada
-   (con el motivo) o en conflicto (el despachador cambió el envío y lo resuelve él).
-   Arriba, lo que registró sin conexión y todavía está guardado en el celular. *@
 <div class="min-h-dvh bg-slate-50 pb-24">
 
     <header class="bg-gradient-to-r from-violet-700 to-indigo-700 px-5 pb-8 pt-7 text-white">
@@ -191,7 +188,6 @@
     
     protected override async Task OnInitializedAsync()
     {
-        // Las pendientes salen del celular: se ven aunque no haya conexión
         pendientes = (await Cola.ObtenerPendientesAsync())
             .OrderBy(p => p.FechaHoraDispositivo)
             .ToList();
@@ -212,7 +208,6 @@
     detectorConexion = await moduloConexion.InvokeAsync<IJSObjectReference>(
         "escucharConexion", referenciaDotNet);
 
-    // También intenta sincronizar cuando se abre la pantalla.
     await SincronizarAsync();
     
     if (historialNoDisponible)
@@ -241,7 +236,6 @@ private async Task SincronizarAsync()
     if (componenteDestruido)
         return;
 
-    // Evita dos sincronizaciones simultáneas.
     if (!await bloqueoSincronizacion.WaitAsync(0))
         return;
 
@@ -263,7 +257,6 @@ private async Task SincronizarAsync()
                 $"Se procesaron {resultado.Enviadas} operaciones. " +
                 $"Quedan {resultado.Pendientes} pendientes.";
 
-            // Actualizar el historial mostrado.
             await FiltrarAsync(filtro);
         }
         else if (resultado.Pendientes > 0)
@@ -314,7 +307,6 @@ public async ValueTask DisposeAsync()
     }
     catch (JSDisconnectedException)
     {
-        // La página o conexión Blazor ya se cerró.
     }
 
     referenciaDotNet?.Dispose();
@@ -325,8 +317,6 @@ private async Task FiltrarAsync(string? resultado)
     if (cargando)
         return;
 
-    // No borramos el historial anterior hasta obtener
-    // correctamente la nueva respuesta.
     filtro = resultado;
     pagina = 0;
     total = 0;
@@ -368,9 +358,6 @@ private async Task CargarMasAsync(bool reemplazar = false)
         ex is HttpRequestException or TaskCanceledException)
     {
         historialNoDisponible = true;
-
-        // No eliminamos las operaciones que ya estaban en pantalla.
-        // Las pendientes se siguen mostrando desde IndexedDB.
     }
     finally
     {
@@ -385,7 +372,6 @@ private async Task CargarMasAsync(bool reemplazar = false)
         _ => resultado
     };
 
-    // Las clases van enteras acá: Tailwind solo genera las que encuentra escritas en Pages/
     private static string Estilo(string resultado) => resultado switch
     {
         "Aplicada" => "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700",

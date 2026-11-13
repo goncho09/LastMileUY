@@ -13,8 +13,6 @@ namespace LastMileUY.API.Tests.Envios;
 
 using static BaseConDosOperadores;
 
-// Cada operador trabaja con sus propias reglas operativas. En la base de prueba,
-// el operador A permite 1 intento de entrega fallido y el B permite 2.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
 {
@@ -47,10 +45,8 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
     {
         var id = await CrearEnvioAsync(OperadorB);
 
-        // Primer intento fallido: B permite 2, así que se reprograma
         await LlevarAsync(OperadorB, id, "EnDeposito", "AsignadoARuta", "EnTransito", "NoEntregado", "Reprogramado");
 
-        // Segundo intento fallido: ahí sí se agotaron
         await LlevarAsync(OperadorB, id, "AsignadoARuta", "EnTransito", "NoEntregado");
 
         var detalle = await DetalleAsync(OperadorB, id);
@@ -91,7 +87,6 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public async Task Sin_regla_para_la_modalidad_solo_aplica_la_tabla_de_estados()
     {
-        // Ninguno de los dos operadores tiene regla para Urgente
         var id = await CrearEnvioAsync(OperadorA, ModalidadEnvio.Urgente);
         await LlevarAsync(OperadorA, id, "EnDeposito", "AsignadoARuta", "EnTransito", "NoEntregado", "Reprogramado");
         await LlevarAsync(OperadorA, id, "AsignadoARuta", "EnTransito", "NoEntregado");
@@ -125,7 +120,6 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        // También sin el filtro de EF: el RLS de la base las oculta igual
         var reglas = await db.ReglasOperativas.IgnoreQueryFilters().ToListAsync();
 
         Assert.NotEmpty(reglas);
@@ -144,8 +138,6 @@ public class ReglasOperativasTests(BaseConDosOperadores baseDeDatos)
 
         return envio.Id;
     }
-
-    // Pasa el envío por los estados indicados, cada uno en su propio pedido (como desde el Backoffice)
 
     private async Task LlevarAsync(
         int operadorId,

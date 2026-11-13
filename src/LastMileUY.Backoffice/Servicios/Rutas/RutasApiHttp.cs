@@ -4,7 +4,6 @@ using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Llama a la API real por HTTP (/api/rutas)
 public class RutasApiHttp(HttpClient http) : IRutasApi
 {
     public async Task<PaginaDto<RutaResumenDto>> ListarAsync(FiltroRutas filtro, CancellationToken ct = default)
@@ -89,13 +88,11 @@ public class RutasApiHttp(HttpClient http) : IRutasApi
         return "api/rutas?" + string.Join('&', parametros);
     }
 
-    // 400 y 409 traen el motivo para mostrarle al usuario; 403 es falta de permiso
     private static async Task RechazarSiCorrespondeAsync(
         HttpResponseMessage respuesta, string accion, CancellationToken ct)
     {
         switch (respuesta.StatusCode)
         {
-            // Con motivo cuando es una funcionalidad apagada para el operador; sin motivo, es el perfil
             case HttpStatusCode.Forbidden:
                 throw new OperacionRechazadaException(
                     await RespuestasApi.LeerMensajeAsync(respuesta, $"Tu usuario no tiene permiso para {accion}.", ct));

@@ -5,14 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Integraciones.Application;
 
-// Ambiente de pruebas de la API pública: en pruebas no hay depósito, rutas ni repartidores, así que un
-// envío de prueba quedaría siempre "Admitido". Esto lo hace avanzar por el recorrido normal
-// (EnDeposito → AsignadoARuta → EnTransito → Entregado o NoEntregado), para que el comercio vea en su
-// sistema cada cambio de estado, igual que en un envío de verdad.
-// Cada paso pasa por Envio.CambiarEstado: vale la misma tabla de transiciones (req. 11) y queda en el
-// historial con origen "Simulación".
-// Solo con una clave de prueba: el endpoint lo exige y además se controla acá, y el envío tiene que ser
-// del operador de pruebas. Una clave de verdad nunca puede cambiar el estado de un envío.
 public class SimularEnvioService(
     ApplicationDbContext db,
     IContextoOperador contexto,
@@ -20,7 +12,6 @@ public class SimularEnvioService(
 {
     public const string Origen = "Simulación";
 
-    // El recorrido de un envío hasta salir a entregar
     private static readonly EstadoEnvio[] Recorrido =
         [EstadoEnvio.Admitido, EstadoEnvio.EnDeposito, EstadoEnvio.AsignadoARuta, EstadoEnvio.EnTransito];
 
@@ -30,7 +21,6 @@ public class SimularEnvioService(
         nameof(EstadoEnvio.Entregado), nameof(EstadoEnvio.NoEntregado)
     ];
 
-    // false si el envío no existe (o no es del ambiente de pruebas: para quien pregunta, es lo mismo)
     public async Task<bool> SimularAsync(int envioId, string? estado, CancellationToken ct)
     {
         if (!contexto.EnAmbientePruebas)

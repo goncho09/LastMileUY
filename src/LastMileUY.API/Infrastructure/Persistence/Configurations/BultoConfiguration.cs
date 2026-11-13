@@ -12,10 +12,8 @@ public class BultoConfiguration : IEntityTypeConfiguration<Bulto>
 
         builder.HasKey(b => b.Id);
 
-        // Solo en memoria: los cambios que el outbox todavía no publicó
         builder.Ignore(b => b.CambiosSinPublicar);
 
-        // Cada bulto pertenece a un envío.
         builder.HasOne<Envio>()
             .WithMany(e => e.Bultos)
             .HasForeignKey(b => b.EnvioId)
@@ -28,18 +26,15 @@ public class BultoConfiguration : IEntityTypeConfiguration<Bulto>
         builder.Property(b => b.Descripcion)
             .HasMaxLength(500);
 
-        // Estado individual del bulto.
         builder.Property(b => b.Estado)
             .HasConversion<string>()
             .HasMaxLength(30)
             .IsRequired()
             .HasDefaultValue(EstadoBulto.Pendiente);
 
-        // Peso en kilogramos.
         builder.Property(b => b.PesoKg)
             .HasPrecision(10, 2);
 
-        // Dimensiones en centímetros.
         builder.Property(b => b.LargoCm)
             .HasPrecision(10, 2);
 
@@ -49,8 +44,6 @@ public class BultoConfiguration : IEntityTypeConfiguration<Bulto>
         builder.Property(b => b.AltoCm)
             .HasPrecision(10, 2);
 
-        // No se puede repetir el código de un bulto
-        // dentro del mismo envío.
         builder.HasIndex(b => new
         {
             b.EnvioId,

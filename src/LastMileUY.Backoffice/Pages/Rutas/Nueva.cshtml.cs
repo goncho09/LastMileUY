@@ -5,17 +5,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Rutas;
 
-// Armar una hoja de ruta: nombre, fecha, repartidor, vehículo y los envíos en el orden de visita.
-// Las reglas (capacidad, franjas, duplicados) las controla la API; acá se muestra su respuesta.
-// "Ordenar por recorrido" le pide a la API un orden sugerido y lo carga en los números de orden:
-// el despachador lo revisa, lo cambia si quiere y recién ahí arma la ruta.
-// Si el administrador le apagó al operador el orden sugerido (docs/funcionalidades.md), el botón no aparece.
 public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger, IOperadorApi? operadorApi = null) : PageModel
 {
     public OpcionesRutaDto Opciones { get; private set; } = new([], [], []);
 
-    // "Ordenar por recorrido" habilitado para el operador. Si no se puede saber, se muestra: la API
-    // igual lo rechaza con el motivo si está apagado
     public bool OrdenSugeridoHabilitado { get; private set; } = true;
 
     [BindProperty]
@@ -30,20 +23,16 @@ public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger, IOperado
     [BindProperty]
     public int VehiculoId { get; set; }
 
-    // Los envíos tildados
     [BindProperty]
     public List<int> Seleccionados { get; set; } = [];
 
-    // El número de orden que se le puso a cada envío (opcional)
     [BindProperty]
     public Dictionary<int, int?> Orden { get; set; } = [];
 
     public string? Error { get; private set; }
 
-    // El último orden sugerido (null si no se pidió)
     public SugerenciaOrdenDto? Sugerencia { get; private set; }
 
-    // Los envíos como se muestran: después de ordenar, primero los elegidos en el orden sugerido
     public IEnumerable<EnvioDisponibleDto> EnviosEnPantalla => Sugerencia is null
         ? Opciones.Envios
         : Opciones.Envios
@@ -113,7 +102,6 @@ public class NuevaModel(IRutasApi rutasApi, ILogger<NuevaModel> logger, IOperado
         return Page();
     }
 
-    // Pide el orden sugerido para los envíos tildados y lo carga en los números de orden (no arma la ruta)
     public async Task<IActionResult> OnPostOrdenarAsync(CancellationToken ct)
     {
         if (!Permisos.PuedePlanificarRutas(User))

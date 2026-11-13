@@ -22,15 +22,12 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                                  CREATE EXTENSION IF NOT EXISTS pgcrypto;
                                  """);
 
-            // Generar una clave aleatoria distinta para cada
-            // suscripción que ya existe en PostgreSQL.
             migrationBuilder.Sql("""
                                  UPDATE "SuscripcionesAvisos"
                                  SET "ClaveFirma" = encode(gen_random_bytes(32), 'hex')
                                  WHERE "ClaveFirma" IS NULL;
                                  """);
 
-            // Una vez asignadas las claves, el campo es obligatorio.
             migrationBuilder.AlterColumn<string>(
                 name: "ClaveFirma",
                 table: "SuscripcionesAvisos",

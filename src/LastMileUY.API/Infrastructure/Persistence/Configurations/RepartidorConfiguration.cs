@@ -14,19 +14,16 @@ public class RepartidorConfiguration : IEntityTypeConfiguration<Repartidor>
 
         builder.HasKey(r => r.Id);
 
-        // Cada repartidor pertenece a un operador logístico.
         builder.HasOne<Operador>()
             .WithMany(o => o.Repartidores)
             .HasForeignKey(r => r.OperadorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cada repartidor está vinculado a un usuario de Identity.
         builder.HasOne<Usuario>()
             .WithOne()
             .HasForeignKey<Repartidor>(r => r.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Un usuario solo puede tener un registro de repartidor.
         builder.HasIndex(r => r.UsuarioId)
             .IsUnique();
 

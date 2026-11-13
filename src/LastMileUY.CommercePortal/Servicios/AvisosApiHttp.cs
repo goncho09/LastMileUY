@@ -4,9 +4,6 @@ using LastMileUY.Contracts.Comun;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// Suscripciones y claves HMAC, historial de avisos y reenvío de avisos fallidos.
-// La API limita los resultados al comercio autenticado. Un 403 con motivo: los avisos están apagados
-// para el operador (docs/funcionalidades.md); se muestra el motivo como un rechazo más.
 public class AvisosApiHttp(HttpClient http, SesionActual sesion)
     : ClienteApiBase(http, sesion), IAvisosApi
 {

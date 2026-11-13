@@ -5,8 +5,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Funcionalidades;
 
-// Banderas de funcionalidad por operador: el administrador de la plataforma prende o apaga, para cada
-// operador, partes del sistema (orden sugerido, seguimiento público, avisos). Ver docs/funcionalidades.md
 public class IndexModel(IFuncionalidadesApi funcionalidadesApi, ILogger<IndexModel> logger) : PageModel
 {
     public IReadOnlyList<FuncionalidadesOperadorDto> Operadores { get; private set; } = [];

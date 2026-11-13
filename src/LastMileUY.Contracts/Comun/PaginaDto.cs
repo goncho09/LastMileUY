@@ -1,6 +1,5 @@
 namespace LastMileUY.Contracts.Comun;
 
-// Una página de resultados de un listado
 public record PaginaDto<T>(
     IReadOnlyList<T> Items,
     int Total,

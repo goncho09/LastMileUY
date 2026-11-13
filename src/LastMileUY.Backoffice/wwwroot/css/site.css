@@ -33,8 +33,6 @@ a:hover {
     color: #cbc8ff;
 }
 
-/* Estructura principal */
-
 .lm-app {
     display: flex;
     min-height: 100vh;
@@ -73,8 +71,6 @@ a:hover {
     padding: 32px 36px;
     margin: 0 auto;
 }
-
-/* Marca */
 
 .lm-brand {
     display: flex;
@@ -116,8 +112,6 @@ a:hover {
     color: var(--lm-muted);
     font-size: 12px;
 }
-
-/* Navegación */
 
 .lm-navigation {
     display: flex;
@@ -162,8 +156,6 @@ a:hover {
     text-align: center;
     font-size: 19px;
 }
-
-/* Pie de sidebar */
 
 .lm-sidebar-bottom {
     margin-top: auto;
@@ -263,8 +255,6 @@ a:hover {
     background: var(--lm-surface-hover);
 }
 
-/* Encabezado */
-
 .lm-page-heading h1 {
     font-size: 21px;
     font-weight: 650;
@@ -294,8 +284,6 @@ a:hover {
     border-radius: 50%;
     background: #40c995;
 }
-
-/* Componentes existentes */
 
 .card,
 .modal-content,
@@ -393,16 +381,12 @@ a:hover {
     background: var(--color-operador, var(--lm-accent));
 }
 
-/* Pantallas públicas */
-
 .lm-public-content {
     max-width: 1100px;
     min-height: 100vh;
     margin: 0 auto;
     padding: 60px 24px;
 }
-
-/* Responsive */
 
 @media (max-width: 900px) {
     .lm-sidebar {
@@ -460,11 +444,6 @@ a:hover {
     }
 }
 
-
-/* ========================================
-   LASTMILEUY - BOTONES PERSONALIZADOS
-   ======================================== */
-
 .lm-body .btn {
     display: inline-flex;
     align-items: center;
@@ -499,8 +478,6 @@ a:hover {
     outline-offset: 3px;
 }
 
-/* Botón principal: Filtrar, Guardar, Confirmar */
-
 .lm-body .btn-primary {
     background: #6258f5;
     border: 1px solid #756cff;
@@ -514,8 +491,6 @@ a:hover {
     color: #fff;
     box-shadow: 0 4px 16px rgba(98, 88, 245, 0.24);
 }
-
-/* Botones secundarios: Limpiar, Cancelar */
 
 .lm-body .btn-outline-secondary,
 .lm-body .btn-secondary {
@@ -531,8 +506,6 @@ a:hover {
     color: #fff;
 }
 
-/* Botones de acción: Ver, Detalles */
-
 .lm-body .btn-outline-primary {
     background: rgba(116, 107, 255, 0.08);
     border: 1px solid rgba(116, 107, 255, 0.35);
@@ -545,15 +518,11 @@ a:hover {
     color: #fff;
 }
 
-/* Botones pequeños en tablas */
-
 .lm-body .btn-sm {
     padding: 6px 12px;
     border-radius: 7px;
     font-size: 12px;
 }
-
-/* Botones de peligro */
 
 .lm-body .btn-danger,
 .lm-body .btn-outline-danger {
@@ -568,8 +537,6 @@ a:hover {
     border-color: #ef4444;
     color: #fff;
 }
-
-/* Cerrar sesión: estilo integrado en sidebar */
 
 .lm-logout {
     display: flex;
@@ -603,8 +570,6 @@ a:hover {
     border-color: rgba(239, 68, 68, 0.18);
     color: #ff8585;
 }
-
-/* Estados deshabilitados */
 
 .lm-body .btn:disabled,
 .lm-body .btn.disabled {

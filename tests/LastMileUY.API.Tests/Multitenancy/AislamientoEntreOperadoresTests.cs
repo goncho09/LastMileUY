@@ -9,13 +9,9 @@ namespace LastMileUY.API.Tests.Multitenancy;
 
 using static BaseConDosOperadores;
 
-// Pruebas del ADR-01: un operador nunca ve ni toca datos de otro.
-// Corren contra un PostgreSQL real (Docker), con el mismo usuario y las mismas políticas que la aplicación.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
 {
-    // --- Primera barrera: el filtro de EF ---
-
     [Fact]
     public async Task Un_operador_solo_ve_sus_envios()
     {
@@ -46,14 +42,11 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         Assert.Empty(await db.Envios.ToListAsync());
     }
 
-    // --- Segunda barrera: RLS en la base ---
-
     [Fact]
     public async Task La_base_filtra_aunque_el_codigo_saltee_el_filtro_de_EF()
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        // IgnoreQueryFilters simula el "olvido" de un programador
         var envios = await db.Envios.IgnoreQueryFilters().ToListAsync();
 
         Assert.NotEmpty(envios);
@@ -90,7 +83,6 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         var error = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
             $"INSERT INTO \"Zonas\"(\"OperadorId\", \"Nombre\", \"Activa\") VALUES ({OperadorB}, 'Intrusa', true)"));
 
-        // 42501 = violación de una política de seguridad
         Assert.Equal("42501", error.SqlState);
     }
 
@@ -104,8 +96,6 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         Assert.Contains(bultos, b => b.EnvioId == EnvioDeA);
         Assert.DoesNotContain(bultos, b => b.EnvioId == EnvioDeB);
     }
-
-    // --- Al guardar con EF ---
 
     [Fact]
     public async Task Lo_nuevo_queda_a_nombre_del_operador_actual()
@@ -152,37 +142,17 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
         await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
     }
 
-    // --- Que nadie se olvide de RLS ---
-
-    // Tablas sin RLS a propósito. Si alguien agrega una tabla nueva sin política, la prueba falla
-    // y obliga a decidir: o se le pone RLS, o se agrega acá con su motivo.
     private static readonly string[] TablasSinRls =
     [
-        // Identity: el login necesita leer el usuario antes de saber de qué operador es
         "AspNetUsers", "AspNetRoles", "AspNetUserRoles", "AspNetUserClaims",
         "AspNetRoleClaims", "AspNetUserLogins", "AspNetUserTokens",
-        // Historial de migraciones de EF
         "__EFMigrationsHistory",
-        // Operadores: el comercio necesita verlos para elegir con cuál trabajar
         "Operadores",
-        // OperadoresComercios: la usan las propias políticas para saber quién trabaja con quién
         "OperadoresComercios",
-        // FuncionalidadesOperador: banderas de la plataforma, no del operador. Las lee el seguimiento
-        // público y las cambia el administrador, que no tienen operador; la API las cambia solo con el
-        // perfil Administrador y siempre filtra por el operador que pide (FuncionalidadesService)
         "FuncionalidadesOperador",
-        // Comercios: al darlo de alta todavía no tiene operador; se protege con el filtro de EF
         "Comercios",
-        // MensajesOutbox: eventos de todos los operadores para publicar en RabbitMQ. En vez de RLS, la
-        // aplicación solo puede insertar (no leer) y el publicador tiene su propio usuario (OutboxTests)
         "MensajesOutbox",
-        // MensajesFallidos: incidencias técnicas globales del Worker.
-        // No pertenecen a un operador específico.
-        // El acceso se restringe mediante permisos de PostgreSQL
-        // y autorización de administrador en la API.
         "MensajesFallidos",
-        // MensajesReintentoOutbox: solicitudes técnicas de reprocesamiento.
-        // Su acceso debe estar restringido mediante permisos de PostgreSQL.
         "MensajesReintentoOutbox",
     ];
 
@@ -218,7 +188,6 @@ public class AislamientoEntreOperadoresTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
 
-        // Identity (el login busca usuarios sin operador), Operador y OperadorComercio (ver TablasSinRls)
         var sinFiltro = db.Model.GetEntityTypes()
             .Where(t => !t.GetDeclaredQueryFilters().Any())
             .Select(t => t.ClrType)

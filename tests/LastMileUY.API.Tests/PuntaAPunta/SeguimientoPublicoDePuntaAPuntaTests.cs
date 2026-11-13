@@ -7,8 +7,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Seguimiento público por HTTP: un envío creado y movido por el operador se consulta sin sesión
-// con su código, y la respuesta no trae datos personales ni notas internas.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class SeguimientoPublicoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -53,7 +51,6 @@ public class SeguimientoPublicoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.NotFound, respuesta.StatusCode);
     }
 
-    // Envío del operador 1 que pasa a depósito con una nota interna
     private async Task<EnvioResponse> CrearYMoverEnvioAsync()
     {
         var cliente = await api.IniciarSesionAsync(Operador1);

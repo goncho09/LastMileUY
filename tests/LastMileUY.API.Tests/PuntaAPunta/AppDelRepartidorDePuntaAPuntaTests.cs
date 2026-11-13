@@ -14,9 +14,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Lo que usa la app del repartidor, por HTTP y con los usuarios reales: la hoja de ruta (con la
-// evidencia que pide cada parada), su caché y su invalidación, y qué rutas puede abrir.
-// Las pruebas corren sin Redis: la API usa el caché en memoria, con la misma interfaz.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -26,12 +23,10 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
     public async Task La_hoja_cacheada_se_actualiza_apenas_el_repartidor_registra_una_entrega()
     {
         var (operador, despachador, repartidor) = await SesionesAsync();
-        // Dos envíos: con uno solo, al entregarlo la ruta se finaliza y ya no se descarga
         var (rutaId, envioIds) = await RutasDePuntaAPunta.RutaConEnviosAsync(
             api, operador, despachador, diasAdelante: 3, cantidadEnvios: 2);
         await RutasDePuntaAPunta.DespacharAsync(despachador, rutaId);
 
-        // Primera descarga: queda en el caché (dura un minuto)
         var antes = (await repartidor.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}/hoja"))!;
         Assert.Equal("Despachada", antes.Estado);
         Assert.All(antes.Paradas, p => Assert.Equal("EnTransito", p.EstadoEnvio));
@@ -39,7 +34,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var resultado = await SincronizacionDePuntaAPuntaTests.SincronizarAsync(repartidor, Entrega(rutaId, envioIds[0]));
         Assert.Equal("Aplicada", resultado.Resultado);
 
-        // Sin la invalidación seguiría saliendo la hoja vieja del caché hasta que venza
         var despues = (await repartidor.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}/hoja"))!;
         Assert.Equal("EnCurso", despues.Estado);
         Assert.Equal("Entregado", despues.Paradas.Single(p => p.EnvioId == envioIds[0]).EstadoEnvio);
@@ -58,7 +52,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.OK, propia.StatusCode);
         }
 
-        // Ya está en el caché, pero los controles se hacen antes contra la base
         using var ajena = await otro.GetAsync($"api/rutas/{rutaId}/hoja");
         Assert.Equal(HttpStatusCode.NotFound, ajena.StatusCode);
     }
@@ -72,7 +65,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var hoja = (await repartidor.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}/hoja"))!;
         var parada = Assert.Single(hoja.Paradas);
 
-        // La misma regla que aplica la API al sincronizar (la del operador 1 pide firma)
         var reglas = (await operador.GetFromJsonAsync<OperadorActualDto>("api/operador"))!.Reglas;
         var regla = Assert.Single(reglas, r => r.Modalidad == parada.Modalidad);
 
@@ -81,7 +73,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
             new EvidenciaRequeridaDto(regla.RequiereFirma, regla.RequiereFotografia, regla.RequiereDocumentoReceptor),
             parada.Evidencia);
 
-        // Lo que pide la hoja es lo que controla la sincronización: sin firma, se rechaza
         var sinFirma = Entrega(rutaId, parada.EnvioId);
         sinFirma.FirmaBase64 = null;
         var rechazada = await SincronizacionDePuntaAPuntaTests.SincronizarAsync(repartidor, sinFirma);
@@ -96,7 +87,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var otro = await api.IniciarSesionAsync(Repartidor2);
         var (rutaId, envioId) = await RutasDePuntaAPunta.RutaPlanificadaAsync(api, operador, despachador, diasAdelante: 6);
 
-        // Planificada: el despachador todavía la está armando
         using (var planificada = await repartidor.GetAsync($"api/rutas/mias/{rutaId}"))
         {
             Assert.Equal(HttpStatusCode.NotFound, planificada.StatusCode);
@@ -117,7 +107,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.NotFound, ajena.StatusCode);
         }
 
-        // Terminada la última parada, la sigue viendo (la app muestra "Ruta finalizada")
         await SincronizacionDePuntaAPuntaTests.SincronizarAsync(repartidor, Entrega(rutaId, envioId));
 
         var finalizada = (await repartidor.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/mias/{rutaId}"))!;
@@ -133,11 +122,9 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var original = (await operador1.GetFromJsonAsync<OperadorActualDto>("api/operador"))!;
         var delOtro = (await operador2.GetFromJsonAsync<OperadorActualDto>("api/operador"))!;
 
-        // Cada operador tiene su clave en el caché
         Assert.Equal(api.IdOperador1, original.Id);
         Assert.Equal(api.IdOperador2, delOtro.Id);
 
-        // Un cambio guardado con EF (como lo haría la pantalla de configuración) invalida el caché
         await CambiarColorAsync(api.IdOperador1, "#123456");
 
         try
@@ -174,8 +161,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
             "api/sincronizacion/mias?tamanioPagina=100"))!;
         Assert.DoesNotContain(delOtro.Items, o => o.IdOperacion == entrega.IdOperacion);
 
-        // Del mismo operador pero de otro usuario: el aislamiento no la filtra, la tiene que filtrar /mias.
-        // La seeder tiene un solo repartidor por operador, así que se carga a mano a nombre del despachador.
         var ajena = Guid.NewGuid();
         var idDespachador = (await despachador.GetFromJsonAsync<UsuarioAutenticadoResponse>("api/auth/me"))!.Id;
         await api.EjecutarAsync($"""
@@ -192,7 +177,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
             $"api/sincronizacion/operaciones?rutaId={rutaId}"))!;
         Assert.Contains(enBackoffice.Items, o => o.IdOperacion == ajena);
 
-        // El despachador usa el historial completo del Backoffice, no este
         using var noEsRepartidor = await despachador.GetAsync("api/sincronizacion/mias");
         Assert.Equal(HttpStatusCode.Forbidden, noEsRepartidor.StatusCode);
     }
@@ -203,7 +187,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var (operador, despachador, repartidor) = await SesionesAsync();
         var (rutaId, _) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 8);
 
-        // El Backoffice sí lo ve (el destinatario de prueba tiene email)
         var enBackoffice = (await despachador.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}"))!;
         Assert.NotNull(Assert.Single(enBackoffice.Paradas).Destinatario.Email);
 
@@ -213,7 +196,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         foreach (var parada in hoja.Paradas.Concat(enLaApp.Paradas))
         {
             Assert.Null(parada.Destinatario.Email);
-            // Lo que necesita para entregar sigue estando
             Assert.False(string.IsNullOrEmpty(parada.Destinatario.Telefono));
         }
     }
@@ -233,7 +215,6 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
             await api.IniciarSesionAsync(Despachador1),
             await api.IniciarSesionAsync(Repartidor1));
 
-    // Una entrega con firma (la regla del operador 1 la pide)
     private static OperacionRequest Entrega(int rutaId, int envioId) => new()
     {
         IdOperacion = Guid.NewGuid(),

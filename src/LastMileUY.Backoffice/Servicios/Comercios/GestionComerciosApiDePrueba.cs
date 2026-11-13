@@ -3,9 +3,6 @@ using LastMileUY.Contracts.Comercios;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Administración global de comercios con los datos de prueba (Api:UsarDatosDePrueba = true).
-// Singleton con candado, como GestionOperadoresApiDePrueba, y con los operadores de esa misma versión
-// de prueba: el nombre de cada vínculo es el del operador, y no se puede vincular uno que no existe.
 public sealed class GestionComerciosApiDePrueba(GestionOperadoresApiDePrueba operadores) : IGestionComerciosApi
 {
     private readonly Lock candado = new();

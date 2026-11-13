@@ -9,7 +9,6 @@
 @inject SeleccionOperadorCookie SeleccionCookie
 @layout AuthLayout
 
-@* Renderizado estático: necesario para escribir la cookie de autenticación. *@
 <PageTitle>Iniciar sesión | LastMileUY</PageTitle>
 
 <section class="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-[#0D0F16] px-4 py-12 text-[#F1F3F9]">
@@ -73,7 +72,6 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
-    // ?vencida=true: la API cortó la sesión; se borra la del portal para que vuelva a entrar
     [SupplyParameterFromQuery]
     private bool Vencida { get; set; }
 
@@ -82,7 +80,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // En el GET no llega formulario: se arranca uno vacío
         Formulario ??= new();
 
         if (Vencida && HttpMethods.IsGet(HttpContext.Request.Method))
@@ -144,7 +141,6 @@
         Navegacion.NavigateTo(DestinoSeguro(), forceLoad: true);
     }
 
-    // Solo vuelve a direcciones del propio portal (evita redirigir a otro sitio)
     private string DestinoSeguro() =>
         !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
             && !ReturnUrl.StartsWith("/\\")

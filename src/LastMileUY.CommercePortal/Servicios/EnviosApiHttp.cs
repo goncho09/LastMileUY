@@ -4,9 +4,6 @@ using LastMileUY.Contracts.Envios;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// POST api/envios (alta), GET api/envios (listado) y GET api/envios/{id} (detalle).
-// Alta: respuestas posibles: 201 creado, 400 datos inválidos,
-// 409 referencia externa repetida, 401 sesión vencida (lanza SesionVencidaException).
 public class EnviosApiHttp(HttpClient http, SesionActual sesion)
     : ClienteApiBase(http, sesion), IEnviosApi
 {
@@ -57,7 +54,6 @@ public class EnviosApiHttp(HttpClient http, SesionActual sesion)
         using var pedido = new HttpRequestMessage(HttpMethod.Get, $"api/envios/{id}");
         using var respuesta = await EnviarAsync(pedido, ct);
 
-        // La API contesta 404 también si el envío es de otro comercio: para el portal es lo mismo
         if (respuesta.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden)
             return null;
 

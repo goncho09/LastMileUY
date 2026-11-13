@@ -14,15 +14,11 @@ public class CrearEnvioService(
     ApplicationDbContext db,
     IContextoOperador contextoOperador)
 {
-    // El canal sale de cómo se autenticó quien crea el envío, nunca de lo que diga el pedido:
-    // con una clave de la API pública es el sistema del comercio (Api); un usuario de comercio con
-    // sesión solo puede estar usando el portal.
     public static CanalIngreso CanalDe(ClaimsPrincipal usuario) =>
         usuario.HasClaim(c => c.Type == AutenticacionClaveApi.ClaimClaveApiId) ? CanalIngreso.Api
         : usuario.IsInRole("Comercio") ? CanalIngreso.Portal
         : CanalIngreso.Api;
 
-    // canal: por dónde entró el envío (ver CanalDe)
     public async Task<EnvioResponse> EjecutarAsync(
         CrearEnvioRequest request,
         ClaimsPrincipal usuario,
@@ -59,7 +55,6 @@ public class CrearEnvioService(
 
         ValidarBultos(request.Bultos);
 
-        // En blanco es "sin referencia": si no, dos envíos sin referencia chocarían en el índice único
         var referencia = string.IsNullOrWhiteSpace(request.ReferenciaExterna) ? null : request.ReferenciaExterna.Trim();
 
         if (referencia?.Length > 100)
@@ -122,7 +117,6 @@ public class CrearEnvioService(
             direccion.Longitud
         ));
 
-        // Cada bulto lleva el código del envío y su número: ABC123DEF456-1, -2...
         var numero = 1;
         foreach (var bulto in request.Bultos ?? [])
         {
@@ -137,7 +131,6 @@ public class CrearEnvioService(
             });
         }
 
-        // Primer evento del historial
         envio.RegistrarAdmision(canal == CanalIngreso.Portal ? "Portal" : "API", responsableId);
 
         db.Envios.Add(envio);
@@ -148,7 +141,6 @@ public class CrearEnvioService(
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            // Índice único operador + comercio + referencia: el pedido ya se había cargado
             throw new EnvioDuplicadoException(
                 $"Ya existe un envío con la referencia '{referencia}' para ese comercio.");
         }
@@ -164,10 +156,8 @@ public class CrearEnvioService(
         };
     }
 
-    // Mismos límites que los atributos de CrearBultoRequest (las minimal APIs no los validan solas)
     private static void ValidarBultos(List<CrearBultoRequest>? bultos)
     {
-        // Sin bultos no hay nada que entregar: el envío no se podría asignar a ninguna ruta
         if (bultos is null || bultos.Count == 0)
         {
             throw new ArgumentException("El envío tiene que tener al menos un bulto.");
@@ -197,5 +187,4 @@ public class CrearEnvioService(
     }
 }
 
-// El envío ya existía (misma referencia del comercio con el mismo operador)
 public class EnvioDuplicadoException(string mensaje) : Exception(mensaje);

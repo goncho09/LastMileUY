@@ -14,23 +14,19 @@ public class DetalleLiquidacionConfiguration
 
         builder.HasKey(d => d.Id);
 
-        // Cada detalle pertenece a una liquidación.
         builder.HasOne<Liquidacion>()
             .WithMany(l => l.Detalles)
             .HasForeignKey(d => d.LiquidacionId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cada detalle corresponde a un envío.
         builder.HasOne<Envio>()
             .WithMany(e => e.DetallesLiquidacion)
             .HasForeignKey(d => d.EnvioId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Importe cobrado por el envío.
         builder.Property(d => d.Importe)
             .HasPrecision(12, 2);
 
-        // Un envío no puede repetirse dentro de una misma liquidación.
         builder.HasIndex(d => new
         {
             d.LiquidacionId,

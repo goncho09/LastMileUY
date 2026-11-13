@@ -4,33 +4,24 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 {
-    // Segunda barrera del multitenancy (ADR-01): Row-Level Security en PostgreSQL.
-    // Aunque una consulta se olvide de filtrar, la base solo devuelve y acepta
-    // filas del operador cargado en la variable de conexión app.operador_id.
+    // ADR-01: segunda barrera del multitenancy. La base filtra por app.operador_id aunque una consulta no lo haga.
     public partial class AislamientoPorOperadorRls : Migration
     {
-        // Rol con el que se conecta la aplicación. No es dueño de las tablas ni superusuario,
-        // así que las políticas RLS se le aplican siempre.
         public const string RolAplicacion = "lastmileuy_app";
 
-        // Tablas con columna OperadorId (entidades que implementan IPerteneceAOperador)
         public static readonly string[] TablasDeOperador =
         [
             "Envios", "Rutas", "Repartidores", "Vehiculos", "Zonas", "ReglasOperativas",
             "CuadrosTarifarios", "Liquidaciones", "MotivosNoEntrega", "SuscripcionesAvisos"
         ];
 
-        // Tablas hijas del envío: se ven solo si se ve su envío
         public static readonly string[] TablasHijasDeEnvio = ["Bultos", "EventosEnvio"];
 
-        // Vacío o sin cargar = ningún operador
         private const string OperadorActual = "NULLIF(current_setting('app.operador_id', true), '')::int";
 
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // La contraseña de desarrollo es la misma que la de compose.yaml.
-            // En la nube se cambia con ALTER ROLE desde la configuración del servidor, no desde acá.
             migrationBuilder.Sql($"""
                 DO $$
                 BEGIN
@@ -52,8 +43,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
             foreach (var tabla in TablasDeOperador)
             {
-                // USING filtra lo que se lee, modifica o borra; WITH CHECK frena
-                // insertar o dejar una fila a nombre de otro operador.
                 migrationBuilder.Sql($"""
                     ALTER TABLE "{tabla}" ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE "{tabla}" FORCE ROW LEVEL SECURITY;
@@ -65,7 +54,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
             foreach (var tabla in TablasHijasDeEnvio)
             {
-                // La subconsulta sobre "Envios" ya pasa por la política de Envios
                 migrationBuilder.Sql($"""
                     ALTER TABLE "{tabla}" ENABLE ROW LEVEL SECURITY;
                     ALTER TABLE "{tabla}" FORCE ROW LEVEL SECURITY;
@@ -88,7 +76,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     """);
             }
 
-            // El rol se deja: puede tener permisos en otras bases del mismo servidor
             migrationBuilder.Sql($"""
                 ALTER DEFAULT PRIVILEGES IN SCHEMA public
                     REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM {RolAplicacion};

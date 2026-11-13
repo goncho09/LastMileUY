@@ -11,8 +11,6 @@ public static class OperadorEndpoints
     public static IEndpointRouteBuilder MapOperadorEndpoints(
         this IEndpointRouteBuilder app)
     {
-        // El operador del usuario logueado: nombre, color, logo y reglas operativas.
-        // No recibe Id: cada usuario solo puede ver el suyo.
         app.MapGet("/api/operador", async (
                 OperadorActualService servicio,
                 IContextoOperador contexto,
@@ -22,7 +20,6 @@ public static class OperadorEndpoints
                 if (contexto.OperadorId is not int operadorId)
                     return Results.Unauthorized();
 
-                // Caché por operador (casi nunca cambia): ver CasosDeCache
                 var operador = await cache.ObtenerOCrearAsync(
                     CasosDeCache.ConfiguracionOperador,
                     CasosDeCache.ClaveOperador(operadorId),
@@ -35,8 +32,6 @@ public static class OperadorEndpoints
             .WithName("ObtenerOperadorActual")
             .RequireAuthorization();
 
-        // El depósito de donde salen las rutas (punto de partida del orden sugerido de las paradas).
-        // Configuración del operador: solo el perfil Operador
         app.MapPut("/api/operador/deposito", async (
                 GuardarDepositoRequest request,
                 DepositoOperadorService servicio,
@@ -57,8 +52,6 @@ public static class OperadorEndpoints
             .WithName("GuardarDepositoOperador")
             .RequireAuthorization(politica => politica.RequireRole("Operador"));
 
-        // Reglas de entrega parcial: el historial de versiones y publicar una nueva.
-        // Es configuración del operador: solo el perfil Operador (como "Mi operador" en el Backoffice).
         var reglas = app.MapGroup("/api/operador/reglas-entrega-parcial")
             .WithTags("Operador")
             .RequireAuthorization(politica => politica.RequireRole("Operador"));
@@ -94,8 +87,6 @@ public static class OperadorEndpoints
             })
             .WithName("PublicarReglaEntregaParcial");
 
-        // Banderas de funcionalidad por operador (docs/funcionalidades.md). Son de la plataforma:
-        // solo el Administrador las ve todas y las cambia. Cada operador ve las suyas en GET /api/operador.
         var funcionalidades = app.MapGroup("/api/admin")
             .WithTags("Funcionalidades")
             .RequireAuthorization(politica => politica.RequireRole("Administrador"));
@@ -106,7 +97,6 @@ public static class OperadorEndpoints
                 Results.Ok(await servicio.ListarAsync(cancellationToken)))
             .WithName("ListarFuncionalidades");
 
-        // 204 cambiada, 404 operador que no existe, 400 funcionalidad que no existe
         funcionalidades.MapPut("/operadores/{operadorId:int}/funcionalidades/{clave}", async (
                 int operadorId,
                 string clave,

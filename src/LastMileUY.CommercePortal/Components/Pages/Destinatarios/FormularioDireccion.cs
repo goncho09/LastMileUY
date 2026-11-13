@@ -3,8 +3,6 @@ using LastMileUY.Contracts.Destinatarios;
 
 namespace LastMileUY.CommercePortal.Components.Pages.Destinatarios;
 
-// Lo que se escribe en el formulario de una dirección. La ubicación va en un solo campo,
-// "-34.9011, -56.1645", que es como la copia Google Maps (clic derecho sobre el punto)
 public class FormularioDireccion
 {
     public string Calle { get; set; } = string.Empty;
@@ -16,7 +14,6 @@ public class FormularioDireccion
     public string? Referencia { get; set; }
     public string? Ubicacion { get; set; }
 
-    // Los mismos controles que la API, para avisar antes de mandar; la API los vuelve a hacer
     public void Validar(List<string> errores)
     {
         if (string.IsNullOrWhiteSpace(Calle))
@@ -53,7 +50,6 @@ public class FormularioDireccion
         };
     }
 
-    // "lat, lon" con punto decimal; también acepta "lat lon" o "lat;lon". Fuera del mapa: null
     public static (decimal Latitud, decimal Longitud)? LeerUbicacion(string texto)
     {
         var partes = texto.Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

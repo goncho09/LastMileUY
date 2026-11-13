@@ -1,7 +1,5 @@
 @model (IReadOnlyList<LastMileUY.Contracts.Sincronizacion.OperacionSincronizadaDto> Operaciones, bool MostrarRuta)
 
-@* Lo que llegó desde la app del repartidor: lo usan la página Sincronización y el detalle de la ruta *@
-
 <div class="w-full overflow-x-auto">
     <table class="w-full min-w-[1000px] border-collapse text-left text-sm">
         <thead class="bg-[#11131b] text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -27,7 +25,6 @@
                     <td class="whitespace-nowrap px-4 py-4 text-xs text-slate-400">@Formato.Fecha(operacion.FechaRecepcion)</td>
                     <td class="whitespace-nowrap px-4 py-4 text-slate-200">
                         @ResultadosSincronizacion.TipoOperacion(operacion.Tipo)
-                        @* Con qué versión de las reglas de entrega parcial se evaluó (la de la hoja de ruta) *@
                         @if (operacion.VersionReglasEntregaParcial is { } version)
                         {
                             <p class="mt-1 text-xs text-slate-500" title="Versión de las reglas de entrega parcial con la que salió la hoja de ruta">

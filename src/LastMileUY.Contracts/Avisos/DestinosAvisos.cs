@@ -3,40 +3,26 @@ using System.Net.Sockets;
 
 namespace LastMileUY.Contracts.Avisos;
 
-// Encabezados HTTP con los que el worker manda cada aviso al comercio (ver docs/mensajeria.md)
 public static class EncabezadosAvisos
 {
-    // Identificador único del aviso: el comercio lo usa para descartar repetidos
     public const string AvisoId = "X-Aviso-Id";
 
-    // Tipo de evento (envio.admitido, envio.estado_cambiado, bulto.estado_cambiado)
     public const string Tipo = "X-Aviso-Tipo";
 
-    // Número de intento (1 la primera vez)
     public const string Intento = "X-Aviso-Intento";
 
-    // Versión del contrato del aviso (VersionesAvisos): 1 o 2
     public const string Version = "X-Aviso-Version";
 }
 
-// Qué URLs puede tener una suscripción a avisos. Las carga el comercio y las llama el worker desde
-// adentro de nuestra red: sin estas reglas, alguien podría apuntarlas a servicios internos (SSRF).
-// - Solo https, sin usuario ni contraseña en la URL.
-// - Solo direcciones públicas: ni localhost, ni redes privadas, ni la de metadatos de la nube.
-// El worker vuelve a revisar la dirección al conectarse (un nombre puede resolver a una IP interna).
-// permitirLocales: solo para desarrollo y pruebas, con el receptor de prueba en Docker o en la máquina.
 public static class DestinosAvisos
 {
-    // Lo que entra en la columna UrlDestino de SuscripcionesAvisos
     public const int LargoMaximo = 2000;
 
-    // null si se puede usar; si no, el motivo
     public static string? Validar(string? url, bool permitirLocales)
     {
         if (url?.Length > LargoMaximo)
             return $"La URL no puede superar los {LargoMaximo} caracteres.";
 
-        // IsFile: en Linux, "/avisos" se lee como una ruta de archivo (file:///avisos)
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.IsFile)
             return "La URL no es válida.";
 
@@ -67,16 +53,16 @@ public static class DestinosAvisos
         {
             var b = ip.GetAddressBytes();
 
-            return !(b[0] == 0                                  // "esta red"
-                || b[0] == 10                                   // privada
-                || b[0] == 100 && (b[1] & 0xC0) == 64           // 100.64.0.0/10, NAT del proveedor
-                || b[0] == 127                                  // loopback
-                || b[0] == 169 && b[1] == 254                   // enlace local y metadatos de la nube
-                || b[0] == 172 && (b[1] & 0xF0) == 16           // privada
-                || b[0] == 192 && b[1] == 0 && b[2] == 0        // reservada
-                || b[0] == 192 && b[1] == 168                   // privada
-                || b[0] == 198 && (b[1] & 0xFE) == 18           // pruebas de red
-                || b[0] >= 224);                                // multicast y reservadas
+            return !(b[0] == 0
+                || b[0] == 10
+                || b[0] == 100 && (b[1] & 0xC0) == 64
+                || b[0] == 127
+                || b[0] == 169 && b[1] == 254
+                || b[0] == 172 && (b[1] & 0xF0) == 16
+                || b[0] == 192 && b[1] == 0 && b[2] == 0
+                || b[0] == 192 && b[1] == 168
+                || b[0] == 198 && (b[1] & 0xFE) == 18
+                || b[0] >= 224);
         }
 
         return !(IPAddress.IsLoopback(ip)

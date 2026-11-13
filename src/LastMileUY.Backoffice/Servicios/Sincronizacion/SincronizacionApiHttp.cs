@@ -4,7 +4,6 @@ using LastMileUY.Contracts.Sincronizacion;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Llama a la API real por HTTP (/api/sincronizacion)
 public class SincronizacionApiHttp(HttpClient http) : ISincronizacionApi
 {
     public async Task<PaginaDto<OperacionSincronizadaDto>> ListarAsync(

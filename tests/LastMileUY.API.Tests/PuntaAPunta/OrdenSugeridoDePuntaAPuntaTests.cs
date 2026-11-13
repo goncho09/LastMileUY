@@ -8,13 +8,9 @@ using LastMileUY.Contracts.Operadores;
 using LastMileUY.Contracts.Rutas;
 using static ApiDePuntaAPunta;
 
-// El orden sugerido de las paradas por HTTP, con los usuarios reales: arranca del depósito del
-// operador, deja al final lo que no tiene ubicación, no guarda nada, y respeta el aislamiento y los
-// perfiles. También el depósito: quién lo carga y que se vea enseguida (el caché se invalida).
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
-    // Sobre una misma latitud de Montevideo: cada paso de 0,01° de longitud son unos 0,9 km
     private static (decimal Latitud, decimal Longitud) En(int paso) => (-34.9m, -56.2m + paso * 0.01m);
 
     [Fact]
@@ -40,14 +36,12 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.True(sugerencia.DesdeDeposito);
         Assert.True(sugerencia.KmSugerido < sugerencia.KmActual);
 
-        // Es solo una sugerencia: los envíos siguen en el depósito, sin ruta
         foreach (var id in new[] { lejos.Id, cerca.Id, medio.Id, sinUbicacion.Id })
         {
             var envio = (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{id}"))!;
             Assert.Equal("EnDeposito", envio.Estado);
         }
 
-        // Y la pantalla para armar rutas avisa cuál no tiene ubicación
         var opciones = (await despachador.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
         Assert.True(opciones.Envios.Single(e => e.Id == cerca.Id).TieneUbicacion);
         Assert.False(opciones.Envios.Single(e => e.Id == sinUbicacion.Id).TieneUbicacion);
@@ -58,7 +52,6 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     {
         var operador = await api.IniciarSesionAsync(Operador1);
 
-        // Las direcciones de prueba tienen ubicación (IdentitySeeder)
         var envio = await EnvioEnDepositoAsync(operador, ubicacion: default, cambiarUbicacion: false);
 
         var opciones = (await operador.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
@@ -97,7 +90,6 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var operador = await api.IniciarSesionAsync(Operador1);
         var despachador = await api.IniciarSesionAsync(Despachador1);
 
-        // Primero se lee, así queda en el caché
         _ = await operador.GetFromJsonAsync<OperadorActualDto>("api/operador");
 
         await GuardarDepositoAsync(operador, (-34.871234m, -56.165432m));
@@ -105,7 +97,6 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var actual = (await operador.GetFromJsonAsync<OperadorActualDto>("api/operador"))!;
         Assert.Equal(new Coordenadas(-34.871234m, -56.165432m), actual.Deposito);
 
-        // Solo una de las dos, o fuera de rango: no se acepta
         using (var incompleto = await operador.PutAsJsonAsync("api/operador/deposito",
                    new GuardarDepositoRequest { Latitud = -34.9m }))
         {
@@ -118,14 +109,12 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.BadRequest, fueraDeRango.StatusCode);
         }
 
-        // Es configuración del operador: el despachador no la cambia
         using (var delDespachador = await despachador.PutAsJsonAsync("api/operador/deposito",
                    new GuardarDepositoRequest { Latitud = -34.9m, Longitud = -56.1m }))
         {
             Assert.Equal(HttpStatusCode.Forbidden, delDespachador.StatusCode);
         }
 
-        // Las dos en null lo borra
         using (var borrar = await operador.PutAsJsonAsync("api/operador/deposito", new GuardarDepositoRequest()))
         {
             Assert.Equal(HttpStatusCode.NoContent, borrar.StatusCode);
@@ -134,7 +123,6 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Null((await operador.GetFromJsonAsync<OperadorActualDto>("api/operador"))!.Deposito);
     }
 
-    // Aunque alguien escriba directo en la base: la ubicación va completa y dentro del mapa
     [Theory]
     [InlineData("""UPDATE "Envios" SET "DireccionEntrega_Latitud" = -34.9, "DireccionEntrega_Longitud" = NULL""")]
     [InlineData("""UPDATE "Direcciones" SET "Latitud" = 120, "Longitud" = -56""")]
@@ -143,7 +131,7 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     {
         var error = await Assert.ThrowsAsync<Npgsql.PostgresException>(() => api.EjecutarAsync(sql));
 
-        Assert.Equal("23514", error.SqlState); // check_violation
+        Assert.Equal("23514", error.SqlState);
     }
 
     private static async Task GuardarDepositoAsync(HttpClient operador, (decimal Latitud, decimal Longitud) deposito)
@@ -154,8 +142,6 @@ public class OrdenSugeridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.NoContent, respuesta.StatusCode);
     }
 
-    // Un envío nuevo pasado al depósito. La ubicación se le pone después con SQL (null: sin ubicación),
-    // para que cada prueba tenga sus puntos; cambiarUbicacion: false deja la que copió de la dirección
     private async Task<EnvioResponse> EnvioEnDepositoAsync(
         HttpClient operador,
         (decimal Latitud, decimal Longitud)? ubicacion,

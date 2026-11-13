@@ -1,10 +1,5 @@
 namespace LastMileUY.Contracts.Avisos;
 
-// Un aviso mandado (o por mandar) al sistema del comercio (GET /api/avisos).
-// Estado: el del aviso, no el del paquete. Pendiente (se está intentando), Entregado (le llegó al
-// sistema del comercio) o Fallido (se agotaron los intentos).
-// EstadoEnvio / EstadoEnvioAnterior: lo que el aviso le cuenta (el envío pasó de uno a otro);
-// el anterior es null cuando el envío se acaba de crear.
 public record AvisoResumenDto(
     int Id,
     string TipoEvento,
@@ -18,13 +13,10 @@ public record AvisoResumenDto(
     DateTime? FechaUltimoIntento,
     DateTime? FechaProximoIntento,
     string? UltimoError,
-    // Solo en avisos de bulto (bulto.estado_cambiado): EstadoEnvio y EstadoEnvioAnterior son los del bulto
     string? CodigoBulto = null,
     string? MotivoNoEntrega = null,
-    // Versión del contrato con la que se mandó (VersionesAvisos)
     int Version = VersionesAvisos.PorDefecto);
 
-// Un intento de entrega del aviso (historial)
 public record IntentoAvisoDto(
     int NumeroIntento,
     DateTime Fecha,
@@ -33,5 +25,4 @@ public record IntentoAvisoDto(
     string? Error,
     int DuracionMs);
 
-// El aviso con todos sus intentos, del primero al último (GET /api/avisos/{id})
 public record AvisoDetalleDto(AvisoResumenDto Aviso, IReadOnlyList<IntentoAvisoDto> Intentos);

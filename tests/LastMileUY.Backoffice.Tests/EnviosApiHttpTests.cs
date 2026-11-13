@@ -105,7 +105,6 @@ public class EnviosApiHttpTests
         return new EnviosApiHttp(http);
     }
 
-    // Simula la API: siempre responde lo mismo, sin red
     private class RespuestaFija(HttpStatusCode codigo, string cuerpo) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>

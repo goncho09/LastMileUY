@@ -1,6 +1,5 @@
 namespace LastMileUY.Contracts.Destinatarios;
 
-// Un destinatario con sus direcciones activas (GET /api/destinatarios)
 public record DestinatarioDto(
     int Id,
     int ComercioId,

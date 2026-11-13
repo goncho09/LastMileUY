@@ -7,15 +7,12 @@ namespace LastMileUY.DriverPWA.Tests;
 
 using static ResultadoPorBulto;
 
-// Qué manda la app al confirmar una entrega con varios bultos: el repartidor marca cuáles entregó
-// y, de los que no, el motivo. Con eso se decide si es una entrega o una entrega parcial.
 public class ResultadoPorBultoTests
 {
     private const int Danado = 3;
 
     private static readonly BultoRutaDto Uno = new(1, "B1", "Pendiente", null, 2);
     private static readonly BultoRutaDto Dos = new(2, "B2", "Pendiente", null, 2);
-    // No se entregó en una ruta anterior: vuelve a salir y se puede entregar
     private static readonly BultoRutaDto Tres = new(3, "B3", "NoEntregado", null, 2);
     private static readonly BultoRutaDto YaEntregado = new(4, "B4", "Entregado", null, 2);
 
@@ -26,7 +23,6 @@ public class ResultadoPorBultoTests
     {
         var marcas = MarcasIniciales(Bultos, [Dos.Id]);
 
-        // El ya entregado no participa
         Assert.Equal([1, 2, 3], marcas.Keys.Order());
         Assert.False(marcas[Uno.Id].Entregado);
         Assert.True(marcas[Dos.Id].Entregado);
@@ -54,7 +50,6 @@ public class ResultadoPorBultoTests
         Assert.Null(decision.Error);
         Assert.Equal("Entrega", decision.Tipo);
 
-        // El bulto ya entregado no participa.
         Assert.Equal(
             [
                 new(1, true, null),
@@ -135,7 +130,6 @@ public class ResultadoPorBultoTests
     {
         var marcas = MarcasIniciales(Bultos, [Uno.Id, Dos.Id]);
 
-        // Simulamos que falta la marca del tercer bulto.
         marcas.Remove(Tres.Id);
 
         var decision = Decidir(Bultos, marcas, regla: null);
@@ -168,7 +162,6 @@ public class ResultadoPorBultoTests
 
         var resumen = Resumen(operacion, Bultos, [new MotivoNoEntregaDto(Danado, "Bulto dañado", null)]);
 
-        // Un motivo que el celular no tiene guardado no se inventa
         Assert.Equal(["B1: entregado", "B2: no entregado (Bulto dañado)", "B3: no entregado"], resumen);
     }
 

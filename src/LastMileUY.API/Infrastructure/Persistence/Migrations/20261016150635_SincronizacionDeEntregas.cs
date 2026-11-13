@@ -63,9 +63,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 table: "OperacionesSincronizadas",
                 column: "RutaId");
 
-            // Aislamiento por operador (ADR-01), igual que el resto de las tablas con OperadorId.
-            // Los permisos de lastmileuy_app sobre la tabla nueva salen de los ALTER DEFAULT PRIVILEGES
-            // de la migración AislamientoPorOperadorRls.
             migrationBuilder.Sql("""
                 ALTER TABLE "OperacionesSincronizadas" ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE "OperacionesSincronizadas" FORCE ROW LEVEL SECURITY;

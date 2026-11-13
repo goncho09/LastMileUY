@@ -90,8 +90,6 @@ public class RutasService(HttpClient http, AlmacenLocal almacen)
 
     public async Task ActualizarCacheRutaAsync(int rutaId)
     {
-        // No usamos ObtenerRutaAsync porque ese método
-        // puede devolver la caché si falla la conexión.
         using var response = await http.GetAsync($"api/rutas/mias/{rutaId}");
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)

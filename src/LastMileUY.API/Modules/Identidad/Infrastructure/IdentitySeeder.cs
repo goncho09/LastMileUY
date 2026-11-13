@@ -112,7 +112,6 @@ public class IdentitySeeder
         }
         else if (environment.IsDevelopment())
         {
-            // Solo en Development: sincronizar la contraseña de prueba.
             var token = await userManager.GeneratePasswordResetTokenAsync(usuario);
 
             var resultado = await userManager.ResetPasswordAsync(
@@ -126,7 +125,6 @@ public class IdentitySeeder
             }
         }
 
-        // Asegurar que tenga el rol Administrador.
         if (!await userManager.IsInRoleAsync(usuario, "Administrador"))
         {
             var resultadoRol = await userManager.AddToRoleAsync(
@@ -143,10 +141,6 @@ public class IdentitySeeder
         Console.WriteLine("Admin inicializado correctamente");
     }
 
-
-    // Crea dos operadores de prueba (si no existen) y devuelve sus Id.
-    // Se buscan por nombre y el Id lo pone la base: si se fijara a mano,
-    // la secuencia no avanza y el próximo operador creado chocaría con ese Id.
     public static async Task<int[]> SeedOperadoresPruebaAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
@@ -174,16 +168,13 @@ public class IdentitySeeder
                 db.Set<Operador>().Add(operador);
             }
 
-            // Colores distintos para que se note en el Backoffice con qué operador se entró
             operador.ColorPrimario ??= numero == 1 ? "#0B5CAD" : "#1E7F4F";
 
-            // Un depósito en Montevideo, punto de partida del orden sugerido de las paradas
-            // (también a los que ya existían de antes)
             if (operador.DepositoLatitud is null)
             {
                 (operador.DepositoLatitud, operador.DepositoLongitud) = numero == 1
-                    ? (-34.859000m, -56.211500m)  // Paso Molino
-                    : (-34.866000m, -56.088000m); // Camino Carrasco
+                    ? (-34.859000m, -56.211500m)
+                    : (-34.866000m, -56.088000m);
             }
 
             operadores.Add(operador);
@@ -215,7 +206,6 @@ public class IdentitySeeder
             return;
         }
 
-        // Dominio del email configurado (operador@prueba.test -> @prueba.test), para el despachador
         var dominio = email[email.IndexOf('@')..];
 
         for (var i = 0; i < operadoresId.Length; i++)
@@ -226,11 +216,9 @@ public class IdentitySeeder
             await CrearUsuarioPruebaAsync(userManager, email.Replace("@", $"{sufijo}@"), password,
                 "Operador", $"Prueba {i + 1}", operadorId, "Operador");
 
-            // Un despachador por operador: trabaja con los envíos pero no ve la configuración del operador
             await CrearUsuarioPruebaAsync(userManager, $"despachador{sufijo}{dominio}", password,
                 "Despachador", $"Prueba {i + 1}", operadorId, "Despachador");
 
-            // Un repartidor por operador, para asignarle hojas de ruta (ver RutasSeeder)
             await CrearUsuarioPruebaAsync(userManager, $"repartidor{sufijo}{dominio}", password,
                 "Repartidor", $"Prueba {i + 1}", operadorId, "Repartidor");
         }
@@ -278,8 +266,6 @@ public class IdentitySeeder
         Console.WriteLine($"{rol} del operador {operadorId} inicializado correctamente");
     }
 
-    // Crea dos comercios de prueba (si no existen) y devuelve sus Id.
-    // Igual que con los operadores: se buscan por nombre y el Id lo pone la base.
     public static async Task<int[]> SeedComerciosPruebaAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
@@ -293,8 +279,6 @@ public class IdentitySeeder
         {
             var nombre = $"Comercio Prueba {numero}";
 
-            // IgnoreQueryFilters: Comercio tiene filtro global por operador/comercio y acá no hay
-            // ninguno cargado; sin esto nunca lo encontraría y crearía uno nuevo en cada arranque.
             var comercio = await db.Set<Comercio>()
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(c => c.Nombre == nombre);
@@ -318,9 +302,6 @@ public class IdentitySeeder
         return comercios.Select(c => c.Id).ToArray();
     }
 
-    // Vincula los comercios de prueba con el Operador Prueba 1 (si no lo están).
-    // Sin este vínculo el operador no trabaja con esos comercios y no puede crearles envíos.
-    // Devuelve el Id del operador y los Id de los comercios, para los pasos siguientes.
     public static async Task<(int OperadorId, int[] ComerciosId)> SeedVinculosPruebaAsync(IServiceProvider services)
     {
         var operadoresId = await SeedOperadoresPruebaAsync(services);
@@ -336,8 +317,6 @@ public class IdentitySeeder
         {
             foreach (var idOperador in operadoresId)
             {
-                // El comercio 1 trabaja con ambos operadores.
-                // El comercio 2 trabaja solamente con el operador 1.
                 if (comercioId == comerciosId[1] && idOperador == operadoresId[1])
                     continue;
 
@@ -365,8 +344,6 @@ public class IdentitySeeder
         return (operadorId, comerciosId);
     }
 
-    // Crea un usuario con rol Comercio por cada comercio de prueba (si no existe).
-    // Solo lleva ComercioId: un usuario es de un operador o de un comercio, nunca de los dos (CK_Usuarios_Ambito).
     public static async Task SeedComercioPruebaAsync(IServiceProvider services)
     {
         var (_, comerciosId) = await SeedVinculosPruebaAsync(services);
@@ -431,10 +408,6 @@ public class IdentitySeeder
         }
     }
 
-    // Carga destinatarios con direcciones para cada comercio de prueba (si todavía no tiene).
-    // Destinatarios y Direcciones tienen RLS por comercio: con el DbContext normal (sin usuario
-    // logueado) PostgreSQL rechaza el insert. Por eso se usa un DbContext "como" cada comercio,
-    // igual que hacen las pruebas (ContextoOperadorFijo + InterceptorOperadorConexion).
     public static async Task SeedDestinatariosPruebaAsync(IServiceProvider services)
     {
         var comerciosId = await SeedComerciosPruebaAsync(services);
@@ -475,7 +448,6 @@ public class IdentitySeeder
         }
     }
 
-    // Dónde quedan las direcciones de prueba (aproximado, en Montevideo y Canelones)
     private static readonly Dictionary<(string Calle, string Numero), (decimal Latitud, decimal Longitud)> UbicacionesDePrueba = new()
     {
         [("Av. 18 de Julio", "1234")] = (-34.905600m, -56.188900m),
@@ -495,7 +467,6 @@ public class IdentitySeeder
         return direccion;
     }
 
-    // Las bases cargadas antes de que las direcciones tuvieran ubicación: se la pone a las de prueba
     private static async Task UbicarDireccionesDePruebaAsync(ApplicationDbContext db)
     {
         var sinUbicacion = await db.Direcciones.Where(d => d.Latitud == null).ToListAsync();
@@ -546,8 +517,6 @@ public class IdentitySeeder
                 }
             ]
         },
-        // Varias direcciones repartidas por Montevideo, para que el orden sugerido de las paradas
-        // tenga algo que ordenar
         new Destinatario
         {
             ComercioId = comercioId,

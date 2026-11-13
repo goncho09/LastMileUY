@@ -6,8 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Operadores.Infrastructure;
 
-// Reglas operativas de los operadores de prueba, distintas a propósito para poder mostrar
-// que cada operador trabaja con las suyas (por ejemplo: cuántos intentos de entrega permite).
 public static class ReglasOperativasSeeder
 {
     public static async Task SeedPruebaAsync(IServiceProvider services, IReadOnlyList<int> operadoresId)
@@ -17,7 +15,6 @@ public static class ReglasOperativasSeeder
 
         for (var i = 0; i < operadoresId.Count; i++)
         {
-            // Se guarda como ese operador: el filtro de EF y el RLS no dejan crear reglas de otro
             var contexto = new ContextoOperadorFijo(operadoresId[i]);
             var opciones = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseNpgsql(cadena)
@@ -34,7 +31,6 @@ public static class ReglasOperativasSeeder
                 Console.WriteLine($"Reglas operativas del operador {operadoresId[i]} inicializadas");
             }
 
-            // Por separado: una base que ya tenía las reglas operativas igual recibe la versión 1
             if (!await db.ReglasEntregaParcial.AnyAsync())
             {
                 db.ReglasEntregaParcial.Add(ReglaEntregaParcialInicial(operadoresId[i]));
@@ -45,7 +41,6 @@ public static class ReglasOperativasSeeder
         }
     }
 
-    // Versión 1: lo que ya hacía el sistema antes de las versiones (se permite y lo pendiente vuelve a salir)
     private static ReglaEntregaParcial ReglaEntregaParcialInicial(int operadorId) => new()
     {
         OperadorId = operadorId,
@@ -56,7 +51,6 @@ public static class ReglasOperativasSeeder
         PublicadaPorId = "datos-de-prueba"
     };
 
-    // Operador 1: más exigente con los plazos, pocos reintentos y firma obligatoria
     private static ReglaOperativa[] ReglasOperador1() =>
     [
         new()
@@ -81,7 +75,6 @@ public static class ReglasOperativasSeeder
         }
     ];
 
-    // Operador 2: más reintentos y plazos más largos, pero pide foto y documento al entregar
     private static ReglaOperativa[] ReglasOperador2() =>
     [
         new()

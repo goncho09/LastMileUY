@@ -5,15 +5,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace LastMileUY.API.Infrastructure.Cache;
 
-// Invalidación del caché (ver ADR de caché): cada vez que se guarda algo en la base, mira qué cambió
-// y borra del caché lo que quedó viejo. Al estar en un solo lugar, cualquier código que cambie
-// envíos o la configuración del operador invalida solo, aunque no sepa que existe el caché.
-//   - Seguimiento público: cambia el envío (su estado y su historial): sincronización del repartidor,
-//     cambio de estado en el Backoffice, armado y despacho de rutas. O cambia uno de sus bultos: el
-//     seguimiento muestra el avance de la entrega (2 de 3 bultos entregados), y un bulto puede cambiar
-//     sin que cambie el envío.
-//   - Configuración del operador: cambia el operador (nombre, color, logo) o una regla operativa.
-// Se crea uno por pedido (con su DbContext), por eso puede guardar lo pendiente en campos.
 public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesInterceptor
 {
     private readonly HashSet<string> codigosCambiados = [];
@@ -51,7 +42,6 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
         return base.SavedChanges(eventData, result);
     }
 
-    // Si el guardado falla no cambió nada: no hay que invalidar
     public override void SaveChangesFailed(DbContextErrorEventData eventData)
     {
         Limpiar();
@@ -66,7 +56,6 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
-    // Antes de guardar: después del guardado EF ya no sabe qué entidades cambiaron
     private void AnotarCambios(DbContext? contexto)
     {
         if (contexto is null)
@@ -92,7 +81,6 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
                 case ReglaOperativa regla:
                     operadoresCambiados.Add(regla.OperadorId);
                     break;
-                // GET /api/operador trae qué funcionalidades tiene prendidas
                 case FuncionalidadOperador funcionalidad:
                     operadoresCambiados.Add(funcionalidad.OperadorId);
                     break;
@@ -100,7 +88,6 @@ public class InvalidacionCacheInterceptor(CacheDistribuido cache) : SaveChangesI
         }
     }
 
-    // El código de seguimiento del envío de un bulto: normalmente el envío ya está cargado
     private static string? CodigoDelEnvio(DbContext contexto, int envioId) =>
         contexto.Set<Envio>().Local.FirstOrDefault(e => e.Id == envioId)?.CodigoSeguimiento
         ?? contexto.Set<Envio>().AsNoTracking()

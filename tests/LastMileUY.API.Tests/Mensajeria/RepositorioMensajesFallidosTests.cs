@@ -158,7 +158,6 @@ public class RepositorioMensajesFallidosTests(
 
         var incidencia = await ConsultarAsync(primerId);
 
-        // ON CONFLICT DO NOTHING conserva el registro original.
         Assert.Equal("Pendiente", incidencia.Estado);
         Assert.Equal("Error inicial", incidencia.Error);
         Assert.Equal(3, incidencia.Intentos);

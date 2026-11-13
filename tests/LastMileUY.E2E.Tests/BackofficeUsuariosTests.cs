@@ -7,14 +7,9 @@ using Microsoft.Playwright;
 using static BackofficeEnNavegador;
 using static Microsoft.Playwright.Assertions;
 
-// Gestión del personal desde el Backoffice (/Usuarios), como la usa el operador: dar de alta, buscar,
-// filtrar y desactivar con confirmación. Con los datos de prueba en memoria (UsuariosApiDePrueba); lo
-// que valida la API está en GestionUsuariosDePuntaAPuntaTests
 [Collection(ColeccionBackofficeEnNavegador.Nombre)]
 public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
 {
-    // Con los datos de prueba, cada servicio de la API tiene que tener su versión en memoria: si falta
-    // una, su página se cae con un 500 (pasó con la de usuarios)
     [Fact]
     public void En_modo_demo_cada_servicio_de_la_API_tiene_su_version_en_memoria()
     {
@@ -37,7 +32,6 @@ public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
         var email = $"nuevo{Random.Shared.Next(1000, 9999)}@prueba.test";
 
         await pagina.GetByRole(AriaRole.Link, new() { Name = "Usuarios" }).ClickAsync();
-        // El encabezado del layout repite el título: se mira el de la página
         await Expect(pagina.GetByRole(AriaRole.Main).GetByRole(AriaRole.Heading, new() { Name = "Gestión de usuarios", Level = 1 })).ToBeVisibleAsync();
 
         await pagina.GetByLabel("Nombre", new() { Exact = true }).FillAsync("Diego");
@@ -53,7 +47,6 @@ public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
         await Expect(fila).ToContainTextAsync("Repartidor");
         await Expect(fila).ToContainTextAsync("Activo");
 
-        // El mismo correo otra vez se rechaza con el motivo
         await pagina.GetByLabel("Nombre", new() { Exact = true }).FillAsync("Otro");
         await pagina.GetByLabel("Apellido", new() { Exact = true }).FillAsync("Usuario");
         await pagina.GetByLabel("Correo electrónico").FillAsync(email);
@@ -61,7 +54,6 @@ public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Crear usuario" }).ClickAsync();
         await Expect(pagina.GetByRole(AriaRole.Alert)).ToContainTextAsync("Ya existe un usuario con ese correo.");
 
-        // La búsqueda no distingue tildes ni mayúsculas
         await pagina.GetByLabel("Buscar usuarios").FillAsync("NUNEZ");
         await Expect(fila).ToBeVisibleAsync();
         await Expect(pagina.Locator(".fila-usuario:visible")).ToHaveCountAsync(1);
@@ -71,7 +63,6 @@ public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByText("No se encontraron usuarios con esos filtros.")).ToBeVisibleAsync();
         await pagina.GetByLabel("Buscar usuarios").FillAsync(email);
 
-        // Desactivar pide confirmación; con Cancelar no cambia nada
         var dialogo = pagina.GetByRole(AriaRole.Dialog, new() { Name = "¿Desactivar usuario?" });
         await fila.GetByRole(AriaRole.Button, new() { Name = "Desactivar" }).ClickAsync();
         await Expect(dialogo).ToBeVisibleAsync();
@@ -80,7 +71,6 @@ public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
         await Expect(dialogo).ToBeHiddenAsync();
         await Expect(fila).ToContainTextAsync("Activo");
 
-        // Escape también la cierra
         await fila.GetByRole(AriaRole.Button, new() { Name = "Desactivar" }).ClickAsync();
         await Expect(dialogo).ToBeVisibleAsync();
         await pagina.Keyboard.PressAsync("Escape");
@@ -91,7 +81,6 @@ public class BackofficeUsuariosTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Status)).ToContainTextAsync("Usuario desactivado correctamente.");
         await Expect(fila).ToContainTextAsync("Inactivo");
 
-        // Filtrando por inactivos aparece; reactivarlo no pide confirmación
         await pagina.GetByLabel("Filtrar por estado").SelectOptionAsync("inactivo");
         await Expect(fila).ToBeVisibleAsync();
         await fila.GetByRole(AriaRole.Button, new() { Name = "Activar" }).ClickAsync();

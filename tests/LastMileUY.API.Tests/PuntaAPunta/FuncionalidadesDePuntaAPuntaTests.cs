@@ -10,9 +10,6 @@ using LastMileUY.Contracts.Operadores;
 using LastMileUY.Contracts.Rutas;
 using static ApiDePuntaAPunta;
 
-// Banderas de funcionalidad por operador por HTTP con los usuarios reales: solo el administrador las
-// cambia, y apagar una corta esa funcionalidad para ese operador (y no para los demás).
-// Las pruebas de la colección corren de a una: cada una deja las banderas como estaban.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -76,7 +73,6 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         await CambiarAsync(api.IdOperador1, Funcionalidades.OrdenSugerido, activa: false);
         try
         {
-            // GET /api/operador ya no la trae (el caché se invalidó al cambiarla)
             var actual = (await despachador.GetFromJsonAsync<OperadorActualDto>("api/operador"))!;
             Assert.DoesNotContain(Funcionalidades.OrdenSugerido, actual.Funcionalidades!);
             Assert.False(actual.Tiene(Funcionalidades.OrdenSugerido));
@@ -86,7 +82,6 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.Forbidden, apagada.StatusCode);
             Assert.Contains("Orden sugerido de paradas", await MensajeAsync(apagada));
 
-            // El otro operador sigue igual
             using var otro = await operador2.PostAsJsonAsync("api/rutas/sugerir-orden",
                 new SugerirOrdenRequest { EnvioIds = [envio2] });
             Assert.Equal(HttpStatusCode.OK, otro.StatusCode);
@@ -96,7 +91,6 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
             await CambiarAsync(api.IdOperador1, Funcionalidades.OrdenSugerido, activa: true);
         }
 
-        // Prendida otra vez, vuelve a andar
         using var prendida = await despachador.PostAsJsonAsync("api/rutas/sugerir-orden",
             new SugerirOrdenRequest { EnvioIds = [envio1] });
         Assert.Equal(HttpStatusCode.OK, prendida.StatusCode);
@@ -112,7 +106,6 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var codigo = (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envio}"))!.CodigoSeguimiento;
         var publico = api.ClienteSinSesion();
 
-        // Se consulta recién con la bandera apagada: así no hay nada guardado en el caché del seguimiento
         await CambiarAsync(api.IdOperador1, Funcionalidades.SeguimientoPublico, activa: false);
         try
         {
@@ -159,9 +152,6 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Created, prendido.StatusCode);
     }
 
-    // Varios cambios a la vez sobre una bandera que todavía no tiene fila (la primera vez se inserta):
-    // ninguno puede terminar en un 500 por la clave duplicada. Las demás pruebas usan el operador 1:
-    // para el 2 esta es la primera escritura. Queda prendida, que es su valor por defecto.
     [Fact]
     public async Task Varios_cambios_a_la_vez_de_una_bandera_nueva_no_fallan()
     {

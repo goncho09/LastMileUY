@@ -50,7 +50,6 @@ public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuario
         return Convertir(comercio);
     }
 
-    // Compatibilidad para pruebas y flujos internos; el endpoint público exige usuario inicial.
     public async Task<ComercioAdminDto> CrearAsync(GuardarComercioAdminRequest request, CancellationToken ct)
     {
         Validar(request);
@@ -142,7 +141,6 @@ public sealed class GestionComerciosService(ApplicationDbContext db, AltaUsuario
     public async Task<bool> DesvincularAsync(
         int comercioId, int operadorId, CancellationToken ct)
     {
-        // El vínculo con el ambiente de pruebas lo maneja el sistema (claves de prueba de la API pública)
         if (await db.Operadores.AnyAsync(o => o.Id == operadorId && o.EsAmbientePruebas, ct))
             return false;
 

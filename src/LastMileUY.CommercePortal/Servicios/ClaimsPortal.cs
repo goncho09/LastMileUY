@@ -2,8 +2,6 @@ using System.Security.Claims;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// Qué guarda la cookie (cifrada) del portal sobre el usuario logueado.
-// Adentro va también la cookie de la API, que se reenvía en cada llamada (igual que el Backoffice).
 public static class ClaimsPortal
 {
     public const string CookieApi = "cookie_api";

@@ -21,16 +21,6 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 using ProgramApi = Api::Program;
 
-// La app del repartidor como sale en producción, en un Chromium real:
-// - la API completa, escuchando en un puerto, contra un PostgreSQL en Docker (con los seeders de
-//   desarrollo: operador, despachador y repartidor de prueba). Sin RabbitMQ: los eventos quedan en
-//   el outbox, que no hace falta para estas pruebas;
-// - la app publicada en Release (con el service worker de producción, el que guarda la app para
-//   abrirla sin conexión), servida por un servidor chico que hace de nginx: los archivos de la app y
-//   /api pasado a la API, en la misma dirección (como nginx.conf);
-// - un Chromium al que se le puede cortar la red (SetOfflineAsync), con permiso de ubicación.
-//
-// Publicar la app tarda alrededor de un minuto; se hace una vez para todas las pruebas.
 public class AppRepartidorEnNavegador : IAsyncLifetime
 {
     public const string Clave = "Prueba1234";
@@ -48,10 +38,8 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
 
     public IBrowser Navegador { get; private set; } = null!;
 
-    // Donde se abre la app (y por donde pasa /api), como la dirección pública de la app
     public string DireccionApp { get; private set; } = string.Empty;
 
-    // La API directa, para armar los datos y mirar cómo quedó todo
     public string DireccionApi { get; private set; } = string.Empty;
 
     public async Task InitializeAsync()
@@ -67,7 +55,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         await publicar;
         servidorApp = ServidorApp(Path.Combine(carpetaApp, "wwwroot"), DireccionApi);
         await servidorApp.StartAsync();
-        // "localhost" y no 127.0.0.1: el navegador lo trata como seguro (service worker y cookie Secure)
         DireccionApp = servidorApp.Urls.First().Replace("127.0.0.1", "localhost").TrimEnd('/');
 
         if (Microsoft.Playwright.Program.Main(["install", "chromium"]) is var codigo and not 0)
@@ -78,7 +65,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         Navegador = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
     }
 
-    // Un celular nuevo (contexto del navegador vacío), con ubicación en Montevideo
     public async Task<(IBrowserContext Celular, IPage Pagina)> AbrirCelularAsync()
     {
         var celular = await Navegador.NewContextAsync(new BrowserNewContextOptions
@@ -93,8 +79,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         return (Esperas.Preparar(celular), await celular.NewPageAsync());
     }
 
-    // Un cliente HTTP con sesión iniciada, directo a la API. La cookie de sesión es Secure y acá no hay
-    // https: se guarda y se manda a mano
     public async Task<HttpClient> SesionApiAsync(string email)
     {
         var cliente = new HttpClient(new CookieAMano()) { BaseAddress = new Uri(DireccionApi + "/") };
@@ -105,8 +89,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         return cliente;
     }
 
-    // Una ruta despachada al repartidor de prueba, con un envío de un bulto. Devuelve los ids y el
-    // código del bulto (para identificarlo en la app). diasAdelante: una ruta por día por repartidor.
     public async Task<(int RutaId, int EnvioId, string CodigoBulto)> RutaDespachadaAsync(int diasAdelante)
     {
         var operador = await SesionApiAsync(Operador);
@@ -157,7 +139,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         return (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envioId}"))!;
     }
 
-    // El primer destinatario del comercio de prueba 1 (con el superusuario de la base: saltea RLS)
     private async Task<(int Comercio, int Destinatario, int Direccion)> DestinatarioDePruebaAsync()
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.GetConnectionString());
@@ -177,7 +158,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
         return (lector.GetInt32(0), lector.GetInt32(1), lector.GetInt32(2));
     }
 
-    // dotnet publish de la app, como en su Dockerfile
     private async Task PublicarAppAsync()
     {
         var proyecto = Path.Combine(RaizDelRepositorio(), "src", "LastMileUY.DriverPWA", "LastMileUY.DriverPWA.csproj");
@@ -196,8 +176,6 @@ public class AppRepartidorEnNavegador : IAsyncLifetime
             throw new InvalidOperationException($"No se pudo publicar la app del repartidor:\n{await salida}\n{await errores}");
     }
 
-    // Hace de nginx (src/LastMileUY.DriverPWA/nginx.conf): los archivos de la app, cualquier otra
-    // dirección a index.html, y /api/ a la API
     private static WebApplication ServidorApp(string archivos, string direccionApi)
     {
         var builder = WebApplication.CreateSlimBuilder();

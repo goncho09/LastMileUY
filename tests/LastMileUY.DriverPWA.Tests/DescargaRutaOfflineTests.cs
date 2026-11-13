@@ -16,7 +16,6 @@ public class DescargaRutaOfflineTests
 
         await almacen.AsignarDuenoAsync("repartidor-1");
 
-        // Simula la respuesta de la API con los campos nuevos.
         const string json = """
         {
           "id": 10,
@@ -86,17 +85,14 @@ public class DescargaRutaOfflineTests
 
         var rutas = new RutasService(http, almacen);
 
-        // Primera descarga: hay conexión.
         var descargada = await rutas.ObtenerRutaAsync(10);
 
         Assert.NotNull(descargada);
         Assert.Equal(2, descargada.Paradas[0].Bultos?.Count);
         Assert.Equal(2, descargada.ReglaEntregaParcial?.Version);
 
-        // Simulamos pérdida de conexión.
         conexion.SinConexion = true;
 
-        // La misma ruta debe recuperarse del almacenamiento.
         var recuperada = await rutas.ObtenerRutaAsync(10);
 
         Assert.NotNull(recuperada);

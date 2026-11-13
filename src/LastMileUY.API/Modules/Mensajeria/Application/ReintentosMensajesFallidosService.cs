@@ -21,7 +21,6 @@ public sealed class ReintentosMensajesFallidosService(
 
         var ahora = DateTime.UtcNow;
 
-        // Solo un administrador puede solicitar el reintento.
         var actualizados = await db.MensajesFallidos
             .Where(x =>
                 x.Id == id &&

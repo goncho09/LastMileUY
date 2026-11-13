@@ -1,7 +1,5 @@
 namespace LastMileUY.Backoffice.Servicios;
 
-// Cómo se muestra el estado de cada bulto y el resultado de cada intento de entrega.
-// Los valores son los que manda la API (enum EstadoBulto; Resultado de IntentoEntregaDto).
 public static class ResultadosBultos
 {
     public static string TextoEstado(string estado) => estado switch

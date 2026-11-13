@@ -5,12 +5,8 @@ using LastMileUY.Contracts.Mensajeria;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
-// Mensajes que el worker no pudo procesar (solo el Administrador): el estado de la cola de fallidos,
-// verlos sin consumirlos, el historial guardado en la base y pedir que se reprocese uno.
-// Los errores vuelven como { mensaje }, igual que en el resto de la API.
 public static class MensajesFallidosEndpoints
 {
-    // Hasta cuánto del cuerpo de cada mensaje se muestra al inspeccionar
     private const int MaximoContenido = 32768;
 
     public static IEndpointRouteBuilder MapMensajesFallidosEndpoints(
@@ -22,7 +18,6 @@ public static class MensajesFallidosEndpoints
 
         var cola = $"{TopologiaMensajeria.ColaWorker}.fallidos";
 
-        // Cuántos mensajes hay en la cola de fallidos (sin consumirlos)
         grupo.MapGet("/resumen", async (
                 ConexionRabbitMq rabbit,
                 ILoggerFactory loggerFactory,
@@ -47,7 +42,6 @@ public static class MensajesFallidosEndpoints
             })
             .WithName("ResumenMensajesFallidos");
 
-        // Pide reprocesar un mensaje guardado. 202 pedido; 409 si no existe o ya no está pendiente
         grupo.MapPost("/{id:guid}/reintentar", async (
                 Guid id,
                 ClaimsPrincipal usuario,
@@ -66,7 +60,6 @@ public static class MensajesFallidosEndpoints
             })
             .WithName("ReintentarMensajeFallido");
 
-        // Mira los primeros mensajes de la cola sin sacarlos: los toma sin confirmar y los devuelve
         grupo.MapPost("/inspeccionar", async (
                 int? limite,
                 ConexionRabbitMq rabbit,
@@ -111,8 +104,6 @@ public static class MensajesFallidosEndpoints
                     }
                     finally
                     {
-                        // Vuelven todos a la cola. Si el canal se cerrara antes, RabbitMQ recupera solo
-                        // las entregas sin confirmar.
                         foreach (var entrega in entregas)
                         {
                             await canal.BasicNackAsync(
@@ -134,7 +125,6 @@ public static class MensajesFallidosEndpoints
             })
             .WithName("InspeccionarMensajesFallidos");
 
-        // Historial guardado en la base, paginado y con filtros (estado, desde, hasta)
         grupo.MapGet("/", async (
                 [AsParameters] FiltroMensajesFallidos filtro,
                 ConsultasMensajesFallidosService servicio,

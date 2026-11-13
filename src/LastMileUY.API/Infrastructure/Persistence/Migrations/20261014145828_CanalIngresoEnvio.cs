@@ -15,7 +15,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 table: "Envios",
                 type: "integer",
                 nullable: false,
-                // Los envíos que ya existían entraron por la API (1 = CanalIngreso.Api)
                 defaultValue: 1);
         }
 

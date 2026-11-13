@@ -6,14 +6,9 @@ namespace LastMileUY.API.Tests.Multitenancy;
 
 using static BaseConDosOperadores;
 
-// Pruebas del ADR-01 que completan las de AislamientoEntreOperadoresTests:
-// las tablas hijas (sin OperadorId) y el segundo nivel, el comercio.
-// En cada caso se prueban las dos barreras: el filtro de EF y, con IgnoreQueryFilters, RLS.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
 {
-    // --- Tablas hijas: se ven solo si se ve su padre ---
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -40,8 +35,6 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
 
         Assert.Equal("42501", error.SqlState);
     }
-
-    // --- Destinatarios: son del comercio ---
 
     [Theory]
     [InlineData(false)]
@@ -92,8 +85,6 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
         Assert.Contains(ComercioSoloDeA, ids);
         Assert.DoesNotContain(ComercioSoloDeB, ids);
     }
-
-    // --- Segundo nivel: un usuario de comercio solo ve lo de su comercio ---
 
     [Theory]
     [InlineData(false)]
@@ -198,9 +189,6 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public async Task Un_vinculo_inactivo_no_permite_ver_destinatarios_del_comercio()
     {
-        // ComercioSoloDeA pertenece inicialmente al operador A.
-        // Lo desactivamos usando la conexión administrativa
-        // únicamente para preparar el escenario.
         await using var admin = new NpgsqlConnection(
             baseDeDatos.CadenaAdministrador);
 
@@ -220,8 +208,6 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
                 await comando.ExecuteNonQueryAsync();
             }
 
-            // Contexto del operador A con el usuario limitado
-            // al que sí se aplican las políticas RLS.
             await using var db = baseDeDatos.CrearContexto(OperadorA);
 
             var destinatarios = await db.Destinatarios
@@ -234,7 +220,6 @@ public class AislamientoEntreComerciosTests(BaseConDosOperadores baseDeDatos)
         }
         finally
         {
-            // Restauramos el vínculo para no afectar las otras pruebas.
             await using var comando = new NpgsqlCommand("""
                                                         UPDATE "OperadoresComercios"
                                                         SET "Activo" = true

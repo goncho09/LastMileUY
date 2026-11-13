@@ -245,13 +245,11 @@
         }
         catch (JSException)
         {
-            // El escáner puede no haberse iniciado.
         }
 
         camaraActiva = false;
     }
 
-    // Otra parada abrió la cámara (hay una sola): esta deja de mostrarla.
     [JSInvokable]
     public Task EscanerCerrado() =>
         InvokeAsync(() =>
@@ -275,7 +273,6 @@
 
     public async ValueTask DisposeAsync()
     {
-        // Solo apaga la cámara si es de esta parada: puede estar usándola otra
         try
         {
             await JS.InvokeVoidAsync("lastMileEscaner.detener", idEscaner);

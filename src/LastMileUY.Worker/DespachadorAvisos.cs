@@ -2,20 +2,12 @@ using Npgsql;
 
 namespace LastMileUY.Worker;
 
-// Manda por HTTP los avisos pendientes (EntregasAvisos) que deja ProcesadorAvisos (ver docs/mensajeria.md).
-// - Recorre los operadores y, para cada uno, carga su operador antes de leer: el RLS del ADR-01 se le
-//   aplica igual que a la API, sin un usuario que lo saltee.
-// - Toma los avisos de a uno con FOR UPDATE SKIP LOCKED: con varias instancias del worker, cada aviso lo
-//   manda una sola. La fila queda bloqueada mientras espera al comercio (como mucho ClienteAvisos.TiempoMaximo).
-// - Anota el resultado en el aviso: entregado, o el intento fallido con su motivo.
-// - Manda apenas ProcesadorAvisos registra avisos (le avisa) y, además, revisa cada tanto.
 public class DespachadorAvisos(
     NpgsqlDataSource baseDeDatos,
     ClienteAvisos cliente,
     SenalAvisos senal,
     ILogger<DespachadorAvisos> logger) : BackgroundService
 {
-    // Cada cuánto revisa aunque nadie avise (avisos de otra instancia, reintentos programados)
     private static readonly TimeSpan Revision = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan EsperaMaxima = TimeSpan.FromMinutes(1);
 
@@ -37,7 +29,6 @@ public class DespachadorAvisos(
             }
             catch (Exception ex)
             {
-                // La base no responde: los avisos siguen pendientes, se reintenta con espera creciente
                 fallosSeguidos++;
                 var espera = TimeSpan.FromSeconds(Math.Min(Math.Pow(2, fallosSeguidos), EsperaMaxima.TotalSeconds));
                 logger.LogWarning(ex, "No se pudieron mandar los avisos; se reintenta en {Espera}", espera);
@@ -46,7 +37,6 @@ public class DespachadorAvisos(
         }
     }
 
-    // Manda todos los avisos que ya tocan, de todos los operadores. Devuelve cuántos intentó.
     public async Task<int> EnviarPendientesAsync(CancellationToken cancellationToken)
     {
         var intentados = 0;
@@ -70,7 +60,6 @@ public class DespachadorAvisos(
         return operadores;
     }
 
-    // false si el operador no tiene más avisos para mandar ahora
     private async Task<bool> EnviarSiguienteAsync(int operadorId, CancellationToken cancellationToken)
     {
         await using var conexion = await baseDeDatos.OpenConnectionAsync(cancellationToken);
@@ -95,16 +84,13 @@ public class DespachadorAvisos(
         using var alcance = logger.BeginScope(
             "Correlación {CorrelacionId}, aviso {AvisoId}", aviso.CorrelacionId, aviso.AvisoId);
 
-        // Si el comercio desactivó la suscripción después de registrarse el aviso, no se manda
         var resultado = suscripcionActiva
             ? await cliente.EnviarAsync(aviso, cancellationToken)
             : new ResultadoEnvio(false, null, "La suscripción está desactivada.", TimeSpan.Zero);
 
-        // Si la suscripción está desactivada no se reintenta: queda Fallido
         var quedoFallido = await RegistrarResultadoAsync(
             conexion, transaccion, aviso, resultado, reintentar: suscripcionActiva, cancellationToken);
 
-        // Historial: cada intento queda anotado, en la misma transacción que el resultado
         await RegistrarIntentoAsync(conexion, transaccion, aviso, resultado, cancellationToken);
 
         await transaccion.CommitAsync(cancellationToken);
@@ -123,10 +109,8 @@ public class DespachadorAvisos(
         return true;
     }
 
-    // En los registros va solo el servidor: la URL completa puede llevar algún dato del comercio
     private static string Servidor(string url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Authority : "(URL inválida)";
 
-    // Estado 1 = Pendiente (EstadoEntregaAviso). Primero los más viejos.
     private static async Task<(AvisoPendiente? Aviso, bool SuscripcionActiva)> LeerSiguienteAsync(
         NpgsqlConnection conexion, NpgsqlTransaction transaccion, CancellationToken cancellationToken)
     {
@@ -161,8 +145,6 @@ public class DespachadorAvisos(
         return (aviso, lector.GetBoolean(7));
     }
 
-    // Estado 2 = Entregado, 3 = Fallido; 1 = sigue Pendiente, con el próximo intento programado.
-    // true si el aviso quedó Fallido (no se reintenta más)
     private static async Task<bool> RegistrarResultadoAsync(
         NpgsqlConnection conexion, NpgsqlTransaction transaccion, AvisoPendiente aviso, ResultadoEnvio resultado,
         bool reintentar, CancellationToken cancellationToken)
@@ -189,7 +171,6 @@ public class DespachadorAvisos(
         return !resultado.Exitoso && proximo is null;
     }
 
-    // Una fila del historial de entregas (IntentosAvisos) por cada intento, con su resultado
     private static async Task RegistrarIntentoAsync(
         NpgsqlConnection conexion, NpgsqlTransaction transaccion, AvisoPendiente aviso, ResultadoEnvio resultado,
         CancellationToken cancellationToken)
@@ -207,9 +188,6 @@ public class DespachadorAvisos(
         await comando.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    // Reintentos con espera creciente: cuánto esperar después de que falla cada intento (el 1.º, el 2.º...).
-    // Crece para no saturar a un comercio que ya tiene problemas. Después del último intento, Fallido.
-    // Con estas esperas, un aviso se sigue intentando casi 22 minutos.
     public static readonly IReadOnlyList<TimeSpan> EsperasReintento =
     [
         TimeSpan.FromSeconds(10),
@@ -219,18 +197,14 @@ public class DespachadorAvisos(
         TimeSpan.FromMinutes(15)
     ];
 
-    // El primero más un reintento por cada espera
     public static int MaximoIntentos => EsperasReintento.Count + 1;
 
-    // Cuándo volver a intentar después de que falló el intento número "intento"; null: no se reintenta y
-    // el aviso queda Fallido. Mientras tanto el aviso sigue Pendiente y se vuelve a tomar al llegar la fecha.
     public static DateTime? ProximoIntento(int intento, DateTime ahora) =>
         intento >= 1 && intento <= EsperasReintento.Count
             ? ahora + EsperasReintento[intento - 1]
             : null;
 }
 
-// Para que ProcesadorAvisos le avise al despachador que hay avisos nuevos, sin esperar a la revisión
 public class SenalAvisos
 {
     private readonly SemaphoreSlim senal = new(0, 1);
@@ -243,11 +217,9 @@ public class SenalAvisos
         }
         catch (SemaphoreFullException)
         {
-            // Ya había un aviso pendiente: alcanza con uno
         }
     }
 
-    // true si llegó un aviso antes del tiempo máximo
     public Task<bool> EsperarAsync(TimeSpan maximo, CancellationToken cancellationToken) =>
         senal.WaitAsync(maximo, cancellationToken);
 }

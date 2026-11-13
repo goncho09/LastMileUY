@@ -11,8 +11,6 @@ using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 
 namespace LastMileUY.API.Tests.Envios;
 
-// Por dónde entró cada envío: el Backoffice tiene que poder ver
-// lo que cargan los comercios desde su portal.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class CanalIngresoTests(BaseConDosOperadores baseDeDatos)
 {
@@ -150,7 +148,6 @@ public class CanalIngresoTests(BaseConDosOperadores baseDeDatos)
         return creado.Id;
     }
 
-    // El alta exige que el operador trabaje con el comercio.
     private async Task VincularOperadorConComercioAsync()
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);

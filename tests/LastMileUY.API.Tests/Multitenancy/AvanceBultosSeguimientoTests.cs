@@ -17,9 +17,6 @@ namespace LastMileUY.API.Tests.Multitenancy;
 
 using static BaseConDosOperadores;
 
-// El seguimiento público muestra el avance de la entrega por bultos (entrega parcial, requerimiento 35):
-// cuántos se entregaron de cuántos, sin exponer códigos ni ids. Y un cambio de un bulto invalida el
-// seguimiento en el caché, aunque no cambie el envío.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class AvanceBultosSeguimientoTests(BaseConDosOperadores baseDeDatos)
 {
@@ -80,7 +77,6 @@ public class AvanceBultosSeguimientoTests(BaseConDosOperadores baseDeDatos)
 
         await cache.ObtenerOCrearAsync(CasosDeCache.SeguimientoPublico, clave, Consultar);
 
-        // Solo cambia el bulto (como un conflicto resuelto en el servidor): el envío queda igual
         await using (var db = ContextoConCache(cache))
         {
             var bulto = await db.Bultos.Where(b => b.EnvioId == envioId).OrderBy(b => b.Id).FirstAsync();
@@ -90,11 +86,9 @@ public class AvanceBultosSeguimientoTests(BaseConDosOperadores baseDeDatos)
 
         await cache.ObtenerOCrearAsync(CasosDeCache.SeguimientoPublico, clave, Consultar);
 
-        // Se volvió a consultar la base: la entrada vieja ya no estaba
         Assert.Equal(2, consultas);
     }
 
-    // Un DbContext del operador A con el interceptor de invalidación del caché, como en la API
     private ApplicationDbContext ContextoConCache(CacheDistribuido cache)
     {
         var contexto = new ContextoOperadorFijo(OperadorA);

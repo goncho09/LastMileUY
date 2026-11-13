@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages;
 
-// Cerrar sesión: solo por POST (el botón del menú), para que un enlace no pueda desloguear a nadie
 public class LogoutModel : PageModel
 {
     public IActionResult OnGet() => RedirectToPage("/Envios/Index");

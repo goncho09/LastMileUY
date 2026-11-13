@@ -3,8 +3,6 @@ using LastMileUY.Contracts.Avisos;
 
 namespace LastMileUY.Worker.Tests;
 
-// Qué URLs puede tener una suscripción: solo https y direcciones públicas (que no se pueda usar para
-// llegar a servicios internos, SSRF)
 public class DestinosAvisosTests
 {
     [Theory]
@@ -34,7 +32,6 @@ public class DestinosAvisosTests
         Assert.Contains(motivo, DestinosAvisos.Validar(url, permitirLocales: false));
     }
 
-    // Más larga que la columna: sin esto la base la cortaría con un error 500
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -6,10 +6,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Envios;
 
-// Listado de envíos del operador, con filtro por estado, búsqueda y paginación
 public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : PageModel
 {
-    // Los filtros vienen en la URL (?estado=...&buscar=...&canal=...&pagina=...)
     [BindProperty(SupportsGet = true)]
     public string? Estado { get; set; }
 
@@ -19,7 +17,6 @@ public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : Page
     [BindProperty(SupportsGet = true)]
     public int Pagina { get; set; } = 1;
 
-    // Portal o Api: para ver, por ejemplo, solo lo que cargaron los comercios desde su portal
     [BindProperty(SupportsGet = true)]
     public string? Canal { get; set; }
 
@@ -45,7 +42,6 @@ public class IndexModel(IEnviosApi enviosApi, ILogger<IndexModel> logger) : Page
         }
     }
 
-    // Arma los parámetros de la URL para otra página, conservando los filtros
     public Dictionary<string, string?> RutaPagina(int pagina) => new()
     {
         ["estado"] = Estado,

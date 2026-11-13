@@ -27,7 +27,6 @@
         </div>
     }
 
-    <!-- Pestañas -->
     <div class="flex gap-2 border-b border-white/10">
         <button type="button" @onclick="() => pestania = Pestania.Historial"
                 class="@ClasePestania(Pestania.Historial)">
@@ -124,13 +123,10 @@
             </div>
         </section>
     }
-            <!-- Nueva suscripción -->
             <section class="rounded-2xl border border-white/10 bg-[#151927] p-6">
                 <h2 class="text-lg font-semibold text-white">Nueva suscripción</h2>
 
                 <div class="mt-4 flex flex-wrap items-end gap-3">
-                    @* El label va aparte del campo (for/id): si lo envuelve, el nombre que lee un lector de
-                       pantalla incluye las opciones del select ("Versión v1 · formato actual") *@
                     <div class="flex min-w-[200px] flex-col gap-1.5 text-xs font-medium text-slate-400">
                         <label for="suscripcion-version">Versión</label>
                         <select id="suscripcion-version" @bind="nueva.Version" @bind:after="AlCambiarVersion"
@@ -171,7 +167,6 @@
                 </div>
             }
 
-            <!-- Suscripciones -->
             @if (suscripciones is null)
             {
                 @if (errorCarga is null)
@@ -256,7 +251,6 @@
         ? "-mb-px border-b-2 border-violet-500 px-4 py-3 text-sm font-semibold text-violet-300"
         : "-mb-px border-b-2 border-transparent px-4 py-3 text-sm font-medium text-slate-400 transition hover:text-white";
 
-    // Los eventos a los que se puede suscribir, con su texto para mostrar
     private static readonly (string Valor, string Texto)[] Tipos =
     [
         (TiposEvento.EnvioEstadoCambiado, "Cambio de estado del envío"),
@@ -264,11 +258,9 @@
         (TiposEvento.BultoEstadoCambiado, "Cambio de estado de un bulto")
     ];
 
-    // Los eventos de bulto solo están en la versión 2 (VersionesAvisos)
     private static IEnumerable<(string Valor, string Texto)> TiposDe(int version) =>
         Tipos.Where(t => VersionesAvisos.Permite(version, t.Valor));
 
-    // Si el evento elegido no está en la versión nueva, vuelve al primero de esa versión
     private void AlCambiarVersion()
     {
         if (!VersionesAvisos.Permite(nueva.Version, nueva.TipoEvento))
@@ -319,7 +311,6 @@
 
             if (resultado.Exito)
             {
-                // Reutilizar el panel que muestra la clave una sola vez.
                 suscripcionCreada = resultado.Suscripcion;
                 claveCopiada = false;
 
@@ -484,7 +475,6 @@
     private static string TextoTipo(string tipo) =>
         Tipos.FirstOrDefault(t => t.Valor == tipo).Texto ?? tipo;
 
-    // La API guarda las fechas en UTC; se muestran en hora de Uruguay
     private static readonly TimeZoneInfo? ZonaUruguay = BuscarZona();
 
     private static TimeZoneInfo? BuscarZona()

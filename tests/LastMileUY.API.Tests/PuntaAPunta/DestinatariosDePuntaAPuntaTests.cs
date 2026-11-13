@@ -9,9 +9,6 @@ using static ApiDePuntaAPunta;
 using DestinatarioDto = LastMileUY.Contracts.Destinatarios.DestinatarioDto;
 using DireccionDto = LastMileUY.Contracts.Destinatarios.DireccionDto;
 
-// Alta de destinatarios y de sus direcciones por HTTP con los usuarios reales: el comercio carga
-// los suyos y el operador los de sus comercios; nadie carga en un comercio ajeno; los datos se
-// validan; y lo cargado sirve enseguida para crear un envío (con su ubicación para ordenar la ruta).
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -20,7 +17,6 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
     {
         var comercio = await api.IniciarSesionAsync(Comercio1);
 
-        // Sin ComercioId: el usuario de un comercio carga en el suyo. El departamento sin tilde se acepta
         var pedido = Destinatario(departamento: "san jose", latitud: -34.3375m, longitud: -56.7136m);
         pedido.Email = "  Lucia.Perez@Correo.UY ";
 
@@ -34,11 +30,9 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal("San José", direccion.Departamento);
         Assert.Equal(-34.3375m, direccion.Latitud);
 
-        // Aparece en el listado que usa el formulario de envíos
         var listado = (await comercio.GetFromJsonAsync<List<DestinatarioDto>>("api/destinatarios"))!;
         Assert.Contains(listado, d => d.Id == creado.Id && d.Direcciones.Single().Longitud == -56.7136m);
 
-        // Y se le puede mandar un envío, que copia la ubicación de la dirección
         using var envio = await comercio.PostAsJsonAsync("api/envios", new CrearEnvioRequest
         {
             ComercioId = api.IdComercio1,
@@ -67,13 +61,11 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var operador2 = await api.IniciarSesionAsync(Operador2);
         await ComercioSoloDelOperador1Async();
 
-        // El operador tiene que decir de qué comercio es
         using (var sinComercio = await operador1.PostAsJsonAsync("api/destinatarios", Destinatario()))
         {
             Assert.Equal(HttpStatusCode.BadRequest, sinComercio.StatusCode);
         }
 
-        // El operador 2 no trabaja con ese comercio
         var ajeno = Destinatario();
         ajeno.ComercioId = ComercioSoloDelOperador1;
         using (var deOtro = await operador2.PostAsJsonAsync("api/destinatarios", ajeno))
@@ -81,7 +73,6 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.BadRequest, deOtro.StatusCode);
         }
 
-        // El operador 1 sí (y sin ubicación también se puede)
         using var alta = await operador1.PostAsJsonAsync("api/destinatarios", ajeno);
 
         Assert.Equal(HttpStatusCode.Created, alta.StatusCode);
@@ -90,8 +81,6 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Null(creado.Direcciones.Single().Latitud);
     }
 
-    // Los seeders vinculan los dos comercios de prueba con los dos operadores: para tener uno con el
-    // que el operador 2 no trabaja, se arma aparte (con un destinatario), con el superusuario
     private const int ComercioSoloDelOperador1 = 9001;
     private const int DestinatarioDelComercioSoloDelOperador1 = 9001;
 
@@ -176,14 +165,12 @@ public class DestinatariosDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Contains(listado.Single(d => d.Id == destinatario).Direcciones, d => d.Id == nueva.Id);
         }
 
-        // Para el operador 2 el destinatario de un comercio con el que no trabaja no existe
         using (var ajena = await operador2.PostAsJsonAsync(
                    $"api/destinatarios/{DestinatarioDelComercioSoloDelOperador1}/direcciones", Direccion("Montevideo")))
         {
             Assert.Equal(HttpStatusCode.NotFound, ajena.StatusCode);
         }
 
-        // Una dirección inválida no se guarda
         using var invalida = await comercio1.PostAsJsonAsync($"api/destinatarios/{destinatario}/direcciones",
             Direccion("Atlántida"));
         Assert.Equal(HttpStatusCode.BadRequest, invalida.StatusCode);

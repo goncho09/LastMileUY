@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LastMileUY.Contracts.Envios;
 
-// Un bulto (paquete) del envío al crearlo. El código lo genera la API.
 public class CrearBultoRequest
 {
     [Range(0.01, 1000)]

@@ -8,8 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Rutas.Application;
 
-// Consultas de hojas de ruta: el listado y el detalle para el Backoffice, lo que se puede elegir
-// al armar una ruta y la hoja que descarga el repartidor. El operador lo filtran EF y RLS.
 public class ConsultasRutasService(ApplicationDbContext db)
 {
     public const int TamanioPaginaMaximo = 100;
@@ -22,7 +20,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
         CancellationToken cancellationToken = default)
     {
         tamanioPagina = Math.Clamp(tamanioPagina, 1, TamanioPaginaMaximo);
-        // Con tope: (pagina - 1) * tamanioPagina no puede pasarse de un int. Más allá, la página viene vacía
         pagina = Math.Clamp(pagina, 1, int.MaxValue / tamanioPagina);
 
         var rutas = db.Rutas.AsNoTracking();
@@ -55,7 +52,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
         return new PaginaDto<RutaResumenDto>(items, total, pagina, tamanioPagina);
     }
 
-    // Las rutas despachadas o en curso del repartidor que inició sesión
     public async Task<IReadOnlyList<RutaResumenDto>> ListarDelRepartidorAsync(
         string usuarioId,
         CancellationToken cancellationToken = default)
@@ -107,8 +103,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
                     Envio = e,
                     Destinatario = new DestinatarioDto(d.Nombre, d.Apellido, d.Telefono, d.Email),
                     Franja = f == null ? null : new FranjaHorariaDto(f.Nombre, f.HoraInicio, f.HoraFin),
-                    // Los bultos que lleva la parada (su manifiesto). Las rutas armadas antes del manifiesto
-                    // no lo tienen: para esas, todos los del envío.
                     CantidadBultos = e.Bultos.Count(b => !p.Bultos.Any() || p.Bultos.Any(x => x.BultoId == b.Id)),
                     PesoKg = e.Bultos
                         .Where(b => !p.Bultos.Any() || p.Bultos.Any(x => x.BultoId == b.Id))
@@ -119,8 +113,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 })
             .ToListAsync(cancellationToken);
 
-        // Los bultos de cada parada, con el mismo criterio que la cantidad de arriba: su manifiesto o,
-        // en las rutas armadas antes del manifiesto, todos los del envío. Siempre en el mismo orden.
         var bultosRuta = await (
             from p in db.Paradas.AsNoTracking()
             join b in db.Bultos.AsNoTracking()
@@ -148,7 +140,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
                     .Select(x => x.Bulto)
                     .ToList());
 
-        // La evidencia que pide cada parada sale de la regla vigente para la modalidad de su envío
         var evidencias = await db.ReglasOperativas.AsNoTracking()
             .Where(r => r.Activa)
             .ToDictionaryAsync(
@@ -204,8 +195,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
             reglaDto);
     }
 
-    // La hoja de ruta para la app del repartidor: solo la del repartidor asignado y solo
-    // una vez despachada (antes el Backoffice todavía la puede estar armando).
     public async Task<(ResultadoHoja Resultado, RutaDetalleDto? Hoja)> ObtenerHojaDelRepartidorAsync(
         int id,
         string usuarioId,
@@ -236,7 +225,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
         return (ResultadoHoja.Disponible, await ObtenerHojaParaLaAppAsync(id, cancellationToken));
     }
 
-    // Repartidores y vehículos activos, y los envíos que se pueden sumar a una ruta nueva
     public async Task<OpcionesRutaDto> ObtenerOpcionesAsync(CancellationToken cancellationToken = default)
     {
         var repartidores = await (
@@ -266,7 +254,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 from f in franjas.DefaultIfEmpty()
                 where (e.Estado == EstadoEnvio.EnDeposito || e.Estado == EstadoEnvio.Reprogramado)
                       && !enRutasAbiertas.Contains(e.Id)
-                      // Los mismos que acepta PlanificarRutaService: sin bultos por entregar no se puede asignar
                       && e.Bultos.Any(b => b.Estado == EstadoBulto.Pendiente || b.Estado == EstadoBulto.NoEntregado)
                 orderby f == null ? 1 : 0, f.HoraInicio, e.Id
                 select new
@@ -274,8 +261,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
                     Envio = e,
                     Destinatario = d.Nombre + " " + d.Apellido,
                     Franja = f == null ? null : new FranjaHorariaDto(f.Nombre, f.HoraInicio, f.HoraFin),
-                    // Solo lo que falta entregar: es lo que va a cargar el vehículo (un envío reprogramado
-                    // después de una entrega parcial ya no lleva los bultos entregados)
                     PesoKg = e.Bultos
                         .Where(b => b.Estado == EstadoBulto.Pendiente || b.Estado == EstadoBulto.NoEntregado)
                         .Sum(b => (decimal?)b.PesoKg) ?? 0,
@@ -318,8 +303,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
     private static DireccionDto ADto(DireccionEntrega d) =>
         new(d.Calle, d.Numero, d.Apartamento, d.Ciudad, d.Departamento, d.CodigoPostal, d.Referencia);
 
-    // Lo que el repartidor puede abrir desde la app: sus rutas despachadas o en curso, y también
-    // las finalizadas (para ver cómo quedó la última). Una planificada todavía se está armando.
     private static readonly EstadoRuta[] EstadosVisiblesEnLaApp =
         [.. Ruta.EstadosParaElRepartidor, EstadoRuta.Finalizada];
 
@@ -346,9 +329,6 @@ public class ConsultasRutasService(ApplicationDbContext db)
         return await ObtenerHojaParaLaAppAsync(rutaId, ct);
     }
 
-    // La hoja que se le manda al celular del repartidor. Lo que llega al celular puede quedar
-    // guardado ahí (para trabajar sin conexión), así que va solo lo que necesita para entregar:
-    // sin el email del destinatario (para comunicarse alcanza el teléfono).
     public async Task<RutaDetalleDto?> ObtenerHojaParaLaAppAsync(int id, CancellationToken ct = default) =>
         SinDatosInnecesarios(await ObtenerDetalleAsync(id, ct));
 

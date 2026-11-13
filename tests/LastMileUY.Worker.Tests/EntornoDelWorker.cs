@@ -8,9 +8,6 @@ using Testcontainers.RabbitMq;
 
 namespace LastMileUY.Worker.Tests;
 
-// PostgreSQL (con las migraciones de la API) y RabbitMQ reales en Docker, compartidos por las pruebas.
-// Datos: dos operadores que trabajan con el mismo comercio, un envío de cada uno y suscripciones del
-// comercio con cada operador (activas, inactivas y a otro tipo de evento).
 public class EntornoDelWorker : IAsyncLifetime
 {
     public const int OperadorA = 1;
@@ -19,11 +16,10 @@ public class EntornoDelWorker : IAsyncLifetime
     public const int EnvioDeA = 101;
     public const int EnvioDeB = 102;
 
-    // Suscripciones del comercio
-    public const int SuscripcionDeA = 1;            // con A, a envio.estado_cambiado, activa
-    public const int SuscripcionDeB = 2;            // con B, a envio.estado_cambiado, activa
-    public const int SuscripcionInactivaDeA = 3;    // con A, a envio.estado_cambiado, inactiva
-    public const int SuscripcionAlAltaDeA = 4;      // con A, a envio.admitido, activa
+    public const int SuscripcionDeA = 1;
+    public const int SuscripcionDeB = 2;
+    public const int SuscripcionInactivaDeA = 3;
+    public const int SuscripcionAlAltaDeA = 4;
 
     private readonly PostgreSqlContainer postgres = new PostgreSqlBuilder("postgres:17").Build();
     private readonly RabbitMqContainer rabbit = new RabbitMqBuilder("rabbitmq:4.1-alpine").Build();
@@ -32,7 +28,6 @@ public class EntornoDelWorker : IAsyncLifetime
 
     public string CadenaAdministrador => postgres.GetConnectionString();
 
-    // Como en compose: el worker usa el usuario de la aplicación, al que le aplica RLS
     public string CadenaAplicacion => new NpgsqlConnectionStringBuilder(CadenaAdministrador)
     {
         Username = "lastmileuy_app",
@@ -97,7 +92,6 @@ public class EntornoDelWorker : IAsyncLifetime
                                                                                """);
     }
 
-    // Consulta con el superusuario (saltea RLS), para ver lo que quedó en la base
     public async Task<long> ContarAsync(string sql, params (string Nombre, object Valor)[] parametros)
     {
         await using var conexion = new NpgsqlConnection(CadenaAdministrador);

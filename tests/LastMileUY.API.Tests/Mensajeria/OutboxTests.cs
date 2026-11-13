@@ -8,8 +8,6 @@ namespace LastMileUY.API.Tests.Mensajeria;
 
 using static BaseConDosOperadores;
 
-// El outbox contra la base real (ver docs/mensajeria.md): cada evento de un envío deja su mensaje en
-// el mismo guardado, con los datos del contrato, y cada usuario de la base hace solo lo que le toca.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class OutboxTests(BaseConDosOperadores baseDeDatos)
 {
@@ -93,7 +91,6 @@ public class OutboxTests(BaseConDosOperadores baseDeDatos)
         {
             var envio = await db.Envios.SingleAsync(e => e.Id == envioId);
 
-            // La descripción no entra en la columna (1000 caracteres): la base rechaza el guardado
             envio.CambiarEstado(EstadoEnvio.EnDeposito, descripcion: new string('x', 1001));
             await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
 
@@ -146,7 +143,6 @@ public class OutboxTests(BaseConDosOperadores baseDeDatos)
         string Tipo, int EnvioId, int OperadorId, int ComercioId, string Estado, string? EstadoAnterior,
         string Origen, string? CorrelacionId, DateTime? FechaPublicacion);
 
-    // Lee el outbox como superusuario (la aplicación no puede), en el orden en que se publicaría
     private async Task<List<Mensaje>> MensajesDeAsync(int envioId)
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);

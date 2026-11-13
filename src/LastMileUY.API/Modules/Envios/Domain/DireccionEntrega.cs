@@ -8,7 +8,6 @@ public record DireccionEntrega(
     string Departamento,
     string? CodigoPostal,
     string? Referencia,
-    // Dónde queda, copiado de la dirección del destinatario (null si no tiene): para el orden sugerido
     decimal? Latitud = null,
     decimal? Longitud = null
 );

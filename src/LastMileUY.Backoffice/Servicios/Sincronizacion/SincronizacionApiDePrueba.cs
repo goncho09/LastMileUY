@@ -3,11 +3,8 @@ using LastMileUY.Contracts.Sincronizacion;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Operaciones de ejemplo, una de cada resultado, para trabajar el Backoffice sin la API
-// ("Api:UsarDatosDePrueba"). Las rutas y envíos son los de RutasApiDePrueba.
 public class SincronizacionApiDePrueba : ISincronizacionApi
 {
-    // Un PNG de 1x1 píxel, para que la evidencia de prueba se vea como imagen
     private static readonly byte[] PixelPng = Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
 

@@ -57,7 +57,6 @@ public class ResultadosBultosTests
         var envio = CrearEnvioEnTransito(3);
         var bultos = envio.Bultos.OrderBy(b => b.Id).ToList();
 
-        // Primera visita: dos entregados, uno no entregado.
         var primerIntento = envio.RegistrarResultadoBultos(
         [
             Resultado(bultos[0], true),
@@ -67,7 +66,6 @@ public class ResultadosBultosTests
 
         Assert.Equal(EstadoEnvio.EntregadoParcialmente, envio.Estado);
 
-        // Segunda visita: reprogramar y volver a despachar.
         envio.CambiarEstado(EstadoEnvio.Reprogramado);
         envio.CambiarEstado(EstadoEnvio.AsignadoARuta);
         envio.CambiarEstado(EstadoEnvio.EnTransito);

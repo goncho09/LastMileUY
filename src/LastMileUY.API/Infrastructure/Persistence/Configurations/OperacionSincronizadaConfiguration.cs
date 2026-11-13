@@ -18,13 +18,11 @@ public class OperacionSincronizadaConfiguration : IEntityTypeConfiguration<Opera
             .HasForeignKey(o => o.OperadorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // El intento que generó la operación (si se aplicó)
         builder.HasOne(o => o.IntentoEntrega)
             .WithMany()
             .HasForeignKey(o => o.IntentoEntregaId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // La versión de las reglas de entrega parcial con la que se evaluó
         builder.HasOne(o => o.ReglaEntregaParcial)
             .WithMany()
             .HasForeignKey(o => o.ReglaEntregaParcialId)
@@ -34,7 +32,6 @@ public class OperacionSincronizadaConfiguration : IEntityTypeConfiguration<Opera
             .HasMaxLength(450)
             .IsRequired();
 
-        // SHA-256 en hexadecimal
         builder.Property(o => o.Huella)
             .HasMaxLength(64)
             .IsFixedLength();
@@ -43,14 +40,12 @@ public class OperacionSincronizadaConfiguration : IEntityTypeConfiguration<Opera
             .HasMaxLength(500)
             .IsRequired();
 
-        // Lo que evita aplicar dos veces la misma operación: un reenvío choca con este índice
         builder.HasIndex(o => new
         {
             o.OperadorId,
             o.IdOperacion
         }).IsUnique();
 
-        // El historial del Backoffice se consulta por ruta
         builder.HasIndex(o => o.RutaId);
     }
 }

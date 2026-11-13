@@ -11,8 +11,6 @@ namespace LastMileUY.API.Tests.Mensajeria;
 
 using static BaseConDosOperadores;
 
-// Eventos de bulto en el outbox (entrega parcial, ver docs/mensajeria.md): cada bulto que cambia de
-// estado deja su mensaje en el mismo guardado que el cambio, con el código del bulto y el motivo.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
 {
@@ -47,7 +45,6 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal([null, null, "Bulto dañado (eventos)"], deBultos.Select(m => m.MotivoNoEntrega));
         Assert.All(deBultos, m => Assert.Equal(("Repartidor", "parcial-1"), (m.Origen, m.CorrelacionId)));
 
-        // El cambio del envío sale primero, y después el de cada bulto
         var delEnvio = mensajes.Last(m => m.Tipo == TiposEvento.EnvioEstadoCambiado);
         Assert.Equal("EntregadoParcialmente", delEnvio.Estado);
         Assert.True(mensajes.IndexOf(delEnvio) < mensajes.IndexOf(deBultos[0]));
@@ -65,7 +62,6 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
             var bultos = envio.Bultos.OrderBy(b => b.Id).ToList();
 
             envio.RegistrarResultadoBultos([Resultado(bultos[0], entregado: true), Resultado(bultos[1], false, motivo)]);
-            // Como la regla de entrega parcial, en el mismo guardado
             envio.CambiarEstado(EstadoEnvio.Reprogramado, "Sistema");
             await db.SaveChangesAsync();
         }
@@ -94,7 +90,6 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
             var envio = await db.Envios.Include(e => e.Bultos).SingleAsync(e => e.Id == envioId);
             envio.RegistrarResultadoBultos(envio.Bultos.Select(b => Resultado(b, entregado: true)).ToList());
 
-            // Un dato inválido hace fallar el primer guardado
             var bulto = envio.Bultos.First();
             var descripcion = bulto.Descripcion;
             bulto.Descripcion = new string('x', 501);
@@ -110,7 +105,6 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public void Los_eventos_de_envio_no_cambian_su_JSON()
     {
-        // Los comercios ya reciben este formato: los campos de bulto no aparecen ni vacíos
         var evento = new EstadoEnvioCambiado(
             Guid.NewGuid(), TiposEvento.EnvioEstadoCambiado, EstadoEnvioCambiado.VersionActual, DateTime.UtcNow,
             OperadorA, ComercioCompartido, 1, "CODIGO", "EnDeposito", "Admitido", "Backoffice", true, null);
@@ -121,7 +115,6 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
         Assert.DoesNotContain("MotivoNoEntrega", json);
     }
 
-    // Un envío en tránsito, en una ruta despachada, con esa cantidad de bultos
     private async Task<int> EnvioEnTransitoAsync(int bultos)
     {
         var (_, _, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorA, bultosPorEnvio: bultos);
@@ -160,7 +153,6 @@ public class EventosBultoTests(BaseConDosOperadores baseDeDatos)
         string Tipo, string Estado, string? EstadoAnterior, string? CodigoBulto, string? MotivoNoEntrega,
         string Origen, string? CorrelacionId);
 
-    // Lee el outbox como superusuario (la aplicación no puede), en el orden en que se publicaría
     private async Task<List<Mensaje>> MensajesDeAsync(int envioId)
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);

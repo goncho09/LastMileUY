@@ -14,7 +14,6 @@ public class MotivoNoEntregaConfiguration
 
         builder.HasKey(m => m.Id);
 
-        // Cada motivo pertenece a un operador logístico.
         builder.HasOne<Operador>()
             .WithMany(o => o.MotivosNoEntrega)
             .HasForeignKey(m => m.OperadorId)
@@ -27,7 +26,6 @@ public class MotivoNoEntregaConfiguration
         builder.Property(m => m.Descripcion)
             .HasMaxLength(500);
 
-        // Un operador no puede registrar dos motivos con el mismo nombre.
         builder.HasIndex(m => new
         {
             m.OperadorId,

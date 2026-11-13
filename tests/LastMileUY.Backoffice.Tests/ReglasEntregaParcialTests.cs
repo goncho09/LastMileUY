@@ -6,7 +6,6 @@ using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.Backoffice.Tests;
 
-// Reglas de entrega parcial en "Mi operador": el cliente de la API y los datos de prueba
 public class ReglasEntregaParcialTests
 {
     private static readonly PublicarReglaEntregaParcialRequest Pedido = new()
@@ -76,7 +75,6 @@ public class ReglasEntregaParcialTests
     private static OperadorApiHttp CrearApi(HttpStatusCode codigo, string cuerpo) =>
         new(new HttpClient(new RespuestaFija(codigo, cuerpo)) { BaseAddress = new Uri("http://api.test/") });
 
-    // Simula la API: siempre responde lo mismo, sin red
     private class RespuestaFija(HttpStatusCode codigo, string cuerpo) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>

@@ -8,8 +8,6 @@ using Testcontainers.PostgreSql;
 
 namespace LastMileUY.API.Tests.Multitenancy;
 
-// Levanta un PostgreSQL real en Docker, aplica todas las migraciones y carga
-// dos operadores con un envío cada uno. Se comparte entre las pruebas de la colección.
 public class BaseConDosOperadores : IAsyncLifetime
 {
     public const int OperadorA = 1;
@@ -17,10 +15,6 @@ public class BaseConDosOperadores : IAsyncLifetime
     public const int EnvioDeA = 101;
     public const int EnvioDeB = 102;
 
-    // Segundo nivel (comercios):
-    // - el comercio 1 trabaja con A y con B (los envíos 101 y 102 son suyos);
-    // - el comercio 2 trabaja solo con A (envío 103 de A);
-    // - el comercio 3 trabaja solo con B (no tiene envíos; su destinatario no lo puede ver A).
     public const int ComercioCompartido = 1;
     public const int ComercioSoloDeA = 2;
     public const int ComercioSoloDeB = 3;
@@ -28,7 +22,6 @@ public class BaseConDosOperadores : IAsyncLifetime
     public const int DestinatarioComercio2 = 2;
     public const int DestinatarioComercio3 = 3;
 
-    // Reglas operativas (modalidad Estándar) distintas para cada operador. Para Urgente no hay regla.
     public const string ReglaDeA = "Estándar A";
     public const string ReglaDeB = "Estándar B";
     public const int MaximoIntentosDeA = 1;
@@ -38,13 +31,10 @@ public class BaseConDosOperadores : IAsyncLifetime
     private readonly PostgreSqlContainer contenedor = new PostgreSqlBuilder("postgres:17")
         .Build();
 
-    // Conexión con el usuario de la aplicación (sin privilegios, le aplica RLS)
     public string CadenaAplicacion { get; private set; } = string.Empty;
 
-    // Conexión con el superusuario (solo para preparar los datos)
     public string CadenaAdministrador => contenedor.GetConnectionString();
 
-    // Conexión con el usuario del publicador del outbox (solo lee y marca MensajesOutbox)
     public string CadenaPublicador => new NpgsqlConnectionStringBuilder(CadenaAdministrador)
     {
         Username = "lastmileuy_publicador",
@@ -63,7 +53,6 @@ public class BaseConDosOperadores : IAsyncLifetime
         {
             await db.Database.MigrateAsync();
 
-            // Como superusuario se saltea RLS, así que puede cargar datos de los dos operadores
             await db.Database.ExecuteSqlRawAsync($"""
                 INSERT INTO "Operadores"("Id", "Nombre", "Activo", "FechaCreacion")
                     VALUES ({OperadorA}, 'Operador A', true, now()), ({OperadorB}, 'Operador B', true, now());
@@ -117,9 +106,6 @@ public class BaseConDosOperadores : IAsyncLifetime
         }.ConnectionString;
     }
 
-    // Un DbContext como el de la aplicación: usuario sin privilegios + interceptor del operador
-    // (y del comercio, para simular a un usuario de comercio) + outbox de eventos, con la
-    // correlación del pedido que se quiera simular
     public ApplicationDbContext CrearContexto(int? operadorId, int? comercioId = null, string? correlacion = null)
     {
         var contexto = new ContextoOperadorFijo(operadorId, comercioId);

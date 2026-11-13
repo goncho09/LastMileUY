@@ -109,8 +109,6 @@ public class GestionAdministrativaTests(
         int comercioId;
         int operadorId;
 
-        // Creamos datos propios para no modificar los
-        // operadores y comercios de las demás pruebas.
         await using (var db = baseDeDatos.CrearContexto(null))
         {
             var operadores = new GestionOperadoresService(db);
@@ -136,7 +134,6 @@ public class GestionAdministrativaTests(
             Assert.True(await servicio.VincularAsync(
                 comercioId, operadorId, CancellationToken.None));
 
-            // Vincular nuevamente no debe duplicar.
             Assert.True(await servicio.VincularAsync(
                 comercioId, operadorId, CancellationToken.None));
         }
@@ -152,7 +149,6 @@ public class GestionAdministrativaTests(
                 comercioId, operadorId, CancellationToken.None));
         }
 
-        // El registro permanece, pero inactivo.
         await VerificarVinculoAsync(
             comercioId, operadorId, false, 1);
 
@@ -164,7 +160,6 @@ public class GestionAdministrativaTests(
                 comercioId, operadorId, CancellationToken.None));
         }
 
-        // Reactivar tampoco debe crear otro registro.
         await VerificarVinculoAsync(
             comercioId, operadorId, true, 1);
     }

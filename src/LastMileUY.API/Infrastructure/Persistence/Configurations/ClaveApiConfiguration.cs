@@ -40,7 +40,6 @@ public class ClaveApiConfiguration : IEntityTypeConfiguration<ClaveApi>
             .HasMaxLength(450)
             .IsRequired();
 
-        // Cada pedido con clave la busca por el hash
         builder.HasIndex(c => c.Hash)
             .IsUnique();
 

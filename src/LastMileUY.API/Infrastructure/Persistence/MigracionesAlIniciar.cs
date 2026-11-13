@@ -3,9 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Infrastructure.Persistence;
 
-// Aplica las migraciones pendientes al arrancar, si BaseDeDatos:AplicarMigraciones es true
-// (lo prende compose.yaml). Usa la cadena "Migraciones", la del dueño de las tablas:
-// el usuario de la aplicación no puede crear tablas ni el rol lastmileuy_app.
 public static class MigracionesAlIniciar
 {
     public static async Task AplicarSiCorrespondeAsync(WebApplication app)

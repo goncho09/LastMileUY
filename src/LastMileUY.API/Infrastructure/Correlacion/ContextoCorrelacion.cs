@@ -3,9 +3,6 @@ using LastMileUY.Contracts.Mensajeria;
 
 namespace LastMileUY.API.Infrastructure.Correlacion;
 
-// Identificador de correlación del pedido actual: une en los registros (logs) el pedido HTTP, los
-// eventos que publica y lo que hace el worker con ellos. Uno por pedido (scoped); lo carga el
-// middleware de abajo y lo lee el outbox al guardar los eventos.
 public class ContextoCorrelacion
 {
     public string? Id { get; set; }
@@ -13,8 +10,6 @@ public class ContextoCorrelacion
 
 public static partial class CorrelacionMiddleware
 {
-    // Si el cliente manda uno, se respeta para seguir su pedido de punta a punta. Solo caracteres
-    // seguros y largo acotado: termina en los registros y en los mensajes.
     [GeneratedRegex("^[A-Za-z0-9._-]{1,64}$")]
     private static partial Regex FormatoValido();
 

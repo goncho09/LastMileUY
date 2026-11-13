@@ -5,14 +5,12 @@ namespace LastMileUY.API.Tests.Identidad;
 
 using static BaseConDosOperadores;
 
-// Operadores que puede elegir un usuario de comercio al iniciar sesión
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class OperadoresDeComercioTests(BaseConDosOperadores baseDeDatos)
 {
     [Fact]
     public async Task Un_comercio_con_dos_operadores_puede_elegir_cualquiera_de_los_dos()
     {
-        // Se consulta antes de iniciar sesión: sin operador ni comercio cargados
         await using var db = baseDeDatos.CrearContexto(null);
 
         var operadores = await new OperadoresDeComercioService(db).ListarAsync(ComercioCompartido);

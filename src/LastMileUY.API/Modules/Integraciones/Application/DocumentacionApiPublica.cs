@@ -4,9 +4,6 @@ using Microsoft.OpenApi;
 
 namespace LastMileUY.API.Modules.Integraciones.Application;
 
-// El documento OpenAPI de la API pública (/api/v1/openapi.json), que muestra Scalar en /api/v1/docs.
-// Solo trae los endpoints de /api/v1 (los del grupo "v1") y declara cómo se autentica: con la clave
-// en el encabezado X-Api-Key. Así la documentación sirve para probar los pedidos con una clave real.
 public static class DocumentacionApiPublica
 {
     public static void Configurar(OpenApiOptions opciones)
@@ -41,7 +38,7 @@ public static class DocumentacionApiPublica
                     **Importación sin duplicados.** `POST /api/v1/envios/lote` usa la referencia externa
                     (el número de pedido del comercio) para no crear el mismo envío dos veces: se puede
                     reenviar el lote completo o una parte sin miedo.
-                    """.ReplaceLineEndings("\n") // igual en Windows y en Linux (el contrato se compara en las pruebas)
+                    """.ReplaceLineEndings("\n")
             };
 
             documento.Components ??= new OpenApiComponents();

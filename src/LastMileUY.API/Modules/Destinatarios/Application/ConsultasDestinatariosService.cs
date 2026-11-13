@@ -4,9 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Destinatarios.Application;
 
-// Destinatarios con sus direcciones activas, para elegirlos al dar de alta un envío.
-// No filtra por comercio a mano: el filtro global de EF y el RLS ya dejan ver solo
-// los del comercio del usuario (o, para el operador, los de sus comercios).
 public class ConsultasDestinatariosService(ApplicationDbContext db)
 {
     public async Task<List<DestinatarioDto>> ListarAsync(
@@ -15,7 +12,6 @@ public class ConsultasDestinatariosService(ApplicationDbContext db)
     {
         var consulta = db.Destinatarios.AsNoTracking();
 
-        // Opcional: el operador puede pedir los de un comercio puntual
         if (comercioId is not null)
         {
             consulta = consulta.Where(d => d.ComercioId == comercioId);

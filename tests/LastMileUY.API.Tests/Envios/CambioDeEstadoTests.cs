@@ -11,7 +11,6 @@ namespace LastMileUY.API.Tests.Envios;
 
 using static BaseConDosOperadores;
 
-// Cambio de estado y alta de envíos contra la base real: historial, bultos, duplicados y concurrencia
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
 {
@@ -101,7 +100,6 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
     {
         var id = await CrearEnvioAsync(OperadorA);
 
-        // Los dos leen el envío en el mismo estado
         await using var primero = baseDeDatos.CrearContexto(OperadorA);
         await using var segundo = baseDeDatos.CrearContexto(OperadorA);
         var envio1 = await primero.Envios.SingleAsync(e => e.Id == id);
@@ -110,7 +108,6 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
         envio1.CambiarEstado(EstadoEnvio.EnDeposito, "Backoffice");
         await primero.SaveChangesAsync();
 
-        // El segundo guarda sobre una versión vieja: xmin cambió y EF lo detecta
         envio2.CambiarEstado(EstadoEnvio.EnDeposito, "Backoffice");
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => segundo.SaveChangesAsync());
     }
@@ -229,7 +226,6 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
 
         int envioId;
 
-        // Crear un envío real con un bulto.
         await using (var db = baseDeDatos.CrearContexto(OperadorA))
         {
             var request = new CrearEnvioRequest
@@ -257,7 +253,6 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
 
             envioId = creado.Id;
 
-            // Preparar el envío en estado EnTransito
             var envioPreparado = await db.Envios
                 .SingleAsync(e => e.Id == envioId);
 
@@ -281,7 +276,6 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
             "debe registrarse por bulto",
             excepcion.Message);
 
-        // Comprobar que el rechazo no modificó el envío ni sus bultos.
         await using var verificacion = baseDeDatos.CrearContexto(OperadorA);
 
         var envio = await verificacion.Envios
@@ -308,7 +302,6 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
         return envio.Id;
     }
 
-    // El alta exige que el operador trabaje con el comercio
     private async Task VincularOperadorConComercioAsync()
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador);

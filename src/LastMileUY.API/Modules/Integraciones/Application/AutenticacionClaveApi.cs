@@ -7,11 +7,6 @@ using Microsoft.Extensions.Options;
 
 namespace LastMileUY.API.Modules.Integraciones.Application;
 
-// Autenticación de la API pública: la clave viaja en el encabezado X-Api-Key.
-// Solo la usan los endpoints de /api/v1 (los nombran en su política); el resto de la API sigue con la
-// cookie de sesión, así que una clave no sirve para nada fuera de la API pública.
-// La identidad que arma es la de un comercio con su operador ya elegido: los mismos claims que la
-// sesión del portal, así que el filtro de EF, el RLS y ValidarVinculoComercioMiddleware se aplican igual.
 public sealed class AutenticacionClaveApi(
     IOptionsMonitor<AuthenticationSchemeOptions> opciones,
     ILoggerFactory registro,
@@ -24,10 +19,8 @@ public sealed class AutenticacionClaveApi(
     public const string Esquema = "ClaveApi";
     public const string Encabezado = "X-Api-Key";
 
-    // Qué clave hizo el pedido: separa los topes de pedidos y marca el canal de los envíos (Api)
     public const string ClaimClaveApiId = "clave_api_id";
 
-    // La IP pasó el tope de claves inválidas: el desafío responde 429 en lugar de 401
     private TimeSpan? bloqueadaPor;
 
     private string Ip => Context.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
@@ -37,7 +30,6 @@ public sealed class AutenticacionClaveApi(
         if (!Request.Headers.TryGetValue(Encabezado, out var valores) || string.IsNullOrWhiteSpace(valores))
             return AuthenticateResult.NoResult();
 
-        // Demasiadas claves inválidas desde esta IP: ni se consulta la base (IntentosFallidosClaveApi)
         if (intentosFallidos.EstaBloqueada(Ip, out var espera))
         {
             bloqueadaPor = espera;
@@ -46,19 +38,15 @@ public sealed class AutenticacionClaveApi(
 
         var clave = valores.ToString().Trim();
 
-        // Formato: así una clave pegada mal no llega a la base
         if (!clave.StartsWith(ClavesApiService.Inicio, StringComparison.Ordinal) || clave.Length > 100)
             return Fallo("Clave de API inválida.");
 
         var guardada = await ClavesApiService.BuscarParaAutenticarAsync(
             db, ClavesApiService.CalcularHash(clave), Context.RequestAborted);
 
-        // Inexistente y revocada responden igual: 401
         if (guardada is null)
             return Fallo("Clave de API inválida o revocada.");
 
-        // Una clave de prueba trabaja con el operador del ambiente de pruebas, nunca con el de verdad:
-        // así ve y crea solo datos de prueba. Lo decide la clave guardada, no algo del pedido
         var operadorId = guardada.OperadorId;
 
         if (guardada.EsPrueba)
@@ -88,15 +76,12 @@ public sealed class AutenticacionClaveApi(
             new AuthenticationTicket(new ClaimsPrincipal(identidad), Esquema));
     }
 
-    // Cada clave que no sirve suma al tope de su IP
     private AuthenticateResult Fallo(string motivo)
     {
         intentosFallidos.RegistrarFallo(Ip);
         return AuthenticateResult.Fail(motivo);
     }
 
-    // Sin clave, o con una que no sirve: 401 con el esquema esperado, para que el integrador sepa qué falta.
-    // Si la IP pasó el tope de claves inválidas: 429 con Retry-After, como los demás topes
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
         if (bloqueadaPor is { } espera)

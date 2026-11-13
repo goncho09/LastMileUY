@@ -15,11 +15,6 @@ using Npgsql;
 using Testcontainers.PostgreSql;
 using ProgramPortal = Portal::Program;
 
-// El portal del comercio de verdad, en un Chromium real, hablando con la API de verdad:
-// - la API completa, escuchando en un puerto, contra un PostgreSQL en Docker (con los seeders de
-//   desarrollo: el comercio de prueba y sus destinatarios);
-// - el portal escuchando en otro puerto, con Api:UrlBase apuntando a esa API.
-// Cada prueba abre su propio contexto del navegador (como una ventana de incógnito).
 public class PortalComercioEnNavegador : IAsyncLifetime
 {
     public const string Comercio = "comercio@prueba.test";
@@ -36,7 +31,6 @@ public class PortalComercioEnNavegador : IAsyncLifetime
 
     public string DireccionPortal { get; private set; } = string.Empty;
 
-    // La API real (para lo que en la realidad hace el sistema del comercio con su clave)
     public string DireccionApi => direccionApi;
 
     private string direccionApi = string.Empty;
@@ -63,8 +57,6 @@ public class PortalComercioEnNavegador : IAsyncLifetime
         Navegador = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
     }
 
-    // Una ventana nueva con la sesión del comercio de prueba. Ese comercio trabaja con dos operadores:
-    // después del login elige el que se pida, o el primero
     public async Task<IPage> IniciarSesionAsync(string? operador = null)
     {
         var contexto = await Navegador.NewContextAsync(new BrowserNewContextOptions
@@ -83,7 +75,6 @@ public class PortalComercioEnNavegador : IAsyncLifetime
 
         if (pagina.Url.Contains("/seleccionar-operador", StringComparison.OrdinalIgnoreCase))
         {
-            // El radio está oculto: se elige tocando la tarjeta del operador, como una persona
             var tarjetas = pagina.Locator("label:has(input[name='Formulario.OperadorId'])");
             await (operador is null ? tarjetas.First : tarjetas.Filter(new() { HasText = operador })).ClickAsync();
             await pagina.GetByRole(AriaRole.Button, new() { Name = "Continuar con el operador" }).ClickAsync();
@@ -93,8 +84,6 @@ public class PortalComercioEnNavegador : IAsyncLifetime
         return pagina;
     }
 
-    // Un envío de un bulto del Comercio Prueba 1 con el Operador Prueba 1, dado de alta por el operador
-    // de prueba directo en la API (la cookie es Secure y acá no hay https: se manda a mano)
     public async Task<EnvioResponse> EnvioDelComercioAsync(string? referencia = null)
     {
         using var operador = new HttpClient(new CookieAMano()) { BaseAddress = new Uri(direccionApi + "/") };
@@ -127,8 +116,6 @@ public class PortalComercioEnNavegador : IAsyncLifetime
         return (await alta.Content.ReadFromJsonAsync<EnvioResponse>())!;
     }
 
-    // Con el superusuario de la base (saltea RLS), para cargar lo que en la realidad escribe el worker.
-    // Devuelve la primera fila
     public async Task<object[]> ConsultarAsync(string sql)
     {
         await using var conexion = new NpgsqlConnection(baseDeDatos.GetConnectionString());
@@ -176,8 +163,6 @@ public class PortalComercioEnNavegador : IAsyncLifetime
             builder.UseEnvironment("Development");
             builder.UseSetting("Api:UrlBase", direccionApi + "/");
             builder.UseSetting("DataProtection:Directorio", carpetaClaves);
-            // Cada prueba inicia sesión, y todas desde la misma IP: el tope de producción (10 por minuto)
-            // las frenaría con un 429 cuando sean más
             builder.UseSetting("Login:IntentosPorMinuto", "1000");
         }
     }

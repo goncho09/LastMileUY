@@ -5,22 +5,13 @@ using Npgsql;
 
 namespace LastMileUY.Worker;
 
-// Lo que el worker hace con cada evento (lo llama ConsumidorEventosEnvio).
 public interface IProcesadorEventos
 {
     Task<ResultadoProceso> ProcesarAsync(EstadoEnvioCambiado evento, CancellationToken cancellationToken);
 }
 
-// Repetido: el evento ya se había procesado y esta vez no se hizo nada
 public record ResultadoProceso(bool Repetido, int AvisosRegistrados);
 
-// Por cada evento, deja un aviso pendiente (EntregasAvisos) para cada suscripción activa del comercio a
-// ese tipo de evento. Los manda DespachadorAvisos, al que le avisa apenas los registra.
-// - Usa el usuario de la aplicación (lastmileuy_app) y carga el operador del evento antes de nada: le
-//   aplica el RLS del ADR-01 como a la API, y solo ve las suscripciones de ese operador.
-// - Todo en una transacción: anota el evento en MensajesProcesados y registra los avisos. Si el evento
-//   ya estaba anotado (RabbitMQ lo entregó de nuevo), no hace nada. Si algo falla, no queda ni la
-//   anotación ni los avisos, y el reintento empieza de cero.
 public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos, SenalAvisos? senal = null) : IProcesadorEventos
 {
     public const string Consumidor = "avisos";
@@ -30,7 +21,6 @@ public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos, SenalAvisos? senal =
         await using var conexion = await baseDeDatos.OpenConnectionAsync(cancellationToken);
         await using var transaccion = await conexion.BeginTransactionAsync(cancellationToken);
 
-        // true: solo para esta transacción. Sin comercio: el worker actúa como el operador
         await EjecutarAsync(conexion, transaccion, """
             SELECT set_config('app.operador_id', @operador, true), set_config('app.comercio_id', '', true)
             """, ("operador", evento.OperadorId.ToString()));
@@ -47,11 +37,6 @@ public class ProcesadorAvisos(NpgsqlDataSource baseDeDatos, SenalAvisos? senal =
             return new ResultadoProceso(Repetido: true, AvisosRegistrados: 0);
         }
 
-        // Estado 1 = Pendiente (EstadoEntregaAviso). Sin datos personales.
-        // El contenido depende de la versión del contrato de cada suscripción (VersionesAvisos): v1 es el
-        // evento tal cual, como siempre; v2 es el formato nuevo. Una suscripción v1 nunca recibe tipos nuevos
-        // (los de bulto): solo se puede suscribir a ellos con la v2.
-        // EventoId del aviso: uno propio por cada aviso, para que el comercio descarte los repetidos.
         var avisos = await EjecutarAsync(conexion, transaccion, """
             INSERT INTO "EntregasAvisos"("SuscripcionAvisosId", "EnvioId", "EventoId", "TipoEvento", "Contenido",
                     "Estado", "CantidadIntentos", "FechaCreacion", "FechaProximoIntento")

@@ -2,7 +2,6 @@ using LastMileUY.Contracts.Envios;
 
 namespace LastMileUY.Contracts.Rutas;
 
-// La hoja de ruta completa (GET /api/rutas/{id}): la ve el Backoffice y la descarga el repartidor
 public record RutaDetalleDto(
     int Id,
     string Nombre,
@@ -26,7 +25,6 @@ public record VehiculoDto(
     decimal CapacidadPesoKg,
     decimal CapacidadVolumenM3);
 
-// Una parada: el envío que se entrega ahí, en el orden de la ruta
 public record ParadaDto(
     int Orden,
     int EnvioId,
@@ -42,8 +40,6 @@ public record ParadaDto(
     EvidenciaRequeridaDto Evidencia,
     IReadOnlyList<BultoRutaDto>? Bultos = null);
 
-// Qué tiene que juntar el repartidor para entregar, según la regla operativa vigente
-// para la modalidad del envío (sin regla, nada es obligatorio)
 public record EvidenciaRequeridaDto(
     bool Firma,
     bool Foto,

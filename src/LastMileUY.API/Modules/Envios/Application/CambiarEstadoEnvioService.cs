@@ -8,14 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Envios.Application;
 
-// Cambia el estado de un envío del operador actual. La regla de qué transición vale está en
-// el dominio (Envio.CambiarEstado + TransicionesEnvio + la regla operativa del operador);
-// acá solo se busca, se aplica y se guarda.
 public class CambiarEstadoEnvioService(ApplicationDbContext db)
 {
-    // Devuelve false si el envío no existe o es de otro operador.
-    // ArgumentException: el estado no existe. TransicionInvalidaException: no se puede pasar a ese estado.
-    // DbUpdateConcurrencyException: otro usuario lo modificó al mismo tiempo.
     public async Task<bool> EjecutarAsync(
         int id,
         CambiarEstadoRequest request,
@@ -37,7 +31,6 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new ArgumentException($"El estado '{request.Estado}' no existe.");
         }
 
-        // Estos estados no se pueden establecer manualmente.
         if (nuevoEstado == EstadoEnvio.AsignadoARuta)
         {
             throw new TransicionInvalidaException(
@@ -63,8 +56,6 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new ArgumentException("El comentario no puede superar los 1000 caracteres.");
         }
 
-        // Los intentos hacen falta para numerar el próximo y para contar los fallidos;
-        // los bultos, para marcar como devueltos los que no se entregaron (al pasar a Devuelto)
         var envio = await db.Envios
             .Include(e => e.IntentosEntrega)
             .Include(e => e.Bultos)
@@ -78,15 +69,12 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
 
         if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
         {
-            // Primero respetamos la tabla de transiciones del dominio.
             if (!TransicionesEnvio.EsValida(envio.Estado, nuevoEstado))
             {
                 throw new TransicionInvalidaException(
                     $"No se puede pasar el envío de {envio.Estado} a {nuevoEstado}.");
             }
 
-            // Si la transición es válida, comprobamos que no se saltee
-            // el registro individual de los bultos.
             var tieneBultos = await db.Bultos
                 .AnyAsync(b => b.EnvioId == envio.Id, cancellationToken);
 
@@ -113,8 +101,6 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             throw new TransicionInvalidaException(ex.Message);
         }
 
-        // Si el resultado de la entrega se registra manualmente,
-        // también debemos actualizar el estado de la ruta.
         if (nuevoEstado is EstadoEnvio.Entregado or EstadoEnvio.NoEntregado)
         {
             var ruta = await db.Rutas
@@ -144,8 +130,6 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             }
         }
 
-        // El estado del envío, el intento de entrega y la ruta
-        // se guardan juntos mediante el mismo DbContext.
         await db.SaveChangesAsync(cancellationToken);
 
         return true;

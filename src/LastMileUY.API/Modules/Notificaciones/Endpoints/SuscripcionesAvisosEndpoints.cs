@@ -6,7 +6,6 @@ using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.API.Modules.Notificaciones.Endpoints;
 
-// Suscripciones del comercio a avisos HTTP (los manda el worker, ver docs/mensajeria.md)
 public static class SuscripcionesAvisosEndpoints
 {
     public static IEndpointRouteBuilder MapSuscripcionesAvisosEndpoints(this IEndpointRouteBuilder app)
@@ -14,8 +13,6 @@ public static class SuscripcionesAvisosEndpoints
         var group = app.MapGroup("/api/avisos/suscripciones")
             .WithTags("Avisos")
             .RequireAuthorization(politica => politica.RequireRole("Comercio"))
-            // Con los avisos apagados para el operador (docs/funcionalidades.md) se pueden ver las
-            // suscripciones, pero no crearlas ni cambiarlas
             .AddEndpointFilter(async (contexto, siguiente) =>
             {
                 var http = contexto.HttpContext;

@@ -2,11 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LastMileUY.Contracts.Destinatarios;
 
-// Un destinatario nuevo con su primera dirección (POST api/destinatarios).
-// Sin dirección no se le podría mandar ningún envío, así que va junto con el alta.
 public class CrearDestinatarioRequest
 {
-    // El usuario de un comercio no lo manda (o manda el suyo); el operador elige uno de sus comercios
     public int ComercioId { get; set; }
 
     [Required, MaxLength(100)]

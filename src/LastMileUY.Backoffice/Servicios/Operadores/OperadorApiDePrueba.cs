@@ -3,7 +3,6 @@ using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Operador fijo para trabajar el Backoffice sin la API (Api:UsarDatosDePrueba = true)
 public class OperadorApiDePrueba : IOperadorApi
 {
     public static readonly OperadorActualDto Operador = new(
@@ -18,7 +17,6 @@ public class OperadorApiDePrueba : IOperadorApi
                 1, 4, 12, 24, true, true, false)
         ]);
 
-    // En memoria, la más nueva primero (se pierde al reiniciar)
     private readonly List<ReglaEntregaParcialDto> reglasEntregaParcial =
     [
         new(1, 1, true, "NuevaHojaDeRuta" ,0m,"Versión inicial de los datos de prueba" ,"Operador de prueba",
@@ -27,7 +25,6 @@ public class OperadorApiDePrueba : IOperadorApi
 
     private readonly Lock candado = new();
 
-    // Un depósito en Montevideo, para que el orden sugerido de las paradas arranque de algún lado
     private Coordenadas? deposito = new(-34.859000m, -56.211500m);
 
     public Task<OperadorActualDto> ObtenerActualAsync(CancellationToken ct = default)

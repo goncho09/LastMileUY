@@ -1,7 +1,5 @@
 namespace LastMileUY.Backoffice.Servicios;
 
-// Cómo se muestra cada estado del envío en pantalla.
-// "Valor" es el nombre que manda la API; tiene que coincidir con el enum EstadoEnvio.
 public static class EstadosEnvio
 {
     public record Estado(string Valor, string Texto, string ClaseCss);

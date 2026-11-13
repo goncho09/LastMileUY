@@ -5,9 +5,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 {
-    // Banderas de funcionalidad por operador (docs/funcionalidades.md). Sin RLS a propósito, como
-    // Operadores: las lee el seguimiento público y las cambia el administrador, que no tienen operador.
-    // El usuario de la aplicación tiene permisos por los privilegios por defecto (AislamientoPorOperadorRls).
     /// <inheritdoc />
     public partial class FuncionalidadesPorOperador : Migration
     {

@@ -1,5 +1,3 @@
-/* Página pública de seguimiento. --color-operador lo pisa la página del envío con el color del
-   operador que lo entrega (identidad visual); si no tiene, queda el violeta de LastMileUY. */
 :root {
     --color-operador: #6d28d9;
     --fondo: #f6f5fa;
@@ -69,8 +67,6 @@ p {
     color: var(--texto-suave);
 }
 
-/* --- Estructura --- */
-
 .barra {
     background: var(--superficie);
     border-bottom: 1px solid var(--borde);
@@ -118,8 +114,6 @@ p {
     margin-top: 2rem;
 }
 
-/* --- Buscador --- */
-
 .buscador label {
     display: block;
     margin: .5rem 0 .35rem;
@@ -162,8 +156,6 @@ p {
     font-weight: 600;
     cursor: pointer;
 }
-
-/* --- Envío --- */
 
 .envio-operador {
     display: flex;
@@ -249,7 +241,6 @@ p {
     font-weight: 700;
 }
 
-/* Avance de la entrega por bultos (entrega parcial) */
 .bultos {
     margin: 0 0 1.25rem;
 }

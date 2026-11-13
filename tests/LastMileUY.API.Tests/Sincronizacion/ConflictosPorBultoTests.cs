@@ -14,11 +14,6 @@ namespace LastMileUY.API.Tests.Sincronizacion;
 
 using static BaseConDosOperadores;
 
-// Conflictos a nivel de bulto, contra la base real: lo que el celular dice de cada bulto se compara
-// con lo que tiene el servidor (docs/sincronizacion.md, "Política de conflictos"). Manda el servidor:
-// - un bulto que ya estaba entregado y el celular también entregó no es un conflicto: se saltea;
-// - un bulto extraviado, uno que el celular da por no entregado y ya está entregado, o uno que falta
-//   entregar y el celular no informó, son conflictos: no se aplica nada de la operación.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
 {
@@ -31,7 +26,6 @@ public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
         var bultos = await BultosAsync(envios[0]);
         var operacion = await OperacionAsync(ruta, envios[0], "EntregaParcial", entregados: [bultos[0], bultos[1]], noEntregados: [bultos[2]]);
 
-        // Mientras el celular estaba sin conexión, en el servidor un bulto quedó extraviado
         await CambiarBultoAsync(bultos[1], EstadoBulto.Extraviado);
         var antes = await FotoDelEnvioAsync(envios[0]);
 
@@ -75,7 +69,6 @@ public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
 
         await using var db = baseDeDatos.CrearContexto(OperadorA);
         var intento = await db.IntentosEntrega.Include(i => i.ResultadosBultos).SingleAsync(i => i.EnvioId == envios[0]);
-        // Solo quedan los bultos que faltaban: el que ya estaba entregado no se vuelve a registrar
         Assert.Equal([bultos[1], bultos[2]], intento.ResultadosBultos.Select(r => r.BultoId).Order());
         Assert.Equal("Entregado,Entregado,NoEntregado", (await FotoDelEnvioAsync(envios[0])).Bultos);
     }
@@ -86,7 +79,6 @@ public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
         var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorA, bultosPorEnvio: 3);
         var bultos = await BultosAsync(envios[0]);
 
-        // El celular conocía dos bultos: el tercero no estaba en su hoja y no se puede dar por entregado
         var operacion = await OperacionAsync(ruta, envios[0], "Entrega", entregados: [bultos[0], bultos[1]], noEntregados: []);
         var antes = await FotoDelEnvioAsync(envios[0]);
 
@@ -124,7 +116,6 @@ public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("EnTransito", (await FotoDelEnvioAsync(envios[0])).Estado);
     }
 
-    // Lo que tiene que quedar igual si la operación no se aplica
     private record Foto(int Intentos, int ResultadosBultos, int Eventos, string Estado, string Bultos);
 
     private async Task<Foto> FotoDelEnvioAsync(int envioId)
@@ -152,7 +143,6 @@ public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
         return await db.Bultos.Where(b => b.Id == bultoId).Select(b => b.Codigo).SingleAsync();
     }
 
-    // Lo que pasó en el servidor mientras el celular estaba sin conexión
     private async Task CambiarBultoAsync(int bultoId, EstadoBulto estado)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);
@@ -171,7 +161,6 @@ public class ConflictosPorBultoTests(BaseConDosOperadores baseDeDatos)
         return Assert.Single(respuesta.Resultados);
     }
 
-    // El operador A pide firma para entregar
     private async Task<OperacionRequest> OperacionAsync(
         int rutaId, int envioId, string tipo, IReadOnlyList<int> entregados, IReadOnlyList<int> noEntregados)
     {

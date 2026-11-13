@@ -3,10 +3,6 @@ using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Administración global de operadores con los datos de prueba (Api:UsarDatosDePrueba = true).
-// Singleton, como los demás servicios de prueba: los datos tienen que durar entre un pedido y otro
-// (si no, lo que se crea desaparece al volver al listado). Por eso el candado: lo usan varios pedidos a la vez.
-// Arranca con el operador de prueba del resto del Backoffice y uno más.
 public sealed class GestionOperadoresApiDePrueba : IGestionOperadoresApi
 {
     private readonly Lock candado = new();
@@ -17,7 +13,6 @@ public sealed class GestionOperadoresApiDePrueba : IGestionOperadoresApi
         new(2, "Envíos del Sur", true, DateTime.UtcNow.AddMonths(-1), "#0EA5E9", null)
     ];
 
-    // Correos de los usuarios iniciales (de operadores y comercios): la API no deja repetirlos
     private readonly HashSet<string> correos = new(StringComparer.OrdinalIgnoreCase);
 
     public Task<List<OperadorAdminDto>> ListarAsync()
@@ -74,7 +69,6 @@ public sealed class GestionOperadoresApiDePrueba : IGestionOperadoresApi
         }
     }
 
-    // Lo usa también la administración de comercios de prueba: los correos son únicos entre todos
     public void ReservarCorreo(string email)
     {
         lock (candado)

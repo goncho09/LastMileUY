@@ -10,10 +10,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Destinatarios.Application;
 
-// Alta de destinatarios y de sus direcciones de entrega. Quién puede: los mismos que dan de alta
-// envíos (Comercio y Operador). El usuario de un comercio solo carga destinatarios de su comercio;
-// el operador, de los comercios con los que trabaja. El filtro de EF y el RLS de "Destinatarios" y
-// "Direcciones" lo vuelven a controlar en la base.
 public class AltaDestinatariosService(ApplicationDbContext db, IContextoOperador contextoOperador)
 {
     public async Task<DestinatarioDto> CrearAsync(
@@ -23,7 +19,6 @@ public class AltaDestinatariosService(ApplicationDbContext db, IContextoOperador
         var operadorId = contextoOperador.OperadorId
             ?? throw new UnauthorizedAccessException("No se pudo identificar el operador autenticado.");
 
-        // El usuario de un comercio no elige: es el suyo. Si manda otro, no puede.
         var comercioId = request.ComercioId;
         if (contextoOperador.ComercioId is { } propio)
         {
@@ -52,7 +47,6 @@ public class AltaDestinatariosService(ApplicationDbContext db, IContextoOperador
         var direccion = ArmarDireccion(request.Direccion
             ?? throw new ArgumentException("El destinatario tiene que tener una dirección de entrega."));
 
-        // Igual que al crear un envío: el comercio tiene que estar activo y trabajar con este operador
         var comercioValido = await db.Set<OperadorComercio>()
             .AnyAsync(oc =>
                     oc.OperadorId == operadorId &&
@@ -89,8 +83,6 @@ public class AltaDestinatariosService(ApplicationDbContext db, IContextoOperador
             [ADto(direccion)]);
     }
 
-    // Otra dirección para un destinatario que ya existe. Si no lo ve (es de otro comercio u
-    // operador), es como si no existiera: null.
     public async Task<DireccionDto?> AgregarDireccionAsync(
         int destinatarioId,
         CrearDireccionRequest request,
@@ -137,7 +129,6 @@ public class AltaDestinatariosService(ApplicationDbContext db, IContextoOperador
             Departamento = DepartamentoValido(request.Departamento),
             CodigoPostal = Opcional(request.CodigoPostal, "el código postal", 20),
             Referencia = Opcional(request.Referencia, "la referencia", 300),
-            // La base guarda 6 decimales (unos 10 cm)
             Latitud = request.Latitud is { } lat ? Math.Round(lat, 6) : null,
             Longitud = request.Longitud is { } lon ? Math.Round(lon, 6) : null,
             Activa = true
@@ -148,7 +139,6 @@ public class AltaDestinatariosService(ApplicationDbContext db, IContextoOperador
     {
         var buscado = SinTildes(valor?.Trim() ?? string.Empty);
 
-        // Se aceptan sin tildes y en cualquier mayúscula; se guarda como está en la lista
         return DepartamentosUruguay.Todos.FirstOrDefault(d =>
                    string.Equals(SinTildes(d), buscado, StringComparison.OrdinalIgnoreCase))
                ?? throw new ArgumentException("El departamento tiene que ser uno de los 19 de Uruguay.");

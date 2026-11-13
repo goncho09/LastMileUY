@@ -63,11 +63,8 @@
         </div>
     }
 
-    @* La acción va explícita: después de "Ordenar por recorrido" la dirección de la página queda con
-       ?handler=ordenar, y un formulario sin acción la repetiría en vez de armar la ruta *@
     <form method="post" asp-page="/Rutas/Nueva" class="space-y-7">
 
-        <!-- Datos de la ruta -->
         <section class="grid gap-4 rounded-2xl border border-white/10 bg-[#171923] p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
             <div>
                 <label for="nombre" class="mb-2 block text-sm font-medium text-slate-300">Nombre</label>
@@ -112,7 +109,6 @@
             </div>
         </section>
 
-        <!-- Envíos -->
         <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-5 sm:px-6">
                 <div>
@@ -213,7 +209,6 @@
 
 @section Scripts {
     <script>
-        // Suma lo elegido y lo compara con lo que carga el vehículo (la API lo vuelve a controlar)
         (() => {
             const carga = document.getElementById("carga");
             const vehiculo = document.getElementById("vehiculo");

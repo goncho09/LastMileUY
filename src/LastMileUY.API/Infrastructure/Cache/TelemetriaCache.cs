@@ -2,10 +2,6 @@ using System.Diagnostics.Metrics;
 
 namespace LastMileUY.API.Infrastructure.Cache;
 
-// Las mismas lecturas del caché que cuenta IMetricasCache, como métrica de OpenTelemetry: así la relación
-// de aciertos también se ve en el tablero técnico de Grafana (letra 6.12), por caso.
-// Prometheus la guarda como lastmileuy_cache_lecturas_total{caso, resultado="acierto"|"fallo"}.
-// A diferencia de los contadores en Redis, sigue contando aunque Redis esté caído.
 public static class TelemetriaCache
 {
     public const string Nombre = "LastMileUY.Cache";
@@ -16,8 +12,6 @@ public static class TelemetriaCache
         "lastmileuy.cache.lecturas",
         description: "Lecturas del caché distribuido: aciertos (estaba en el caché) y fallos (se fue a la base)");
 
-    // Crea las series en 0 al arrancar. Prometheus calcula los aumentos comparando dos muestras: si una
-    // serie aparece recién cuando pasa la primera vez (ya con 1), ese primer evento no se ve en el tablero.
     public static void Inicializar()
     {
         foreach (var caso in CasosDeCache.Todos)

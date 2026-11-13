@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Rutas;
 
-// Listado de hojas de ruta del operador, con filtro por fecha y estado
 public class IndexModel(IRutasApi rutasApi, ILogger<IndexModel> logger) : PageModel
 {
     [BindProperty(SupportsGet = true)]
@@ -40,7 +39,6 @@ public class IndexModel(IRutasApi rutasApi, ILogger<IndexModel> logger) : PageMo
         }
     }
 
-    // Parámetros de la URL para otra página, conservando los filtros
     public Dictionary<string, string?> RutaPagina(int pagina) => new()
     {
         ["fecha"] = Fecha?.ToString("yyyy-MM-dd"),

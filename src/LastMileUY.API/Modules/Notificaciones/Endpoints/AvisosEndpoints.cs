@@ -2,7 +2,6 @@ using LastMileUY.API.Modules.Notificaciones.Application;
 
 namespace LastMileUY.API.Modules.Notificaciones.Endpoints;
 
-// Panel de avisos del comercio: historial de entregas y reenvío de los fallidos (letra 6.9)
 public static class AvisosEndpoints
 {
     public static IEndpointRouteBuilder MapAvisosEndpoints(this IEndpointRouteBuilder app)
@@ -11,7 +10,6 @@ public static class AvisosEndpoints
             .WithTags("Avisos")
             .RequireAuthorization(politica => politica.RequireRole("Comercio"));
 
-        // Listado paginado: ?pagina=1&tamanioPagina=20&estado=Fallido
         group.MapGet("/", async (
                 AvisosComercioService servicio,
                 CancellationToken ct,

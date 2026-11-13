@@ -2,14 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace LastMileUY.API.Modules.Sincronizacion.Infrastructure;
 
-// Dónde quedan las imágenes de evidencia (firma y foto) que manda la app del repartidor.
-// En la base solo se guarda la clave (PruebaEntrega.FirmaArchivoKey / FotoArchivoKey).
 public interface IAlmacenEvidencias
 {
-    // Devuelve la clave con la que se guardó
     Task<string> GuardarAsync(int operadorId, Imagen imagen, CancellationToken ct = default);
 
-    // null si no existe
     Task<Imagen?> LeerAsync(string clave, CancellationToken ct = default);
 }
 
@@ -17,8 +13,6 @@ public record Imagen(byte[] Contenido, string TipoContenido)
 {
     public const int TamanioMaximo = 1024 * 1024;
 
-    // Acepta solo PNG y JPEG, reconocidos por sus primeros bytes (no por lo que diga la app).
-    // null si el texto no es base64, está vacío, es muy grande o no es una imagen de esas.
     public static Imagen? DesdeBase64(string base64)
     {
         byte[] contenido;
@@ -53,9 +47,6 @@ public record Imagen(byte[] Contenido, string TipoContenido)
     public string Extension => TipoContenido == "image/png" ? "png" : "jpg";
 }
 
-// Guarda cada imagen como archivo en una carpeta ("Evidencias:Directorio"; en Docker, un volumen).
-// La clave es "{operador}/{guid}.{extensión}": la arma la API, nunca la app, así que no se puede
-// usar para leer otro archivo del servidor.
 public partial class AlmacenEvidenciasEnDisco(IConfiguration configuration, IHostEnvironment entorno) : IAlmacenEvidencias
 {
     private readonly string directorio = configuration["Evidencias:Directorio"]

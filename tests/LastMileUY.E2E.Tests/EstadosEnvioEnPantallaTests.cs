@@ -7,9 +7,6 @@ using LastMileUY.Backoffice.Servicios;
 using EstadoEnvio = Api::LastMileUY.API.Modules.Envios.Domain.EstadoEnvio;
 using PresentacionPortal = Portal::LastMileUY.CommercePortal.Servicios.PresentacionEnvios;
 
-// Las pantallas tienen su propia lista de estados del envío (con el texto y el color). Si la API suma
-// uno y una lista no, esa pantalla muestra el nombre interno y no deja filtrar por él (pasó con
-// EntregadoParcialmente en el Backoffice y en el portal). Este proyecto ve los tres, por eso va acá
 public class EstadosEnvioEnPantallaTests
 {
     public static TheoryData<string> Estados() => new(Enum.GetNames<EstadoEnvio>());

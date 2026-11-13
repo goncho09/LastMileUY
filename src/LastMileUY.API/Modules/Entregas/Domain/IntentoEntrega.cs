@@ -16,7 +16,6 @@ public class IntentoEntrega
 
     public bool Exitoso { get; set; }
 
-    // Indica que se entregaron algunos bultos, pero no todos.
     public bool Parcial { get; set; }
 
     public int? MotivoNoEntregaId { get; set; }

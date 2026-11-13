@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages;
 
-// Inicio de sesión: valida contra la API y guarda la sesión en la cookie del Backoffice
 [AllowAnonymous]
 public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> logger) : PageModel
 {
@@ -69,8 +68,6 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
         var roles = sesion.Roles ?? [];
         var esAdministrador = roles.Contains(Permisos.Administrador);
 
-        // Los usuarios operativos necesitan pertenecer a un operador.
-        // El administrador global puede ingresar sin OperadorId.
         if (!esAdministrador && sesion.OperadorId is null)
         {
             Error = "Este usuario no pertenece a ningún operador.";
@@ -101,7 +98,6 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             claims.Add(new Claim(ReenviarCookieApi.ClaimCookieApi, sesion.CookieApi));
         }
 
-        // Identidad visual del operador (ver IdentidadOperador y _Layout)
         if (sesion.Operador is not null)
         {
             claims.Add(new Claim(IdentidadOperador.ClaimNombre, sesion.Operador.Nombre));
@@ -128,7 +124,6 @@ public class LoginModel(IAutenticacionApi autenticacion, ILogger<LoginModel> log
             : Volver();
     }
 
-    // Solo vuelve a direcciones del propio Backoffice (evita redirigir a otro sitio)
     private IActionResult Volver()
     {
         if (Url.IsLocalUrl(ReturnUrl))

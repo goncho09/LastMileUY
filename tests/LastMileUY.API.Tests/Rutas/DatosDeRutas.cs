@@ -9,13 +9,10 @@ namespace LastMileUY.API.Tests.Rutas;
 
 using static BaseConDosOperadores;
 
-// Datos para las pruebas de hojas de ruta y de sincronización, sobre la base con dos operadores.
-// Cada llamada crea datos nuevos, así las pruebas no chocan entre sí.
 public static class DatosDeRutas
 {
     public static readonly DateOnly Manana = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
 
-    // Un envío del comercio compartido con bultos de 2 kg y 10x10x10 cm (uno, salvo que se pidan más)
     public static async Task<int> CrearEnvioAsync(
         BaseConDosOperadores baseDeDatos, int operadorId, bool enDeposito = true, int? franjaId = null, int bultos = 1)
     {
@@ -40,14 +37,11 @@ public static class DatosDeRutas
         return envio.Id;
     }
 
-    // Un usuario repartidor (con su ficha) y un vehículo nuevos del operador.
-    // Devuelve también el Id del usuario, que es lo que identifica al repartidor al iniciar sesión.
     public static async Task<(int RepartidorId, int VehiculoId, string UsuarioId)> CrearRepartidorYVehiculoAsync(
         BaseConDosOperadores baseDeDatos, int operadorId, decimal capacidadKg = 100, decimal capacidadM3 = 1)
     {
         var usuarioId = Guid.NewGuid().ToString();
 
-        // Los usuarios no tienen RLS, pero se cargan como superusuario igual que el resto de los datos base
         await using (var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador))
         {
             await conexion.OpenAsync();
@@ -77,7 +71,6 @@ public static class DatosDeRutas
         return (repartidor.Id, vehiculo.Id, usuarioId);
     }
 
-    // Una ruta ya despachada con envíos nuevos (en tránsito), lista para que el repartidor sincronice
     public static async Task<(int RutaId, string UsuarioId, int[] Envios)> CrearRutaDespachadaAsync(
         BaseConDosOperadores baseDeDatos, int operadorId, int cantidadEnvios = 1, int bultosPorEnvio = 1)
     {

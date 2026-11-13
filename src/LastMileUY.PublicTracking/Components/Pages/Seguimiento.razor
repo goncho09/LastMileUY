@@ -58,7 +58,6 @@ else
 
             @if (envio.Bultos is { Total: > 1 } bultos)
             {
-                @* Avance por bultos (entrega parcial): solo cantidades, sin códigos ni ids *@
                 <div class="bultos">
                     <p>
                         <strong>@bultos.Entregados de @bultos.Total</strong>
@@ -129,8 +128,6 @@ else
         }
     }
 
-    // El color y el logo los carga el operador: se usan solo si tienen la forma esperada,
-    // para que no se pueda meter otra cosa en el estilo o en la imagen de la página
     private string? EstiloOperador =>
         envio?.Operador.ColorPrimario is { } color && Regex.IsMatch(color, "^#[0-9A-Fa-f]{6}$")
             ? $"--color-operador: {color}"

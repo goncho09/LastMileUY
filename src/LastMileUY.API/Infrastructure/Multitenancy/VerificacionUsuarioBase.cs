@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Infrastructure.Multitenancy;
 
-// Un superusuario (o un usuario con BYPASSRLS) se saltea las políticas RLS sin avisar.
-// Al arrancar se revisa con qué usuario se conecta la aplicación y, si es uno de esos, se avisa en el log.
 public static class VerificacionUsuarioBase
 {
     private const string Sql =

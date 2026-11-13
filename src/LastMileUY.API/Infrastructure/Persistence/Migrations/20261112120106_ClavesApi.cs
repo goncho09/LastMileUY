@@ -61,8 +61,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 table: "ClavesApi",
                 columns: new[] { "OperadorId", "ComercioId" });
 
-            // Segunda barrera (ADR-01), igual que las demás tablas del comercio: el operador y el
-            // comercio de la sesión. Los permisos de lastmileuy_app salen de los ALTER DEFAULT PRIVILEGES.
             migrationBuilder.Sql($"""
                 ALTER TABLE "ClavesApi" ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE "ClavesApi" FORCE ROW LEVEL SECURITY;
@@ -74,10 +72,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     WITH CHECK ({ComercioActual} IS NULL OR "ComercioId" = {ComercioActual});
                 """);
 
-            // Al autenticar un pedido con clave todavía no se sabe de qué operador es, así que la política
-            // de arriba no deja ver nada. Esta deja ver y actualizar (la fecha de último uso) solo la fila
-            // cuyo hash se cargó en app.hash_clave_api; la carga ClavesApiService dentro de una
-            // transacción, como el seguimiento público. Sin el hash no se ve ninguna clave
             migrationBuilder.Sql($"""
                 CREATE POLICY clave_api_por_hash ON "ClavesApi"
                     FOR SELECT
@@ -89,7 +83,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 """);
         }
 
-        // Vacío o sin cargar = ninguno
         private const string OperadorActual = "NULLIF(current_setting('app.operador_id', true), '')::int";
         private const string ComercioActual = "NULLIF(current_setting('app.comercio_id', true), '')::int";
         private const string HashActual = "NULLIF(current_setting('app.hash_clave_api', true), '')";

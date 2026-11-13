@@ -14,7 +14,6 @@ public class DestinatarioConfiguration
 
         builder.HasKey(d => d.Id);
 
-        // Cada destinatario pertenece a un comercio.
         builder.HasOne<Comercio>()
             .WithMany()
             .HasForeignKey(d => d.ComercioId)
@@ -36,7 +35,6 @@ public class DestinatarioConfiguration
         builder.Property(d => d.Telefono)
             .HasMaxLength(30);
 
-        // Facilita buscar destinatarios por correo electrónico.
         builder.HasIndex(d => d.Email);
     }
 }

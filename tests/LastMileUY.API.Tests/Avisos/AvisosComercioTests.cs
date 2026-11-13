@@ -10,8 +10,6 @@ namespace LastMileUY.API.Tests.Avisos;
 
 using static BaseConDosOperadores;
 
-// Panel de avisos del comercio (historial y reenvío de fallidos), contra la base real con RLS.
-// La base es compartida entre los tests: cada uno crea sus propios avisos.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
 {
@@ -60,7 +58,6 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal(("Admitido", (string?)null), (deNuevo.EstadoEnvio, deNuevo.EstadoEnvioAnterior));
     }
 
-    // (pagina - 1) * tamanioPagina no tiene que desbordar: una página que no existe viene vacía, no es un error de la base
     [Fact]
     public async Task Una_pagina_enorme_devuelve_una_pagina_vacia()
     {
@@ -120,7 +117,6 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         var aviso = await otra.EntregasAvisos.SingleAsync(a => a.Id == id);
         Assert.Equal(EstadoEntregaAviso.Pendiente, aviso.Estado);
         Assert.Null(aviso.FechaProximoIntento);
-        // El historial no se pierde: el reenvío va a ser el intento 7
         Assert.Equal(6, aviso.CantidadIntentos);
     }
 
@@ -134,8 +130,6 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
             EstadoEntregaAviso.Fallido,
             intentos: 3);
 
-        // Cada solicitud usa su propio DbContext,
-        // como ocurre con dos peticiones HTTP independientes.
         await using var db1 = baseDeDatos.CrearContexto(
             OperadorA, ComercioCompartido);
 
@@ -145,7 +139,6 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         var servicio1 = Servicio(db1, ComercioCompartido);
         var servicio2 = Servicio(db2, ComercioCompartido);
 
-        // La barrera hace que ambas tareas comiencen juntas.
         var inicio = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -171,13 +164,10 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
 
         var resultados = await Task.WhenAll(tarea1, tarea2);
 
-        // Exactamente una solicitud debe aceptar el reenvío.
         Assert.Single(resultados, x => x);
 
-        // La otra solicitud debe ser rechazada.
         Assert.Single(resultados, x => !x);
 
-        // Comprobamos el estado final en la base de datos.
         await using var verificacion = baseDeDatos.CrearContexto(OperadorA);
 
         var aviso = await verificacion.EntregasAvisos
@@ -186,8 +176,6 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal(EstadoEntregaAviso.Pendiente, aviso.Estado);
         Assert.Null(aviso.FechaProximoIntento);
 
-        // El reenvío no crea todavía un intento de entrega.
-        // Ese intento lo registrará el worker.
         Assert.Equal(3, aviso.CantidadIntentos);
     }
 
@@ -242,7 +230,6 @@ public class AvisosComercioTests(BaseConDosOperadores baseDeDatos)
     private static AvisosComercioService Servicio(ApplicationDbContext db, int comercioId) =>
         new(db, new ContextoOperadorFijo(OperadorA, comercioId));
 
-    // Un aviso de un envío del operador A, con su suscripción y "intentos" filas de historial
     private async Task<int> CrearAvisoAsync(
         int comercioId, int envioId, EstadoEntregaAviso estado, int intentos = 1, bool suscripcionActiva = true,
         string contenido = "{}")

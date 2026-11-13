@@ -30,11 +30,9 @@ public class ColaOperacionesService(AlmacenLocal almacen)
         {
             var pendientes = await LeerColaAsync();
 
-            // Cada acción nueva recibe su propio identificador.
             if (operacion.IdOperacion == Guid.Empty)
                 operacion.IdOperacion = Guid.NewGuid();
 
-            // Evitar duplicar una operación ya registrada.
             var existente = pendientes.FirstOrDefault(x =>
                 x.IdOperacion == operacion.IdOperacion);
 

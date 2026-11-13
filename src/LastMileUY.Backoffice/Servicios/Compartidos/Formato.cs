@@ -3,7 +3,6 @@ using LastMileUY.Contracts.Envios;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Formatos de pantalla. Las fechas llegan en UTC y se muestran en hora de Uruguay.
 public static class Formato
 {
     private static readonly TimeZoneInfo HoraUruguay =
@@ -22,18 +21,15 @@ public static class Formato
 
     public static string Numero(decimal valor) => valor.ToString("0.##", Cultura);
 
-    // Volumen en m³: hasta 3 decimales (un paquete chico ocupa 0,001 m³)
     public static string Volumen(decimal m3) => m3.ToString("0.###", Cultura) + " m³";
 
     public static string Fecha(DateOnly fecha) => fecha.ToString("dd/MM/yyyy", Cultura);
 
     public static string Hora(TimeOnly hora) => hora.ToString("HH:mm", Cultura);
 
-    // El día de hoy en Uruguay (para el valor por defecto de las fechas de las rutas)
     public static DateOnly Hoy() =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, HoraUruguay));
 
-    // "Firma, foto y documento del receptor" / "Nada" según lo que pida la regla al entregar
     public static string Requisitos(ReglaAplicadaDto regla) =>
         Requisitos(regla.RequiereFirma, regla.RequiereFotografia, regla.RequiereDocumentoReceptor);
 

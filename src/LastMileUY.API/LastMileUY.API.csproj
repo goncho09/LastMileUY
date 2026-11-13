@@ -34,7 +34,6 @@
         <ProjectReference Include="..\LastMileUY.Contracts\LastMileUY.Contracts.csproj" />
     </ItemGroup>
 
-  <!-- Código compartido con las demás aplicaciones web (src/Compartido) -->
   <ItemGroup>
     <Compile Include="../Compartido/ProxyInverso.cs" Link="Compartido/ProxyInverso.cs" />
   </ItemGroup>
