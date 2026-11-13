@@ -65,9 +65,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 columns: new[] { "OperadorId", "Version" },
                 unique: true);
 
-            // Aislamiento entre operadores (ADR-01), igual que el resto de las tablas de un operador.
-            // Y las versiones no se editan ni se borran: el usuario de la aplicación solo lee e inserta.
-            // Así el historial con el que se evaluó cada entrega no se puede reescribir, ni por un error del código.
             migrationBuilder.Sql("""
                 ALTER TABLE "ReglasEntregaParcial" ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE "ReglasEntregaParcial" FORCE ROW LEVEL SECURITY;
@@ -106,7 +103,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 name: "FK_Rutas_ReglasEntregaParcial_ReglaEntregaParcialId",
                 table: "Rutas");
 
-            // La política y los permisos se van con la tabla
             migrationBuilder.DropTable(
                 name: "ReglasEntregaParcial");
 

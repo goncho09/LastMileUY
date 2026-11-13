@@ -134,10 +134,8 @@
     [Parameter] public EventCallback OnGuardadoPendiente { get; set; }
     [Parameter] public EventCallback OnCancelar { get; set; }
 
-    // Los bultos que el repartidor identificó con el escáner (arrancan como entregados)
     [Parameter] public IReadOnlyList<int> Identificados { get; set; } = [];
 
-    // La versión de las reglas de entrega parcial con la que salió la hoja de ruta
     [Parameter] public ReglaEntregaParcialRutaDto? Regla { get; set; }
 
     private Dictionary<int, ResultadoPorBulto.Marca> marcas = [];
@@ -171,14 +169,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Una sola vez: después las marcas las cambia el repartidor
         marcas = ResultadoPorBulto.MarcasIniciales(Parada.Bultos ?? [], Identificados);
 
         if (marcas.Count > 1)
         {
             try
             {
-                // Sin conexión vienen de los guardados en el celular
                 motivos = await Sincronizacion.ObtenerMotivosAsync();
             }
             catch (UnauthorizedAccessException ex)
@@ -262,7 +258,6 @@
                 return;
             }
 
-            // Qué bultos se entregaron: decide si es una entrega o una entrega parcial
             var decision = ResultadoPorBulto.Decidir(Parada.Bultos ?? [], marcas, Regla);
             if (decision.Error is not null)
             {

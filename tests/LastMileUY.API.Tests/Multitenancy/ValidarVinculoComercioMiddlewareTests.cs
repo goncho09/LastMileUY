@@ -31,7 +31,6 @@ public class ValidarVinculoComercioMiddlewareTests(
                 comercioId.Value.ToString()));
         }
 
-        // Garantiza que Identity.IsAuthenticated sea true.
         claims.Add(new Claim(ClaimTypes.NameIdentifier, "usuario-test"));
 
         var identidad = new ClaimsIdentity(claims, "Test");
@@ -84,7 +83,6 @@ public class ValidarVinculoComercioMiddlewareTests(
     [Fact]
     public async Task Comercio_sin_vinculo_devuelve_403()
     {
-        // El comercio 3 solo está vinculado al operador B.
         var resultado = await EjecutarAsync(
             BaseConDosOperadores.OperadorA,
             BaseConDosOperadores.ComercioSoloDeB);
@@ -153,8 +151,6 @@ public class ValidarVinculoComercioMiddlewareTests(
         const int operadorB = BaseConDosOperadores.OperadorB;
         const int comercio = BaseConDosOperadores.ComercioCompartido;
 
-        // Cambiamos el vínculo mediante el usuario administrador.
-        // No usamos la conexión limitada por RLS.
         var opciones = new DbContextOptionsBuilder<
             LastMileUY.API.Infrastructure.Persistence.ApplicationDbContext>()
             .UseNpgsql(baseDeDatos.CadenaAdministrador)
@@ -186,7 +182,6 @@ public class ValidarVinculoComercioMiddlewareTests(
         }
         finally
         {
-            // Restaurar el vínculo incluso si falla una aserción.
             admin.ChangeTracker.Clear();
 
             var vinculo = await admin.OperadoresComercios

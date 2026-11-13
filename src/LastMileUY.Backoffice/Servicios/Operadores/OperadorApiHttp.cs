@@ -4,7 +4,6 @@ using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Llama a la API real. Si la sesión venció, ReenviarCookieApi lanza SesionVencidaException.
 public class OperadorApiHttp(HttpClient http) : IOperadorApi
 {
     private const string RutaReglasEntregaParcial = "api/operador/reglas-entrega-parcial";

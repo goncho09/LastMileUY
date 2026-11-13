@@ -18,7 +18,6 @@ public class AuthService(HttpClient http, AlmacenLocal almacen, ColaOperacionesS
         if (!response.IsSuccessStatusCode)
             return false;
 
-        // Lo que haya quedado guardado en el celular de otro repartidor se borra antes de seguir
         var usuario = await ObtenerUsuarioAsync();
 
         if (usuario is not null)
@@ -38,14 +37,11 @@ public class AuthService(HttpClient http, AlmacenLocal almacen, ColaOperacionesS
                 "Sincronizalas antes de cerrar sesión para no perderlas.");
         }
 
-        // Primero cerramos la sesión en el servidor.
         using var response = await http.PostAsync("api/auth/logout", null);
 
-        // 401: la sesión ya había vencido en el servidor, así que para él ya está cerrada
         if (response.StatusCode != HttpStatusCode.Unauthorized)
             response.EnsureSuccessStatusCode();
 
-        // Solo borramos los datos locales si el servidor confirmó el logout.
         await almacen.BorrarTodoAsync();
     }
 

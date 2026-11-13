@@ -2,11 +2,8 @@ using System.Net;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Agrega a cada llamada a la API la cookie de sesión del usuario logueado en el Backoffice.
-// Si la API responde 401 (la sesión venció), avisa con SesionVencidaException para que se vuelva al login.
 public class ReenviarCookieApi(IHttpContextAccessor httpContextAccessor) : DelegatingHandler
 {
-    // Claim donde se guarda la cookie de la API, dentro de la cookie (cifrada) del Backoffice
     public const string ClaimCookieApi = "cookie_api";
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)

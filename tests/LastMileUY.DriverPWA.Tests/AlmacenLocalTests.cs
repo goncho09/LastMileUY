@@ -3,9 +3,6 @@ using LastMileUY.DriverPWA.Services;
 
 namespace LastMileUY.DriverPWA.Tests;
 
-// Las reglas de lo que la app guarda en el celular (docs/datos-locales.md): vencimiento y un solo
-// usuario. El cifrado lo hace el navegador (wwwroot/js/almacen.js); acá el navegador se simula con
-// un diccionario (NavegadorFalso), para ver qué se le pide guardar y borrar.
 public class AlmacenLocalTests
 {
     private record Hoja(string Destinatario);
@@ -23,7 +20,6 @@ public class AlmacenLocalTests
         reloj.Avanzar(TimeSpan.FromHours(1));
 
         Assert.Null(await almacen.LeerAsync<Hoja>("hoja:1"));
-        // Además de no devolverlo, lo borra
         Assert.DoesNotContain("hoja:1", navegador.Datos.Keys);
     }
 
@@ -49,7 +45,6 @@ public class AlmacenLocalTests
         await almacen.AsignarDuenoAsync("repartidor-2");
 
         Assert.Null(await almacen.LeerAsync<Hoja>("hoja:1"));
-        // Uno en el primer inicio de sesión (todavía no había dueño) y otro al cambiar de repartidor
         Assert.Equal(2, navegador.VecesBorradoTodo);
     }
 
@@ -64,7 +59,6 @@ public class AlmacenLocalTests
         await almacen.AsignarDuenoAsync("repartidor-1");
 
         Assert.NotNull(await almacen.LeerAsync<Hoja>("hoja:1"));
-        // Solo el borrado del primer inicio de sesión, cuando todavía no había dueño
         Assert.Equal(1, navegador.VecesBorradoTodo);
     }
 
@@ -76,7 +70,6 @@ public class AlmacenLocalTests
         await almacen.AsignarDuenoAsync("repartidor-1");
         await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
 
-        // Se perdió el dato del dueño, pero la hoja sigue: aunque entre el mismo, no se puede saber
         navegador.Datos.Remove("dueno");
         await almacen.AsignarDuenoAsync("repartidor-1");
 
@@ -86,8 +79,6 @@ public class AlmacenLocalTests
     [Fact]
     public async Task Lo_pendiente_no_vence_pero_se_borra_si_entra_otro_repartidor()
     {
-        // Una entrega sin enviar no se puede perder por el paso del tiempo: solo sale de la cola
-        // con un resultado final de la API, al cerrar sesión o si cambia el repartidor
         var (almacen, _, reloj) = Nuevo();
 
         await almacen.AsignarDuenoAsync("repartidor-1");
@@ -106,7 +97,6 @@ public class AlmacenLocalTests
     [Fact]
     public async Task Si_el_dueno_quedo_con_el_formato_anterior_se_borra_y_se_puede_entrar()
     {
-        // Antes el dueño se guardaba con vencimiento ({ valor, venceEn }): no se sabe de quién es
         var (almacen, navegador, _) = Nuevo();
         await almacen.GuardarAsync("dueno", "repartidor-1", TimeSpan.FromHours(8));
         await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
@@ -138,7 +128,6 @@ public class AlmacenLocalTests
 
         await Assert.ThrowsAsync<HttpRequestException>(auth.LogoutAsync);
 
-        // Si la API falla, los datos locales deben conservarse.
         Assert.NotEmpty(navegador.Datos);
 
         var hoja = await almacen.LeerAsync<Hoja>("hoja:1");
@@ -152,7 +141,6 @@ public class AlmacenLocalTests
         var (almacen, navegador, _) = Nuevo();
         await almacen.GuardarAsync("hoja:1", new Hoja("Ana Silva"), TimeSpan.FromHours(8));
 
-        // La API responde 401: para ella la sesión ya estaba cerrada
         var sesionVencida = new HttpClient(new Responde(HttpStatusCode.Unauthorized))
         {
             BaseAddress = new Uri("https://api.prueba/")

@@ -38,11 +38,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 unique: true,
                 filter: "\"EsAmbientePruebas\"");
 
-            // Ambiente de pruebas de la API pública (docs/api-publica.md): los destinatarios cargados con una
-            // clave de prueba solo se ven con una clave de prueba, y los de verdad solo fuera de ese ambiente.
-            // AS RESTRICTIVE: se suma (AND) a aislamiento_comercio, que no se toca.
-            // Sin la variable cargada (cualquier conexión que no sea de un pedido con clave de prueba) vale
-            // como producción: se ven los de verdad, como hasta ahora. Las direcciones siguen a su destinatario.
             migrationBuilder.Sql("""
                 CREATE POLICY ambiente_destinatarios ON "Destinatarios" AS RESTRICTIVE
                     USING ("EsPrueba" = (COALESCE(current_setting('app.ambiente_pruebas', true), '') = '1'))

@@ -1,7 +1,3 @@
-// Lo que la app guarda en el celular, cifrado (ver Services/AlmacenLocal.cs y docs/datos-locales.md).
-// IndexedDB guarda cada dato cifrado con AES-GCM (256 bits, un IV nuevo cada vez). La clave la
-// genera el navegador como "no exportable": el código de la página la puede usar, pero no leerla,
-// y no aparece en ningún volcado del almacenamiento como texto.
 window.lastMileAlmacen = (() => {
     const BASE = "lastmileuy";
     const DATOS = "datos";
@@ -53,8 +49,6 @@ window.lastMileAlmacen = (() => {
             await transaccion(db, DATOS, "readwrite", s => s.put({ iv, cifrado }, nombre));
         }),
 
-        // El texto guardado, o null si no hay nada o no se puede descifrar (por ejemplo, si se
-        // borró la clave): un dato que no se puede leer se trata como inexistente.
         leer: nombre => conBase(async db => {
             const guardado = await transaccion(db, DATOS, "readonly", s => s.get(nombre));
 
@@ -71,7 +65,6 @@ window.lastMileAlmacen = (() => {
 
         borrar: nombre => conBase(db => transaccion(db, DATOS, "readwrite", s => s.delete(nombre))),
 
-        // Todo, la clave incluida: lo que hubiera quedado ya no se puede descifrar
         borrarTodo: () => new Promise((ok, mal) => {
             const pedido = indexedDB.deleteDatabase(BASE);
             pedido.onsuccess = () => ok();

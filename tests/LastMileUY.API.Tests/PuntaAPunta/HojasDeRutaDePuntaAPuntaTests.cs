@@ -7,8 +7,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Hojas de ruta por HTTP con los usuarios reales: el despachador arma y despacha la ruta,
-// y solo el repartidor asignado la descarga (y solo una vez despachada).
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -20,10 +18,8 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var repartidor = await api.IniciarSesionAsync(Repartidor1);
         var repartidorDeOtroOperador = await api.IniciarSesionAsync(Repartidor2);
 
-        // Dos envíos en depósito
         var envios = new[] { await CrearEnvioEnDepositoAsync(operador), await CrearEnvioEnDepositoAsync(operador) };
 
-        // El despachador ve qué puede usar: el repartidor del operador 1, sus vehículos y los envíos
         var opciones = (await despachador.GetFromJsonAsync<OpcionesRutaDto>("api/rutas/opciones"))!;
         var repartidor1 = Assert.Single(opciones.Repartidores);
         Assert.NotEmpty(opciones.Vehiculos);
@@ -41,7 +37,6 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var ruta = (await alta.Content.ReadFromJsonAsync<RutaDetalleDto>())!;
         Assert.Equal([envios[1], envios[0]], ruta.Paradas.Select(p => p.EnvioId));
 
-        // Planificada: el repartidor todavía no la puede descargar
         using (var antes = await repartidor.GetAsync($"api/rutas/{ruta.Id}/hoja"))
         {
             Assert.Equal(HttpStatusCode.Conflict, antes.StatusCode);
@@ -52,7 +47,6 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.OK, despacho.StatusCode);
         }
 
-        // El repartidor asignado la ve en sus rutas y descarga la hoja
         var mias = (await repartidor.GetFromJsonAsync<List<RutaResumenDto>>("api/rutas/mias"))!;
         Assert.Contains(mias, r => r.Id == ruta.Id);
 
@@ -60,13 +54,11 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal("Despachada", hoja.Estado);
         Assert.All(hoja.Paradas, p => Assert.Equal("EnTransito", p.EstadoEnvio));
 
-        // El repartidor de otro operador ni siquiera la encuentra
         using (var ajena = await repartidorDeOtroOperador.GetAsync($"api/rutas/{ruta.Id}/hoja"))
         {
             Assert.Equal(HttpStatusCode.NotFound, ajena.StatusCode);
         }
 
-        // Y en el Backoffice los envíos aparecen en tránsito, con el despacho en el historial
         var detalle = (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envios[0]}"))!;
         Assert.Equal("EnTransito", detalle.Estado);
         Assert.Contains(detalle.Eventos, e => e.Descripcion == "Salió en la ruta \"Centro mañana\".");
@@ -88,8 +80,6 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Forbidden, respuesta.StatusCode);
     }
 
-    // Sin bultos no hay nada que entregar: el envío no se podría asignar a ninguna ruta. Ni con la
-    // lista vacía ni sin mandarla; tampoco desde el portal del comercio
     [Theory]
     [InlineData(Operador1, """{ "Bultos": [] }""")]
     [InlineData(Operador1, "{}")]
@@ -109,8 +99,6 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Contains("al menos un bulto", await alta.Content.ReadAsStringAsync());
     }
 
-    // Un envío que quedó sin bultos (de antes de exigirlos) no se puede asignar a una ruta: la
-    // pantalla para armarlas no lo tiene que ofrecer
     [Fact]
     public async Task Un_envio_sin_bultos_no_se_ofrece_para_armar_una_ruta()
     {
@@ -125,9 +113,6 @@ public class HojasDeRutaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.DoesNotContain(opciones.Envios, e => e.Id == sinBultos);
     }
 
-    // Dos despachadores arman a la vez rutas distintas (envíos y vehículos distintos) para el mismo
-    // repartidor y el mismo día: una sola puede quedar abierta. Se repite en varios días porque la
-    // carrera depende del momento justo en que llega cada pedido.
     [Fact]
     public async Task Dos_rutas_a_la_vez_para_el_mismo_repartidor_y_dia_solo_se_guarda_una()
     {

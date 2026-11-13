@@ -5,8 +5,6 @@ namespace LastMileUY.Worker.Tests;
 
 using static EntornoDelWorker;
 
-// Lo que hace el worker con cada evento, contra la base real: un aviso pendiente por cada suscripción
-// activa del comercio a ese tipo de evento, solo del operador del evento, y una sola vez por evento.
 [Collection(ColeccionEntornoDelWorker.Nombre)]
 public class ProcesadorAvisosTests(EntornoDelWorker entorno)
 {
@@ -20,7 +18,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
         Assert.False(resultado.Repetido);
         Assert.Equal(1, resultado.AvisosRegistrados);
         Assert.Equal(1, await AvisosDeAsync(evento, SuscripcionDeA));
-        // Ni la inactiva ni la del alta
         Assert.Equal(0, await AvisosDeAsync(evento, SuscripcionInactivaDeA));
         Assert.Equal(0, await AvisosDeAsync(evento, SuscripcionAlAltaDeA));
     }
@@ -28,7 +25,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
     [Fact]
     public async Task Solo_ve_las_suscripciones_del_operador_del_evento()
     {
-        // El comercio también está suscrito con el operador B, pero el evento es de A
         var evento = Evento(OperadorA, EnvioDeA);
 
         await Procesador().ProcesarAsync(evento, CancellationToken.None);
@@ -50,8 +46,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
         Assert.Equal(1, await AvisosDeAsync(evento, SuscripcionDeB));
     }
 
-    // Avisos apagados para el operador (docs/funcionalidades.md): el evento se procesa, pero no deja
-    // avisos. Prendidos otra vez, el siguiente evento sí
     [Fact]
     public async Task Con_los_avisos_apagados_para_el_operador_no_registra_avisos()
     {
@@ -82,7 +76,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
     [Fact]
     public async Task Si_falla_no_queda_anotado_y_se_puede_volver_a_procesar()
     {
-        // El envío 102 es de B: con el operador A cargado, RLS no deja registrarle un aviso
         var evento = Evento(OperadorA, EnvioDeB);
 
         await Assert.ThrowsAsync<PostgresException>(() => Procesador().ProcesarAsync(evento, CancellationToken.None));
@@ -95,7 +88,7 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
     public async Task Un_evento_de_bulto_solo_genera_avisos_para_las_suscripciones_v2_a_eventos_de_bulto()
     {
         const int suscripcionABultos = 31;
-        const int suscripcionABultosV1 = 33;    // no se puede crear desde la API; si existiera, no recibe nada
+        const int suscripcionABultosV1 = 33;
         await SuscripcionAsync(suscripcionABultos, TiposEvento.BultoEstadoCambiado, version: 2);
         await SuscripcionAsync(suscripcionABultosV1, TiposEvento.BultoEstadoCambiado, version: 1);
 
@@ -109,7 +102,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
 
         await Procesador().ProcesarAsync(evento, CancellationToken.None);
 
-        // Las suscripciones a cambios de estado del envío no reciben los de bulto, ni una v1 a bultos
         Assert.Equal(0, await AvisosDeAsync(evento, SuscripcionDeA));
         Assert.Equal(0, await AvisosV2DeAsync(evento, suscripcionABultosV1));
         Assert.Equal(1, await entorno.ContarAsync("""
@@ -136,13 +128,11 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
         }
         finally
         {
-            // Las demás pruebas cuentan los avisos de las suscripciones del entorno a este evento
             await entorno.ContarAsync(
                 """WITH x AS (UPDATE "SuscripcionesAvisos" SET "Activa" = false WHERE "Id" = @id RETURNING 1) SELECT count(*) FROM x""",
                 ("id", suscripcionV2));
         }
 
-        // v1: el evento tal cual, como siempre
         Assert.Equal(1, await entorno.ContarAsync("""
             SELECT count(*) FROM "EntregasAvisos"
             WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'EventoId' = @evento
@@ -150,7 +140,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
               AND "Contenido"->>'Estado' = 'EnDeposito' AND "Contenido"->>'CodigoBulto' IS NULL
             """, ("suscripcion", SuscripcionDeA), ("evento", evento.EventoId.ToString())));
 
-        // v2: el formato nuevo, sin ids internos
         Assert.Equal(1, await entorno.ContarAsync("""
             SELECT count(*) FROM "EntregasAvisos"
             WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'eventoId' = @evento
@@ -162,7 +151,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
             """, ("suscripcion", suscripcionV2), ("evento", evento.EventoId.ToString())));
     }
 
-    // Una suscripción más del comercio con el operador A, con su versión del contrato
     private async Task SuscripcionAsync(int id, string tipo, int version)
     {
         await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);
@@ -197,7 +185,6 @@ public class ProcesadorAvisosTests(EntornoDelWorker entorno)
 
     private ProcesadorAvisos Procesador() => new(NpgsqlDataSource.Create(entorno.CadenaAplicacion));
 
-    // Los avisos de un evento: el contenido es el evento, con su EventoId
     private Task<long> AvisosDeAsync(EstadoEnvioCambiado evento, int suscripcion) => entorno.ContarAsync("""
         SELECT count(*) FROM "EntregasAvisos"
         WHERE "SuscripcionAvisosId" = @suscripcion AND "Contenido"->>'EventoId' = @evento AND "Estado" = 1

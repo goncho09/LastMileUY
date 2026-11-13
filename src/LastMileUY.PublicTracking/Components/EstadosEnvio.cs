@@ -1,9 +1,7 @@
 namespace LastMileUY.PublicTracking.Components;
 
-// Cómo se le cuenta cada estado del envío (los de EstadoEnvio en la API) a quien lo espera
 public static class EstadosEnvio
 {
-    // Los pasos de un envío que sale bien; la barra de avance marca hasta dónde llegó
     public static readonly string[] Pasos = ["Recibido", "En depósito", "En camino", "Entregado"];
 
     public static string Titulo(string estado) => estado switch
@@ -38,7 +36,6 @@ public static class EstadosEnvio
         _ => ""
     };
 
-    // Índice en Pasos, o null si el envío salió del camino normal (devolución, extravío)
     public static int? Paso(string estado) => estado switch
     {
         "Admitido" => 0,
@@ -48,7 +45,6 @@ public static class EstadosEnvio
         _ => null
     };
 
-    // Para el color de la tarjeta: "ok", "alerta" o "en-curso"
     public static string Tono(string estado) => estado switch
     {
         "Entregado" => "ok",
@@ -56,7 +52,6 @@ public static class EstadosEnvio
         _ => "en-curso"
     };
 
-    // Uruguay no tiene horario de verano desde 2015: siempre UTC-3. La API manda las horas en UTC.
     public static string Hora(DateTime utc) =>
         DateTime.SpecifyKind(utc, DateTimeKind.Utc).AddHours(-3).ToString("dd/MM/yyyy HH:mm");
 }

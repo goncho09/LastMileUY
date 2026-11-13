@@ -1,6 +1,5 @@
 namespace LastMileUY.Backoffice.Servicios;
 
-// Por dónde entró un envío, como lo devuelve la API, y cómo se muestra
 public static class CanalesIngreso
 {
     public const string Portal = "Portal";

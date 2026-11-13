@@ -9,9 +9,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Sincronización por HTTP con los usuarios reales: el repartidor manda una entrega con su firma
-// (la regla del operador 1 la pide), la reenvía sin duplicarla, y el despachador ve el resultado
-// y la evidencia desde el Backoffice.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -26,7 +23,6 @@ public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
         var (rutaId, envioId) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 2);
 
-        // La app descarga los motivos de no entrega del operador (los crea el seeder)
         var motivos = (await repartidor.GetFromJsonAsync<List<MotivoNoEntregaDto>>("api/sincronizacion/motivos"))!;
         Assert.NotEmpty(motivos);
 
@@ -44,7 +40,6 @@ public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         };
 
         var primera = await SincronizarAsync(repartidor, entrega);
-        // Se cortó la conexión antes de que llegara la respuesta: la app la reenvía igual
         var reenvio = await SincronizarAsync(repartidor, entrega);
 
         Assert.Equal("Aplicada", primera.Resultado);
@@ -52,7 +47,6 @@ public class SincronizacionDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal("Aplicada", reenvio.Resultado);
         Assert.True(reenvio.Duplicada);
 
-        // En el Backoffice: el envío entregado con un solo intento, y la operación con su firma
         var envio = (await operador.GetFromJsonAsync<EnvioDetalleDto>($"api/envios/{envioId}"))!;
         Assert.Equal("Entregado", envio.Estado);
         Assert.Single(envio.Eventos, e => e.Tipo == "Entregado");

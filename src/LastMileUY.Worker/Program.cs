@@ -10,7 +10,6 @@ using Serilog.Events;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Logs estructurados para el Worker.
 builder.Services.AddSerilog((servicios, configuracion) =>
 {
     configuracion
@@ -28,7 +27,6 @@ builder.Services.AddSerilog((servicios, configuracion) =>
             "{Properties:j}{NewLine}{Exception}");
 });
 
-// Observabilidad: trazas y métricas del Worker.
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource
         .AddService(
@@ -41,7 +39,6 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation()
-        // Intentos de avisos a comercios y avisos que quedaron fallidos (TelemetriaAvisos)
         .AddMeter(TelemetriaAvisos.Nombre)
         .AddOtlpExporter(options =>
         {
@@ -50,14 +47,12 @@ builder.Services.AddOpenTelemetry()
                 "http://prometheus:9090/api/v1/otlp/v1/metrics");
         }));
 
-// Consume los eventos de envío que la API publica en RabbitMQ (ver docs/mensajeria.md)
 builder.Services.AddSingleton(new OpcionesConsumidor(
     builder.Configuration.GetConnectionString("RabbitMQ")
         ?? throw new InvalidOperationException("Falta configurar ConnectionStrings:RabbitMQ."),
     builder.Configuration.GetSection("Mensajeria:EsperasReintento").Get<TimeSpan[]>()
         ?? OpcionesConsumidor.EsperasPorDefecto));
 
-// La base con el usuario de la aplicación (lastmileuy_app): le aplica el RLS del ADR-01
 builder.Services.AddSingleton(NpgsqlDataSource.Create(
     builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Falta configurar ConnectionStrings:DefaultConnection.")));
@@ -67,8 +62,6 @@ builder.Services.AddSingleton<SenalAvisos>();
 builder.Services.AddSingleton<IProcesadorEventos, ProcesadorAvisos>();
 builder.Services.AddHostedService<ConsumidorEventosEnvio>();
 
-// Manda los avisos por HTTP a los comercios. Avisos:PermitirDestinosLocales deja usar http y
-// direcciones internas: solo para desarrollo, con el receptor de prueba (ver docs/mensajeria.md)
 var permitirLocales = builder.Configuration.GetValue<bool>("Avisos:PermitirDestinosLocales");
 builder.Services.AddHttpClient<ClienteAvisos>(http => http.Timeout = ClienteAvisos.TiempoMaximo)
     .ConfigurePrimaryHttpMessageHandler(() => ClienteAvisos.CrearManejador(permitirLocales));
@@ -77,7 +70,5 @@ builder.Services.AddHostedService<DespachadorAvisos>();
 
 var host = builder.Build();
 
-// Las métricas de avisos arrancan en 0, para que el tablero técnico vea desde el primer aviso.
-// Recién cuando arrancó el host: antes OpenTelemetry todavía no escucha y las series en 0 se perdían
 host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStarted.Register(TelemetriaAvisos.Inicializar);
 host.Run();

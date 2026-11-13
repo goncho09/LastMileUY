@@ -8,12 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Integraciones.Application;
 
-// Importación masiva de envíos (req. 7): reimportar un lote, completo o una parte, no duplica envíos.
-// La clave es la referencia externa (el número de pedido en el sistema del comercio): hay un índice
-// único por operador + comercio + referencia. Si la referencia ya existe, la fila vuelve como
-// "Existente" con el envío que ya estaba, y no se toca.
-// Cada fila se guarda por separado: una fila inválida no frena a las demás, y el comercio puede
-// corregirla y volver a mandar el lote entero sin miedo.
 public class ImportarEnviosService(
     ApplicationDbContext db,
     CrearEnvioService crear,
@@ -80,16 +74,12 @@ public class ImportarEnviosService(
         }
         catch (EnvioDuplicadoException)
         {
-            // Otro pedido la creó entre la consulta y el guardado (dos importaciones a la vez):
-            // el índice único lo frenó, y para quien importa es lo mismo que si ya existía
             db.ChangeTracker.Clear();
             return await ExistenteAsync(indice, referencia, ct)
                    ?? Rechazada(indice, referencia, "No se pudo guardar el envío; volvé a intentar.");
         }
         finally
         {
-            // Un envío que no se pudo guardar queda en el contexto y el próximo guardado lo volvería a
-            // intentar: cada fila arranca limpia
             db.ChangeTracker.Clear();
         }
     }

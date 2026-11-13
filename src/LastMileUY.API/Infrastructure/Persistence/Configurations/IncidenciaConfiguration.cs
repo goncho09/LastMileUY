@@ -12,7 +12,6 @@ public class IncidenciaConfiguration : IEntityTypeConfiguration<Incidencia>
 
         builder.HasKey(i => i.Id);
 
-        // Cada incidencia pertenece a una ruta.
         builder.HasOne<Ruta>()
             .WithMany(r => r.Incidencias)
             .HasForeignKey(i => i.RutaId)
@@ -29,8 +28,6 @@ public class IncidenciaConfiguration : IEntityTypeConfiguration<Incidencia>
         builder.Property(i => i.ObservacionesResolucion)
             .HasMaxLength(1000);
 
-        // Facilita consultar las incidencias de una ruta
-        // ordenadas por fecha.
         builder.HasIndex(i => new
         {
             i.RutaId,

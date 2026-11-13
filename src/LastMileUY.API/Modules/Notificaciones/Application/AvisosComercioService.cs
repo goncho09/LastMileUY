@@ -8,9 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Notificaciones.Application;
 
-// Panel de avisos del comercio (letra 6.9): el historial de entregas y el reenvío de las que fallaron.
-// No filtra por comercio a mano: el filtro global de EF y el RLS (ADR-01) ya dejan ver solo los avisos de
-// los envíos del comercio logueado, con el operador que eligió.
 public class AvisosComercioService(ApplicationDbContext db, IContextoOperador contexto)
 {
     public const int TamanioPaginaMaximo = 100;
@@ -24,7 +21,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
         ComercioActual();
 
         tamanioPagina = Math.Clamp(tamanioPagina, 1, TamanioPaginaMaximo);
-        // Con tope: (pagina - 1) * tamanioPagina no puede pasarse de un int. Más allá, la página viene vacía
         pagina = Math.Clamp(pagina, 1, int.MaxValue / tamanioPagina);
 
         var consulta = Consulta();
@@ -50,7 +46,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
         return new PaginaDto<AvisoResumenDto>(avisos.Select(Resumen).ToList(), total, pagina, tamanioPagina);
     }
 
-    // null si no existe o es de otro comercio (para el que pregunta, es lo mismo)
     public async Task<AvisoDetalleDto?> ObtenerAsync(int id, CancellationToken cancellationToken = default)
     {
         ComercioActual();
@@ -68,10 +63,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
 
         return new AvisoDetalleDto(Resumen(fila), intentos);
     }
-
-    // Vuelve a dejar Pendiente un aviso Fallido: el worker lo manda en unos segundos, como un intento más
-    // (queda en el historial). Si ese intento también falla, vuelve a Fallido sin otra ronda de reintentos.
-    // null si no existe o es de otro comercio; ArgumentException si no se puede reenviar.
 
     public async Task<AvisoResumenDto?> ReenviarAsync(
         int id,
@@ -105,8 +96,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
             throw new ArgumentException(
                 "La suscripción del aviso está desactivada. Activala para poder reenviarlo.");
 
-        // Actualización atómica: solamente una solicitud puede
-        // cambiar el estado de Fallido a Pendiente.
         var actualizados = await db.EntregasAvisos
             .Where(a =>
                 a.Id == id &&
@@ -128,8 +117,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
         return (await ObtenerAsync(id, cancellationToken))?.Aviso;
     }
 
-
-    // Avisos con el código del envío y la URL de la suscripción. Los tres pasan por el filtro de EF.
     private IQueryable<FilaAviso> Consulta() =>
         from a in db.EntregasAvisos.AsNoTracking()
         join s in db.SuscripcionesAvisos on a.SuscripcionAvisosId equals s.Id
@@ -159,10 +146,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
 
     private record Contenido(string? Estado, string? Anterior, string? CodigoBulto, string? Motivo, int Version);
 
-    // El contenido es exactamente lo que se le mandó al comercio, en el formato de su versión
-    // (VersionesAvisos): de ahí sale a qué estado pasó el envío (o el bulto). Si no se puede leer, no se muestra.
-    // - v1: el evento tal cual ("Estado", "EstadoAnterior").
-    // - v2: "envio": { "estado", "estadoAnterior" } y, en los de bulto, "bulto": { "codigo", "estado", ... }.
     private static Contenido LeerContenido(string contenido)
     {
         try
@@ -201,7 +184,6 @@ public class AvisosComercioService(ApplicationDbContext db, IContextoOperador co
                 : null;
     }
 
-    // Solo un usuario de comercio con un operador elegido
     private void ComercioActual()
     {
         if (contexto is not { OperadorId: not null, ComercioId: not null })

@@ -3,22 +3,16 @@ using LastMileUY.Contracts.Envios;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Lo que el Backoffice necesita de la API sobre envíos.
-// Hay dos implementaciones: una con datos de prueba y otra que llama a la API real.
 public interface IEnviosApi
 {
     Task<PaginaDto<EnvioResumenDto>> ListarAsync(FiltroEnvios filtro, CancellationToken ct = default);
 
-    // Devuelve null si el envío no existe (o no es del operador)
     Task<EnvioDetalleDto?> ObtenerAsync(int id, CancellationToken ct = default);
 
-    // Devuelve el envío actualizado, o null si no existe.
-    // OperacionRechazadaException: la API no aceptó el cambio (transición inválida, sin permiso, conflicto).
     Task<EnvioDetalleDto?> CambiarEstadoAsync(int id, string estado, string? descripcion, CancellationToken ct = default);
 
     Task<List<ActividadEnvioDto>> ObtenerActividadRecienteAsync(
         CancellationToken ct = default);
 }
 
-// La API rechazó la operación; el mensaje se le puede mostrar al usuario
 public class OperacionRechazadaException(string mensaje) : Exception(mensaje);

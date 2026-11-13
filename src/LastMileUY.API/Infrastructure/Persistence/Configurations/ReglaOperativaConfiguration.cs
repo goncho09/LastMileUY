@@ -13,7 +13,6 @@ public class ReglaOperativaConfiguration
 
         builder.HasKey(r => r.Id);
 
-        // Cada regla operativa pertenece a un operador.
         builder.HasOne<Operador>()
             .WithMany(o => o.ReglasOperativas)
             .HasForeignKey(r => r.OperadorId)
@@ -26,8 +25,6 @@ public class ReglaOperativaConfiguration
         builder.Property(r => r.Descripcion)
             .HasMaxLength(500);
 
-        // Un operador puede tener como máximo una regla activa
-        // por modalidad de envío.
         builder.HasIndex(r => new
         {
             r.OperadorId,

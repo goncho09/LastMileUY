@@ -31,16 +31,12 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         this.contextoOperador = contextoOperador;
     }
 
-    // Operador y comercio del pedido actual. Los filtros globales los leen en cada consulta.
     public int? OperadorActual => contextoOperador.OperadorId;
 
     public int? ComercioActual => contextoOperador.ComercioId;
 
-    // Clave de prueba de la API pública: solo ve los destinatarios de prueba (y los demás no los ven)
     public bool EnAmbientePruebasActual => contextoOperador.EnAmbientePruebas;
 
-
-    // Operadores
     public DbSet<Operador> Operadores => Set<Operador>();
     public DbSet<ReglaOperativa> ReglasOperativas => Set<ReglaOperativa>();
     public DbSet<ReglaEntregaParcial> ReglasEntregaParcial => Set<ReglaEntregaParcial>();
@@ -48,26 +44,21 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<Zona> Zonas => Set<Zona>();
     public DbSet<FranjaHoraria> FranjasHorarias => Set<FranjaHoraria>();
 
-    // Comercios
     public DbSet<Comercio> Comercios => Set<Comercio>();
     public DbSet<OperadorComercio> OperadoresComercios => Set<OperadorComercio>();
 
-    // Destinatarios
     public DbSet<Destinatario> Destinatarios => Set<Destinatario>();
     public DbSet<Direccion> Direcciones => Set<Direccion>();
 
-    // Envíos
     public DbSet<Envio> Envios => Set<Envio>();
     public DbSet<Bulto> Bultos => Set<Bulto>();
 
-    // Tarifas
     public DbSet<CuadroTarifario> CuadrosTarifarios => Set<CuadroTarifario>();
     public DbSet<Tarifa> Tarifas => Set<Tarifa>();
     public DbSet<AjusteTarifa> AjustesTarifa => Set<AjusteTarifa>();
     public DbSet<Liquidacion> Liquidaciones => Set<Liquidacion>();
     public DbSet<DetalleLiquidacion> DetallesLiquidacion => Set<DetalleLiquidacion>();
 
-    // Rutas
     public DbSet<Repartidor> Repartidores => Set<Repartidor>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<Ruta> Rutas => Set<Ruta>();
@@ -77,7 +68,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<Incidencia> Incidencias => Set<Incidencia>();
     public DbSet<Rendicion> Rendiciones => Set<Rendicion>();
 
-    // Entregas
     public DbSet<IntentoEntrega> IntentosEntrega => Set<IntentoEntrega>();
     public DbSet<MotivoNoEntrega> MotivosNoEntrega => Set<MotivoNoEntrega>();
     public DbSet<PruebaEntrega> PruebasEntrega => Set<PruebaEntrega>();
@@ -86,31 +76,24 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<ResultadoBultoIntento> ResultadosBultosIntentos
         => Set<ResultadoBultoIntento>();
 
-    // Seguimiento
     public DbSet<EventoEnvio> EventosEnvio => Set<EventoEnvio>();
 
-    // Notificaciones
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<SuscripcionAvisos> SuscripcionesAvisos => Set<SuscripcionAvisos>();
     public DbSet<ClaveApi> ClavesApi => Set<ClaveApi>();
     public DbSet<EntregaAviso> EntregasAvisos => Set<EntregaAviso>();
     public DbSet<IntentoAviso> IntentosAvisos => Set<IntentoAviso>();
 
-    // Mensajeria
     public DbSet<MensajeFallido> MensajesFallidos => Set<MensajeFallido>();
     public DbSet<MensajeReintentoOutbox> MensajesReintentoOutbox
         => Set<MensajeReintentoOutbox>();
 
-    // Sincronización de la app del repartidor
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
 
-    // Eventos por publicar en RabbitMQ (los agrega OutboxInterceptor; la app no los lee)
     public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
 
-    // Eventos que el worker ya procesó (para descartar los repetidos)
     public DbSet<MensajeProcesado> MensajesProcesados => Set<MensajeProcesado>();
 
-    // Configura las entidades y relaciones de la base de datos,
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -119,8 +102,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             typeof(ApplicationDbContext).Assembly
         );
 
-        // Primera barrera del multitenancy: toda entidad de un operador
-        // se filtra sola por el operador actual (y por el comercio, si es de un comercio).
         var entidadesDeOperador = modelBuilder.Model.GetEntityTypes()
             .Select(t => t.ClrType)
             .Where(t => typeof(IPerteneceAOperador).IsAssignableFrom(t))
@@ -203,15 +184,12 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             nameof(AplicarFiltroOperadorYComercio),
             BindingFlags.NonPublic | BindingFlags.Instance)!;
 
-    // Sin operador (OperadorActual null) la comparación da falso y no se ve nada.
     private void AplicarFiltroOperador<T>(ModelBuilder modelBuilder)
         where T : class, IPerteneceAOperador
     {
         modelBuilder.Entity<T>().HasQueryFilter(e => e.OperadorId == OperadorActual);
     }
 
-    // Segundo nivel: un usuario de comercio solo ve lo de su comercio.
-    // Un usuario del operador (sin comercio) ve lo de todos los comercios del operador.
     private void AplicarFiltroOperadorYComercio<T>(ModelBuilder modelBuilder)
         where T : class, IPerteneceAOperador, IPerteneceAComercio
     {
@@ -220,11 +198,8 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             && (ComercioActual == null || e.ComercioId == ComercioActual));
     }
 
-    // Tablas que no tienen OperadorId: se ven solo si se ve su "padre", que ya está filtrado.
-    // Es el mismo criterio que las políticas RLS de la migración AislamientoCompleto.
     private void AplicarFiltrosDeTablasHijas(ModelBuilder modelBuilder)
     {
-        // Hijas del envío
         modelBuilder.Entity<Bulto>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<EventoEnvio>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<IntentoEntrega>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
@@ -233,28 +208,21 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<Notificacion>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<EntregaAviso>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<IntentoAviso>().HasQueryFilter(x => EntregasAvisos.Any(a => a.Id == x.EntregaAvisoId));
-        // La aplicación no puede leer el outbox (ver la migración Outbox); el filtro queda por coherencia
         modelBuilder.Entity<MensajeOutbox>().HasQueryFilter(x => Envios.Any(e => e.Id == x.EnvioId));
         modelBuilder.Entity<PruebaEntrega>().HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));
         modelBuilder.Entity<ResultadoBultoIntento>()
             .HasQueryFilter(x => IntentosEntrega.Any(i => i.Id == x.IntentoEntregaId));
 
-        // Hijas de la ruta
         modelBuilder.Entity<Incidencia>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
         modelBuilder.Entity<Posicion>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
         modelBuilder.Entity<Rendicion>().HasQueryFilter(x => Rutas.Any(r => r.Id == x.RutaId));
         modelBuilder.Entity<BultoParada>().HasQueryFilter(x => Paradas.Any(p => p.Id == x.ParadaId));
 
-        // Tarifas y liquidaciones
         modelBuilder.Entity<Tarifa>().HasQueryFilter(x => CuadrosTarifarios.Any(c => c.Id == x.CuadroTarifarioId));
         modelBuilder.Entity<AjusteTarifa>().HasQueryFilter(x => Tarifas.Any(t => t.Id == x.TarifaId));
         modelBuilder.Entity<DetalleLiquidacion>().HasQueryFilter(x => Liquidaciones.Any(l => l.Id == x.LiquidacionId));
 
-        // Hijas de la zona
         modelBuilder.Entity<FranjaHoraria>().HasQueryFilter(x => Zonas.Any(z => z.Id == x.ZonaId));
-
-        // Destinatarios: son del comercio. El usuario de un comercio ve los suyos;
-        // el operador ve los de los comercios con los que trabaja.
 
         modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
             (ComercioActual != null
@@ -263,15 +231,11 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
                     oc.ComercioId == d.ComercioId &&
                     oc.OperadorId == OperadorActual &&
                     oc.Activo))
-            // Los de prueba (API pública) solo en el ambiente de pruebas, y al revés
             && d.EsPrueba == EnAmbientePruebasActual);
 
         modelBuilder.Entity<Direccion>().HasQueryFilter(x =>
             Destinatarios.Any(d => d.Id == x.DestinatarioId));
 
-        // Comercios: el usuario de un comercio ve el suyo; el operador, los comercios con los que trabaja.
-        // Solo filtro de EF, sin RLS: al dar de alta un comercio todavía no está vinculado a ningún
-        // operador, y RLS no dejaría devolver su Id recién creado.
         modelBuilder.Entity<Comercio>().HasQueryFilter(c =>
             ComercioActual != null
                 ? c.Id == ComercioActual
@@ -294,7 +258,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    // Lo nuevo queda a nombre del operador actual, y nada se puede pasar a otro operador.
     private void AsignarYValidarOperador()
     {
         foreach (var entrada in ChangeTracker.Entries<IPerteneceAOperador>())
@@ -325,8 +288,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             }
         }
 
-        // Segundo nivel: un usuario de comercio solo crea cosas de su comercio.
-        // Un usuario del operador (sin comercio) elige el comercio, y RLS verifica que trabajen juntos.
         foreach (var entrada in ChangeTracker.Entries<IPerteneceAComercio>())
         {
             if (entrada.State == EntityState.Added && ComercioActual is not null)
@@ -349,8 +310,6 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
             }
         }
 
-        // Ambiente de la API pública: un destinatario nuevo es de prueba si lo crea una clave de prueba, y
-        // eso no lo decide el pedido ni se puede cambiar después (la política RLS lo vuelve a controlar)
         foreach (var entrada in ChangeTracker.Entries<Destinatario>())
         {
             if (entrada.State == EntityState.Added)

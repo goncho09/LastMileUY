@@ -8,7 +8,6 @@ public class EntregaAviso
 
     public int EnvioId { get; set; }
 
-    // GUID: ID unico
     public Guid EventoId { get; set; } = Guid.NewGuid();
 
     public string TipoEvento { get; set; } = string.Empty;
@@ -29,6 +28,5 @@ public class EntregaAviso
 
     public string? UltimoError { get; set; }
 
-    // Cada intento de entrega, con su resultado (historial)
     public ICollection<IntentoAviso> Intentos { get; set; } = new List<IntentoAviso>();
 }

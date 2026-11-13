@@ -6,9 +6,6 @@ using LastMileUY.DriverPWA.Services;
 
 namespace LastMileUY.DriverPWA.Tests;
 
-// Cómo la app manda entregas e intentos a la API de sincronización: cada operación se guarda primero
-// en la cola del celular, va sola en su pedido y lleva el mismo IdOperacion en cada reenvío, para
-// que la API no la aplique dos veces. Sale de la cola solo con un resultado final.
 public class SincronizacionServiceTests
 {
     [Fact]
@@ -40,7 +37,6 @@ public class SincronizacionServiceTests
         Assert.True(await servicio.TieneOperacionPendienteAsync(7));
         Assert.False(await servicio.TieneOperacionPendienteAsync(8));
 
-        // Sigue ahí aunque se cierre la app: otra instancia, sobre lo mismo guardado, la encuentra
         var (despues, _) = Servicio(new ApiFalsa(_ => Resultado("Aplicada")), navegador);
         Assert.True(await despues.TieneOperacionPendienteAsync(7));
     }
@@ -86,8 +82,6 @@ public class SincronizacionServiceTests
     [InlineData("Conflicto")]
     public async Task Con_un_resultado_final_sale_de_la_cola_y_lo_proximo_es_una_operacion_nueva(string resultado)
     {
-        // Rechazada: el repartidor corrige (por ejemplo, agrega la firma) y la manda de nuevo.
-        // Con el mismo id la API devolvería el rechazo anterior sin mirarla.
         var api = new ApiFalsa(_ => Resultado(resultado));
         var (servicio, _) = Servicio(api);
 
@@ -141,7 +135,6 @@ public class SincronizacionServiceTests
             if (!conConexion)
                 throw new HttpRequestException("Sin conexión");
 
-            // La primera sincronización queda esperando la respuesta de la API
             enLaApi.Set();
             seguir.Wait();
             return Resultado("Aplicada");
@@ -150,7 +143,6 @@ public class SincronizacionServiceTests
         await servicio.GuardarOperacionAsync(Entrega(envioId: 7));
         conConexion = true;
 
-        // Vuelve la conexión: la dispara el layout y también la pantalla de operaciones
         var primera = Task.Run(servicio.SincronizarPendientesAsync);
         enLaApi.Wait(TimeSpan.FromSeconds(5));
         var segunda = await servicio.SincronizarPendientesAsync();
@@ -215,12 +207,9 @@ public class SincronizacionServiceTests
         Assert.True((await servicio.GuardarOperacionAsync(parcial)).Pendiente);
         var id = Assert.Single(sinRed.Pedidos).Cuerpo!.Operaciones[0].IdOperacion;
 
-        // Se cierra la app y vuelve la conexión: lo guardado se manda con el mismo id y los mismos
-        // resultados, así la API lo reconoce si ya le había llegado
         var conRed = new ApiFalsa(_ => Resultado("Aplicada"));
         var (despues, _) = Servicio(conRed, navegador);
 
-        // Antes de mandarla, la hoja muestra qué se guardó de cada bulto
         var guardada = await despues.ObtenerPendienteAsync(7);
         Assert.Equal(parcial.ResultadosBultos, guardada!.ResultadosBultos!);
         Assert.Null(await despues.ObtenerPendienteAsync(8));
@@ -233,13 +222,9 @@ public class SincronizacionServiceTests
         Assert.Equal("EntregaParcial", reenviada.Tipo);
         Assert.Equal(parcial.ResultadosBultos, reenviada.ResultadosBultos!);
 
-        // Una entrega parcial no deja el envío como entregado en el celular: los bultos que
-        // faltan pueden volver a salir
         Assert.False(await new OperacionesConfirmadasService(new AlmacenLocal(navegador, TimeProvider.System))
             .EstaConfirmadoAsync(7));
     }
-
-    // navegador: lo guardado en el celular; si se pasa uno, es como volver a abrir la app
 
     private static (SincronizacionService Servicio, NavegadorFalso Navegador) Servicio(
         ApiFalsa api, NavegadorFalso? navegador = null)
@@ -286,7 +271,6 @@ public class SincronizacionServiceTests
                 [new ResultadoOperacionDto(Guid.NewGuid(), resultado, "mensaje", false, reintentar, "EnTransito")]))
         };
 
-    // Simula la API sin red y anota qué le llegó
     private class ApiFalsa(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
         public List<(string Ruta, string RutaYConsulta, SincronizarRequest? Cuerpo)> Pedidos { get; } = [];

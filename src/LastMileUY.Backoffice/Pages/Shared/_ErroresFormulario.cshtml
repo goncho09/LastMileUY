@@ -1,8 +1,3 @@
-@* Errores generales del formulario (los que agrega la página con ModelState.AddModelError("", ...),
-   como un rechazo de la API: "Ya existe un usuario con ese correo").
-   Va en la página, no dentro del partial de los campos: ahí el prefijo es "Formulario" y un resumen
-   ModelOnly solo muestra los errores de ese prefijo, así que los generales no se veían.
-   Sin errores no ocupa lugar (validation-summary-valid) *@
 <div asp-validation-summary="ModelOnly"
      role="alert"
      class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200

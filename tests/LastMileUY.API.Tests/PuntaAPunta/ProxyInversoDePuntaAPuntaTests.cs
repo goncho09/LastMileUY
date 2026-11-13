@@ -10,14 +10,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using static ApiDePuntaAPunta;
 
-// La API detrás de un proxy inverso (src/Compartido/ProxyInverso.cs), como en Azure: los pedidos llegan
-// todos desde el proxy, y la IP real viene en X-Forwarded-For. Se prueba con el freno a claves inválidas,
-// que es por IP: cada visitante tiene que tener su propio tope, y nadie se lo puede saltear inventándose
-// el encabezado. Las IP son de documentación (RFC 5737), distintas en cada prueba.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class ProxyInversoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
-    // El proxy de la propia máquina: confiable siempre
     private static readonly IPAddress Proxy = IPAddress.Loopback;
 
     [Fact]
@@ -32,7 +27,6 @@ public class ProxyInversoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
         Assert.Equal(StatusCodes.Status429TooManyRequests, (await PedirAsync(Proxy, "lmuy_live_otra", abusador)).Response.StatusCode);
 
-        // Por el mismo proxy, otro visitante no se entera (antes de esto, para la API eran todos "el proxy")
         Assert.Equal(StatusCodes.Status200OK, (await PedirAsync(Proxy, buena, otro)).Response.StatusCode);
     }
 
@@ -41,7 +35,6 @@ public class ProxyInversoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     {
         var atacante = IpAlAzar("192.0.2.");
 
-        // Cada pedido dice venir de una IP distinta, pero no viene del proxy: se cuenta por su IP de verdad
         for (var i = 0; i < 30; i++)
             await PedirAsync(atacante, "lmuy_live_inventada" + i, IpAlAzar("203.0.113."));
 
@@ -52,8 +45,6 @@ public class ProxyInversoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     [Fact]
     public async Task Si_el_visitante_llego_por_https_la_API_lo_sabe_aunque_el_proxy_le_hable_por_http()
     {
-        // La documentación arma la dirección del servidor con el esquema del pedido: detrás del proxy
-        // tiene que decir https, que es por donde entran los integradores
         var contexto = await api.Server.SendAsync(c =>
         {
             c.Request.Method = "GET";

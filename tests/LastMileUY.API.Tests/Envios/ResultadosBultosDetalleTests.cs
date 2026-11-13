@@ -16,9 +16,6 @@ namespace LastMileUY.API.Tests.Envios;
 
 using static BaseConDosOperadores;
 
-// El detalle del envío (Backoffice y portal del comercio) muestra qué pasó con cada bulto en cada
-// intento, y la prueba de entrega de cada intento respalda solo los bultos que se entregaron en él.
-// Contra la base real con RLS, después de sincronizar desde la app del repartidor.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ResultadosBultosDetalleTests(BaseConDosOperadores baseDeDatos)
 {
@@ -50,14 +47,12 @@ public class ResultadosBultosDetalleTests(BaseConDosOperadores baseDeDatos)
             ],
             intento.Bultos);
 
-        // La firma de quien recibió no respalda el bulto que no se entregó
         var prueba = Assert.IsType<PruebaEntregaDto>(intento.Prueba);
         Assert.Equal([bultos[0].Codigo, bultos[1].Codigo], prueba.BultosEntregados);
         Assert.True(prueba.TieneFirma);
         Assert.False(prueba.TieneFoto);
         Assert.Equal("Ana Silva", prueba.NombreReceptor);
 
-        // Y cada bulto con su estado
         Assert.Equal(["Entregado", "Entregado", "NoEntregado"], detalle.Bultos.Select(b => b.Estado));
     }
 
@@ -96,7 +91,6 @@ public class ResultadosBultosDetalleTests(BaseConDosOperadores baseDeDatos)
         Assert.All(detalle.Bultos, b => Assert.Equal("Entregado", b.Estado));
     }
 
-    // Como lo pide el Backoffice (personal del operador) o el portal (usuario del comercio)
     private async Task<EnvioDetalleDto> DetalleAsync(int envioId, int? comercioId = null)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA, comercioId);
@@ -132,7 +126,6 @@ public class ResultadosBultosDetalleTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("Aplicada", Assert.Single(respuesta.Resultados).Resultado);
     }
 
-    // El operador A pide firma para entregar
     private static OperacionRequest Operacion(int rutaId, int envioId, string tipo, List<ResultadoBultoRequest>? resultados) => new()
     {
         IdOperacion = Guid.NewGuid(),

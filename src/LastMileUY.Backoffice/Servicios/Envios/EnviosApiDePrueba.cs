@@ -3,11 +3,8 @@ using LastMileUY.Contracts.Envios;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Datos de prueba en memoria, para trabajar el Backoffice sin depender de la API.
-// Se activa con "Api:UsarDatosDePrueba": true en la configuración.
 public class EnviosApiDePrueba : IEnviosApi
 {
-    // Copia, solo para los datos de prueba, de la tabla de transiciones de la API (TransicionesEnvio)
     private static readonly Dictionary<string, string[]> Transiciones = new()
     {
         ["Admitido"] = ["EnDeposito"],
@@ -20,13 +17,11 @@ public class EnviosApiDePrueba : IEnviosApi
         ["EnDevolucion"] = ["Devuelto", "Extraviado"],
     };
 
-    // Reglas de ejemplo para que se vea el recuadro de la regla operativa (el límite de intentos lo aplica la API)
     private static readonly ReglaAplicadaDto ReglaEstandar = new("Estándar", 2, 24, 48, true, false, false);
     private static readonly ReglaAplicadaDto ReglaUrgente = new("Urgente", 1, 4, 12, true, false, false);
 
     private readonly List<EnvioDetalleDto> envios = GenerarEnvios();
 
-    // Se puede cambiar el estado, así que la lista se toca con lock (el servicio es único para todos los pedidos)
     private readonly Lock bloqueo = new();
 
     public Task<PaginaDto<EnvioResumenDto>> ListarAsync(FiltroEnvios filtro, CancellationToken ct = default)
@@ -143,7 +138,6 @@ public class EnviosApiDePrueba : IEnviosApi
         return Task.FromResult(new List<ActividadEnvioDto>());
     }
 
-    // Siempre genera los mismos datos (semilla fija), así las pruebas y las capturas no cambian
     private static List<EnvioDetalleDto> GenerarEnvios()
     {
         var azar = new Random(17);
@@ -209,7 +203,6 @@ public class EnviosApiDePrueba : IEnviosApi
                 EstadosSiguientes = Siguientes(estado),
                 Regla = regla,
                 FechaLimiteEntrega = creado.AddHours(regla.PlazoEntregaHoras),
-                // Uno de cada tres entró por el portal del comercio
                 Canal = id % 3 == 0 ? "Portal" : "Api",
                 Intentos = intentos
             });
@@ -218,9 +211,6 @@ public class EnviosApiDePrueba : IEnviosApi
         return lista;
     }
 
-    // Intentos coherentes con el estado, con el resultado de cada bulto: entregado (todos con su
-    // prueba), y en los que no se entregó, una entrega parcial si tiene varios bultos (uno de cada dos)
-    // o un intento fallido. La prueba respalda solo los bultos entregados en ese intento.
     private static (List<BultoDto>, List<IntentoEntregaDto>) Intentos(
         int id, string estado, List<BultoDto> bultos, DateTime creado)
     {
@@ -243,7 +233,6 @@ public class EnviosApiDePrueba : IEnviosApi
             return (estado == "Extraviado" ? bultos.Select(b => b with { Estado = "Extraviado" }).ToList() : bultos, []);
         }
 
-        // Los que no se entregaron: devueltos al comercio si el envío ya volvió
         var restantes = estado == "Devuelto" ? "Devuelto" : "NoEntregado";
 
         if (bultos.Count > 1 && id % 2 == 0)
@@ -265,7 +254,6 @@ public class EnviosApiDePrueba : IEnviosApi
         ]);
     }
 
-    // Arma un historial coherente: los estados por los que pasó hasta llegar al actual
     private static List<EventoEnvioDto> GenerarEventos(string estadoFinal, DateTime creado)
     {
         string[] camino = estadoFinal switch

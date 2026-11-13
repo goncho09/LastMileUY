@@ -28,7 +28,6 @@ public class ComercioConfiguration : IEntityTypeConfiguration<Comercio>
         builder.Property(c => c.Telefono)
             .HasMaxLength(30);
 
-        // Evita registrar dos comercios con el mismo RUT.
         builder.HasIndex(c => c.RUT)
             .IsUnique();
     }

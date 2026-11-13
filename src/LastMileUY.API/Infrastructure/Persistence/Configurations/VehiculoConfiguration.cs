@@ -13,7 +13,6 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
 
         builder.HasKey(v => v.Id);
 
-        // Cada vehículo pertenece a un operador logístico.
         builder.HasOne<Operador>()
             .WithMany(o => o.Vehiculos)
             .HasForeignKey(v => v.OperadorId)
@@ -27,15 +26,12 @@ public class VehiculoConfiguration : IEntityTypeConfiguration<Vehiculo>
             .HasMaxLength(50)
             .IsRequired();
 
-        // Precisión para las capacidades del vehículo.
         builder.Property(v => v.CapacidadPesoKg)
             .HasPrecision(10, 2);
 
         builder.Property(v => v.CapacidadVolumenM3)
             .HasPrecision(10, 3);
 
-        // Un operador no puede registrar dos vehículos
-        // con la misma matrícula.
         builder.HasIndex(v => new
         {
             v.OperadorId,

@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Sincronizacion;
 
-// La firma o la foto de una entrega. El navegador no puede pedírsela a la API directamente
-// (la sesión con la API la tiene el Backoffice), así que el Backoffice la busca y la devuelve.
 public class EvidenciaModel(ISincronizacionApi sincronizacionApi) : PageModel
 {
     public async Task<IActionResult> OnGetAsync(int intentoId, string tipo, CancellationToken ct)

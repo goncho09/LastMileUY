@@ -13,7 +13,6 @@ public static class UsuariosEndpoints
             .RequireAuthorization(politica =>
                 politica.RequireRole("Operador"));
 
-        // Listar el personal del operador autenticado.
         grupo.MapGet("/", async (
             GestionUsuariosService servicio,
             CancellationToken cancellationToken) =>
@@ -31,7 +30,6 @@ public static class UsuariosEndpoints
             }
         });
 
-        // Crear un usuario del operador autenticado.
         grupo.MapPost("/", async (
             CrearUsuarioRequest request,
             GestionUsuariosService servicio,

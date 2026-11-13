@@ -9,10 +9,6 @@ using LastMileUY.Contracts.Envios;
 using LastMileUY.Contracts.Integraciones;
 using static ApiDePuntaAPunta;
 
-// API pública v1 (docs/api-publica.md), por HTTP contra la API real: la clave se crea en el portal
-// (con la sesión del comercio) y después el "sistema del comercio" usa solo la clave.
-// Cubre: autenticación y su alcance, revocación, vínculo inactivo, aislamiento entre comercios,
-// canal Api, importación masiva idempotente (req. 7), topes por clave y la documentación navegable.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -26,7 +22,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.StartsWith(creada.Datos.Prefijo, creada.Clave);
         Assert.True(creada.Datos.Activa);
 
-        // El listado no trae el secreto: solo el prefijo para reconocerla
         using (var listado = await portal.GetAsync("api/claves-api"))
         {
             var texto = await listado.Content.ReadAsStringAsync();
@@ -34,7 +29,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.DoesNotContain(creada.Clave, texto);
         }
 
-        // Ni en la base: solo su hash
         Assert.Equal(0, await api.ConsultarCantidadAsync(
             $"SELECT count(*) FROM \"ClavesApi\" WHERE \"Hash\" = '{creada.Clave}' OR \"Prefijo\" = '{creada.Clave}'"));
 
@@ -45,7 +39,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var pagina = (await envios.Content.ReadFromJsonAsync<PaginaDto<EnvioResumenDto>>())!;
         Assert.NotEmpty(pagina.Items);
 
-        // Queda registrado cuándo se usó por última vez
         var claves = (await portal.GetFromJsonAsync<List<ClaveApiDto>>("api/claves-api"))!;
         Assert.NotNull(claves.Single(c => c.Id == creada.Datos.Id).UltimoUso);
     }
@@ -64,14 +57,12 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.Unauthorized, inventada.StatusCode);
         }
 
-        // La sesión del portal no sirve en la v1: es solo para sistemas, con clave
         var portal = await api.IniciarSesionAsync(Comercio1, api.IdOperador1);
         using (var conCookie = await portal.GetAsync("api/v1/envios"))
         {
             Assert.Equal(HttpStatusCode.Unauthorized, conCookie.StatusCode);
         }
 
-        // Y la clave no sirve fuera de la v1: ni para el resto de la API ni para crear más claves
         var sistema = ClienteConClave((await CrearClaveAsync(portal, "ERP")).Clave);
 
         using (var interna = await sistema.GetAsync("api/envios"))
@@ -90,7 +81,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
     {
         var buena = (await CrearClaveAsync(await api.IniciarSesionAsync(Comercio1, api.IdOperador1), "Misma IP")).Clave;
 
-        // Cada prueba con su IP inventada (documentación, RFC 5737): no frena a las demás pruebas
         var atacante = IPAddress.Parse("203.0.113." + Random.Shared.Next(1, 250));
 
         for (var i = 0; i < 30; i++)
@@ -100,10 +90,8 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(StatusCodes.Status429TooManyRequests, frenado.Response.StatusCode);
         Assert.True(int.Parse(frenado.Response.Headers.RetryAfter!) > 0);
 
-        // Mientras dura, desde esa IP se frena cualquier clave (no se consulta la base)
         Assert.Equal(StatusCodes.Status429TooManyRequests, (await PedirAsync(atacante, buena)).Response.StatusCode);
 
-        // Desde otra IP la clave buena anda
         Assert.Equal(StatusCodes.Status200OK,
             (await PedirAsync(IPAddress.Parse("198.51.100." + Random.Shared.Next(1, 250)), buena)).Response.StatusCode);
     }
@@ -144,7 +132,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
     [Fact]
     public async Task Si_el_comercio_deja_de_trabajar_con_el_operador_la_clave_responde_403()
     {
-        // Comercio 2 con el operador 2: el vínculo que agrega el fixture, para no tocar los de los seeders
         var portal = await api.IniciarSesionAsync(Comercio2, api.IdOperador2);
         var sistema = ClienteConClave((await CrearClaveAsync(portal, "Vínculo")).Clave);
 
@@ -178,14 +165,12 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var detalle = (await sistema1.GetFromJsonAsync<EnvioDetalleDto>($"api/v1/envios/{envio.Id}"))!;
         Assert.Equal("Api", detalle.Canal);
 
-        // El comercio 2 trabaja con el mismo operador, pero el envío no es suyo: para él no existe
         var sistema2 = ClienteConClave((await CrearClaveAsync(
             await api.IniciarSesionAsync(Comercio2, api.IdOperador1), "Comercio 2")).Clave);
 
         using var ajeno = await sistema2.GetAsync($"api/v1/envios/{envio.Id}");
         Assert.Equal(HttpStatusCode.NotFound, ajeno.StatusCode);
 
-        // Ni puede usar destinatarios del comercio 1
         using var conDestinatarioAjeno = await sistema2.PostAsJsonAsync("api/v1/envios", Envio(destinatario, direccion, null));
         Assert.Equal(HttpStatusCode.BadRequest, conDestinatarioAjeno.StatusCode);
     }
@@ -204,9 +189,9 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             [
                 Envio(destinatario, direccion, $"{lote}-1"),
                 Envio(destinatario, direccion, $"{lote}-2"),
-                Envio(destinatario, direccion, null), // sin referencia: no se puede importar sin duplicar
-                Envio(destinatario, direccion, $"{lote}-1"), // repetida dentro del mismo lote
-                new EnvioApiRequest { ReferenciaExterna = $"{lote}-3", DestinatarioId = destinatario, DireccionId = direccion } // sin bultos
+                Envio(destinatario, direccion, null),
+                Envio(destinatario, direccion, $"{lote}-1"),
+                new EnvioApiRequest { ReferenciaExterna = $"{lote}-3", DestinatarioId = destinatario, DireccionId = direccion }
             ]
         };
 
@@ -220,13 +205,11 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(primera.Resultados[0].EnvioId, primera.Resultados[3].EnvioId);
         Assert.Contains("bulto", primera.Resultados[4].Mensaje);
 
-        // El mismo lote otra vez: nada nuevo, y cada referencia devuelve el envío que ya estaba
         var segunda = await ImportarAsync(sistema, pedido);
 
         Assert.Equal((0, 3, 2), (segunda.Creados, segunda.Existentes, segunda.Rechazados));
         Assert.Equal(primera.Resultados[1].EnvioId, segunda.Resultados[1].EnvioId);
 
-        // Una parte, con la fila corregida: solo se crea la que faltaba
         var tercera = await ImportarAsync(sistema, new ImportarEnviosRequest
         {
             Envios = [Envio(destinatario, direccion, $"{lote}-2"), Envio(destinatario, direccion, $"{lote}-3")]
@@ -268,7 +251,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var apurado = ClienteConClave((await CrearClaveAsync(portal, "Apurado")).Clave);
         var tranquilo = ClienteConClave((await CrearClaveAsync(portal, "Tranquilo")).Clave);
 
-        // 10 lotes por minuto por clave (los vacíos se rechazan, pero cuentan igual)
         for (var i = 0; i < 10; i++)
         {
             using var permitido = await apurado.PostAsJsonAsync("api/v1/envios/lote", new ImportarEnviosRequest());
@@ -281,7 +263,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.True(frenado.Headers.RetryAfter?.Delta > TimeSpan.Zero);
         }
 
-        // Diferenciado: las consultas tienen su propio tope, y las demás claves no se enteran
         using (var consulta = await apurado.GetAsync("api/v1/envios"))
         {
             Assert.Equal(HttpStatusCode.OK, consulta.StatusCode);
@@ -330,7 +311,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Envios = Enumerable.Range(1, 20).Select(i => Envio(destinatario, direccion, $"{lote}-{i}")).ToList()
         };
 
-        // Las dos a la vez: chocan en las mismas referencias, y el índice único frena a la que llega segunda
         var resultados = await Task.WhenAll(ImportarAsync(sistemaA, pedido), ImportarAsync(sistemaB, pedido));
 
         Assert.All(resultados.SelectMany(r => r.Resultados), r =>
@@ -339,15 +319,10 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(20, await api.ConsultarCantidadAsync(
             $"SELECT count(*) FROM \"Envios\" WHERE \"ReferenciaExterna\" LIKE '{lote}-%'"));
 
-        // Para cada referencia, las dos respuestas apuntan al mismo envío
         for (var i = 0; i < 20; i++)
             Assert.Equal(resultados[0].Resultados[i].EnvioId, resultados[1].Resultados[i].EnvioId);
     }
 
-    // Lo que garantiza "versionada": la forma de la v1 (rutas, parámetros, campos de pedidos y
-    // respuestas) está guardada en ContratoApiPublicaV1.json. Si un cambio la altera, esta prueba falla.
-    // Si el cambio es compatible (agrega un campo o un endpoint), se actualiza el archivo a propósito
-    // corriendo la prueba con ACTUALIZAR_CONTRATO=1. Si no es compatible, va en una /api/v2.
     [Fact]
     public async Task El_contrato_de_la_v1_no_cambia_sin_querer()
     {
@@ -356,7 +331,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         using var respuesta = await api.ClienteSinSesion().GetAsync("api/v1/openapi.json");
         var actual = System.Text.Json.Nodes.JsonNode.Parse(await respuesta.Content.ReadAsStringAsync())!.AsObject();
 
-        // La dirección del servidor depende de dónde corre la API: no es parte del contrato
         actual.Remove("servers");
 
         if (Environment.GetEnvironmentVariable("ACTUALIZAR_CONTRATO") == "1")
@@ -382,7 +356,6 @@ public class ApiPublicaDePuntaAPuntaTests(ApiDePuntaAPunta api)
         return (await respuesta.Content.ReadFromJsonAsync<ClaveApiCreadaDto>())!;
     }
 
-    // El sistema del comercio: sin cookies, solo la clave
     private HttpClient ClienteConClave(string clave)
     {
         var cliente = api.ClienteSinSesion();

@@ -8,8 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Envios.Application;
 
-// Listado y detalle de envíos para el Backoffice. No filtra por operador a mano:
-// de eso se encargan el filtro global de EF y el RLS de PostgreSQL.
 public class ConsultasEnviosService(
     ApplicationDbContext db,
     IContextoOperador contextoOperador,
@@ -26,7 +24,6 @@ public class ConsultasEnviosService(
         CancellationToken cancellationToken = default)
     {
         tamanioPagina = Math.Clamp(tamanioPagina, 1, TamanioPaginaMaximo);
-        // Con tope: (pagina - 1) * tamanioPagina no puede pasarse de un int. Más allá, la página viene vacía
         pagina = Math.Clamp(pagina, 1, int.MaxValue / tamanioPagina);
 
         var consulta =
@@ -102,7 +99,6 @@ public class ConsultasEnviosService(
         return new PaginaDto<EnvioResumenDto>(items, total, pagina, tamanioPagina);
     }
 
-    // Devuelve null si el envío no existe o es de otro operador (para el que pregunta, es lo mismo)
     public async Task<EnvioDetalleDto?> ObtenerDetalleAsync(
         int id,
         CancellationToken cancellationToken = default)
@@ -142,7 +138,6 @@ public class ConsultasEnviosService(
         var envio = fila.Envio;
         var direccion = envio.DireccionEntrega;
 
-        // Para que EstadosSiguientes e IntentosFallidos cuenten los intentos reales
         foreach (var intento in fila.Intentos)
         {
             envio.IntentosEntrega.Add(intento);
@@ -190,10 +185,6 @@ public class ConsultasEnviosService(
         };
     }
 
-    // Cada intento con el resultado de sus bultos y su prueba de entrega. La prueba respalda solo los
-    // bultos que se entregaron en ese intento: en una entrega parcial, la firma de quien recibió no
-    // cubre los que no se entregaron. Sale de los resultados del mismo intento (no se guarda aparte),
-    // así no puede quedar una prueba asociada a un bulto que el intento no entregó.
     private async Task<IReadOnlyList<IntentoEntregaDto>> IntentosAsync(int envioId, CancellationToken cancellationToken)
     {
         var intentos = await db.IntentosEntrega.AsNoTracking()
@@ -293,7 +284,6 @@ public class ConsultasEnviosService(
                    "El usuario de comercio no tiene un comercio asignado.");
     }
 
-    // Que un % o _ escrito por el usuario se busque como texto y no como comodín
     private static string EscaparLike(string texto) =>
         texto.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_");
 }

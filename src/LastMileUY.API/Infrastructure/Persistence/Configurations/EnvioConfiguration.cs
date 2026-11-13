@@ -11,7 +11,6 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
 {
     public void Configure(EntityTypeBuilder<Envio> builder)
     {
-        // La ubicación copiada de la dirección va completa o no va (como en Direcciones)
         builder.ToTable("Envios", t => t.HasCheckConstraint(
             "CK_Envios_Ubicacion",
             "(\"DireccionEntrega_Latitud\" IS NULL AND \"DireccionEntrega_Longitud\" IS NULL) OR (\"DireccionEntrega_Latitud\" IS NOT NULL AND \"DireccionEntrega_Longitud\" IS NOT NULL AND \"DireccionEntrega_Latitud\" BETWEEN -90 AND 90 AND \"DireccionEntrega_Longitud\" BETWEEN -180 AND 180)"));
@@ -25,8 +24,6 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
         builder.HasIndex(e => e.CodigoSeguimiento)
             .IsUnique();
 
-        // La misma referencia del comercio no puede cargarse dos veces
-        // con el mismo operador (reimportar no duplica).
         builder.Property(e => e.ReferenciaExterna)
             .HasMaxLength(100);
 
@@ -39,7 +36,6 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
             .IsUnique()
             .HasFilter("\"ReferenciaExterna\" IS NOT NULL");
 
-        // Concurrencia optimista con la columna xmin de PostgreSQL.
         builder.Property(e => e.Version)
             .IsRowVersion();
 
@@ -68,7 +64,6 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
             direccion.Property(d => d.Referencia)
                 .HasMaxLength(300);
 
-            // Grados decimales con 6 decimales (unos 10 cm)
             direccion.Property(d => d.Latitud)
                 .HasPrecision(9, 6);
 
@@ -76,7 +71,6 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
                 .HasPrecision(9, 6);
         });
 
-        // Relaciones del envío con las entidades principales.
         builder.HasOne<Operador>()
             .WithMany(o => o.Envios)
             .HasForeignKey(e => e.OperadorId)

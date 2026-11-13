@@ -12,7 +12,6 @@ public class UsuarioAutenticadoResponse
 
     public int? OperadorId { get; set; }
 
-    // Nombre del operador de la sesión (para mostrarlo en el portal del comercio)
     public string? OperadorNombre { get; set; }
 
     public int? ComercioId { get; set; }

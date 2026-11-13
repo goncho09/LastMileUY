@@ -4,9 +4,6 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace LastMileUY.API.Infrastructure.Persistence;
 
-// La usan las herramientas de EF (dotnet ef migrations / database update).
-// Se conecta con "Migraciones", el usuario dueño de las tablas, porque el usuario
-// de la aplicación (DefaultConnection) no puede crear ni cambiar tablas.
 public class FabricaDisenoApplicationDbContext : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
     public ApplicationDbContext CreateDbContext(string[] args)

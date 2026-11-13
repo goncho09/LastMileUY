@@ -40,7 +40,6 @@ public sealed class GestionUsuariosService(
             return null;
         }
 
-        // No confiar únicamente en los claims de una cookie antigua.
         var usuario = await userManager.GetUserAsync(principal);
 
         if (usuario is null ||
@@ -64,8 +63,6 @@ public sealed class GestionUsuariosService(
             throw new UnauthorizedAccessException(
                 "No autorizado para gestionar usuarios.");
 
-        // La consulta queda limitada al operador autenticado.
-        // No se utilizan IgnoreQueryFilters ni cambios de contexto.
         var usuarios = await userManager.Users
             .AsNoTracking()
             .Where(u =>
@@ -86,8 +83,6 @@ public sealed class GestionUsuariosService(
                     r, StringComparer.Ordinal))
                 .ToArray();
 
-            // No mostrar cuentas administrativas ni cuentas
-            // de operador en el listado de personal.
             if (rolesVisibles.Length == 0 ||
                 roles.Any(r =>
                     !RolesGestionables.Contains(
@@ -142,8 +137,6 @@ public sealed class GestionUsuariosService(
             return (null, "Rol no permitido.");
         }
 
-        // Los ámbitos son responsabilidad del servidor.
-        // No aceptar IDs enviados por el cliente.
         if (request.OperadorId is not null ||
             request.ComercioId is not null)
         {
@@ -152,7 +145,6 @@ public sealed class GestionUsuariosService(
                 "Se utiliza el operador de la sesión.");
         }
 
-        // El operador debe seguir activo.
         var operadorActivo = await db.Operadores
             .AsNoTracking()
             .AnyAsync(
@@ -165,8 +157,6 @@ public sealed class GestionUsuariosService(
         if (await userManager.FindByEmailAsync(email) is not null)
             return (null, "Ya existe un usuario con ese correo.");
 
-        // Identity y la ficha del repartidor comparten
-        // ApplicationDbContext y su transacción.
         await using var transaccion =
             await db.Database.BeginTransactionAsync(
                 cancellationToken);
@@ -319,7 +309,6 @@ public sealed class GestionUsuariosService(
                 resultado.Errors.Select(e => e.Description)));
         }
 
-        // Invalidar las sesiones anteriores ante cualquier cambio de estado.
         var resultadoStamp = await userManager.UpdateSecurityStampAsync(usuario);
 
         if (!resultadoStamp.Succeeded)
@@ -329,7 +318,6 @@ public sealed class GestionUsuariosService(
             return (false, "No se pudo invalidar la sesión del usuario.");
         }
 
-        // Sincronizar el estado de la ficha del repartidor.
         if (repartidor is not null)
         {
             await db.Repartidores

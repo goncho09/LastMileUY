@@ -10,9 +10,6 @@ namespace LastMileUY.API.Tests.Rutas;
 
 using static BaseConDosOperadores;
 
-// Hojas de ruta contra la base real: armado, validaciones (capacidad, franjas, duplicados),
-// orden de las paradas, despacho y descarga por el repartidor asignado.
-// Cada prueba usa su propio repartidor y vehículo, para no chocar con las demás.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
 {
@@ -36,11 +33,9 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal([1, 2], detalle.Paradas.Select(p => p.Orden));
         Assert.All(detalle.Paradas, p => Assert.Equal("AsignadoARuta", p.EstadoEnvio));
 
-        // Dos envíos de un bulto de 2 kg y 10x10x10 cm (0,001 m³)
         Assert.Equal(4, detalle.PesoTotalKg);
         Assert.Equal(0.002m, detalle.VolumenTotalM3);
 
-        // Queda en el historial de cada envío
         var evento = await db.EventosEnvio
             .Where(e => e.EnvioId == segundo)
             .OrderByDescending(e => e.Id)
@@ -97,7 +92,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
             CrearRutaAsync(OperadorA, repartidor, vehiculo2, otroEnvio));
         Assert.Contains("repartidor", error.Message);
 
-        // Otro día sí puede
         await CrearRutaAsync(OperadorA, repartidor, vehiculo2, await CrearEnvioEnDepositoAsync(OperadorA),
             fecha: Manana.AddDays(1));
     }
@@ -119,7 +113,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public async Task Superar_el_peso_que_carga_el_vehiculo_se_rechaza()
     {
-        // El vehículo carga 3 kg y cada envío pesa 2
         var (repartidor, vehiculo, _) = await CrearRepartidorYVehiculoAsync(OperadorA, capacidadKg: 3);
 
         var error = await Assert.ThrowsAsync<ArgumentException>(async () =>
@@ -133,7 +126,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public async Task Superar_el_volumen_del_vehiculo_se_rechaza()
     {
-        // Cada envío ocupa 0,001 m³ y el vehículo tiene lugar para uno (la columna guarda 3 decimales)
         var (repartidor, vehiculo, _) = await CrearRepartidorYVehiculoAsync(OperadorA, capacidadM3: 0.001m);
 
         var error = await Assert.ThrowsAsync<ArgumentException>(async () =>
@@ -153,12 +145,10 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         var sinFranja = await CrearEnvioEnDepositoAsync(OperadorA);
         var deManana = await CrearEnvioEnDepositoAsync(OperadorA, franjaId: manana);
 
-        // La de la mañana no puede ir después de la de la tarde
         var error = await Assert.ThrowsAsync<ArgumentException>(() =>
             CrearRutaAsync(OperadorA, repartidor, vehiculo, deTarde, sinFranja, deManana));
         Assert.Contains("orden de horario", error.Message);
 
-        // En orden sí (la parada sin franja puede ir en cualquier lugar)
         var id = await CrearRutaAsync(OperadorA, repartidor, vehiculo, deManana, sinFranja, deTarde);
 
         await using var db = baseDeDatos.CrearContexto(OperadorA);
@@ -196,7 +186,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         var envioA = await CrearEnvioEnDepositoAsync(OperadorA);
         var envioB = await CrearEnvioEnDepositoAsync(OperadorB);
 
-        // Para el operador A, lo del operador B no existe
         var conRepartidorDeB = await Assert.ThrowsAsync<ArgumentException>(() =>
             CrearRutaAsync(OperadorA, repartidorB, vehiculoA, envioA));
         var conVehiculoDeB = await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -229,7 +218,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
             Assert.Equal("Despachada", detalle!.Estado);
             Assert.All(detalle.Paradas, p => Assert.Equal("EnTransito", p.EstadoEnvio));
 
-            // Despachar dos veces no vale
             await Assert.ThrowsAsync<EstadoDeRutaException>(() =>
                 new PlanificarRutaService(db).DespacharAsync(id, "usuario-1"));
         }
@@ -242,7 +230,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         var envio = await CrearEnvioEnDepositoAsync(OperadorA);
         var id = await CrearRutaAsync(OperadorA, repartidor, vehiculo, envio);
 
-        // Alguien lo devolvió al depósito a mano (AsignadoARuta -> EnDeposito)
         await using (var db = baseDeDatos.CrearContexto(OperadorA))
         {
             var cargado = await db.Envios.FirstAsync(e => e.Id == envio);
@@ -283,7 +270,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         await using var db = baseDeDatos.CrearContexto(OperadorA);
         var consultas = new ConsultasRutasService(db);
 
-        // Todavía planificada: no está disponible ni en sus rutas
         Assert.Equal(ResultadoHoja.NoDespachada, (await consultas.ObtenerHojaDelRepartidorAsync(id, usuarioAsignado)).Resultado);
         Assert.DoesNotContain(await consultas.ListarDelRepartidorAsync(usuarioAsignado), r => r.Id == id);
 
@@ -294,7 +280,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         Assert.Single(hoja!.Paradas);
         Assert.Contains(await consultas.ListarDelRepartidorAsync(usuarioAsignado), r => r.Id == id);
 
-        // Otro repartidor del mismo operador no
         Assert.Equal(ResultadoHoja.DeOtroRepartidor, (await consultas.ObtenerHojaDelRepartidorAsync(id, otroUsuario)).Resultado);
         Assert.DoesNotContain(await consultas.ListarDelRepartidorAsync(otroUsuario), r => r.Id == id);
     }
@@ -332,8 +317,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
             Assert.Equal(["B1", "B2", "B3"], parada.Bultos!.Select(b => b.Codigo));
         }
 
-        // Como si la ruta se hubiera armado antes de que existiera el manifiesto:
-        // la parada lleva todos los bultos del envío, igual que lo que cuenta la hoja
         await using (var conexion = new NpgsqlConnection(baseDeDatos.CadenaAdministrador))
         {
             await conexion.OpenAsync();
@@ -385,7 +368,6 @@ public class HojasDeRutaTests(BaseConDosOperadores baseDeDatos)
         int operadorId, decimal capacidadKg = 100, decimal capacidadM3 = 1) =>
         DatosDeRutas.CrearRepartidorYVehiculoAsync(baseDeDatos, operadorId, capacidadKg, capacidadM3);
 
-    // Una zona del operador con franjas de mañana y tarde (activas) y una inactiva
     private async Task<(int Manana, int Tarde, int Inactiva)> CrearFranjasAsync(int operadorId)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);

@@ -14,14 +14,12 @@
 
 <div class="mx-auto max-w-[1600px] space-y-6 motion-safe:animate-lm-form-in">
 
-    <!-- Volver -->
     <a asp-page="/Envios/Index"
        class="inline-flex items-center gap-2 text-sm font-medium text-slate-400 no-underline transition-colors hover:text-violet-300">
         <span aria-hidden="true">←</span>
         Volver al listado
     </a>
 
-    <!-- Mensajes -->
     @if (Model.Aviso is not null)
     {
         <div role="status"
@@ -54,7 +52,6 @@
     else
     {
 <div id="contenido-detalle-envio" data-envio-id="@envio.Id" class="space-y-6">
-        <!-- Encabezado del envío -->
         <div class="flex flex-wrap items-center justify-between gap-4">
 
             <div>
@@ -119,10 +116,8 @@
             </span>
         </div>
 
-        <!-- Información principal -->
         <div class="grid gap-5 xl:grid-cols-3">
 
-            <!-- Envío -->
             <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
                 <div class="mb-6 flex items-center gap-3">
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
@@ -171,7 +166,6 @@
                 </dl>
             </section>
 
-            <!-- Destinatario -->
             <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
                 <div class="mb-6 flex items-center gap-3">
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
@@ -203,7 +197,6 @@
                 </div>
             </section>
 
-            <!-- Dirección -->
             <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
                 <div class="mb-6 flex items-center gap-3">
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
@@ -244,7 +237,6 @@
             </section>
         </div>
 
-        <!-- Bultos -->
         <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
             <div class="flex items-center justify-between border-b border-white/10 px-6 py-5">
                 <h2 class="text-base font-semibold text-white">Bultos</h2>
@@ -294,7 +286,6 @@
             </div>
         </section>
 
-        <!-- Intentos de entrega: qué pasó con cada bulto y qué bultos respalda la prueba -->
         @if (envio.Intentos.Count > 0)
         {
             <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]" aria-labelledby="titulo-intentos">
@@ -388,10 +379,8 @@
             </section>
         }
 
-        <!-- Regla y cambio de estado -->
         <div class="grid gap-5 xl:grid-cols-2">
 
-            <!-- Regla operativa -->
             <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
                 <div class="mb-5 flex items-center gap-3">
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
@@ -439,7 +428,6 @@
                 }
             </section>
 
-            <!-- Cambio de estado -->
             <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
                 <div class="mb-5 flex items-center gap-3">
                     <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
@@ -519,7 +507,6 @@
             </section>
         </div>
 
-        <!-- Historial -->
         <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
             <div class="border-b border-white/10 px-6 py-5">
                 <h2 class="text-base font-semibold text-white">Historial</h2>
@@ -610,7 +597,6 @@
 
                         if (!paginaActiva) return;
 
-                        // Evitar sobrescribir un cambio de estado en edición.
                         const formulario = contenido.querySelector(
                             'form[method="post"]'
                         );
@@ -643,7 +629,6 @@
                 }, 500);
             }
 
-            // Actualizar únicamente si cambió este envío.
             window.addEventListener("lastmileuy:envio-actualizado", evento => {
                 const actualizadoId = Number(
                     evento.detail.envioId ?? evento.detail.EnvioId
@@ -654,7 +639,6 @@
                 }
             });
 
-            // Sincronizar después de reconectar o volver a la pestaña.
             window.addEventListener(
                 "lastmileuy:signalr-sincronizar",
                 programarActualizacion

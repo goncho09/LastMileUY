@@ -14,7 +14,6 @@ public class NotificacionConfiguration
 
         builder.HasKey(n => n.Id);
 
-        // Cada notificación pertenece a un envío.
         builder.HasOne<Envio>()
             .WithMany(e => e.Notificaciones)
             .HasForeignKey(n => n.EnvioId)
@@ -34,7 +33,6 @@ public class NotificacionConfiguration
         builder.Property(n => n.Error)
             .HasMaxLength(1000);
 
-        // Facilita consultar las notificaciones de un envío.
         builder.HasIndex(n => new
         {
             n.EnvioId,

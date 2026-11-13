@@ -4,13 +4,6 @@ using LastMileUY.Contracts.Sincronizacion;
 
 namespace LastMileUY.DriverPWA.Services;
 
-// Qué se manda al confirmar una entrega cuando la parada tiene varios bultos: el repartidor marca
-// cuáles entregó y, de los que no, por qué. Con eso se decide el tipo de operación:
-// - todos entregados: Entrega, con la lista de los bultos entregados;
-// - algunos: EntregaParcial, con el resultado de cada bulto que faltaba entregar;
-// - ninguno: no es una entrega, es "No se pudo entregar".
-// Las mismas reglas las vuelve a controlar la API (docs/sincronizacion.md); acá es para avisarle
-// al repartidor antes de guardar, también sin conexión.
 public static class ResultadoPorBulto
 {
     public sealed class Marca
@@ -22,12 +15,9 @@ public static class ResultadoPorBulto
 
     public sealed record Decision(string? Error, string Tipo, List<ResultadoBultoRequest>? Resultados);
 
-    // Los que todavía hay que entregar: los Pendientes y los que no se entregaron en una ruta anterior
     public static bool PorEntregar(BultoRutaDto bulto) =>
         bulto.Estado is "Pendiente" or "NoEntregado";
 
-    // Cómo arranca cada bulto: los escaneados como entregados y el resto no (si no escaneó ninguno,
-    // ninguno arranca entregado). Después los puede cambiar a mano.
     public static Dictionary<int, Marca> MarcasIniciales(
         IEnumerable<BultoRutaDto> bultos,
         IReadOnlyCollection<int> identificados)
@@ -49,14 +39,11 @@ public static class ResultadoPorBulto
     {
         var porEntregar = bultos.Where(PorEntregar).ToList();
 
-        // Sin la lista de bultos (una hoja descargada antes de que viniera) es una entrega común
         if (porEntregar.Count == 0)
         {
             return new Decision(null, "Entrega", null);
         }
 
-        // Todos entregados: una entrega, con la lista de los bultos que vio el repartidor. Así la API
-        // no da por entregado uno que no estaba en la hoja del celular (sería un conflicto)
         if (porEntregar.All(b => Marcado(b, marcas).Entregado))
         {
             return new Decision(
@@ -96,9 +83,6 @@ public static class ResultadoPorBulto
         return new Decision(null, "EntregaParcial", resultados);
     }
 
-    // Qué quedó guardado de cada bulto en una operación que todavía no llegó a la API, para mostrarlo
-    // en la hoja de ruta (también después de cerrar y volver a abrir la app). Vacío si la operación
-    // no trae resultados por bulto.
     public static List<string> Resumen(
         OperacionRequest operacion,
         IEnumerable<BultoRutaDto> bultos,
@@ -122,8 +106,6 @@ public static class ResultadoPorBulto
             .ToList();
     }
 
-    // Un bulto sin marca no cuenta como entregado: nunca se da por entregado algo que el repartidor
-    // no vio (no debería pasar, las marcas salen de la misma lista)
     private static Marca Marcado(BultoRutaDto bulto, IReadOnlyDictionary<int, Marca> marcas) =>
         marcas.TryGetValue(bulto.Id, out var marca) ? marca : new Marca { Entregado = false };
 }

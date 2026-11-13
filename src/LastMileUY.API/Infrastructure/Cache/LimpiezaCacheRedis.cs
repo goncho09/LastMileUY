@@ -2,11 +2,6 @@ using StackExchange.Redis;
 
 namespace LastMileUY.API.Infrastructure.Cache;
 
-// Al volver a conectarse a Redis se borran los datos cacheados de la app (no los contadores de métricas).
-// Mientras Redis estuvo caído las invalidaciones no se pudieron hacer (InvalidarAsync solo deja un aviso
-// en el log), y Redis guarda sus datos en disco: al volver traería, por ejemplo, un seguimiento con el
-// estado anterior o la configuración vieja del operador (que dura una hora). Borrándolos, lo siguiente
-// se lee de la base. Ver docs/cache.md, "Si Redis se cae".
 public sealed class LimpiezaCacheRedis(IConnectionMultiplexer redis, ILogger<LimpiezaCacheRedis> logger) : IHostedService
 {
     public Task StartAsync(CancellationToken cancellationToken)
@@ -34,7 +29,6 @@ public sealed class LimpiezaCacheRedis(IConnectionMultiplexer redis, ILogger<Lim
     {
         if (e.ConnectionType != ConnectionType.Interactive) return;
 
-        // El evento no se puede esperar: la limpieza corre aparte
         _ = Task.Run(async () =>
         {
             try
@@ -51,8 +45,6 @@ public sealed class LimpiezaCacheRedis(IConnectionMultiplexer redis, ILogger<Lim
         });
     }
 
-    // Borra las claves del caché de la app (prefijo lastmileuy:) menos los contadores de métricas.
-    // Las claves de otras aplicaciones que usen el mismo Redis no se tocan.
     public static async Task<int> LimpiarAsync(IConnectionMultiplexer redis)
     {
         var db = redis.GetDatabase();

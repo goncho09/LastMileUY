@@ -1,7 +1,5 @@
 namespace LastMileUY.Contracts.Avisos;
 
-// Una suscripción del comercio a avisos: a qué evento, a qué URL y con qué versión del contrato
-// (GET /api/avisos/suscripciones)
 public record SuscripcionAvisosDto(
     int Id,
     string TipoEvento,
@@ -10,23 +8,17 @@ public record SuscripcionAvisosDto(
     DateTime FechaCreacion,
     int Version = VersionesAvisos.PorDefecto);
 
-// Alta de una suscripción (POST /api/avisos/suscripciones)
 public class CrearSuscripcionAvisosRequest
 {
     public string TipoEvento { get; set; } = string.Empty;
 
     public string UrlDestino { get; set; } = string.Empty;
 
-    // Versión del contrato de los avisos (VersionesAvisos). Los eventos de bulto requieren la 2.
     public int Version { get; set; } = VersionesAvisos.PorDefecto;
 }
 
-// Activar o desactivar una suscripción (PATCH /api/avisos/suscripciones/{id})
 public record CambiarSuscripcionAvisosRequest(bool Activa);
 
-
-// Respuesta al crear una suscripción.
-// La clave secreta se entrega solamente en este momento.
 public record SuscripcionAvisosCreadaDto(
     int Id,
     string TipoEvento,

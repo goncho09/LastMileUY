@@ -12,7 +12,6 @@ public class ZonaConfiguration : IEntityTypeConfiguration<Zona>
 
         builder.HasKey(z => z.Id);
 
-        // Cada zona pertenece a un operador logístico.
         builder.HasOne<Operador>()
             .WithMany(o => o.Zonas)
             .HasForeignKey(z => z.OperadorId)
@@ -25,7 +24,6 @@ public class ZonaConfiguration : IEntityTypeConfiguration<Zona>
         builder.Property(z => z.Descripcion)
             .HasMaxLength(500);
 
-        // Un operador no puede tener dos zonas con el mismo nombre.
         builder.HasIndex(z => new
         {
             z.OperadorId,

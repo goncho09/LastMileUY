@@ -13,7 +13,6 @@ public class FranjaHorariaConfiguration
 
         builder.HasKey(f => f.Id);
 
-        // Cada franja horaria pertenece a una zona.
         builder.HasOne<Zona>()
             .WithMany(z => z.FranjasHorarias)
             .HasForeignKey(f => f.ZonaId)
@@ -23,7 +22,6 @@ public class FranjaHorariaConfiguration
             .HasMaxLength(100)
             .IsRequired();
 
-        // Una zona no puede repetir el nombre de una franja horaria.
         builder.HasIndex(f => new
         {
             f.ZonaId,

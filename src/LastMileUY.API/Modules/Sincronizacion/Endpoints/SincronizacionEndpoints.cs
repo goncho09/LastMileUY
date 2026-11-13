@@ -18,8 +18,6 @@ public static class SincronizacionEndpoints
             .WithTags("Sincronización")
             .RequireAuthorization();
 
-        // App del repartidor: manda lo que registró sin conexión. Responde 200 con un resultado
-        // por operación (400 solo si el lote viene vacío o es demasiado grande).
         group.MapPost("/", async (
                 SincronizarRequest request,
                 SincronizarEntregasService sincronizar,
@@ -43,7 +41,6 @@ public static class SincronizacionEndpoints
             .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
             .WithName("Sincronizar");
 
-        // Motivos de no entrega del operador (la app los descarga junto con la hoja de ruta)
         group.MapGet("/motivos", async (
                 ConsultasSincronizacionService consultas,
                 IContextoOperador contextoOperador,
@@ -57,7 +54,6 @@ public static class SincronizacionEndpoints
             .RequireAuthorization(politica => politica.RequireRole(RepartidorYPersonal))
             .WithName("MotivosNoEntrega");
 
-        // Backoffice: lo que llegó de la app, con su resultado. ?rutaId=3&resultado=Conflicto&pagina=1
         group.MapGet("/operaciones", async (
                 ConsultasSincronizacionService consultas,
                 IContextoOperador contextoOperador,
@@ -83,7 +79,6 @@ public static class SincronizacionEndpoints
             .RequireAuthorization(politica => politica.RequireRole(PersonalDelOperador))
             .WithName("OperacionesSincronizadas");
 
-        // App del repartidor: lo que mandó él y qué pasó con cada cosa. ?resultado=Conflicto&pagina=1
         group.MapGet("/mias", async (
                 ConsultasSincronizacionService consultas,
                 IContextoOperador contextoOperador,
@@ -110,7 +105,6 @@ public static class SincronizacionEndpoints
             .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
             .WithName("MisOperacionesSincronizadas");
 
-        // Backoffice: la imagen de la firma o la foto de una entrega
         group.MapGet("/evidencias/{intentoId:int}/{tipo}", async (
                 int intentoId,
                 string tipo,

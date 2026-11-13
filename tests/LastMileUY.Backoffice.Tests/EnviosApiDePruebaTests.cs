@@ -7,8 +7,6 @@ public class EnviosApiDePruebaTests
 {
     private readonly EnviosApiDePrueba api = new();
 
-    // Los datos de prueba tienen que ser coherentes con lo que muestra el detalle: el estado de cada
-    // bulto coincide con su último resultado, y la prueba respalda solo los bultos entregados
     [Fact]
     public async Task Los_intentos_de_prueba_son_coherentes_con_el_estado_de_cada_bulto()
     {

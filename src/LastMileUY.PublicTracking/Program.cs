@@ -5,10 +5,8 @@ using LastMileUY.PublicTracking.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Servicios
 builder.Services.AddRazorComponents();
 
-// La página le consulta a la API desde el servidor; el navegador nunca habla con la API
 var urlBase = new Uri(builder.Configuration["Api:UrlBase"]
     ?? throw new InvalidOperationException("Falta configurar Api:UrlBase."));
 
@@ -18,13 +16,10 @@ builder.Services.AddHttpClient<SeguimientoApi>(cliente =>
     cliente.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// Tope de páginas por visitante (429 al pasarlo). La API tiene su propio tope, pero ahí todas las
-// consultas de esta página llegan desde la misma IP (la de este servidor): el freno por persona va acá.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Con texto, para que no lo tape la página de "no encontrado" (UseStatusCodePagesWithReExecute)
     options.OnRejected = (contexto, cancellationToken) =>
     {
         contexto.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
@@ -42,27 +37,20 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// La IP real del visitante detrás del proxy inverso (src/Compartido/ProxyInverso.cs)
 builder.Services.AgregarProxyInverso(builder.Configuration);
 
 var app = builder.Build();
 
-// Primero de todo: los topes por IP, los logs y las redirecciones ven la IP y el esquema reales
 app.UsarProxyInverso();
 
-// Pipeline de cada pedido
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // HSTS: el navegador recuerda 30 días (valor por defecto) que el sitio va solo por https
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
-// Encabezados de seguridad (ver docs/seguridad.md). La dirección lleva el código de seguimiento:
-// no se le manda a nadie (el logo del operador puede venir de otro sitio). La página no se deja
-// meter en un iframe ajeno y el navegador no adivina el tipo de contenido.
 app.Use((contexto, siguiente) =>
 {
     contexto.Response.Headers.XContentTypeOptions = "nosniff";

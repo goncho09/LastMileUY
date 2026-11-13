@@ -12,11 +12,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Tarjeta "Tests" del sprint, probada por HTTP con los usuarios reales de cada perfil:
-// 1. permisos por perfil; 2. aislamiento entre operadores y entre comercios;
-// 3. reglas distintas para los dos operadores; 4. alta desde el portal -> visible en el Backoffice;
-// 5. cambios de estado, rechazo de transiciones e historial.
-// Las URL son las mismas que usan el Backoffice (EnviosApiHttp) y el portal del comercio.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -98,8 +93,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
             motivo.Id);
     }
 
-    // --- 1. Permisos con usuarios reales de cada perfil ---
-
     [Theory]
     [InlineData(Operador1, "Operador")]
     [InlineData(Despachador1, "Despachador")]
@@ -157,8 +150,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Unauthorized, respuesta.StatusCode);
     }
 
-    // --- 2. Aislamiento entre operadores y entre comercios ---
-
     [Fact]
     public async Task Un_operador_no_ve_ni_modifica_los_envios_de_otro()
     {
@@ -173,7 +164,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.NotFound, cambio.StatusCode);
         Assert.DoesNotContain(listado.Items, e => e.Id == id);
 
-        // El dueño sí lo ve
         using var delDueno = await (await api.IniciarSesionAsync(Operador1)).GetAsync($"api/envios/{id}");
         Assert.Equal(HttpStatusCode.OK, delDueno.StatusCode);
     }
@@ -181,7 +171,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
     [Fact]
     public async Task Un_comercio_no_ve_los_envios_de_otro_comercio_aunque_trabajen_con_el_mismo_operador()
     {
-        // Los dos comercios trabajan con el operador 1; el envío es del comercio 1
         var id = await CrearEnvioComoOperador1Async();
         var comercio1 = await api.IniciarSesionAsync(Comercio1);
         var comercio2 = await api.IniciarSesionAsync(Comercio2, api.IdOperador1);
@@ -203,18 +192,13 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         using var conOtro = await api.ClienteSinSesion().PostAsJsonAsync("api/auth/login",
             new LoginRequest { Email = Comercio1, Password = Clave, OperadorId = -1 });
 
-        // El comercio 2 trabaja con los dos operadores: la API le pide elegir
         Assert.Equal(HttpStatusCode.Conflict, sinElegir.StatusCode);
-        // El comercio 1 no trabaja con el operador 2
         Assert.Equal(HttpStatusCode.BadRequest, conOtro.StatusCode);
     }
-
-    // --- 3. Reglas distintas para los dos operadores ---
 
     [Fact]
     public async Task Con_el_mismo_recorrido_el_operador_1_bloquea_y_el_operador_2_permite_reprogramar()
     {
-        // Operador 1 permite 2 intentos fallidos; operador 2 permite 3.
         var operador1 = await api.IniciarSesionAsync(Operador1);
         var operador2 = await api.IniciarSesionAsync(Operador2);
 
@@ -224,23 +208,18 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var envioDe1 = await CrearEnvioAsync(operador1, api.IdComercio1);
         var envioDe2 = await CrearEnvioAsync(operador2, api.IdComercio2);
 
-        // Primer intento: ambos envíos pasan a depósito.
         await RecorrerAsync(operador1, envioDe1, "EnDeposito");
         await RecorrerAsync(operador2, envioDe2, "EnDeposito");
 
-        // Primer intento fallido registrado desde la PWA.
         await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
         await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
 
-        // Ambos operadores todavía permiten reprogramar.
         await RecorrerAsync(operador1, envioDe1, "Reprogramado");
         await RecorrerAsync(operador2, envioDe2, "Reprogramado");
 
-        // Segundo intento fallido registrado desde la PWA.
         await RegistrarIntentoFallidoAsync(operador1, repartidor1, envioDe1);
         await RegistrarIntentoFallidoAsync(operador2, repartidor2, envioDe2);
 
-        // El operador 1 alcanzó el máximo; el operador 2 todavía no.
         using var reprogramar1 =
             await CambiarEstadoAsync(operador1, envioDe1, "Reprogramado");
 
@@ -278,8 +257,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(3, operador2?.Reglas.Single(r => r.Modalidad == "Estandar").MaximoIntentosEntrega);
     }
 
-    // --- 4. Alta desde el portal -> visualización en el Backoffice ---
-
     [Fact]
     public async Task Lo_que_carga_un_comercio_en_el_portal_lo_ve_el_operador_en_el_Backoffice()
     {
@@ -302,7 +279,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.Created, alta.StatusCode);
         var creado = await alta.Content.ReadFromJsonAsync<EnvioResponse>();
 
-        // El Backoffice pide el listado filtrado por origen, como lo arma EnviosApiHttp.ArmarUrlListado
         var operador = await api.IniciarSesionAsync(Operador1);
         var listado = await ListarAsync(operador, $"pagina=1&tamanioPagina=20&buscar={referencia}&canal=Portal");
         var fila = Assert.Single(listado.Items);
@@ -315,14 +291,11 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal("Portal", detalle?.Canal);
         Assert.Equal("Portal", Assert.Single(detalle!.Eventos).Origen);
 
-        // El despachador del mismo operador también lo ve; el operador 2, no
         using var delDespachador = await (await api.IniciarSesionAsync(Despachador1)).GetAsync($"api/envios/{fila.Id}");
         using var delOtroOperador = await (await api.IniciarSesionAsync(Operador2)).GetAsync($"api/envios/{fila.Id}");
         Assert.Equal(HttpStatusCode.OK, delDespachador.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, delOtroOperador.StatusCode);
     }
-
-    // --- 5. Cambios de estado, rechazo de transiciones e historial ---
 
     [Fact]
     public async Task Un_cambio_valido_se_guarda_y_queda_en_el_historial()
@@ -420,7 +393,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         {
             if (estado == "AsignadoARuta")
             {
-                // Obtener los recursos disponibles del operador.
                 var opciones = await cliente.GetFromJsonAsync<OpcionesRutaDto>(
                     "api/rutas/opciones");
 
@@ -432,8 +404,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
                 numeroRuta++;
 
-                // Cada ruta de prueba utiliza una fecha diferente
-                // para no colisionar con otras rutas del fixture.
                 var fecha = DateOnly.FromDateTime(DateTime.UtcNow)
                     .AddDays(365 + id * 3 + numeroRuta);
 
@@ -484,8 +454,6 @@ public class RecorridoDePuntaAPuntaTests(ApiDePuntaAPunta api)
             }
             else
             {
-                // Los demás estados continúan usando
-                // el endpoint habitual del Backoffice.
                 using var respuesta = await CambiarEstadoAsync(
                     cliente,
                     id,

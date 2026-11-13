@@ -3,10 +3,6 @@ namespace LastMileUY.API.Tests.Rutas;
 using LastMileUY.Contracts.Rutas;
 using static LastMileUY.Contracts.Rutas.OrdenDeParadas;
 
-// El orden sugerido de las paradas (OrdenDeParadas): que recorra menos, que respete las franjas
-// horarias como lo exige la API al armar la ruta, y qué pasa con las direcciones sin ubicación.
-// Los puntos van sobre una misma latitud cerca de Montevideo: un paso de 0,01° de longitud son
-// unos 0,9 km, así es fácil ver cuál queda más cerca.
 public class OrdenDeParadasTests
 {
     private static readonly TimeOnly Manana = new(9, 0);
@@ -49,7 +45,6 @@ public class OrdenDeParadasTests
     [Fact]
     public void Una_parada_sin_franja_puede_ir_entre_las_de_la_manana_y_las_de_la_tarde()
     {
-        // La sin franja queda en el camino: va en el medio, no al final
         var orden = Sugerir([Parada(1, 6, Tarde), Parada(2, 1, Manana), Parada(3, 3)], Deposito);
 
         Assert.Equal([2, 3, 1], orden.Ids);
@@ -75,7 +70,6 @@ public class OrdenDeParadasTests
     [Fact]
     public void Sin_deposito_arranca_por_la_punta_que_deja_el_recorrido_mas_corto()
     {
-        // Empezar por el 2 (en el medio) obliga a volver; por una punta se recorre una sola vez
         var orden = Sugerir([Parada(2, 2), Parada(3, 3), Parada(1, 1)], deposito: null);
 
         Assert.True(orden.Ids.SequenceEqual([1, 2, 3]) || orden.Ids.SequenceEqual([3, 2, 1]));
@@ -85,7 +79,6 @@ public class OrdenDeParadasTests
     [Fact]
     public void Un_recorrido_en_zigzag_se_desenreda()
     {
-        // Las cuatro esquinas de un cuadrado, recibidas cruzadas (a, c, b, d): se recorren por el borde
         var a = new ParadaAOrdenar(1, new Coordenadas(-34.90m, -56.20m), null);
         var b = new ParadaAOrdenar(2, new Coordenadas(-34.90m, -56.18m), null);
         var c = new ParadaAOrdenar(3, new Coordenadas(-34.92m, -56.18m), null);
@@ -97,8 +90,6 @@ public class OrdenDeParadasTests
         Assert.True(orden.KmSugerido < orden.KmActual);
     }
 
-    // Contra el mejor recorrido posible, calculado probando todos los órdenes (con pocas paradas se
-    // puede): el sugerido queda cerca. El vecino más cercano solo, sin la mejora 2-opt, no alcanza.
     [Fact]
     public void Queda_cerca_del_mejor_recorrido_posible()
     {
@@ -122,7 +113,6 @@ public class OrdenDeParadasTests
         Assert.True(peorDiferencia < 0.05, $"En algún caso recorre un {peorDiferencia:P0} más que el mejor");
     }
 
-    // El máximo de una ruta (100 paradas) se calcula mientras el despachador espera la página
     [Fact]
     public void Con_el_maximo_de_paradas_contesta_rapido()
     {
@@ -157,8 +147,6 @@ public class OrdenDeParadasTests
         }
     }
 
-    // Con muchas combinaciones al azar (siempre las mismas): no se pierde ni repite ninguna parada,
-    // siempre respeta las franjas y, si lo recibido las respetaba, nunca recorre más
     [Fact]
     public void Con_cualquier_combinacion_respeta_las_franjas_y_nunca_empeora()
     {

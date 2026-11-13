@@ -40,7 +40,6 @@ public class AutenticacionApiTests
         Assert.Equal("Envíos Rápidos", sesion.Operador?.Nombre);
         Assert.Equal("#0B5CAD", sesion.Operador?.ColorPrimario);
 
-        // Los pedidos a /me y a /operador se hacen con la cookie que devolvió el login
         Assert.Equal("LastMileUY.Auth=valor123", api.Pedidos.Single(p => p.Ruta == "/api/auth/me").Cookie);
         Assert.Equal("LastMileUY.Auth=valor123", api.Pedidos.Single(p => p.Ruta == "/api/operador").Cookie);
     }
@@ -113,7 +112,6 @@ public class AutenticacionApiTests
         Assert.Null(await new AutenticacionApiDePrueba().IniciarSesionAsync(email, password));
     }
 
-    // Como en la API: el administrador es de toda la plataforma, no de un operador
     [Fact]
     public async Task Con_datos_de_prueba_un_email_de_administrador_entra_como_administrador_sin_operador()
     {
@@ -127,7 +125,6 @@ public class AutenticacionApiTests
     private static HttpClient Cliente(HttpMessageHandler handler) =>
         new(handler) { BaseAddress = new Uri("http://api.test/") };
 
-    // Como en la app: el handler que reenvía la cookie, delante de la "API"
     private static HttpClient ClienteConUsuario(ApiFalsa api, string cookieApi)
     {
         var contexto = new DefaultHttpContext
@@ -157,7 +154,6 @@ public class AutenticacionApiTests
         return respuesta;
     }
 
-    // Simula la API sin red y anota qué le llegó
     private class ApiFalsa(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
         public List<(string Ruta, string? Cookie)> Pedidos { get; } = [];

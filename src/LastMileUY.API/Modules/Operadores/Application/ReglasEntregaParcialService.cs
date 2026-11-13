@@ -7,14 +7,10 @@ using Npgsql;
 
 namespace LastMileUY.API.Modules.Operadores.Application;
 
-// Reglas de entrega parcial del operador actual: el historial de versiones y publicar una nueva.
-// No filtra por operador a mano: el filtro de EF y el RLS ya dejan ver solo las propias.
 public class ReglasEntregaParcialService(ApplicationDbContext db, IContextoOperador contexto)
 {
-    // Si dos publican a la vez, la segunda choca con el índice único (OperadorId, Version) y se reintenta
     private const int IntentosAlPublicar = 3;
 
-    // La más nueva primero
     public async Task<IReadOnlyList<ReglaEntregaParcialDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
         var filas = await (
@@ -28,7 +24,6 @@ public class ReglasEntregaParcialService(ApplicationDbContext db, IContextoOpera
         return filas.Select(x => ADto(x.Regla, x.PublicadaPor)).ToList();
     }
 
-    // ArgumentException con el motivo si los datos no sirven
     public async Task<ReglaEntregaParcialDto> PublicarAsync(
         PublicarReglaEntregaParcialRequest request,
         string usuarioId,
@@ -105,7 +100,6 @@ public class ReglasEntregaParcialService(ApplicationDbContext db, IContextoOpera
                 intento < IntentosAlPublicar
                 && ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
             {
-                // Otro publicó ese número recién: se toma el siguiente
                 db.Entry(regla).State = EntityState.Detached;
             }
         }

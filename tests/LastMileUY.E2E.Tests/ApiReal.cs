@@ -7,11 +7,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Npgsql;
 using ProgramApi = Api::Program;
 
-// Lo comparten las pruebas de navegador que necesitan la API de verdad (la app del repartidor y el
-// portal del comercio)
-
-// La API como arranca en desarrollo (migraciones y seeders), igual que ApiDePuntaAPunta en las
-// pruebas de la API: el usuario de la aplicación (lastmileuy_app) y el dueño para las migraciones
 internal sealed class ApiReal(string cadenaDueno, string carpetaEvidencias) : WebApplicationFactory<ProgramApi>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -33,13 +28,10 @@ internal sealed class ApiReal(string cadenaDueno, string carpetaEvidencias) : We
         builder.UseSetting("SeedComercioPrueba:Email", "comercio@prueba.test");
         builder.UseSetting("SeedComercioPrueba:Password", AppRepartidorEnNavegador.Clave);
         builder.UseSetting("Evidencias:Directorio", carpetaEvidencias);
-        // Las URLs de los avisos se validan como en producción (desarrollo deja pasar http y la red local
-        // para el receptor de prueba; acá no corre el worker, nadie las llama)
         builder.UseSetting("Avisos:PermitirDestinosLocales", "false");
     }
 }
 
-// Guarda las cookies que manda la API y las devuelve en cada pedido (también las Secure, sin https)
 internal sealed class CookieAMano() : DelegatingHandler(new HttpClientHandler { UseCookies = false })
 {
     private readonly Dictionary<string, string> cookies = [];

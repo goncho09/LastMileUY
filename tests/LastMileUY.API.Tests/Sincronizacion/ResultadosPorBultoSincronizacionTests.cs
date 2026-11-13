@@ -13,10 +13,6 @@ namespace LastMileUY.API.Tests.Sincronizacion;
 
 using static BaseConDosOperadores;
 
-// El resultado de cada bulto se sincroniza una sola vez, contra la base real:
-// - un reenvío (la app no recibió la respuesta) no duplica el intento, los resultados ni el historial;
-// - un "reenvío" con otro resultado para algún bulto no es un reenvío: se rechaza sin tocar lo anterior;
-// - dos reenvíos a la vez aplican la entrega una sola vez.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ResultadosPorBultoSincronizacionTests(BaseConDosOperadores baseDeDatos)
 {
@@ -31,7 +27,6 @@ public class ResultadosPorBultoSincronizacionTests(BaseConDosOperadores baseDeDa
         var primera = await SincronizarAsync(repartidor, operacion);
         var despuesDeLaPrimera = await FotoDelEnvioAsync(envios[0]);
 
-        // La app no recibió la respuesta y la manda otra vez, igual
         var segunda = await SincronizarAsync(repartidor, operacion);
 
         Assert.Equal("Aplicada", primera.Resultado);
@@ -70,7 +65,6 @@ public class ResultadosPorBultoSincronizacionTests(BaseConDosOperadores baseDeDa
         await SincronizarAsync(repartidor, operacion);
         var antes = await FotoDelEnvioAsync(envios[0]);
 
-        // Mismo IdOperacion, pero ahora el bulto entregado es el otro
         var resultados = operacion.ResultadosBultos!;
         operacion.ResultadosBultos =
         [
@@ -132,16 +126,13 @@ public class ResultadosPorBultoSincronizacionTests(BaseConDosOperadores baseDeDa
         var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorA, bultosPorEnvio: 2);
         var operacion = await EntregaParcialAsync(ruta, envios[0]);
 
-        // Cada pedido con su propia conexión, como dos pedidos HTTP que llegan juntos
         var resultados = await Task.WhenAll(
             SincronizarAsync(repartidor, operacion),
             SincronizarAsync(repartidor, operacion));
 
-        // Uno se aplica; el otro o ve que ya llegó o choca al guardar y pide reintentar
         Assert.Single(resultados, r => r is { Resultado: "Aplicada", Duplicada: false });
         Assert.Single(resultados, r => r.Duplicada || r.Reintentar);
 
-        // El reintento contesta lo de la primera vez
         var reintento = await SincronizarAsync(repartidor, operacion);
         Assert.True(reintento.Duplicada);
         Assert.Equal("Aplicada", reintento.Resultado);
@@ -151,7 +142,6 @@ public class ResultadosPorBultoSincronizacionTests(BaseConDosOperadores baseDeDa
         Assert.Equal(2, foto.ResultadosBultos);
     }
 
-    // Lo que tiene que quedar igual si un reenvío no se aplica
     private record Foto(int Intentos, int ResultadosBultos, int Eventos, string Estado, string Bultos);
 
     private async Task<Foto> FotoDelEnvioAsync(int envioId)
@@ -177,7 +167,6 @@ public class ResultadosPorBultoSincronizacionTests(BaseConDosOperadores baseDeDa
         return Assert.Single(respuesta.Resultados);
     }
 
-    // Entrega los primeros bultos y deja el último sin entregar (el operador A pide firma)
     private async Task<OperacionRequest> EntregaParcialAsync(int rutaId, int envioId)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA);

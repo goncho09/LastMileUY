@@ -16,7 +16,5 @@ public class Parada
 
     public string? Observaciones { get; set; }
 
-    // Los bultos que lleva (ver BultoParada). Vacío en las rutas armadas antes de que existiera:
-    // en ese caso se toman todos los bultos del envío.
     public ICollection<BultoParada> Bultos { get; set; } = new List<BultoParada>();
 }

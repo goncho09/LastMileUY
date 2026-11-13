@@ -2,7 +2,6 @@ using Microsoft.JSInterop;
 
 namespace LastMileUY.DriverPWA.Tests;
 
-// Hace de wwwroot/js/almacen.js: guarda los textos en memoria, para ver qué se le pide guardar y borrar
 internal class NavegadorFalso : IJSRuntime
 {
     public Dictionary<string, string> Datos { get; } = [];

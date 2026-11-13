@@ -15,7 +15,6 @@ public static class EnviosEndpoints
             .WithTags("Envíos")
             .RequireAuthorization();
 
-        // Listado paginado: ?pagina=1&tamanioPagina=20&estado=EnTransito&buscar=texto&canal=Portal
         group.MapGet("/", async (
                 ConsultasEnviosService consultas,
                 IContextoOperador contextoOperador,
@@ -125,7 +124,6 @@ public static class EnviosEndpoints
                 politica.RequireRole("Comercio", "Operador"))
             .WithName("CrearEnvio");
 
-        // Cambio de estado desde el Backoffice. Solo el personal del operador.
         group.MapPatch("/{id:int}/estado", async (
                 int id,
                 CambiarEstadoRequest request,

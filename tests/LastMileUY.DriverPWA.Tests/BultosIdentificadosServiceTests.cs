@@ -2,8 +2,6 @@ using LastMileUY.DriverPWA.Services;
 
 namespace LastMileUY.DriverPWA.Tests;
 
-// Lo escaneado en cada parada queda en el celular: si se cierra la app a mitad de la entrega, al
-// volver los bultos siguen identificados. El navegador se simula con NavegadorFalso.
 public class BultosIdentificadosServiceTests
 {
     [Fact]
@@ -12,7 +10,6 @@ public class BultosIdentificadosServiceTests
         var navegador = new NavegadorFalso();
         await Servicio(navegador).GuardarAsync(rutaId: 1, envioId: 7, [502, 501]);
 
-        // Otra instancia sobre lo mismo guardado: es como cerrar y volver a abrir la app
         var guardados = await Servicio(navegador).LeerAsync(rutaId: 1);
 
         Assert.Equal([501, 502], guardados[7].Order());
@@ -31,7 +28,6 @@ public class BultosIdentificadosServiceTests
         Assert.Equal([501], ruta1[7]);
         Assert.Equal([601], ruta1[8]);
 
-        // Si el envío vuelve a salir en otra hoja, lo de la anterior no cuenta
         Assert.Equal([502], (await servicio.LeerAsync(rutaId: 2))[7]);
     }
 

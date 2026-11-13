@@ -27,7 +27,6 @@ public class ConsumidorEventosEnvio(
             AutomaticRecoveryEnabled = true
         };
 
-        // Reintentar la conexión si RabbitMQ todavía no está listo.
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -45,19 +44,10 @@ public class ConsumidorEventosEnvio(
                     durable: true,
                     cancellationToken: stoppingToken);
 
-                // La cola compartida que se usaba antes: ya nadie la lee
-                // y, si queda, acumula eventos para siempre.
                 await canal.QueueDeleteAsync(
                     ColaCompartidaAnterior,
                     cancellationToken: stoppingToken);
 
-                // Una cola propia de esta instancia, con nombre que elige
-                // RabbitMQ, que se borra al cerrar la conexión:
-                // - con varias instancias, cada una recibe todos los eventos
-                //   (con una cola compartida se los repartirían);
-                // - con el backoffice apagado no se acumulan eventos viejos
-                //   que después llegarían como nuevos. Al reconectarse, la
-                //   pantalla vuelve a consultar la API.
                 var cola = await canal.QueueDeclareAsync(
                     queue: "",
                     durable: false,
@@ -91,7 +81,6 @@ public class ConsumidorEventosEnvio(
                             logger.LogWarning(
                                 "Evento de envío inválido o no compatible");
 
-                            // Evita un bucle infinito con mensajes inválidos.
                             await canal.BasicRejectAsync(
                                 mensaje.DeliveryTag,
                                 requeue: false);
@@ -117,10 +106,6 @@ public class ConsumidorEventosEnvio(
                             ex,
                             "Error notificando un evento de envío");
 
-                        // Sin volverlo a la cola: si el error se repite,
-                        // quedaría dando vueltas sin pausa. Perder un aviso
-                        // no pierde datos: la pantalla lee el historial de
-                        // la API y se pone al día con el siguiente.
                         await canal.BasicRejectAsync(
                             mensaje.DeliveryTag,
                             requeue: false,

@@ -54,14 +54,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 column: "FechaCreacion",
                 filter: "\"FechaPublicacion\" IS NULL");
 
-            // Permisos (ver docs/mensajeria.md). El outbox tiene eventos de todos los operadores y no
-            // lleva RLS: en cambio, cada usuario de la base puede hacer solo lo que le toca.
-            // - lastmileuy_app (la API) solo inserta: escribe el evento junto con el cambio del envío,
-            //   pero no puede leer los eventos de nadie, ni los de su propio operador.
-            // - lastmileuy_publicador (PublicadorOutbox) solo lee y marca como publicado, y no tiene
-            //   acceso a ninguna otra tabla.
-            // La contraseña de desarrollo es la misma que la de compose.yaml.
-            // En la nube se cambia con ALTER ROLE desde la configuración del servidor, no desde acá.
             migrationBuilder.Sql($"""
                 REVOKE SELECT, UPDATE, DELETE ON "MensajesOutbox" FROM {RolAplicacion};
 

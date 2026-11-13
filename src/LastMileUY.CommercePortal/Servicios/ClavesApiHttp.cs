@@ -3,7 +3,6 @@ using LastMileUY.Contracts.Integraciones;
 
 namespace LastMileUY.CommercePortal.Servicios;
 
-// Claves de la API pública: la API solo deja ver y tocar las del comercio y el operador de la sesión
 public class ClavesApiHttp(HttpClient http, SesionActual sesion)
     : ClienteApiBase(http, sesion), IClavesApi
 {
@@ -35,7 +34,6 @@ public class ClavesApiHttp(HttpClient http, SesionActual sesion)
         return new ResultadoClaveCreada(creada, null);
     }
 
-    // null si no existe o no es del comercio
     public async Task<ClaveApiDto?> RevocarAsync(int id, CancellationToken ct = default)
     {
         using var pedido = new HttpRequestMessage(HttpMethod.Post, $"{Ruta}/{id}/revocar");

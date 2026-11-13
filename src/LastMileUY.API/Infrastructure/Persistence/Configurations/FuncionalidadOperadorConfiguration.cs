@@ -10,7 +10,6 @@ public class FuncionalidadOperadorConfiguration : IEntityTypeConfiguration<Funci
     {
         builder.ToTable("FuncionalidadesOperador");
 
-        // Una decisión por operador y funcionalidad
         builder.HasKey(f => new { f.OperadorId, f.Clave });
 
         builder.HasOne<Operador>()

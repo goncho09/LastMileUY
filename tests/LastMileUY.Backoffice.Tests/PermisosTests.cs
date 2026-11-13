@@ -109,7 +109,6 @@ public class PermisosTests
             Task.FromResult<SesionIniciada?>(new SesionIniciada("Usuario", email, 1, "cookie", null, roles));
     }
 
-    // Un envío de los datos de prueba que todavía no está en un estado final
     private static async Task<EnvioDetalleDto> EnvioQuePuedeCambiarAsync(IEnviosApi api)
     {
         for (var id = 1; ; id++)

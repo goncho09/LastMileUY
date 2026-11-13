@@ -511,8 +511,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
 
         Assert.Contains(EstadoRuta.Planificada, Ruta.EstadosAbiertos);
 
-        // Preparar una ruta planificada para este repartidor.
-        // Se utiliza un vehículo existente del mismo operador.
         await api.EjecutarAsync($"""
         INSERT INTO "Rutas"
             ("OperadorId", "RepartidorId", "VehiculoId",
@@ -582,7 +580,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
         }
         finally
         {
-            // La ruta de prueba no debe afectar otros casos.
             await api.EjecutarAsync($"""
             DELETE FROM "Rutas"
             WHERE "Nombre" = '{nombreRuta}'
@@ -609,7 +606,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
         var usuario = await alta.Content.ReadFromJsonAsync<UsuarioDto>();
         Assert.NotNull(usuario);
 
-        // Iniciar sesión antes de desactivar.
         using var despachador = await api.IniciarSesionAsync(email);
 
         using (var antes = await despachador.GetAsync("/api/rutas/opciones"))
@@ -617,14 +613,12 @@ public class GestionUsuariosDePuntaAPuntaTests(
             Assert.Equal(HttpStatusCode.OK, antes.StatusCode);
         }
 
-        // El operador desactiva al usuario.
         using var desactivar = await operador.PatchAsJsonAsync(
             $"/api/usuarios/{usuario.Id}/estado",
             new CambiarEstadoUsuarioRequest(false));
 
         Assert.Equal(HttpStatusCode.NoContent, desactivar.StatusCode);
 
-        // Reutilizar el mismo HttpClient y su cookie anterior.
         using var despues = await despachador.GetAsync(
             "/api/rutas/opciones");
 
@@ -642,7 +636,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
         using var clienteUsuarios =
             await api.IniciarSesionAsync(ApiDePuntaAPunta.Operador1);
 
-        // Crear usuario repartidor
         using var alta = await clienteUsuarios.PostAsJsonAsync(
             "/api/usuarios",
             CrearRequest(EmailUnico(), "Repartidor"));
@@ -652,7 +645,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
         var usuario = await alta.Content.ReadFromJsonAsync<UsuarioDto>();
         Assert.NotNull(usuario);
 
-        // Obtener ficha del repartidor
         var repartidorId = await api.ConsultarCantidadAsync(
             """
         SELECT "Id"
@@ -663,7 +655,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
 
         Assert.True(repartidorId > 0);
 
-        // Obtener vehículo disponible
         using var opcionesResponse =
             await clienteRutas.GetAsync("/api/rutas/opciones");
 
@@ -676,7 +667,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
 
         var vehiculo = opciones.Vehiculos.First(v => v.Tipo == "Furgoneta");
 
-        // Crear un envío real mediante la API
         var (destinatarioId, direccionId) =
             await api.DestinatarioDeAsync(api.IdComercio1);
 
@@ -708,7 +698,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
             respuestaEnvio.StatusCode == HttpStatusCode.Created,
             $"No se pudo crear el envío: {(int)respuestaEnvio.StatusCode} - {contenidoEnvio}");
 
-        // El endpoint devuelve /api/envios/{id} en Location
         Assert.NotNull(respuestaEnvio.Headers.Location);
 
         var envioId = int.Parse(
@@ -729,7 +718,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
             EnvioIds = [envioId]
         };
 
-        // Ejecutar ambas operaciones simultáneamente
         var inicio = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -758,7 +746,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
         using var respuestaRuta = await crearRuta;
         using var respuestaDesactivar = await desactivar;
 
-        // Nunca debe quedar una ruta abierta con repartidor inactivo
         var inconsistencias = await api.ConsultarCantidadAsync(
             """
         SELECT COUNT(*)
@@ -773,7 +760,6 @@ public class GestionUsuariosDePuntaAPuntaTests(
 
         Assert.Equal(0, inconsistencias);
 
-        // Verificar que realmente se ejercitaron ambas operaciones
         Assert.True(
             respuestaRuta.IsSuccessStatusCode ||
             respuestaDesactivar.IsSuccessStatusCode,

@@ -7,22 +7,16 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Operador;
 
-// Identidad y configuración del operador logueado: se pide a la API en cada visita,
-// así muestra los datos al día (el color del encabezado se toma al iniciar sesión).
-// También las reglas de entrega parcial: el historial de versiones y el formulario para publicar una nueva.
-// Y el depósito de donde salen las rutas: el punto de partida del orden sugerido de las paradas.
 public class IndexModel(IOperadorApi operadorApi, ILogger<IndexModel> logger) : PageModel
 {
     public OperadorActualDto? Operador { get; private set; }
 
-    // La más nueva primero: la primera es la vigente
     public IReadOnlyList<ReglaEntregaParcialDto> ReglasEntregaParcial { get; private set; } = [];
 
     public string? Error { get; private set; }
 
     public string? ErrorReglasEntregaParcial { get; private set; }
 
-    // Resultado de la última publicación (sobrevive a la redirección)
     [TempData]
     public string? Aviso { get; set; }
 
@@ -59,7 +53,6 @@ public class IndexModel(IOperadorApi operadorApi, ILogger<IndexModel> logger) : 
         }
     }
 
-    // Publicar una versión nueva: después se redirige a la página (así recargar no la publica otra vez)
     public async Task<IActionResult> OnPostPublicarReglaEntregaParcialAsync(
         bool permiteEntregaParcial,
         string? destinoBultosPendientes,
@@ -91,12 +84,9 @@ public class IndexModel(IOperadorApi operadorApi, ILogger<IndexModel> logger) : 
             ErrorPublicacion = "No se pudo conectar con el servidor. Probá de nuevo en unos minutos.";
         }
 
-        // De vuelta en la sección, donde está el aviso
         return RedirectToPage(null, null, null, "entrega-parcial");
     }
 
-    // Guardar (o borrar, con borrar = true) el depósito. Los números se leen con punto o coma decimal,
-    // como se copian de un mapa, sin depender del idioma del navegador
     public async Task<IActionResult> OnPostGuardarDepositoAsync(
         string? latitud, string? longitud, bool borrar, CancellationToken ct)
     {

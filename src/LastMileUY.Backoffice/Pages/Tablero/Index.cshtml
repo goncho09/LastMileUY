@@ -7,7 +7,6 @@
 
 <div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
-    <!-- Encabezado -->
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <p class="mb-2 text-sm font-medium text-violet-400">
@@ -38,7 +37,6 @@
 
     @if (Model.Metricas.Count > 0)
     {
-        <!-- Totales -->
         <section class="grid gap-4 sm:grid-cols-3">
             <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Aciertos</p>
@@ -59,7 +57,6 @@
             </div>
         </section>
 
-        <!-- Por caso -->
         <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
             <div class="border-b border-white/10 px-6 py-5">
                 <h2 class="text-base font-semibold text-white">Por caso cacheado</h2>

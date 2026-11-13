@@ -10,7 +10,6 @@ namespace LastMileUY.API.Modules.Rutas.Endpoints;
 
 public static class RutasEndpoints
 {
-    // Arman, consultan y despachan rutas
     private static readonly string[] PerfilesDePlanificacion = ["Operador", "Despachador"];
 
     public static IEndpointRouteBuilder MapRutasEndpoints(
@@ -20,7 +19,6 @@ public static class RutasEndpoints
             .WithTags("Rutas")
             .RequireAuthorization();
 
-        // Listado paginado: ?pagina=1&tamanioPagina=20&fecha=2026-10-20&estado=Planificada
         group.MapGet("/", async (
                 ConsultasRutasService consultas,
                 IContextoOperador contextoOperador,
@@ -46,7 +44,6 @@ public static class RutasEndpoints
             .RequireAuthorization(politica => politica.RequireRole(PerfilesDePlanificacion))
             .WithName("ListarRutas");
 
-        // Repartidores, vehículos y envíos disponibles para armar una ruta
         group.MapGet("/opciones", async (
                 ConsultasRutasService consultas,
                 IContextoOperador contextoOperador,
@@ -119,7 +116,6 @@ public static class RutasEndpoints
             .RequireAuthorization(politica => politica.RequireRole(PerfilesDePlanificacion))
             .WithName("CrearRuta");
 
-        // Orden sugerido para los envíos de una ruta que se está armando: no guarda nada
         group.MapPost("/sugerir-orden", async (
                 SugerirOrdenRequest request,
                 SugerirOrdenService servicio,
@@ -183,7 +179,6 @@ public static class RutasEndpoints
             .RequireAuthorization(politica => politica.RequireRole(PerfilesDePlanificacion))
             .WithName("DespacharRuta");
 
-        // App del repartidor: sus rutas despachadas o en curso
         group.MapGet("/mias", async (
                 ConsultasRutasService consultas,
                 IContextoOperador contextoOperador,
@@ -199,7 +194,6 @@ public static class RutasEndpoints
             .RequireAuthorization(politica => politica.RequireRole("Repartidor"))
             .WithName("MisRutas");
 
-        // App del repartidor: detalle de una ruta asignada
         group.MapGet("/mias/{id:int}", async (
                 int id,
                 ConsultasRutasService consultas,
@@ -225,7 +219,6 @@ public static class RutasEndpoints
             .RequireAuthorization(p => p.RequireRole("Repartidor"))
             .WithName("ObtenerMiRutaPorId");
 
-        // App del repartidor: descarga la hoja de ruta (solo si es suya y ya se despachó)
         group.MapGet("/{id:int}/hoja", async (
                 int id,
                 ConsultasRutasService consultas,

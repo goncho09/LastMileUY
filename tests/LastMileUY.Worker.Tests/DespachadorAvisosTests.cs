@@ -8,17 +8,14 @@ namespace LastMileUY.Worker.Tests;
 
 using static EntornoDelWorker;
 
-// El envío de los avisos pendientes, contra la base real y el receptor de prueba levantado de verdad
 [Collection(ColeccionEntornoDelWorker.Nombre)]
 public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
 {
-    // Suscripciones del comercio al receptor (además de las del entorno). Se actualizan en cada prueba
-    // con la dirección del receptor, que cambia.
     private const int SuscripcionAlReceptorDeA = 11;
     private const int SuscripcionAlReceptorDeB = 12;
-    private const int SuscripcionConErrorDeA = 13;      // el receptor responde 500
+    private const int SuscripcionConErrorDeA = 13;
     private const int SuscripcionInactivaDeA = 14;
-    private const int SuscripcionLentaDeA = 15;         // el receptor tarda un segundo
+    private const int SuscripcionLentaDeA = 15;
     private static readonly string ClaveDePrueba = new('A', 64);
 
     private readonly ReceptorDePrueba receptor = new();
@@ -88,7 +85,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     [Fact]
     public async Task Manda_los_avisos_de_todos_los_operadores()
     {
-        // Cada operador con su RLS: el despachador carga uno por vez
         var deA = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA);
         var deB = await RegistrarAvisoAsync(SuscripcionAlReceptorDeB, EnvioDeB);
 
@@ -107,7 +103,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
 
         Assert.Single(await RecibidosAsync(aviso));
-        // Sigue Pendiente (1), con el intento y el motivo anotados y el próximo intento programado
         Assert.Equal(1, await AvisosAsync(aviso, """
             "Estado" = 1 AND "CantidadIntentos" = 1 AND "UltimoError" LIKE '%500%' AND "FechaEntrega" IS NULL
             AND "FechaProximoIntento" > now()
@@ -131,7 +126,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     [Fact]
     public async Task Un_reenvio_manual_que_falla_queda_fallido_sin_otra_ronda_de_reintentos()
     {
-        // Como lo deja el portal al reenviar un aviso que ya había agotado sus intentos
         var aviso = await RegistrarAvisoAsync(SuscripcionConErrorDeA, EnvioDeA, intentosPrevios: DespachadorAvisos.MaximoIntentos);
 
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
@@ -147,7 +141,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     [Fact]
     public async Task Cuando_el_comercio_se_recupera_el_reintento_se_entrega()
     {
-        // Ya falló dos veces y le toca el tercer intento; ahora el comercio responde bien
         var aviso = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA, intentosPrevios: 2);
 
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
@@ -166,7 +159,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
 
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
 
-        // Las suscripciones que no eligieron versión están en la 1
         Assert.Equal("1", Assert.Single(await RecibidosAsync(aviso)).Encabezados[EncabezadosAvisos.Version]);
     }
 
@@ -191,7 +183,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         await AdelantarProximoIntentoAsync(aviso);
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
 
-        // Dos intentos, los dos fallidos con el código que respondió el comercio
         Assert.Equal(2, await IntentosAsync(aviso, """
             NOT i."Exitoso" AND i."CodigoHttp" = 500 AND i."Error" LIKE '%500%'
             """));
@@ -221,7 +212,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
 
         Assert.Empty(await RecibidosAsync(aviso));
-        // Desactivada no se reintenta: queda Fallido sin próximo intento
         Assert.Equal(1, await AvisosAsync(aviso, """
             "Estado" = 3 AND "UltimoError" LIKE '%desactivada%' AND "FechaProximoIntento" IS NULL
             """));
@@ -230,7 +220,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     [Fact]
     public async Task No_toma_los_avisos_que_todavia_no_tocan()
     {
-        // Como quedará uno programado para reintentar más tarde
         var aviso = await RegistrarAvisoAsync(SuscripcionAlReceptorDeA, EnvioDeA, DateTime.UtcNow.AddHours(1));
 
         await Despachador().EnviarPendientesAsync(CancellationToken.None);
@@ -242,7 +231,6 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
     [Fact]
     public async Task Con_dos_despachadores_a_la_vez_cada_aviso_sale_una_sola_vez()
     {
-        // Como dos instancias del worker: el receptor tarda, así que trabajan al mismo tiempo
         var avisos = new List<Guid>();
         for (var i = 0; i < 4; i++)
             avisos.Add(await RegistrarAvisoAsync(SuscripcionLentaDeA, EnvioDeA));
@@ -275,14 +263,11 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
         new SenalAvisos(),
         NullLogger<DespachadorAvisos>.Instance);
 
-    // Un aviso pendiente, como lo deja ProcesadorAvisos. Devuelve su identificador (X-Aviso-Id).
-    // intentosPrevios: como si ya hubiera fallado esa cantidad de veces (el próximo es el intento siguiente)
     private async Task<Guid> RegistrarAvisoAsync(
         int suscripcion, int envio, DateTime? proximoIntento = null, int intentosPrevios = 0)
     {
         var avisoId = Guid.NewGuid();
         var evento = Evento(envio == EnvioDeA ? OperadorA : OperadorB, envio);
-        // Una marca propia en el contenido, para reconocerlo en lo que recibe el receptor
         var contenido = JsonSerializer.SerializeToNode(evento)!;
         contenido["AvisoDePrueba"] = avisoId.ToString();
 
@@ -310,13 +295,11 @@ public class DespachadorAvisosTests(EntornoDelWorker entorno) : IAsyncLifetime
             .Where(r => r.Encabezados.GetValueOrDefault(EncabezadosAvisos.AvisoId) == aviso.ToString())
             .ToList();
 
-    // Filas del historial (IntentosAvisos) de un aviso que cumplen la condición
     private Task<long> IntentosAsync(Guid aviso, string condicion) => entorno.ContarAsync($"""
         SELECT count(*) FROM "IntentosAvisos" i JOIN "EntregasAvisos" a ON a."Id" = i."EntregaAvisoId"
         WHERE a."EventoId" = @aviso AND {condicion}
         """, ("aviso", aviso));
 
-    // Como si ya hubiera llegado la hora del próximo intento
     private async Task AdelantarProximoIntentoAsync(Guid aviso)
     {
         await using var conexion = new NpgsqlConnection(entorno.CadenaAdministrador);

@@ -32,9 +32,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 oldClrType: typeof(string),
                 oldType: "text");
 
-            // xmin es una columna de sistema de PostgreSQL: ya existe en todas
-            // las tablas, por eso no se crea (solo se usa para concurrencia).
-
             migrationBuilder.AddColumn<int>(
                 name: "ComercioId",
                 table: "Destinatarios",

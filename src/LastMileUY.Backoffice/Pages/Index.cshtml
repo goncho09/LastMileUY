@@ -8,7 +8,6 @@
 
 <div class="mx-auto max-w-7xl space-y-8 motion-safe:animate-lm-form-in">
 
-    <!-- Bienvenida -->
     <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <p class="mb-2 text-sm font-medium text-violet-400">
@@ -39,7 +38,6 @@
         </div>
     }
 
-    <!-- Tarjetas de resumen -->
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
         <div class="rounded-2xl border border-white/10 bg-[#171923] p-6">
@@ -104,10 +102,8 @@
 
     </div>
 
-    <!-- Sección inferior -->
     <div class="grid gap-5 lg:grid-cols-3">
 
-        <!-- Actividad reciente -->
         <section class="min-w-0 rounded-2xl border border-white/10 bg-[#171923] p-6 lg:col-span-2">
 
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -132,7 +128,6 @@
                 Últimos 10 movimientos registrados en tus envíos.
             </p>
 
-            <!-- Mensaje sin actividad -->
             <div id="actividad-vacia"
                  class="mt-6 flex min-h-32 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-4 text-center">
                 <p class="text-sm text-slate-400">
@@ -140,7 +135,6 @@
                 </p>
             </div>
 
-            <!-- Historial con scroll -->
             <div class="mt-4 max-h-[400px] overflow-y-auto overscroll-contain pr-2">
                 <ul id="actividad-reciente"
                     aria-live="polite"
@@ -150,7 +144,6 @@
 
         </section>
 
-        <!-- Accesos rápidos -->
         <section class="rounded-2xl border border-white/10 bg-[#171923] p-6">
             <h2 class="text-lg font-semibold text-white">
                 Accesos rápidos
@@ -283,8 +276,6 @@
 
                 const datos = await respuesta.json();
 
-                // Los eventos de PostgreSQL son la fuente de verdad.
-                // Evitamos duplicados por ID y conservamos los últimos 10.
                 const ids = new Set();
 
                 const eventos = datos
@@ -373,8 +364,6 @@
                 }
             }
 
-            // Agrupa notificaciones cercanas para no
-            // consultar repetidamente la API.
             function programarActualizacion() {
                 clearTimeout(temporizador);
 
@@ -383,8 +372,6 @@
                 }, 250);
             }
 
-
-            // SignalR notifica; los datos se consultan desde PostgreSQL.
             window.addEventListener("lastmileuy:envio-actualizado", () => {
                 programarActualizacion();
             });
@@ -393,7 +380,6 @@
                 establecerEstado(evento.detail.estado);
             });
 
-            // Consultar el estado actual, aunque el evento ya haya ocurrido.
             const conexionSignalR = window.LastMileUYSignalR?.conexion;
 
             if (conexionSignalR) {
@@ -408,15 +394,11 @@
                 programarActualizacion();
             });
 
-            // Limpiar el temporizador al abandonar la página.
             window.addEventListener("pagehide", () => {
                 clearTimeout(temporizador);
             });
 
-            // La carga inicial no depende de SignalR.
             void refrescar();
-
-            // La conexión se administra desde envios-signalr.js.
         })();
     </script>
 }

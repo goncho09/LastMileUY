@@ -4,9 +4,6 @@ using LastMileUY.Contracts.Rutas;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Hojas de ruta de prueba en memoria, para trabajar el Backoffice sin la API ("Api:UsarDatosDePrueba").
-// Repite las reglas principales de la API (capacidad, franjas en orden, un repartidor y un vehículo
-// por día, un envío en una sola ruta) para que la pantalla muestre los mismos rechazos.
 public class RutasApiDePrueba(IOperadorApi? operadorApi = null) : IRutasApi
 {
     private static readonly string[] EstadosAbiertos = ["Planificada", "Despachada", "EnCurso"];
@@ -26,7 +23,6 @@ public class RutasApiDePrueba(IOperadorApi? operadorApi = null) : IRutasApi
         new(2, "FUR 2000", "Furgoneta", 800, 6)
     ];
 
-    // Envíos en depósito que todavía no están en ninguna ruta
     private readonly List<EnvioDisponibleDto> disponibles =
     [
         new(201, "K7M2Q9T4XW3P", "EnDeposito", "Ana Silva", "Rivera 1234, Montevideo", Manana, 2.5m, 0.012m, true),
@@ -36,7 +32,6 @@ public class RutasApiDePrueba(IOperadorApi? operadorApi = null) : IRutasApi
         new(205, "Q2W6E4R8T3YU", "EnDeposito", "Elena Gómez", "Bulevar Artigas 800, Montevideo", Tarde, 0.8m, 0.002m, true)
     ];
 
-    // Dónde quedan (aproximado). El 202 no tiene ubicación: en el orden sugerido va al final
     private static readonly Dictionary<int, Coordenadas> Ubicaciones = new()
     {
         [201] = new(-34.902000m, -56.172000m),
@@ -89,7 +84,6 @@ public class RutasApiDePrueba(IOperadorApi? operadorApi = null) : IRutasApi
         }
     }
 
-    // El mismo cálculo que la API (OrdenDeParadas), desde el depósito del operador de prueba
     public async Task<SugerenciaOrdenDto> SugerirOrdenAsync(IReadOnlyList<int> envioIds, CancellationToken ct = default)
     {
         if (envioIds.Count == 0)
@@ -223,7 +217,6 @@ public class RutasApiDePrueba(IOperadorApi? operadorApi = null) : IRutasApi
         }
     }
 
-    // Los datos de prueba solo tienen el nombre completo y la dirección en una línea
     private static DestinatarioDto Destinatario(EnvioDisponibleDto envio)
     {
         var partes = envio.Destinatario.Split(' ', 2);

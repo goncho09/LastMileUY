@@ -25,9 +25,6 @@ public class Ruta : IPerteneceAOperador
 
     public DateTime? FechaFin { get; set; }
 
-    // Versión de las reglas de entrega parcial con la que salió la ruta: se fija al despachar y no cambia,
-    // aunque el operador publique otra mientras el repartidor está en la calle. null: el operador no tenía
-    // ninguna publicada (se permite la entrega parcial, como antes de que existieran las versiones).
     public int? ReglaEntregaParcialId { get; set; }
 
     public ReglaEntregaParcial? ReglaEntregaParcial { get; set; }
@@ -43,17 +40,12 @@ public class Ruta : IPerteneceAOperador
     public ICollection<Incidencia> Incidencias { get; set; }
         = new List<Incidencia>();
 
-    // Estados en los que la ruta todavía tiene a cargo a su repartidor, su vehículo y sus envíos
     public static readonly EstadoRuta[] EstadosAbiertos =
         [EstadoRuta.Planificada, EstadoRuta.Despachada, EstadoRuta.EnCurso];
 
-    // Estados en los que el repartidor asignado puede descargar la hoja de ruta
     public static readonly EstadoRuta[] EstadosParaElRepartidor =
         [EstadoRuta.Despachada, EstadoRuta.EnCurso];
 
-    // Despachar: la ruta queda lista para que el repartidor la descargue y salga.
-    // Los envíos se pasan a En tránsito desde el servicio (ver PlanificarRutaService).
-    // reglaEntregaParcial: la versión vigente del operador; queda fija para toda la ruta.
     public void Despachar(ReglaEntregaParcial? reglaEntregaParcial = null)
     {
         if (Estado != EstadoRuta.Planificada)
@@ -72,8 +64,6 @@ public class Ruta : IPerteneceAOperador
         ReglaEntregaParcial = reglaEntregaParcial;
     }
 
-    // La primera entrega o intento que sincroniza el repartidor pone la ruta en curso.
-    // inicio: cuándo pasó en el dispositivo (puede llegar más tarde, al recuperar conexión).
     public void RegistrarActividad(DateTime inicio)
     {
         if (Estado == EstadoRuta.Despachada)
@@ -87,7 +77,6 @@ public class Ruta : IPerteneceAOperador
         }
     }
 
-    // Cuando ningún envío de la ruta sigue en tránsito, el recorrido terminó
     public void FinalizarSiTermino(IEnumerable<EstadoEnvio> estadosDeSusEnvios)
     {
         if (Estado == EstadoRuta.EnCurso

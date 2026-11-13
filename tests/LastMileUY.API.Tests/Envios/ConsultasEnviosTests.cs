@@ -8,7 +8,6 @@ namespace LastMileUY.API.Tests.Envios;
 
 using static BaseConDosOperadores;
 
-// Listado y detalle de envíos que consume el Backoffice, contra la base real con RLS
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class ConsultasEnviosTests(BaseConDosOperadores baseDeDatos)
 {

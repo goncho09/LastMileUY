@@ -36,9 +36,7 @@
         </div>
     }
 
-    <!-- Filtros -->
     <div class="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 bg-[#151927] p-4">
-        @* El label va aparte del campo (for/id): si envuelve al select, su nombre accesible incluye las opciones *@
         <div class="flex min-w-[220px] flex-1 flex-col gap-1.5 text-xs font-medium text-slate-400">
             <label for="buscar-envios">Buscar</label>
             <input id="buscar-envios" type="search" @bind="buscar" @bind:event="oninput" @bind:after="AlEscribirAsync"
@@ -120,7 +118,6 @@
             </table>
         </div>
 
-        <!-- Paginado -->
         <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
             <span>@pagina.Total @(pagina.Total == 1 ? "envío" : "envíos") · página @pagina.Pagina de @Math.Max(1, pagina.TotalPaginas)</span>
             <div class="flex gap-2">
@@ -154,7 +151,6 @@
     private string? errorCarga;
     private bool cargando;
 
-    // Numera cada consulta: si llega la respuesta de una búsqueda vieja después de una nueva, se descarta
     private int ultimaConsulta;
 
     private bool HayFiltros => !string.IsNullOrWhiteSpace(estado) || !string.IsNullOrWhiteSpace(buscar);
@@ -169,7 +165,6 @@
 
     private Task FiltrarAsync() => IrAPaginaAsync(1);
 
-    // Busca mientras se escribe: espera a que se deje de tipear un momento para no consultar la API por cada letra
     private CancellationTokenSource? espera;
 
     private async Task AlEscribirAsync()

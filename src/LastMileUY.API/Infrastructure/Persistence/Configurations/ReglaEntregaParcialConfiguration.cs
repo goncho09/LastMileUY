@@ -29,7 +29,6 @@ public class ReglaEntregaParcialConfiguration : IEntityTypeConfiguration<ReglaEn
             .HasMaxLength(450)
             .IsRequired();
 
-        // Una versión por número: si dos publican a la vez, la segunda choca y se reintenta
         builder.HasIndex(r => new { r.OperadorId, r.Version })
             .IsUnique();
     }

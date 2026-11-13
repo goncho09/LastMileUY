@@ -11,9 +11,6 @@ namespace LastMileUY.Worker.Tests;
 
 using static EntornoDelWorker;
 
-// El consumidor contra un RabbitMQ real, con un procesador de prueba que falla las veces que se le
-// pida: confirma lo procesado, reintenta con espera creciente y, agotados los reintentos, deja el
-// mensaje en la cola de fallidos. Las esperas son cortas para que la prueba no tarde.
 [Collection(ColeccionEntornoDelWorker.Nombre)]
 public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifetime
 {
@@ -89,7 +86,6 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
         Assert.Equal(1 + Esperas.Length, Convert.ToInt32(fallido.Headers![ConsumidorEventosEnvio.EncabezadoIntentos]));
         Assert.Equal("Falla de prueba",
             Encoding.UTF8.GetString((byte[])fallido.Headers[ConsumidorEventosEnvio.EncabezadoError]!));
-        // Conserva la correlación del pedido original
         Assert.Equal(evento.CorrelacionId, fallido.CorrelationId);
         var cantidad = await entorno.ContarAsync(
             """
@@ -136,7 +132,6 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
         return encontrado!;
     }
 
-    // Saca de la cola de fallidos el mensaje con ese id (si está); los demás vuelven a la cola
     private async Task<IReadOnlyBasicProperties?> BuscarEnFallidosAsync(Guid id)
     {
         var vistos = new List<ulong>();
@@ -162,7 +157,6 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
 
     private async Task<bool> ExisteAsync(string cola)
     {
-        // passive: falla si la cola no existe (y cierra el canal), así que usa uno propio
         await using var prueba = await conexion.CreateChannelAsync();
 
         try
@@ -199,7 +193,6 @@ public class ConsumidorEventosEnvioTests(EntornoDelWorker entorno) : IAsyncLifet
         await dataSource.DisposeAsync();
     }
 
-    // Anota cada llamada y falla las veces que se le pidió para cada evento
     private class ProcesadorDePrueba : IProcesadorEventos
     {
         private readonly ConcurrentDictionary<Guid, int> fallasPendientes = new();

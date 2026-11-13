@@ -7,7 +7,6 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// La dirección de la API sale de wwwroot/appsettings*.json; vacía, es la misma de la app
 var urlApi = builder.Configuration["Api:Url"];
 
 builder.Services.AddScoped(_ => new HttpClient(new CredencialesHandler { InnerHandler = new HttpClientHandler() })

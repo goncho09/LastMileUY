@@ -3,7 +3,6 @@ using LastMileUY.Contracts.Mensajeria;
 
 namespace LastMileUY.Worker.Tests;
 
-// El pedido HTTP de cada aviso, contra el receptor de prueba levantado de verdad
 public class ClienteAvisosTests : IAsyncLifetime
 {
     private ReceptorDePrueba receptor = null!;

@@ -7,15 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Notificaciones.Application;
 
-// Las suscripciones a avisos del comercio logueado, con el operador que eligió.
-// No filtra por comercio a mano: el filtro global de EF y el RLS (ADR-01) ya dejan ver solo las suyas.
-// No se borran: el historial de avisos queda atado a la suscripción, así que se desactivan.
 public class SuscripcionesAvisosService(
     ApplicationDbContext db,
     IContextoOperador contexto,
     IConfiguration configuracion)
 {
-    // Igual que el worker: en desarrollo deja usar el receptor de prueba (http y direcciones internas)
     private bool PermitirLocales => configuracion.GetValue<bool>("Avisos:PermitirDestinosLocales");
 
     public async Task<List<SuscripcionAvisosDto>> ListarAsync(CancellationToken cancellationToken = default) =>
@@ -26,7 +22,6 @@ public class SuscripcionesAvisosService(
             .Select(s => new SuscripcionAvisosDto(s.Id, s.TipoEvento, s.UrlDestino, s.Activa, s.FechaCreacion, s.VersionContrato))
             .ToListAsync(cancellationToken);
 
-    // ArgumentException con el motivo si los datos no sirven
     public async Task<SuscripcionAvisosCreadaDto> CrearAsync(
         CrearSuscripcionAvisosRequest request,
         CancellationToken cancellationToken = default)
@@ -79,7 +74,6 @@ public class SuscripcionesAvisosService(
             suscripcion.VersionContrato);
     }
 
-    // null si no existe o es de otro comercio (para el que pregunta, es lo mismo)
     public async Task<SuscripcionAvisosDto?> CambiarActivaAsync(
         int id,
         bool activa,
@@ -113,24 +107,19 @@ public class SuscripcionesAvisosService(
         int id,
         CancellationToken cancellationToken = default)
     {
-        // Exigir un comercio autenticado con operador seleccionado.
         ComercioActual();
 
-        // El filtro global de EF Core limita las suscripciones
-        // al comercio y operador actuales.
         var suscripcion = await db.SuscripcionesAvisos
             .SingleOrDefaultAsync(s => s.Id == id, cancellationToken);
 
         if (suscripcion is null)
             return null;
 
-        // Reemplazar la clave anterior por una nueva.
         suscripcion.ClaveFirma = Convert.ToHexString(
             RandomNumberGenerator.GetBytes(32));
 
         await db.SaveChangesAsync(cancellationToken);
 
-        // La clave se devuelve únicamente en esta operación.
         return new SuscripcionAvisosCreadaDto(
             suscripcion.Id,
             suscripcion.TipoEvento,
@@ -141,8 +130,6 @@ public class SuscripcionesAvisosService(
             suscripcion.VersionContrato);
     }
 
-
-    // Solo un usuario de comercio con un operador elegido
     private (int OperadorId, int ComercioId) ComercioActual() =>
         contexto is { OperadorId: { } operadorId, ComercioId: { } comercioId }
             ? (operadorId, comercioId)

@@ -7,13 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Operadores.Application;
 
-// Identidad y configuración del operador del usuario logueado.
 public class OperadorActualService(
     ApplicationDbContext db,
     IContextoOperador contexto,
     FuncionalidadesService funcionalidades)
 {
-    // null si el usuario no tiene operador
     public async Task<OperadorActualDto?> ObtenerAsync(CancellationToken cancellationToken = default)
     {
         if (contexto.OperadorId is not int operadorId)
@@ -21,8 +19,6 @@ public class OperadorActualService(
             return null;
         }
 
-        // Operadores no tiene RLS ni filtro de EF (ver AislamientoEntreOperadoresTests.TablasSinRls):
-        // acá sí hay que filtrar a mano por el operador actual.
         var operador = await db.Set<Operador>()
             .AsNoTracking()
             .Where(o => o.Id == operadorId)
@@ -34,7 +30,6 @@ public class OperadorActualService(
             return null;
         }
 
-        // Las reglas sí están protegidas: el filtro de EF y el RLS dejan ver solo las propias
         var reglas = await db.ReglasOperativas
             .AsNoTracking()
             .Where(r => r.Activa)

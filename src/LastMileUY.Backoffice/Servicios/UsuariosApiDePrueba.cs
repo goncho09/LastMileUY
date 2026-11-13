@@ -2,8 +2,6 @@ using LastMileUY.Contracts.Usuarios;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// El personal del operador en memoria, para trabajar la pantalla sin la API (Api:UsarDatosDePrueba = true).
-// Rechaza lo mismo que la API: un correo repetido o un perfil que el operador no puede crear
 public class UsuariosApiDePrueba : IUsuariosApi
 {
     private static readonly string[] RolesGestionables = ["Despachador", "OperarioDeposito", "Repartidor"];

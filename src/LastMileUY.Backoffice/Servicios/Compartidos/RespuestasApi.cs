@@ -2,7 +2,6 @@ using System.Text.Json;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Lectura de las respuestas de error de la API, que vienen como { "mensaje": "..." }
 public static class RespuestasApi
 {
     public static async Task<string> LeerMensajeAsync(
@@ -19,7 +18,6 @@ public static class RespuestasApi
         }
         catch (JsonException)
         {
-            // Sin cuerpo o con otro formato: se usa el mensaje genérico
         }
 
         return porDefecto;

@@ -9,25 +9,17 @@ using Npgsql;
 
 namespace LastMileUY.API.Modules.Rutas.Application;
 
-// Arma y despacha hojas de ruta del operador actual. Igual que en los envíos, no filtra
-// por operador a mano: un repartidor, vehículo o envío de otro operador "no existe" (EF + RLS).
-// Reglas de armado y orden de las paradas: docs/hojas-de-ruta.md
 public class PlanificarRutaService(ApplicationDbContext db)
 {
     public const int MaximoParadas = 100;
 
-    // Solo desde estos estados un envío puede pasar a AsignadoARuta (tabla de transiciones)
     private static readonly EstadoEnvio[] EstadosAsignables = [EstadoEnvio.EnDeposito, EstadoEnvio.Reprogramado];
 
     private static readonly TimeZoneInfo HoraUruguay = TimeZoneInfo.FindSystemTimeZoneById("America/Montevideo");
 
-    // Un bulto que todavía hay que entregar: nunca salió o salió y no se entregó
     private static bool EsPendiente(Bulto bulto) =>
         bulto.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado;
 
-    // Devuelve el Id de la ruta creada.
-    // ArgumentException: algo del pedido no vale (400). AsignacionDuplicadaException: el repartidor,
-    // el vehículo o un envío ya están en otra ruta abierta (409).
     public async Task<int> CrearAsync(
         CrearRutaRequest request,
         string? responsableId,
@@ -98,7 +90,6 @@ public class PlanificarRutaService(ApplicationDbContext db)
             throw new ArgumentException("El vehículo está dado de baja.");
         }
 
-        // Un repartidor y un vehículo hacen una sola ruta abierta por día
         var rutasDelDia = db.Rutas.Where(r => r.Fecha == request.Fecha && Ruta.EstadosAbiertos.Contains(r.Estado));
 
         if (await rutasDelDia.AnyAsync(r => r.RepartidorId == repartidor.Id, cancellationToken))
@@ -125,7 +116,6 @@ public class PlanificarRutaService(ApplicationDbContext db)
             throw new ArgumentException($"El envío {faltante} no existe.");
         }
 
-        // Un envío no puede estar en dos rutas abiertas a la vez
         var enOtraRuta = await (
                 from p in db.Paradas
                 join r in db.Rutas on p.RutaId equals r.Id
@@ -172,12 +162,10 @@ public class PlanificarRutaService(ApplicationDbContext db)
             VehiculoId = vehiculo.Id
         };
 
-        // El orden de la lista es el orden de visita
         for (var i = 0; i < envioIds.Count; i++)
         {
             var envio = envios[envioIds[i]];
 
-            // La parada lleva solo los bultos que faltan entregar (después de una entrega parcial, no todos)
             var pendientes = envio.Bultos.Where(EsPendiente).ToList();
             var parada = new Parada { EnvioId = envio.Id, Orden = i + 1 };
 
@@ -224,9 +212,6 @@ public class PlanificarRutaService(ApplicationDbContext db)
         return ruta.Id;
     }
 
-    // Despacha la ruta: queda disponible para el repartidor y sus envíos pasan a En tránsito.
-    // Devuelve false si la ruta no existe o es de otro operador.
-    // EstadoDeRutaException: la ruta no está planificada o algún envío ya no está asignado (409).
     public async Task<bool> DespacharAsync(
         int id,
         string? responsableId,
@@ -268,14 +253,12 @@ public class PlanificarRutaService(ApplicationDbContext db)
             .Where(e => envioIds.Contains(e.Id))
             .ToListAsync(cancellationToken);
 
-        // La ruta sale con las reglas de entrega parcial vigentes y las conserva hasta el final
         var reglaEntregaParcial = await db.ObtenerReglaEntregaParcialVigenteAsync(cancellationToken);
 
         try
         {
             ruta.Despachar(reglaEntregaParcial);
 
-            // Si un envío se sacó de la ruta a mano (por ejemplo, volvió al depósito), no sale
             var desasignado = envios.FirstOrDefault(e => e.Estado != EstadoEnvio.AsignadoARuta);
 
             if (desasignado is not null)
@@ -304,7 +287,6 @@ public class PlanificarRutaService(ApplicationDbContext db)
         return true;
     }
 
-    // Lo que llevan los envíos no puede pasar lo que carga el vehículo (peso y volumen)
     private static void ValidarCapacidad(Vehiculo vehiculo, IEnumerable<Envio> envios)
     {
         var bultos = envios
@@ -328,9 +310,6 @@ public class PlanificarRutaService(ApplicationDbContext db)
         }
     }
 
-    // Las franjas tienen que estar activas y las paradas con franja ir en orden de horario:
-    // no se puede visitar una franja de la mañana después de una de la tarde.
-    // Las paradas sin franja pueden ir en cualquier lugar.
     private async Task ValidarFranjasAsync(IReadOnlyList<Envio> enOrden, CancellationToken cancellationToken)
     {
         var franjaIds = enOrden
@@ -377,7 +356,6 @@ public class PlanificarRutaService(ApplicationDbContext db)
         }
     }
 
-    // La fecha de la ruta se compara con el día de hoy en Uruguay, no en UTC
     private static DateOnly Hoy() =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, HoraUruguay));
 }

@@ -14,16 +14,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Sincronizacion.Application;
 
-// Recibe lo que la app del repartidor registró sin conexión (entregas e intentos fallidos con su
-// evidencia) y lo aplica sobre los envíos. Reglas y política de conflictos: docs/sincronizacion.md
-//
-// - Cada operación se procesa y se guarda por separado: una que falla no frena a las demás.
-// - Cada operación queda registrada con su IdOperacion. Un reenvío no se aplica dos veces:
-//   devuelve el resultado de la primera vez.
-// - Las transiciones y la regla operativa del operador son las mismas que en el Backoffice
-//   (Envio.CambiarEstado); la evidencia obligatoria sale de la regla.
-// - Conflicto: si el envío ya no está en tránsito, manda el servidor y no se aplica.
-//   Lo mismo bulto por bulto: si alguno no está como lo vio el celular (CompararBultos).
 public class SincronizarEntregasService(
     ApplicationDbContext db,
     IContextoOperador contextoOperador,
@@ -32,10 +22,8 @@ public class SincronizarEntregasService(
 {
     public const int MaximoOperaciones = 10;
 
-    // Diferencia aceptada entre el reloj del celular y el del servidor
     private static readonly TimeSpan ToleranciaReloj = TimeSpan.FromMinutes(5);
 
-    // ArgumentException: el lote viene vacío o es demasiado grande (400)
     public async Task<SincronizarResponse> EjecutarAsync(
         SincronizarRequest request,
         string usuarioId,
@@ -59,7 +47,6 @@ public class SincronizarEntregasService(
 
         var resultados = new List<ResultadoOperacionDto>();
 
-        // En orden: si el mismo envío tiene dos operaciones, la segunda ve lo que dejó la primera
         foreach (var operacion in operaciones)
         {
             try
@@ -68,8 +55,6 @@ public class SincronizarEntregasService(
             }
             catch (Exception ex) when (ex is DbUpdateException or IOException)
             {
-                // Otro cambio se guardó a la vez (concurrencia, o el mismo reenvío en paralelo)
-                // o no se pudo escribir la evidencia: no quedó nada aplicado, se puede reintentar.
                 logger.LogWarning(ex, "No se pudo guardar la operación {IdOperacion}", operacion.IdOperacion);
                 resultados.Add(new ResultadoOperacionDto(
                     operacion.IdOperacion,
@@ -90,10 +75,8 @@ public class SincronizarEntregasService(
         int operadorId,
         CancellationToken cancellationToken)
     {
-        // Cada operación arranca de cero: lo que quedó cargado de la anterior no se mezcla
         db.ChangeTracker.Clear();
 
-        // Sin IdOperacion o con un tipo que no existe no se puede ni registrar
         if (operacion.IdOperacion == Guid.Empty)
         {
             return SinRegistrar(operacion, "La operación no tiene IdOperacion.");
@@ -108,14 +91,11 @@ public class SincronizarEntregasService(
 
         var huella = Huella(operacion, tipo);
 
-        // ¿Ya llegó antes? Se contesta lo mismo que la primera vez, sin volver a aplicarla
         var anterior = await db.OperacionesSincronizadas.AsNoTracking()
             .FirstOrDefaultAsync(o => o.IdOperacion == operacion.IdOperacion, cancellationToken);
 
         if (anterior is not null)
         {
-            // Un reenvío trae exactamente lo mismo. Si trae otra cosa (otro envío, otro motivo u otro
-            // resultado para algún bulto) no es un reenvío: no se aplica ni pisa lo que ya quedó.
             if (anterior.Huella is not null && anterior.Huella != huella)
             {
                 return SinRegistrar(
@@ -144,13 +124,10 @@ public class SincronizarEntregasService(
         }
         catch (InvalidOperationException ex)
         {
-            // El dominio rechazó la transición (no debería pasar: antes se controla que esté en tránsito).
-            // Se registra como conflicto en vez de cortar el lote, y no queda nada a medio aplicar.
             db.ChangeTracker.Clear();
             (resultado, mensaje, intento) = Conflicto(ex.Message);
         }
 
-        // Queda anotado con qué versión de las reglas de entrega parcial se evaluó (la de la hoja de ruta)
         var reglaEntregaParcialId = await db.Rutas.AsNoTracking()
             .Where(r => r.Id == operacion.RutaId)
             .Select(r => r.ReglaEntregaParcialId)
@@ -171,7 +148,6 @@ public class SincronizarEntregasService(
             ReglaEntregaParcialId = reglaEntregaParcialId
         });
 
-        // El cambio del envío, la ruta, el intento con su prueba y el registro de la operación van juntos
         await db.SaveChangesAsync(cancellationToken);
 
         TelemetriaSincronizacion.Registrar(resultado, fecha);
@@ -214,7 +190,6 @@ public class SincronizarEntregasService(
                 "Las observaciones, el nombre o el documento de quien recibe son demasiado largos.");
         }
 
-        // Comprobar que la ruta existe y pertenece al repartidor.
         var ruta = await db.Rutas
             .Include(r => r.Paradas)
             .Include(r => r.ReglaEntregaParcial)
@@ -245,7 +220,6 @@ public class SincronizarEntregasService(
                 $"La ruta está {ruta.Estado}: ya no recibe entregas.");
         }
 
-        // Cargar el envío con sus bultos e intentos anteriores.
         var envio = await db.Envios
             .Include(e => e.IntentosEntrega)
             .Include(e => e.Bultos)
@@ -269,7 +243,6 @@ public class SincronizarEntregasService(
 
         var ubicacion = (operacion.Latitud, operacion.Longitud);
 
-        // Solo los bultos que todavía requieren entrega.
         var bultosPorEntregar = envio.Bultos
             .Where(b => b.Estado is EstadoBulto.Pendiente
                 or EstadoBulto.NoEntregado)
@@ -281,12 +254,8 @@ public class SincronizarEntregasService(
                 "El envío no tiene bultos pendientes de entrega.");
         }
 
-        // Validar los resultados enviados por la PWA.
         if (tipo == TipoOperacion.EntregaParcial)
         {
-            // Vale la versión con la que salió la hoja de ruta, no la que esté vigente al sincronizar:
-            // el repartidor trabajó con esas reglas, aunque el operador haya publicado otras después.
-            // Sin versión (la ruta salió antes de que el operador publicara alguna) se permite, como antes.
             if (ruta.ReglaEntregaParcial is { PermiteEntregaParcial: false } reglaParcial)
             {
                 return Rechazada(
@@ -301,8 +270,6 @@ public class SincronizarEntregasService(
             }
         }
 
-        // Lo que el celular dice de cada bulto, contra lo que tiene el servidor (docs/sincronizacion.md).
-        // Una entrega sin la lista (la mandaba la app antes de conocer los bultos) entrega los que falten.
         List<ResultadoBultoRequest>? resultadosAAplicar = null;
 
         if (tipo is TipoOperacion.Entrega or TipoOperacion.EntregaParcial
@@ -372,14 +339,12 @@ public class SincronizarEntregasService(
 
             var entregadosAhora = resultados.Count(r => r.Entregado);
 
-            // Si termina todo entregado, corresponde Entrega.
             if (entregadosAnteriormente + entregadosAhora == envio.Bultos.Count)
             {
                 return Rechazada(
                     "Todos los bultos quedarían entregados. Usá Entrega.");
             }
 
-            // Si nunca se entregó ninguno, corresponde IntentoFallido.
             if (entregadosAnteriormente == 0 && entregadosAhora == 0)
             {
                 return Rechazada(
@@ -392,7 +357,6 @@ public class SincronizarEntregasService(
 
         if (tipo is TipoOperacion.Entrega or TipoOperacion.EntregaParcial)
         {
-            // Validar evidencia obligatoria.
             var faltante = EvidenciaFaltante(operacion, regla);
 
             if (faltante is not null)
@@ -416,7 +380,6 @@ public class SincronizarEntregasService(
 
             if (resultadosAAplicar is not null)
             {
-                // Resultado individual enviado desde la PWA (sin los bultos que ya estaban así en el servidor)
                 resultados = resultadosAAplicar
                     .Select(r => new ResultadoBultoIntento
                     {
@@ -428,7 +391,6 @@ public class SincronizarEntregasService(
             }
             else
             {
-                // Entrega completa de todos los bultos restantes (la app no mandó la lista).
                 resultados = bultosPorEntregar
                     .Select(b => new ResultadoBultoIntento
                     {
@@ -446,7 +408,6 @@ public class SincronizarEntregasService(
                 fecha,
                 ubicacion);
 
-            // La evidencia corresponde al intento actual.
             intento.PruebaEntrega = new PruebaEntrega
             {
                 FirmaArchivoKey = firma.Imagen is null
@@ -478,7 +439,6 @@ public class SincronizarEntregasService(
         }
         else
         {
-            // Intento fallido: ningún bulto restante fue entregado.
             var motivo = operacion.MotivoNoEntregaId is { } motivoId
                 ? await db.MotivosNoEntrega
                     .FirstOrDefaultAsync(
@@ -524,11 +484,8 @@ public class SincronizarEntregasService(
                 : "Intento fallido registrado.";
         }
 
-        // Si quedaron bultos sin entregar, se aplica la política de la versión con la que salió la ruta
-        // (reprogramar o devolver). Sin versión, el envío queda entregado parcialmente y lo decide el despachador.
         if (envio.Estado == EstadoEnvio.EntregadoParcialmente && ruta.ReglaEntregaParcial is { } reglaDeLaRuta)
         {
-            // Lo hace el sistema, no el repartidor: el evento queda con origen "Sistema" y sin responsable
             envio.AplicarPoliticaBultosPendientes(reglaDeLaRuta, regla, ocurrido: fecha);
 
             mensaje += envio.Estado == EstadoEnvio.Reprogramado
@@ -536,12 +493,10 @@ public class SincronizarEntregasService(
                 : " Los bultos pendientes vuelven al comercio.";
         }
 
-        // Asociar el intento con la parada correspondiente.
         intento.ParadaId = parada.Id;
 
         parada.FechaLlegada ??= fecha;
 
-        // Registrar actividad y actualizar el estado de la ruta.
         ruta.RegistrarActividad(fecha);
 
         var otrosEnvios = ruta.Paradas
@@ -559,13 +514,6 @@ public class SincronizarEntregasService(
         return (ResultadoOperacion.Aplicada, mensaje, intento);
     }
 
-
-    // Bulto por bulto, lo que informó el celular contra lo que tiene el servidor. Manda el servidor:
-    // - si el bulto todavía falta entregar (Pendiente o No entregado), se aplica lo del celular;
-    // - si ya está entregado y el celular también lo entregó, ya está hecho: no se vuelve a aplicar;
-    // - cualquier otra diferencia es un conflicto: el celular lo da por no entregado pero ya está
-    //   entregado, el bulto está devuelto o extraviado, o falta entregar uno que el celular no informó
-    //   (no estaba en su hoja). Con un conflicto no se aplica nada de la operación.
     private static (List<ResultadoBultoRequest> Aplicar, List<string> Conflictos) CompararBultos(
         Envio envio,
         IReadOnlyCollection<ResultadoBultoRequest> informados)
@@ -608,7 +556,6 @@ public class SincronizarEntregasService(
         return (aplicar, conflictos);
     }
 
-    // La regla operativa dice qué evidencia es obligatoria para entregar
     private static string? EvidenciaFaltante(OperacionRequest operacion, ReglaOperativa? regla)
     {
         if (regla is null)
@@ -660,7 +607,6 @@ public class SincronizarEntregasService(
         return estado?.ToString();
     }
 
-    // Las fechas llegan en UTC; si vienen sin zona se toman como UTC (PostgreSQL guarda UTC)
     private static DateTime ComoUtc(DateTime fecha) => fecha.Kind switch
     {
         DateTimeKind.Utc => fecha,
@@ -674,9 +620,6 @@ public class SincronizarEntregasService(
     private static (ResultadoOperacion, string, IntentoEntrega?) Conflicto(string mensaje) =>
         (ResultadoOperacion.Conflicto, mensaje, null);
 
-    // Lo que decide la operación, en un orden fijo: los bultos ordenados por Id, para que el mismo
-    // resultado dé la misma huella aunque la app los mande en otro orden. La evidencia (firma, foto,
-    // receptor) no entra: no cambia qué se aplica.
     private static string Huella(OperacionRequest operacion, TipoOperacion tipo)
     {
         var bultos = (operacion.ResultadosBultos ?? [])

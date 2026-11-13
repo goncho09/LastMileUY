@@ -6,16 +6,12 @@ using System.Text.Json;
 using LastMileUY.Contracts.Mensajeria;
 using static ApiDePuntaAPunta;
 
-// Mensajes fallidos por HTTP (/api/mensajeria/fallidos): solo el administrador de la plataforma los ve,
-// el historial guardado en la base, pedir un reprocesamiento una sola vez, y la cola de RabbitMQ que se
-// mira sin consumirla.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class MensajesFallidosDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
     private const string Administrador = "admin@prueba.test";
     private static readonly string ColaFallidos = $"{TopologiaMensajeria.ColaWorker}.fallidos";
 
-    // Son incidencias de toda la plataforma: ningún perfil de un operador o de un comercio entra
     [Theory]
     [InlineData(Operador1)]
     [InlineData(Despachador1)]
@@ -64,7 +60,6 @@ public class MensajesFallidosDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.NotFound, noExiste.StatusCode);
         }
 
-        // Un estado que no existe se rechaza con el motivo, como el resto de la API
         using var estadoMalo = await administrador.GetAsync("api/mensajeria/fallidos?estado=Inventado");
         Assert.Equal(HttpStatusCode.BadRequest, estadoMalo.StatusCode);
         Assert.Contains("inválido", await MensajeAsync(estadoMalo));
@@ -87,20 +82,17 @@ public class MensajesFallidosDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(HttpStatusCode.Conflict, segundo.StatusCode);
         }
 
-        // Uno que no existe tampoco
         using (var inexistente = await administrador.PostAsync($"api/mensajeria/fallidos/{Guid.NewGuid()}/reintentar", null))
         {
             Assert.Equal(HttpStatusCode.Conflict, inexistente.StatusCode);
         }
 
-        // El publicador de reintentos puede haberlo tomado ya: lo que importa es que dejó de estar pendiente
         var detalle = (await administrador.GetFromJsonAsync<MensajeFallidoDetalleResponse>($"api/mensajeria/fallidos/{id}"))!;
         Assert.NotEqual("Pendiente", detalle.Estado);
         Assert.NotNull(detalle.SolicitadoPorId);
         Assert.NotNull(detalle.FechaSolicitudReproceso);
     }
 
-    // Inspeccionar no saca los mensajes de la cola: después siguen estando todos
     [Fact]
     public async Task La_cola_de_fallidos_se_mira_sin_consumirla()
     {
@@ -125,7 +117,6 @@ public class MensajesFallidosDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(2, await PendientesEnColaAsync(administrador, esperados: 2));
     }
 
-    // RabbitMQ actualiza la cuenta con un poco de demora: espera hasta 5 segundos a ver la esperada
     private static async Task<int> PendientesEnColaAsync(HttpClient administrador, int esperados)
     {
         var cantidad = -1;

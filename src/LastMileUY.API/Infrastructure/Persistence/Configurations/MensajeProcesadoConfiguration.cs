@@ -10,7 +10,6 @@ public class MensajeProcesadoConfiguration : IEntityTypeConfiguration<MensajePro
     {
         builder.ToTable("MensajesProcesados");
 
-        // La clave es lo que impide procesar dos veces: un segundo INSERT del mismo par choca
         builder.HasKey(m => new { m.MensajeId, m.Consumidor });
 
         builder.Property(m => m.Consumidor).HasMaxLength(100);

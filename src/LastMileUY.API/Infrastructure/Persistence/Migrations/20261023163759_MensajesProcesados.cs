@@ -25,8 +25,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     table.PrimaryKey("PK_MensajesProcesados", x => new { x.MensajeId, x.Consumidor });
                 });
 
-            // Como toda tabla de un operador (ADR-01). El worker carga el operador de cada evento antes
-            // de procesarlo, así que solo ve y anota los de ese operador.
             migrationBuilder.Sql("""
                 ALTER TABLE "MensajesProcesados" ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE "MensajesProcesados" FORCE ROW LEVEL SECURITY;

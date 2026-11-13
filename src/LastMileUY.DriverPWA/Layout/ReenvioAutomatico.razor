@@ -3,9 +3,6 @@
 @inject IJSRuntime JS
 @inject SincronizacionService Sincronizacion
 
-@* Manda las operaciones pendientes al abrir la app y cada vez que vuelve la conexión, esté el
-   repartidor en la pantalla que esté. No muestra nada: el detalle se ve en /operaciones. *@
-
 @code {
     private IJSObjectReference? moduloConexion;
     private IJSObjectReference? detectorConexion;
@@ -34,7 +31,6 @@
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
                                        or UnauthorizedAccessException or InvalidOperationException)
         {
-            // Sin conexión o sin sesión las operaciones siguen en la cola para el próximo intento
         }
     }
 

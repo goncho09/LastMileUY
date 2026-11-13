@@ -6,8 +6,6 @@ namespace LastMileUY.API.Tests.Multitenancy;
 
 using static BaseConDosOperadores;
 
-// Seguimiento público (docs/seguimiento-publico.md): sin sesión, con el código se ve ese envío y nada más.
-// Corren sin operador, con el usuario de la aplicación y la política seguimiento_publico de la base.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
 {
@@ -45,8 +43,6 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
         Assert.Null(await new SeguimientoPublicoService(db, new FuncionalidadesService(db)).ObtenerAsync(codigo));
     }
 
-    // --- La política de la base ---
-
     [Fact]
     public async Task La_base_solo_deja_ver_el_envio_del_codigo_cargado()
     {
@@ -54,7 +50,6 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
         await using var transaccion = await db.Database.BeginTransactionAsync();
         await CargarCodigoAsync(db, "CODIGOA");
 
-        // Sin el filtro de EF: lo que devuelve es lo que deja pasar la base
         var envios = await db.Envios.IgnoreQueryFilters().ToListAsync();
 
         Assert.Equal(EnvioDeA, Assert.Single(envios).Id);
@@ -78,7 +73,6 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(null);
 
-        // Misma conexión antes y después, como cuando vuelve al pool y la usa otro pedido
         await db.Database.OpenConnectionAsync();
 
         await using (var transaccion = await db.Database.BeginTransactionAsync())
@@ -94,8 +88,6 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
     [Fact]
     public async Task Un_operador_con_el_codigo_de_otro_no_ve_su_envio()
     {
-        // El código abre el envío solo por la política de seguimiento; el filtro de EF del
-        // operador sigue aplicando en el resto de la aplicación
         await using var db = baseDeDatos.CrearContexto(OperadorA);
         await using var transaccion = await db.Database.BeginTransactionAsync();
         await CargarCodigoAsync(db, "CODIGOB");
@@ -103,7 +95,6 @@ public class SeguimientoPublicoTests(BaseConDosOperadores baseDeDatos)
         Assert.DoesNotContain(await db.Envios.ToListAsync(), e => e.Id == EnvioDeB);
     }
 
-    // Lo mismo que hace SeguimientoPublicoService antes de consultar
     private static Task CargarCodigoAsync(DbContext db, string codigo) =>
         db.Database.ExecuteSqlInterpolatedAsync($"SELECT set_config('app.codigo_seguimiento', {codigo}, true)");
 }

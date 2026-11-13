@@ -4,7 +4,6 @@ using LastMileUY.Contracts.Envios;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Llama a la API real por HTTP (GET /api/envios y GET /api/envios/{id})
 public class EnviosApiHttp(HttpClient http) : IEnviosApi
 {
     public async Task<PaginaDto<EnvioResumenDto>> ListarAsync(FiltroEnvios filtro, CancellationToken ct = default)

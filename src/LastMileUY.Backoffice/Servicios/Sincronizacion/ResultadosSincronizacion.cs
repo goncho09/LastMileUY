@@ -1,8 +1,5 @@
 namespace LastMileUY.Backoffice.Servicios;
 
-// Cómo se muestra el resultado de cada operación que llegó de la app del repartidor.
-// "Valor" es lo que manda la API (enum ResultadoOperacion). Las clases son las mismas de los estados
-// del listado de envíos: el Dockerfile compila Tailwind mirando solo Pages/.
 public static class ResultadosSincronizacion
 {
     public record Resultado(string Valor, string Texto, string Explicacion, string ClaseCss);

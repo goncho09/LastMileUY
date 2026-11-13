@@ -3,7 +3,6 @@ using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// GET /api/admin/funcionalidades y PUT /api/admin/operadores/{id}/funcionalidades/{clave}
 public class FuncionalidadesApiHttp(HttpClient http) : IFuncionalidadesApi
 {
     public async Task<IReadOnlyList<FuncionalidadesOperadorDto>> ListarAsync(CancellationToken ct = default) =>

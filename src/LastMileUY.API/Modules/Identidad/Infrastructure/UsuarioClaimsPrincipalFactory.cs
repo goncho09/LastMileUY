@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace LastMileUY.API.Modules.Identidad.Infrastructure;
 
-// Construye al user cuando inicia sesion
 public class UsuarioClaimsPrincipalFactory(
     UserManager<Usuario> userManager,
     RoleManager<Rol> roleManager,
@@ -28,7 +27,6 @@ public class UsuarioClaimsPrincipalFactory(
                 usuario.OperadorId.Value.ToString()));
         }
 
-        // Segundo nivel del multitenancy: el usuario de un comercio solo ve lo de su comercio
         if (usuario.ComercioId.HasValue)
         {
             identity.AddClaim(new Claim(

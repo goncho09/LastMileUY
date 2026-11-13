@@ -31,8 +31,6 @@ public sealed class ValidarVinculoComercioMiddleware(
         var comercioClaim = contexto.User.FindFirstValue(
             ContextoOperadorHttp.ClaimComercioId);
 
-        // Los usuarios sin contexto de comercio no necesitan
-        // validar la relación operador-comercio.
         if (comercioClaim is null)
         {
             await siguiente(contexto);

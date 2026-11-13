@@ -183,7 +183,6 @@
     private const string ClaseCampo =
         "w-full rounded-lg border border-white/10 bg-[#0b1020] px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-500";
 
-    // ?nuevo=1: viene del formulario de envíos, abre el alta y al terminar ofrece volver
     [SupplyParameterFromQuery(Name = "nuevo")]
     private int? Nuevo { get; set; }
 
@@ -319,7 +318,6 @@
         });
     }
 
-    // Manda el pedido; si la API lo rechaza, el motivo va a la lista de errores del formulario
     private async Task EnviarAsync(List<string> errores, Func<Task<string?>> accion)
     {
         enviando = true;

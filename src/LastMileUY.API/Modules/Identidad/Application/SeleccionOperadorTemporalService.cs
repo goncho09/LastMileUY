@@ -7,7 +7,6 @@ public sealed class SeleccionOperadorTemporalService(
 {
     private static readonly TimeSpan Duracion = TimeSpan.FromMinutes(5);
 
-    // Controla el consumo de cada token para impedir reutilizarlo.
     private readonly ConcurrentDictionary<string, byte> tokensActivos = new();
 
     public string Crear(string usuarioId)
@@ -27,7 +26,6 @@ public sealed class SeleccionOperadorTemporalService(
         if (string.IsNullOrWhiteSpace(token))
             return false;
 
-        // Solo una solicitud puede consumir el token.
         if (!tokensActivos.TryRemove(token, out _))
             return false;
 

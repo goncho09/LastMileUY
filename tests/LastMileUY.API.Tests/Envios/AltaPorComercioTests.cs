@@ -7,8 +7,6 @@ using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
 
 namespace LastMileUY.API.Tests.Envios;
 
-// Alta de envíos desde el portal: el usuario de comercio trabaja con el operador
-// que eligió al iniciar sesión y solo puede crear envíos para su comercio.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class AltaPorComercioTests(BaseConDosOperadores baseDeDatos)
 {

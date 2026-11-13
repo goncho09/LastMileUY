@@ -12,13 +12,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace LastMileUY.Backoffice.Tests;
 
-// Hojas de ruta en el Backoffice: el orden que arma el formulario, el cliente HTTP,
-// los datos de prueba y que el despacho respete el perfil
 public class HojasDeRutaTests
 {
     private static readonly DateOnly Manana = DateOnly.FromDateTime(DateTime.Today).AddDays(1);
-
-    // --- Orden de las paradas desde el formulario ---
 
     [Fact]
     public void Los_envios_tildados_se_ordenan_por_el_numero_que_se_les_puso()
@@ -28,7 +24,6 @@ public class HojasDeRutaTests
             seleccionados: [10, 30, 40],
             orden: new Dictionary<int, int?> { [10] = 3, [30] = 1, [40] = 2, [20] = 1 });
 
-        // El 20 tiene número pero no está tildado: no va
         Assert.Equal([30, 40, 10], orden);
     }
 
@@ -53,8 +48,6 @@ public class HojasDeRutaTests
 
         Assert.Equal([10, 20], orden);
     }
-
-    // --- Cliente HTTP ---
 
     [Fact]
     public void La_url_del_listado_lleva_la_fecha_y_el_estado()
@@ -126,14 +119,11 @@ public class HojasDeRutaTests
         Assert.Equal(new TimeOnly(9, 0), parada.Franja!.HoraInicio);
     }
 
-    // --- Datos de prueba: repiten las reglas principales de la API ---
-
     [Fact]
     public async Task Los_datos_de_prueba_rechazan_pasarse_de_la_capacidad()
     {
         var api = new RutasApiDePrueba();
 
-        // La moto carga 30 kg y los envíos 201 + 202 + 204 pesan 34,5
         var error = await Assert.ThrowsAsync<OperacionRechazadaException>(() =>
             api.CrearAsync(Ruta(repartidor: 1, vehiculo: 1, 201, 202, 204)));
 
@@ -145,12 +135,10 @@ public class HojasDeRutaTests
     {
         var api = new RutasApiDePrueba();
 
-        // 203 es de la tarde y 201 de la mañana
         await Assert.ThrowsAsync<OperacionRechazadaException>(() => api.CrearAsync(Ruta(1, 2, 203, 201)));
 
         await api.CrearAsync(Ruta(1, 2, 201, 203));
 
-        // El mismo repartidor otra vez ese día
         await Assert.ThrowsAsync<OperacionRechazadaException>(() => api.CrearAsync(Ruta(1, 1, 205)));
     }
 
@@ -167,11 +155,8 @@ public class HojasDeRutaTests
         Assert.Equal("Despachada", despachada!.Estado);
         Assert.All(despachada.Paradas, p => Assert.Equal("EnTransito", p.EstadoEnvio));
 
-        // Dos veces no
         await Assert.ThrowsAsync<OperacionRechazadaException>(() => api.DespacharAsync(ruta.Id));
     }
-
-    // --- Páginas ---
 
     [Fact]
     public async Task Despachar_con_un_perfil_sin_permiso_no_llama_a_la_api()

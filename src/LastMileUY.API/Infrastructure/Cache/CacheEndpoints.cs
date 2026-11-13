@@ -2,10 +2,6 @@ using LastMileUY.Contracts.Cache;
 
 namespace LastMileUY.API.Infrastructure.Cache;
 
-// Tablero técnico del caché: aciertos, fallos y porcentaje de aciertos de cada caso.
-// Verlas: el perfil Operador (el mismo que ve la configuración del operador en el Backoffice).
-// Reiniciarlas: solo el Administrador. Son de toda la plataforma: si las reiniciara un operador,
-// les borraría la medición a los demás.
 public static class CacheEndpoints
 {
     public static IEndpointRouteBuilder MapCacheEndpoints(this IEndpointRouteBuilder app)
@@ -45,7 +41,6 @@ public static class CacheEndpoints
             .RequireAuthorization(politica => politica.RequireRole("Operador"))
             .WithName("MetricasCache");
 
-        // Para empezar una medición de cero (por ejemplo antes de una demostración)
         group.MapPost("/metricas/reiniciar", async (IMetricasCache metricas, CancellationToken cancellationToken) =>
             {
                 try
@@ -65,7 +60,6 @@ public static class CacheEndpoints
         return app;
     }
 
-    // 503 y no 500: no es un error de la API, es Redis que no responde (el Backoffice muestra el aviso)
     private static IResult RedisNoDisponible() =>
         Results.Problem(
             title: "Redis no disponible",

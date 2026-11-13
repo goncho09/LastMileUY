@@ -8,25 +8,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Integraciones.Application;
 
-// Las claves de la API pública del comercio logueado (con el operador que eligió en el portal).
-// No filtra por comercio a mano: el filtro de EF y el RLS ya dejan ver solo las suyas.
 public class ClavesApiService(
     ApplicationDbContext db,
     IContextoOperador contexto,
     AmbientePruebasService ambientePruebas,
     IConfiguration configuracion)
 {
-    // Comienzo de toda clave: identifica de dónde es si aparece pegada en un log o un repositorio.
-    // Después dice el ambiente, para que no se confunda una de prueba con una de verdad
     public const string Inicio = "lmuy_";
     public const string InicioProduccion = "lmuy_live_";
     public const string InicioPruebas = "lmuy_test_";
 
-    // Largo del prefijo visible: el comienzo con el ambiente y 6 caracteres de la parte secreta
     private const int LargoPrefijo = 16;
 
-    // Tope de claves activas por comercio y operador (ApiPublica:ClavesActivas): una por sistema que se
-    // integra, y 10 sobra
     private int MaximoActivas => configuracion.GetValue("ApiPublica:ClavesActivas", 10);
 
     public static string CalcularHash(string clave) =>
@@ -64,12 +57,9 @@ public class ClavesApiService(
             _ => throw new ArgumentException($"El ambiente tiene que ser {AmbientesApi.Produccion} o {AmbientesApi.Pruebas}.")
         };
 
-        // Una clave de prueba trabaja con el operador del ambiente de pruebas: se crea (si hace falta) y
-        // se vincula con el comercio ahora, así el primer pedido con la clave ya funciona
         if (esPrueba)
             await ambientePruebas.PrepararParaComercioAsync(comercioId, ct);
 
-        // 32 bytes al azar (256 bits): no se puede adivinar, así que alcanza con un hash rápido para guardarla
         var clave = (esPrueba ? InicioPruebas : InicioProduccion) + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
@@ -90,7 +80,6 @@ public class ClavesApiService(
         return new ClaveApiCreadaDto(Convertir(nueva), clave);
     }
 
-    // null si no existe o es de otro comercio (para el que pregunta, es lo mismo)
     public async Task<ClaveApiDto?> RevocarAsync(int id, CancellationToken ct = default)
     {
         ComercioActual();
@@ -106,10 +95,6 @@ public class ClavesApiService(
         return Convertir(clave);
     }
 
-    // La clave de un pedido, buscada por su hash. Se usa antes de saber de qué comercio es (no hay
-    // operador cargado), así que el RLS normal no la dejaría ver: la política clave_api_por_hash
-    // (migración ClavesApi) deja ver y tocar solo la fila con el hash cargado en app.hash_clave_api.
-    // set_config(..., true) vale solo dentro de esta transacción, igual que en el seguimiento público.
     public static async Task<ClaveApi?> BuscarParaAutenticarAsync(
         ApplicationDbContext db, string hash, CancellationToken ct)
     {
@@ -144,7 +129,6 @@ public class ClavesApiService(
         new(c.Id, c.Nombre, c.Prefijo, c.FechaCreacion, c.UltimoUso, c.FechaRevocacion,
             c.EsPrueba ? AmbientesApi.Pruebas : AmbientesApi.Produccion);
 
-    // Solo un usuario de comercio con un operador elegido
     private (int OperadorId, int ComercioId) ComercioActual() =>
         contexto is { OperadorId: { } operadorId, ComercioId: { } comercioId }
             ? (operadorId, comercioId)

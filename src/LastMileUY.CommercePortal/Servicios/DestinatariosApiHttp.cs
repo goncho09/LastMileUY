@@ -2,9 +2,6 @@ using LastMileUY.Contracts.Destinatarios;
 using System.Net;
 namespace LastMileUY.CommercePortal.Servicios;
 
-// GET api/destinatarios: la API ya devuelve solo los del comercio del usuario.
-// POST api/destinatarios y api/destinatarios/{id}/direcciones: 201 creado, 400 datos inválidos
-// (con el motivo), 403 o 404 si no es del comercio; 401 lanza SesionVencidaException.
 public class DestinatariosApiHttp(HttpClient http, SesionActual sesion)
     : ClienteApiBase(http, sesion), IDestinatariosApi
 {

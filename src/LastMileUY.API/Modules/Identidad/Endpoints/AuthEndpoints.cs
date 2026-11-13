@@ -17,9 +17,6 @@ public static class AuthEndpoints
         var group = app.MapGroup("/api/auth")
             .WithTags("Autenticación");
 
-        // Usuario del operador: su operador sale de la base (claim operador_id).
-        // Usuario de comercio: no tiene operador propio (CK_Usuarios_Ambito). Elige con cuál
-        // trabaja en esta sesión; se valida contra OperadoresComercios y se guarda solo en la cookie.
         group.MapPost("/login", async (
                 LoginRequest request,
                 SignInManager<Usuario> signInManager,
@@ -35,7 +32,6 @@ public static class AuthEndpoints
                     return Results.Unauthorized();
                 }
 
-                // Verifica la contraseña (con bloqueo por intentos) sin iniciar la sesión todavía
                 var resultado = await signInManager.CheckPasswordSignInAsync(
                     usuario,
                     request.Password,
@@ -155,7 +151,6 @@ public static class AuthEndpoints
 
                 var roles = await userManager.GetRolesAsync(usuario);
 
-                // El operador de la sesión: el del usuario o, si es de comercio, el que eligió al entrar
                 var operadorId = contextoOperador.OperadorId;
 
                 var operadorNombre = operadorId is null
@@ -181,7 +176,6 @@ public static class AuthEndpoints
             })
             .RequireAuthorization();
 
-        // Operadores con los que trabaja el comercio del usuario (para "Cambiar operador")
         group.MapGet("/operadores", async (
                 IContextoOperador contextoOperador,
                 OperadoresDeComercioService operadoresDeComercio,
@@ -196,7 +190,6 @@ public static class AuthEndpoints
             })
             .RequireAuthorization();
 
-        // El usuario de comercio pasa a trabajar con otro de sus operadores (se renueva la cookie)
         group.MapPost("/operador", async (
                 CambiarOperadorRequest request,
                 HttpContext httpContext,
@@ -251,7 +244,6 @@ public static class AuthEndpoints
         return app;
     }
 
-    // Inicia la sesión agregando el operador elegido como claim (solo vive en la cookie, no en la base)
     private static Task IniciarSesionConOperadorAsync(
         SignInManager<Usuario> signInManager,
         Usuario usuario,

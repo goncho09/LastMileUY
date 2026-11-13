@@ -60,7 +60,6 @@ public class AdministracionGlobalHttpTests(
         using var api = CrearApi();
         using var cliente = api.CreateClient();
 
-        // 1. Crear operador
         var crearOperador = await cliente.PostAsJsonAsync(
             "/api/admin/operadores",
             new CrearOperadorConUsuarioRequest(
@@ -77,7 +76,6 @@ public class AdministracionGlobalHttpTests(
 
         Assert.NotNull(operador);
 
-        // 2. Editar operador
         var editarOperador = await cliente.PutAsJsonAsync(
             $"/api/admin/operadores/{operador.Id}",
             new GuardarOperadorAdminRequest(
@@ -89,7 +87,6 @@ public class AdministracionGlobalHttpTests(
             HttpStatusCode.NoContent,
             editarOperador.StatusCode);
 
-        // 3. Crear comercio
         var crearComercio = await cliente.PostAsJsonAsync(
             "/api/admin/comercios",
             new CrearComercioConUsuarioRequest(
@@ -107,7 +104,6 @@ public class AdministracionGlobalHttpTests(
 
         Assert.NotNull(comercio);
 
-        // 4. Editar comercio
         var editarComercio = await cliente.PutAsJsonAsync(
             $"/api/admin/comercios/{comercio.Id}",
             new GuardarComercioAdminRequest(
@@ -121,7 +117,6 @@ public class AdministracionGlobalHttpTests(
             HttpStatusCode.NoContent,
             editarComercio.StatusCode);
 
-        // 5. Vincular
         var rutaVinculo =
             $"/api/admin/comercios/{comercio.Id}/operadores/{operador.Id}";
 
@@ -135,7 +130,6 @@ public class AdministracionGlobalHttpTests(
         await VerificarVinculoAsync(
             comercio.Id, operador.Id, true);
 
-        // 6. Vincular nuevamente (no duplica)
         var duplicado = await cliente.PostAsync(
             rutaVinculo, null);
 
@@ -146,7 +140,6 @@ public class AdministracionGlobalHttpTests(
         await VerificarVinculoAsync(
             comercio.Id, operador.Id, true);
 
-        // 7. Desvincular
         var desvincular = await cliente.DeleteAsync(
             rutaVinculo);
 
@@ -157,7 +150,6 @@ public class AdministracionGlobalHttpTests(
         await VerificarVinculoAsync(
             comercio.Id, operador.Id, false);
 
-        // 8. Revincular
         var revincular = await cliente.PostAsync(
             rutaVinculo, null);
 
@@ -168,7 +160,6 @@ public class AdministracionGlobalHttpTests(
         await VerificarVinculoAsync(
             comercio.Id, operador.Id, true);
 
-        // 9. Verificar datos editados mediante HTTP
         var operadorFinal = await cliente.GetFromJsonAsync<
             OperadorAdminDto>(
             $"/api/admin/operadores/{operador.Id}");
@@ -212,7 +203,6 @@ public class AdministracionGlobalHttpTests(
                 v.OperadorId == operadorId)
             .ToListAsync();
 
-        // La relación debe existir exactamente una vez.
         var vinculo = Assert.Single(vinculos);
 
         Assert.Equal(activo, vinculo.Activo);

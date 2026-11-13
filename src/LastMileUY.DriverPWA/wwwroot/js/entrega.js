@@ -1,7 +1,4 @@
-// Lo que Blazor no puede hacer solo al registrar una entrega: la ubicación del celular
-// y la firma dibujada con el dedo (ver Pages/Rutas/FormularioEntrega.razor).
 window.lastMileEntrega = {
-    // { latitud, longitud } o null si el celular no la da (sin permiso, sin GPS o tarda demasiado)
     ubicacion() {
         return new Promise(resolve => {
             if (!navigator.geolocation) {
@@ -19,7 +16,6 @@ window.lastMileEntrega = {
         });
     },
 
-    // El canvas tiene un tamaño fijo en píxeles y se estira con CSS: se escalan las coordenadas
     iniciarFirma(canvas) {
         const contexto = canvas.getContext("2d");
         contexto.lineWidth = 3;
@@ -63,7 +59,6 @@ window.lastMileEntrega = {
         canvas.dataset.vacia = "true";
     },
 
-    // PNG en base64 (sin el prefijo data:), o null si no se firmó
     leerFirma(canvas) {
         return canvas.dataset.vacia === "true"
             ? null

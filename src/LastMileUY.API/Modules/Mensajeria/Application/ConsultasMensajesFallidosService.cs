@@ -58,7 +58,6 @@ public class ConsultasMensajesFallidosService(
         var total = await consulta.CountAsync(ct);
 
         var tamanoPagina = Math.Clamp(filtro.TamanoPagina, 1, 100);
-        // Con tope: (pagina - 1) * tamanoPagina no puede pasarse de un int. Más allá, la página viene vacía
         var pagina = Math.Clamp(filtro.Pagina, 1, int.MaxValue / tamanoPagina);
 
         var registros = await consulta

@@ -7,7 +7,6 @@ namespace LastMileUY.API.Tests.Multitenancy;
 
 using static BaseConDosOperadores;
 
-// GET /api/operador: cada usuario ve solo la identidad y las reglas de su operador
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class OperadorActualTests(BaseConDosOperadores baseDeDatos)
 {
@@ -41,7 +40,6 @@ public class OperadorActualTests(BaseConDosOperadores baseDeDatos)
 
         var error = await Assert.ThrowsAsync<PostgresException>(() => comando.ExecuteNonQueryAsync());
 
-        // 23514 = violación de un CHECK
         Assert.Equal("23514", error.SqlState);
     }
 

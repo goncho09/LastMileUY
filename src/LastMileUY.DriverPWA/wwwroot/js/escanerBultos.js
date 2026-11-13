@@ -1,9 +1,4 @@
-﻿
-// La cámara es una sola para toda la hoja de ruta, aunque cada parada tenga su botón de escanear.
-// Por eso el escáner recuerda qué parada la está usando (su "dueño"): si otra parada la abre,
-// se le avisa a la anterior para que deje de mostrar la cámara, y una parada que se cierra
-// solo apaga la cámara si es suya.
-window.lastMileEscaner = (() => {
+﻿window.lastMileEscaner = (() => {
     let lector = null;
     let duenoId = null;
     let duenoRef = null;
@@ -11,8 +6,6 @@ window.lastMileEscaner = (() => {
     let pedido = null;
     let detectado = false;
 
-    // Apaga la cámara, sea de quien sea. Si todavía está arrancando, espera a que termine para
-    // poder apagarla (si no, quedaría prendida).
     async function apagar() {
         const actual = lector;
         const arrancando = inicio;
@@ -28,24 +21,20 @@ window.lastMileEscaner = (() => {
             try {
                 await arrancando;
             } catch {
-                // Si no llegó a arrancar, no hay nada que apagar.
             }
         }
 
         try {
             await actual.stop();
         } catch {
-            // Puede no haber llegado a arrancar.
         }
 
         try {
             actual.clear();
         } catch {
-            // Puede estar desmontado.
         }
     }
 
-    // Con elementoId, apaga la cámara solo si la tiene (o la está pidiendo) esa parada.
     async function detener(elementoId) {
         if (elementoId && elementoId !== duenoId && elementoId !== pedido?.id) return;
 
@@ -54,8 +43,6 @@ window.lastMileEscaner = (() => {
     }
 
     async function iniciar(elementoId, referenciaDotNet) {
-        // Se anota el pedido antes de esperar nada: si mientras tanto se cancela o lo pide
-        // otra parada, este ya no sigue.
         const anteriores = [
             duenoId !== elementoId ? duenoRef : null,
             pedido && pedido.id !== elementoId ? pedido.ref : null
@@ -113,11 +100,9 @@ window.lastMileEscaner = (() => {
                 try {
                     await referenciaDotNet.invokeMethodAsync("CodigoEscaneado", codigo);
                 } catch {
-                    // La parada pudo haberse cerrado mientras tanto.
                 }
             },
             () => {
-                // No detectar un código en un fotograma es normal.
             }
         );
 
@@ -126,7 +111,6 @@ window.lastMileEscaner = (() => {
 
             if (lector === actual) inicio = null;
         } catch (e) {
-            // Si otra parada ya tomó la cámara, ese aviso es el que vale.
             if (lector !== actual) return;
 
             await apagar();

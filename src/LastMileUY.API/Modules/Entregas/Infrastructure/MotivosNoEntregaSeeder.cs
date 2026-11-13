@@ -5,8 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Entregas.Infrastructure;
 
-// Motivos de no entrega de los operadores de prueba: los que elige el repartidor
-// al registrar un intento fallido. Cada operador tiene los suyos.
 public static class MotivosNoEntregaSeeder
 {
     private static readonly string[] Motivos =
@@ -23,7 +21,6 @@ public static class MotivosNoEntregaSeeder
 
         foreach (var operadorId in operadoresId)
         {
-            // Se guarda como ese operador: el filtro de EF y el RLS no dejan crear datos de otro
             var contexto = new ContextoOperadorFijo(operadorId);
             var opciones = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseNpgsql(cadena)

@@ -8,17 +8,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
-// Al guardar cambios, cada evento nuevo del historial de un envío (alta o cambio de estado, ver
-// Envio.CambiarEstado) y cada bulto que cambió de estado (Bulto.CambiosSinPublicar, entrega parcial)
-// suman un MensajeOutbox al mismo guardado. Así el evento queda en la misma
-// transacción que el cambio, sin importar desde dónde se hizo (Backoffice, portal, app del repartidor...).
-// Se crea uno por pedido (con su DbContext): la correlación es la de ese pedido.
 public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox senal) : SaveChangesInterceptor
 {
     private bool agregoMensajes;
 
-    // Eventos que ya tienen su mensaje: si un guardado falla y se reintenta, el mensaje sigue en el
-    // DbContext y no hay que agregarlo de nuevo
     private readonly HashSet<EventoEnvio> conMensaje = new(ReferenceEqualityComparer.Instance);
 
     public override InterceptionResult<int> SavingChanges(
@@ -38,7 +31,6 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
-    // Guardado: el publicador no espera a su próxima vuelta
     public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
     {
         AvisarSiCorresponde();
@@ -59,15 +51,11 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
         if (db is null)
             return;
 
-        // Los eventos se agregan a la colección del envío: hay que detectarlos antes de mirar
         db.ChangeTracker.DetectChanges();
 
         var ahora = DateTime.UtcNow;
         var mensajes = new List<MensajeOutbox>();
 
-        // De dónde y cuándo vino el primer cambio de cada envío en este guardado: lo heredan los eventos de
-        // sus bultos. Es el que los causó (la entrega del repartidor); los que siguen son consecuencias que
-        // agrega el sistema (por ejemplo, la reprogramación de la regla de entrega parcial).
         var origenPorEnvio = new Dictionary<Envio, EventoEnvio>(ReferenceEqualityComparer.Instance);
 
         foreach (var entrada in db.ChangeTracker.Entries<Envio>().ToList())
@@ -78,7 +66,6 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
             var envio = entrada.Entity;
             var esNuevo = entrada.State == EntityState.Added;
 
-            // Estado antes de este guardado; si hubo más de un cambio, cada uno parte del anterior
             string? anterior = esNuevo
                 ? null
                 : entrada.OriginalValues.GetValue<EstadoEnvio>(nameof(Envio.Estado)).ToString();
@@ -111,8 +98,6 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
                     EsPublico = evento.EsPublico,
                     OcurridoEn = evento.FechaHora,
                     CorrelacionId = correlacion.Id,
-                    // Un microsegundo de diferencia (la precisión de PostgreSQL) para que se publiquen
-                    // en el orden en que pasaron
                     FechaCreacion = ahora.AddTicks(mensajes.Count * 10)
                 });
 
@@ -126,9 +111,6 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
         agregoMensajes |= mensajes.Count > 0;
     }
 
-    // Un mensaje por bulto que cambió de estado en este guardado (entrega parcial: entregado, no
-    // entregado, devuelto...). Si cambió más de una vez (no entregado → pendiente → no entregado en
-    // una segunda visita), sale uno solo: del primer estado al último. Van después de los del envío.
     private void AgregarMensajesDeBultos(
         DbContext db,
         List<MensajeOutbox> mensajes,
@@ -152,8 +134,6 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
 
         foreach (var bulto in bultos.OrderBy(b => b.EnvioId).ThenBy(b => b.Id))
         {
-            // Normalmente el envío ya está cargado (los bultos cambian a través de él: entrega,
-            // devolución...). Si se cambió el bulto solo, se trae el envío para los datos del evento.
             var envio = db.Set<Envio>().Local.FirstOrDefault(e => e.Id == bulto.EnvioId)
                 ?? db.Set<Envio>().FirstOrDefault(e => e.Id == bulto.EnvioId)
                 ?? throw new InvalidOperationException(
@@ -181,14 +161,10 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
                 FechaCreacion = ahora.AddTicks(mensajes.Count * 10)
             });
 
-            // Ya está en el outbox: si el guardado falla y se reintenta, no se agrega de nuevo
             bulto.MarcarCambiosPublicados();
         }
     }
 
-    // Los nombres de los motivos de no entrega (del catálogo del operador) para el evento del bulto.
-    // Primero los que ya están cargados; los demás, con una consulta (pocas filas, y el RLS del
-    // operador que se está guardando ya está cargado en la conexión).
     private static Dictionary<int, string> NombresDeMotivos(DbContext db, IReadOnlyCollection<int> ids)
     {
         var nombres = db.Set<MotivoNoEntrega>().Local
@@ -221,8 +197,6 @@ public class OutboxInterceptor(ContextoCorrelacion correlacion, SenalOutbox sena
     }
 }
 
-// Avisa al publicador que hay mensajes nuevos. Es solo para publicarlos enseguida: si el aviso se
-// pierde (otra instancia de la API, un reinicio), el publicador igual revisa la tabla cada tanto.
 public class SenalOutbox
 {
     private readonly SemaphoreSlim senal = new(0, 1);
@@ -235,11 +209,9 @@ public class SenalOutbox
         }
         catch (SemaphoreFullException)
         {
-            // Ya había un aviso pendiente: alcanza con uno
         }
     }
 
-    // true si llegó un aviso antes del tiempo máximo
     public Task<bool> EsperarAsync(TimeSpan maximo, CancellationToken cancellationToken) =>
         senal.WaitAsync(maximo, cancellationToken);
 }

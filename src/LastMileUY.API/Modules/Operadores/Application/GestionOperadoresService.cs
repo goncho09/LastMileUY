@@ -16,7 +16,6 @@ public sealed class GestionOperadoresService(
     {
         return await db.Operadores
             .AsNoTracking()
-            // El operador del ambiente de pruebas (API pública) no se administra: lo maneja el sistema
             .Where(o => !o.EsAmbientePruebas)
             .OrderBy(o => o.Nombre)
             .Select(o => new OperadorAdminDto(
@@ -57,7 +56,6 @@ public sealed class GestionOperadoresService(
         return Convertir(operador);
     }
 
-    // Compatibilidad para pruebas y flujos internos; el endpoint público exige usuario inicial.
     public async Task<OperadorAdminDto> CrearAsync(GuardarOperadorAdminRequest request, CancellationToken ct)
     {
         Validar(request);

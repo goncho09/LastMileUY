@@ -4,10 +4,6 @@
 
 namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 {
-    // Un repartidor y un vehículo, una sola ruta abierta por día: la base lo asegura aunque dos
-    // despachadores armen rutas a la vez (PlanificarRutaService traduce el choque a un 409).
-    // Si una base ya tuviera dos rutas abiertas del mismo repartidor o vehículo el mismo día, la
-    // migración falla: hay que cancelar una a mano antes de aplicarla.
     /// <inheritdoc />
     public partial class UnaRutaAbiertaPorDia : Migration
     {

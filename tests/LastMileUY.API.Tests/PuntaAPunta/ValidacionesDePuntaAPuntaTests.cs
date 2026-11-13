@@ -10,9 +10,6 @@ namespace LastMileUY.API.Tests.PuntaAPunta;
 
 using static ApiDePuntaAPunta;
 
-// Pedidos fuera de los límites: la API los contesta con un 400 (o rechaza la operación) en vez
-// de dejar que la base los corte con un 500. Y los datos de contacto de los destinatarios solo
-// los ve quien da de alta envíos.
 [Collection(ColeccionApiDePuntaAPunta.Nombre)]
 public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
 {
@@ -66,7 +63,6 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var comercio = await api.IniciarSesionAsync(Comercio1);
         var (destinatario, direccion) = await api.DestinatarioDeAsync(api.IdComercio1);
 
-        // Un formulario que manda el campo vacío no tiene referencia: no es un duplicado
         for (var i = 0; i < 2; i++)
         {
             using var respuesta = await comercio.PostAsJsonAsync("api/envios", new CrearEnvioRequest
@@ -93,8 +89,6 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Empty((await respuesta.Content.ReadFromJsonAsync<PaginaDto<EnvioResumenDto>>())!.Items);
     }
 
-    // Las métricas del caché son de toda la plataforma: un operador las ve, pero si las reiniciara
-    // les borraría la medición a los demás operadores
     [Fact]
     public async Task Las_metricas_del_cache_las_ve_un_operador_y_las_reinicia_solo_el_administrador()
     {
@@ -115,7 +109,6 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.NoContent, reiniciarAdministrador.StatusCode);
     }
 
-    // También en las respuestas de error (acá, un 401 sin sesión)
     [Fact]
     public async Task Toda_respuesta_le_dice_al_navegador_que_no_adivine_el_tipo_de_contenido()
     {
@@ -139,8 +132,6 @@ public class ValidacionesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
     }
 
-    // Si la app manda un texto más largo de lo que entra en la base, reintentar no lo arregla:
-    // se rechaza (y la app deja de reenviarla) en vez de contestar "Error, volvé a sincronizar" para siempre.
     [Fact]
     public async Task Una_entrega_con_textos_demasiado_largos_se_rechaza_y_no_se_reintenta()
     {

@@ -113,7 +113,6 @@
                        placeholder="Por ejemplo: Tienda online"
                        class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20" />
             </div>
-            @* El label va aparte del campo (for/id): si envuelve al select, su nombre accesible incluye las opciones *@
             <div class="flex min-w-[200px] flex-col gap-1.5 text-xs font-medium text-slate-400">
                 <label for="clave-ambiente">Ambiente</label>
                 <select id="clave-ambiente" @bind="ambiente"
@@ -233,7 +232,6 @@
     {
         operadorNombre = (await EstadoAutenticacion).User.FindFirst(ClaimsPortal.OperadorNombre)?.Value;
 
-        // La dirección de la API que ven los integradores (en Docker la del portal es interna)
         if (Configuracion["Api:UrlPublica"] is { Length: > 0 } publica)
             urlDocumentacion = publica.TrimEnd('/') + "/api/v1/docs/";
 

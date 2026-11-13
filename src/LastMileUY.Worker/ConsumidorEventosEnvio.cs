@@ -8,26 +8,16 @@ using RabbitMQ.Client.Events;
 
 namespace LastMileUY.Worker;
 
-// Recibe los eventos de envío que publica la API y se los pasa al procesador (ver docs/mensajeria.md).
-// - Declara sus colas: así existen aunque el worker arranque antes que la API, y los eventos que se
-//   publiquen mientras está apagado lo esperan ahí.
-// - Confirma (ack) cada mensaje recién después de procesarlo: si el worker se cae a mitad, RabbitMQ
-//   se lo vuelve a entregar (y el procesador descarta el repetido).
-// - Si procesarlo falla, lo reintenta más tarde con espera creciente (5 s, 30 s, 2 min): lo deja en una
-//   cola de espera, que se lo devuelve a la cola principal al vencer. Agotados los reintentos, o si el
-//   mensaje no se puede leer, va a la cola de fallidos. Ningún mensaje se descarta.
 public class ConsumidorEventosEnvio(
     OpcionesConsumidor opciones,
     IProcesadorEventos procesador,
     RepositorioMensajesFallidos repositorioFallidos,
     ILogger<ConsumidorEventosEnvio> logger) : BackgroundService
 {
-    // Encabezados que agrega el worker al reintentar
     public const string EncabezadoIntentos = "x-intentos";
     public const string EncabezadoError = "x-ultimo-error";
     private const string EncabezadoIncidenciaOriginal = "x-incidencia-original-id";
 
-    // Cuántos mensajes puede tener sin confirmar a la vez
     private const ushort MensajesEnParalelo = 10;
 
     private static readonly TimeSpan EsperaMaximaConexion = TimeSpan.FromMinutes(1);
@@ -35,8 +25,6 @@ public class ConsumidorEventosEnvio(
     private IConnection? conexion;
     private IChannel? canal;
 
-    // Para mandar a reintento y a fallidos, con confirmación: el original se confirma recién cuando
-    // RabbitMQ guardó la copia
     private IChannel? canalPublicacion;
 
     private async Task RegistrarFalloAsync(
@@ -69,18 +57,15 @@ public class ConsumidorEventosEnvio(
 
         logger.LogInformation("Escuchando la cola {Cola}", TopologiaMensajeria.ColaWorker);
 
-        // Los mensajes llegan por el evento; esto solo mantiene vivo el servicio hasta que se apague
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    // RabbitMQ puede no estar listo cuando arranca el worker: reintenta con espera creciente
     private async Task ConectarAsync(CancellationToken cancellationToken)
     {
         var fabrica = new ConnectionFactory
         {
             Uri = new Uri(opciones.CadenaRabbitMq),
             ClientProvidedName = "LastMileUY.Worker",
-            // Si se corta, el cliente reconecta solo y vuelve a suscribirse a la cola
             AutomaticRecoveryEnabled = true
         };
 
@@ -122,9 +107,6 @@ public class ConsumidorEventosEnvio(
             TopologiaMensajeria.ColaWorker, TopologiaMensajeria.ExchangeEnvios,
             TopologiaMensajeria.PatronEventosBulto, cancellationToken: cancellationToken);
 
-        // Una cola de espera por reintento. Nadie las consume: el mensaje espera ahí lo que dice su
-        // vencimiento y RabbitMQ lo devuelve a la cola principal (dead-letter). Una por nivel para que
-        // un mensaje que espera 2 minutos no frene a uno que espera 5 segundos.
         for (var nivel = 1; nivel <= opciones.EsperasReintento.Length; nivel++)
         {
             await canal.QueueDeclareAsync(
@@ -137,7 +119,6 @@ public class ConsumidorEventosEnvio(
                 cancellationToken: cancellationToken);
         }
 
-        // Los que no se pudieron procesar: quedan para revisarlos y reintentarlos a mano
         await canal.QueueDeclareAsync(
             ColaFallidos, durable: true, exclusive: false, autoDelete: false,
             cancellationToken: cancellationToken);
@@ -175,8 +156,6 @@ public class ConsumidorEventosEnvio(
         actividad?.SetTag("messaging.destination.name", TopologiaMensajeria.ColaWorker);
         actividad?.SetTag("messaging.message.id", mensaje.BasicProperties.MessageId);
 
-        // El identificador del pedido HTTP que originó el evento: todo lo que se registre de acá en
-        // adelante lo lleva, para seguir el cambio de punta a punta
         using var alcance = logger.BeginScope(
             "Correlación {CorrelacionId}, mensaje {MensajeId}",
             mensaje.BasicProperties.CorrelationId, mensaje.BasicProperties.MessageId);
@@ -267,13 +246,11 @@ public class ConsumidorEventosEnvio(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            // No se pudo dejar la copia (RabbitMQ con problemas): el original vuelve a la cola, no se pierde
             logger.LogError(ex, "No se pudo programar el reintento; el mensaje vuelve a la cola");
             await canal!.BasicNackAsync(mensaje.DeliveryTag, multiple: false, requeue: true, cancellationToken);
         }
     }
 
-    // Publica una copia del mensaje en otra cola (con los intentos y el último error) y confirma el original
     private async Task MoverAsync(
         BasicDeliverEventArgs mensaje, string cola, int intentos, string error, TimeSpan? espera,
         CancellationToken cancellationToken)
@@ -297,7 +274,6 @@ public class ConsumidorEventosEnvio(
             ContentType = original.ContentType,
             DeliveryMode = DeliveryModes.Persistent,
             Headers = encabezados,
-            // Cuánto espera en la cola de reintento antes de volver a la principal
             Expiration = espera is null ? null : ((long)espera.Value.TotalMilliseconds).ToString()
         };
 
@@ -320,16 +296,11 @@ public class ConsumidorEventosEnvio(
             body: mensaje.Body,
             cancellationToken: cancellationToken);
 
-        // Confirmamos el original solamente después de que
-        // RabbitMQ haya aceptado la copia.
         await canal!.BasicAckAsync(
             mensaje.DeliveryTag,
             multiple: false,
             cancellationToken);
 
-        // La actualización del registro es posterior.
-        // Si falla PostgreSQL, NO debemos reencolar el mensaje
-        // que RabbitMQ ya aceptó.
         if (cola == ColaFallidos && incidenciaOriginalId.HasValue)
         {
             try
@@ -375,8 +346,6 @@ public class ConsumidorEventosEnvio(
             : null;
     }
 
-
-    // null si no se puede leer o es de una versión más nueva que la que conoce el worker
     private static EstadoEnvioCambiado? Leer(BasicDeliverEventArgs mensaje)
     {
         try
@@ -416,7 +385,6 @@ public class ConsumidorEventosEnvio(
     }
 }
 
-// Configuración del consumidor (sección "Mensajeria" y la cadena "RabbitMQ")
 public record OpcionesConsumidor(string CadenaRabbitMq, TimeSpan[] EsperasReintento)
 {
     public static readonly TimeSpan[] EsperasPorDefecto =

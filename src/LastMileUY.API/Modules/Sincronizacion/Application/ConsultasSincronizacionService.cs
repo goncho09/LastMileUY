@@ -8,9 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Sincronizacion.Application;
 
-// Lo que se consulta de la sincronización: los motivos de no entrega (para la app),
-// el historial de operaciones recibidas (para el Backoffice, y el propio para cada repartidor)
-// y las imágenes de evidencia (para el Backoffice). El operador lo filtran EF y RLS.
 public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvidencias almacen)
 {
     public const int TamanioPaginaMaximo = 100;
@@ -22,8 +19,6 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
             .Select(m => new MotivoNoEntregaDto(m.Id, m.Nombre, m.Descripcion))
             .ToListAsync(cancellationToken);
 
-    // Las más recientes primero. rutaId y resultado son opcionales.
-    // usuarioId: solo las que mandó ese repartidor (la app muestra únicamente las propias).
     public async Task<PaginaDto<OperacionSincronizadaDto>> ListarOperacionesAsync(
         int pagina,
         int tamanioPagina,
@@ -33,7 +28,6 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
         string? usuarioId = null)
     {
         tamanioPagina = Math.Clamp(tamanioPagina, 1, TamanioPaginaMaximo);
-        // Con tope: (pagina - 1) * tamanioPagina no puede pasarse de un int. Más allá, la página viene vacía
         pagina = Math.Clamp(pagina, 1, int.MaxValue / tamanioPagina);
 
         var operaciones = db.OperacionesSincronizadas.AsNoTracking();
@@ -109,8 +103,6 @@ public class ConsultasSincronizacionService(ApplicationDbContext db, IAlmacenEvi
         return new PaginaDto<OperacionSincronizadaDto>(items, total, pagina, tamanioPagina);
     }
 
-    // La firma o la foto de una entrega. null si el intento no existe (o es de otro operador)
-    // o no tiene esa imagen. ArgumentException: el tipo no es "firma" ni "foto".
     public async Task<Imagen?> ObtenerEvidenciaAsync(
         int intentoEntregaId,
         string tipo,

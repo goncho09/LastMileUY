@@ -6,8 +6,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace LastMileUY.Backoffice.Pages.Sincronizacion;
 
-// Todo lo que llegó de la app de los repartidores, con su resultado. El filtro "Conflicto"
-// es la lista de lo que tiene que resolver el despachador.
 public class IndexModel(ISincronizacionApi sincronizacionApi, ILogger<IndexModel> logger) : PageModel
 {
     [BindProperty(SupportsGet = true)]

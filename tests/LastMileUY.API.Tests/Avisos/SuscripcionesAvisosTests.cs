@@ -10,8 +10,6 @@ namespace LastMileUY.API.Tests.Avisos;
 
 using static BaseConDosOperadores;
 
-// Suscripciones del comercio a avisos, contra la base real con RLS.
-// La base es compartida entre los tests: cada uno usa sus propias URLs.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class SuscripcionesAvisosTests(BaseConDosOperadores baseDeDatos)
 {
@@ -32,7 +30,6 @@ public class SuscripcionesAvisosTests(BaseConDosOperadores baseDeDatos)
             Assert.Contains(suyas, s => s.UrlDestino == "https://tienda.uy/avisos/1");
         }
 
-        // Otro comercio del mismo operador no la ve
         await using (var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido))
         {
             var ajenas = await Servicio(db, OperadorA, ComercioCompartido).ListarAsync();
@@ -48,7 +45,6 @@ public class SuscripcionesAvisosTests(BaseConDosOperadores baseDeDatos)
             await Servicio(db, OperadorB, ComercioCompartido).CrearAsync(Pedido("https://tienda.uy/avisos/2"));
         }
 
-        // El mismo comercio, trabajando con el otro operador, no la ve
         await using var conA = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido);
         var conOperadorA = await Servicio(conA, OperadorA, ComercioCompartido).ListarAsync();
 
@@ -156,7 +152,6 @@ public class SuscripcionesAvisosTests(BaseConDosOperadores baseDeDatos)
 
         await using (var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido))
         {
-            // Para él no existe
             Assert.Null(await Servicio(db, OperadorA, ComercioCompartido).CambiarActivaAsync(id, false));
         }
 

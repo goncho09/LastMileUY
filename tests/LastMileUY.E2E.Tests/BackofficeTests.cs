@@ -5,10 +5,6 @@ using Microsoft.Playwright;
 using static BackofficeEnNavegador;
 using static Microsoft.Playwright.Assertions;
 
-// El Backoffice usado desde un navegador real, como lo usa el personal del operador. Cubre lo que las
-// pruebas de las páginas (LastMileUY.Backoffice.Tests) no ven: lo que pasa en el navegador entre un
-// pedido y otro (formularios, botones, redirecciones, cookies) y cómo se ve en un celular.
-// Los datos de prueba están en memoria y los comparten todas las pruebas: solo una arma una ruta.
 [Collection(ColeccionBackofficeEnNavegador.Nombre)]
 public class BackofficeTests(BackofficeEnNavegador backoffice)
 {
@@ -25,7 +21,6 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Cerrar sesión" }).ClickAsync();
         await Expect(pagina).ToHaveURLAsync(new Regex("/Login", RegexOptions.IgnoreCase));
 
-        // Sin la cookie, lo de antes ya no se ve
         await pagina.GotoAsync("/Envios");
         await Expect(pagina).ToHaveURLAsync(new Regex("/Login", RegexOptions.IgnoreCase));
     }
@@ -38,14 +33,11 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Link, new() { Name = "Hojas de ruta" })).ToBeVisibleAsync();
         await Expect(pagina.GetByRole(AriaRole.Link, new() { Name = "Mi operador" })).ToHaveCountAsync(0);
 
-        // Aunque escriba la dirección a mano
         await pagina.GotoAsync("/Operador");
         await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "No tenés permiso para ver esta página" }))
             .ToBeVisibleAsync();
     }
 
-    // Banderas de funcionalidad: el administrador apaga una para un operador desde el menú. Se usa el
-    // segundo operador de los datos de prueba, que no usan las demás pruebas
     [Fact]
     public async Task El_administrador_apaga_una_funcionalidad_de_un_operador()
     {
@@ -62,7 +54,6 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await Expect(avisos).ToContainTextAsync("Apagada");
         await Expect(avisos.GetByRole(AriaRole.Button)).ToHaveTextAsync("Prender");
 
-        // Un operador no entra a esta pantalla
         var operador = await backoffice.IniciarSesionAsync(Operador);
         await Expect(operador.GetByRole(AriaRole.Link, new() { Name = "Funcionalidades" })).ToHaveCountAsync(0);
         await operador.GotoAsync("/Funcionalidades");
@@ -90,9 +81,6 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "Intentos de entrega" })).ToBeVisibleAsync();
     }
 
-    // Todo el armado de una ruta: ordenar por recorrido, armarla con ese orden y despacharla.
-    // También cuida que después de ordenar, "Armar hoja de ruta" arme la ruta y no vuelva a ordenar
-    // (la dirección de la página queda con ?handler=ordenar)
     [Fact]
     public async Task Armar_una_ruta_con_el_orden_sugerido_y_despacharla()
     {
@@ -109,7 +97,6 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await Expect(aviso).ToContainTextAsync("Orden sugerido");
         await Expect(aviso).ToContainTextAsync("Sin ubicación, van al final: R4T8Y2U6P9HZ");
 
-        // Los números quedan cargados del 1 al 5, y el que no tiene ubicación es el último
         var numeros = await pagina.Locator("input[name^='Orden']").EvaluateAllAsync<string[]>("e => e.map(x => x.value)");
         Assert.Equal(["1", "2", "3", "4", "5"], numeros.Where(n => n != "").ToArray());
         await Expect(pagina.Locator("tbody tr").Last).ToContainTextAsync("R4T8Y2U6P9HZ");
@@ -139,7 +126,6 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         }
         await Expect(pagina.GetByRole(AriaRole.Status)).ToContainTextAsync("con 5 paradas");
 
-        // Las paradas salen en el orden sugerido
         var paradas = await pagina.Locator("tbody tr").AllInnerTextsAsync();
         Assert.Equal(codigos.Select(c => c.Trim()), paradas.Select(p => codigos.First(p.Contains).Trim()));
 
@@ -171,8 +157,6 @@ public class BackofficeTests(BackofficeEnNavegador backoffice)
         await Expect(deposito.GetByLabel("Latitud")).ToHaveValueAsync("-34.8712");
     }
 
-    // En un celular (375 px de ancho) ninguna pantalla se tiene que poder correr de costado: las
-    // tablas anchas se desplazan dentro de su recuadro, no la página entera
     [Theory]
     [InlineData("/")]
     [InlineData("/Envios")]

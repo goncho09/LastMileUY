@@ -19,13 +19,11 @@ public class IndexModel(
 
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
-        // Los administradores van directamente a Mensajes fallidos
         if (User.IsInRole("Administrador"))
         {
             return RedirectToPage("/MensajesFallidos/Index");
         }
 
-        // Los demás usuarios siguen viendo el inicio normal
         try
         {
             var datos = await ObtenerEstadisticasAsync(ct);

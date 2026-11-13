@@ -14,19 +14,16 @@ public class EntregaAvisoConfiguration
 
         builder.HasKey(e => e.Id);
 
-        // Cada entrega corresponde a una suscripción de webhook.
         builder.HasOne<SuscripcionAvisos>()
             .WithMany(s => s.EntregasAvisos)
             .HasForeignKey(e => e.SuscripcionAvisosId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cada webhook está relacionado con un envío.
         builder.HasOne<Envio>()
             .WithMany(e => e.EntregasAvisos)
             .HasForeignKey(e => e.EnvioId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Identificador único del evento para evitar duplicados.
         builder.HasIndex(e => e.EventoId)
             .IsUnique();
 
@@ -34,7 +31,6 @@ public class EntregaAvisoConfiguration
             .HasMaxLength(100)
             .IsRequired();
 
-        // Contenido JSON que se enviará al comercio.
         builder.Property(e => e.Contenido)
             .HasColumnType("jsonb")
             .IsRequired();
@@ -42,7 +38,6 @@ public class EntregaAvisoConfiguration
         builder.Property(e => e.UltimoError)
             .HasMaxLength(1000);
 
-        // Facilita encontrar webhooks pendientes de reintento.
         builder.HasIndex(e => new
         {
             e.Estado,

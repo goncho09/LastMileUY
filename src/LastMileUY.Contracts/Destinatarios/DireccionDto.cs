@@ -1,6 +1,5 @@
 namespace LastMileUY.Contracts.Destinatarios;
 
-// Una dirección activa de un destinatario. Latitud y Longitud: dónde queda en el mapa, si se cargó
 public record DireccionDto(
     int Id,
     string Calle,

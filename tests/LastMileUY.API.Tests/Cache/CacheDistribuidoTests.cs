@@ -6,11 +6,8 @@ using Microsoft.Extensions.Options;
 
 namespace LastMileUY.API.Tests.Cache;
 
-// El caché común (CacheDistribuido) sin Redis: con el caché en memoria, que tiene la misma interfaz,
-// y con uno que falla siempre, como un Redis caído.
 public class CacheDistribuidoTests
 {
-    // Un caso de prueba que dura un minuto (en la API los casos están en CasosDeCache)
     private static readonly CasoDeCache Caso = CasosDeCache.ConfiguracionOperador with { Duracion = TimeSpan.FromMinutes(1) };
 
     private record Dato(string Valor);
@@ -49,7 +46,6 @@ public class CacheDistribuidoTests
         await cache.ObtenerOCrearAsync(Caso, "clave", Consultar);
         await cache.ObtenerOCrearAsync(Caso, "clave", Consultar);
 
-        // Si se hubiera guardado el "no existe", un dato creado después no aparecería hasta que venza
         Assert.Equal(2, consultas);
     }
 
@@ -78,14 +74,12 @@ public class CacheDistribuidoTests
 
         Assert.Equal("de la base", dato!.Valor);
 
-        // Invalidar tampoco rompe: el dato vence solo
         await cache.InvalidarAsync("clave");
     }
 
     [Fact]
     public void Las_claves_llevan_el_operador()
     {
-        // Así un operador nunca recibe lo que se cacheó para otro (ADR-01)
         Assert.NotEqual(CasosDeCache.ClaveOperador(1), CasosDeCache.ClaveOperador(2));
     }
 
@@ -97,9 +91,9 @@ public class CacheDistribuidoTests
 
         Task<Dato?> Consultar(CancellationToken _) => Task.FromResult<Dato?>(new Dato("de la base"));
 
-        await cache.ObtenerOCrearAsync(Caso, "clave", Consultar); // no estaba: fallo
-        await cache.ObtenerOCrearAsync(Caso, "clave", Consultar); // estaba: acierto
-        await cache.ObtenerOCrearAsync(Caso, "clave", Consultar); // estaba: acierto
+        await cache.ObtenerOCrearAsync(Caso, "clave", Consultar);
+        await cache.ObtenerOCrearAsync(Caso, "clave", Consultar);
+        await cache.ObtenerOCrearAsync(Caso, "clave", Consultar);
 
         var (aciertos, fallos) = (await metricas.ObtenerAsync())[Caso.Id];
         Assert.Equal(2, aciertos);
@@ -137,7 +131,6 @@ public class CacheDistribuidoTests
     private static MemoryDistributedCache EnMemoria() =>
         new(Options.Create(new MemoryDistributedCacheOptions()));
 
-    // Como un Redis caído: toda operación falla
     private class CacheCaido : IDistributedCache
     {
         public byte[]? Get(string key) => throw Caido();

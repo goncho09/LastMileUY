@@ -5,9 +5,6 @@ using LastMileUY.Contracts.Mensajeria;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
-// Las dos pestañas de /avisos del portal, como las usa el comercio: sus suscripciones (con la clave
-// HMAC que se ve una sola vez) y el historial de avisos, con los intentos y el reenvío de los que no
-// llegaron. Acá no corre el worker: los avisos y sus intentos se cargan directo en la base
 [Collection(ColeccionPortalComercioEnNavegador.Nombre)]
 public class PortalAvisosTests(PortalComercioEnNavegador portal)
 {
@@ -22,13 +19,11 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await pagina.GotoAsync("/avisos");
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Suscripciones", Exact = true }).ClickAsync();
 
-        // Los eventos de bulto solo están en la versión 2
         var evento = pagina.GetByLabel("Evento", new() { Exact = true });
         await Expect(evento.Locator("option", new() { HasText = "Cambio de estado de un bulto" })).ToHaveCountAsync(0);
         await pagina.GetByLabel("Versión", new() { Exact = true }).SelectOptionAsync(new SelectOptionValue { Label = "v2 · con eventos de bulto" });
         await evento.SelectOptionAsync(new SelectOptionValue { Label = "Cambio de estado de un bulto" });
 
-        // Una URL que no es https se rechaza con el motivo
         var campoUrl = pagina.GetByLabel("URL", new() { Exact = true });
         await campoUrl.FillAsync("http://tienda.uy/avisos");
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Agregar" }).ClickAsync();
@@ -37,7 +32,6 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await campoUrl.FillAsync(url);
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Agregar" }).ClickAsync();
 
-        // La clave se muestra al crearla
         var panelClave = pagina.GetByRole(AriaRole.Heading, new() { Name = "Clave HMAC disponible" });
         await Expect(panelClave).ToBeVisibleAsync();
         var clave = pagina.GetByLabel("Clave secreta HMAC");
@@ -52,12 +46,10 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await pagina.Locator("section", new() { Has = panelClave }).GetByRole(AriaRole.Button, new() { Name = "Cerrar" }).ClickAsync();
         await Expect(panelClave).ToBeHiddenAsync();
 
-        // Desactivarla
         await fila.GetByRole(AriaRole.Button, new() { Name = "Desactivar", Exact = true }).ClickAsync();
         await Expect(fila).ToContainTextAsync("Inactiva");
         await Expect(fila.GetByRole(AriaRole.Button, new() { Name = "Activar", Exact = true })).ToBeVisibleAsync();
 
-        // Regenerar la clave pide confirmación, y se puede cancelar
         await fila.GetByRole(AriaRole.Button, new() { Name = "Regenerar clave" }).ClickAsync();
         var confirmacion = pagina.GetByRole(AriaRole.Heading, new() { Name = "¿Regenerar clave HMAC?" });
         await Expect(confirmacion).ToBeVisibleAsync();
@@ -71,7 +63,6 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await Expect(clave).ToHaveValueAsync(new Regex(@"^\S{32,}$"));
         Assert.NotEqual(primeraClave, await clave.InputValueAsync());
 
-        // Al volver a entrar la clave ya no se ve, y la suscripción sigue desactivada
         await pagina.ReloadAsync();
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Suscripciones", Exact = true }).ClickAsync();
         await Expect(fila).ToContainTextAsync("Inactiva");
@@ -84,7 +75,6 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         var envio = await portal.EnvioDelComercioAsync();
         await AvisoFallidoAsync(envio.Id, suscripcionActiva: true);
 
-        // Uno de una suscripción desactivada no se puede reenviar hasta activarla
         var envioDesactivada = await portal.EnvioDelComercioAsync();
         await AvisoFallidoAsync(envioDesactivada.Id, suscripcionActiva: false);
 
@@ -96,7 +86,6 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await Expect(fila).ToContainTextAsync("No recibido");
         await Expect(fila.GetByRole(AriaRole.Cell).Nth(3)).ToHaveTextAsync("2");
 
-        // Cada intento, sin datos técnicos: el código HTTP si el sistema del comercio contestó
         await fila.GetByRole(AriaRole.Button, new() { Name = "Ver intentos" }).ClickAsync();
         await Expect(pagina.GetByText("Destino: https://tienda.uy/avisos/historial")).ToBeVisibleAsync();
         await Expect(pagina.GetByText("Respondió con error 503")).ToBeVisibleAsync();
@@ -109,7 +98,6 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await Expect(pagina.GetByRole(AriaRole.Alert)).ToContainTextAsync("La suscripción del aviso está desactivada");
         await Expect(filaDesactivada).ToContainTextAsync("No recibido");
 
-        // Reenviado, deja de estar entre los no recibidos y queda enviándose
         await fila.GetByRole(AriaRole.Button, new() { Name = "Reenviar" }).ClickAsync();
         await Expect(pagina.GetByRole(AriaRole.Status))
             .ToContainTextAsync($"Aviso del envío {envio.CodigoSeguimiento} reenviado");
@@ -120,8 +108,6 @@ public class PortalAvisosTests(PortalComercioEnNavegador portal)
         await Expect(fila.GetByRole(AriaRole.Button, new() { Name = "Reenviar" })).ToHaveCountAsync(0);
     }
 
-    // Una suscripción del comercio y el operador del envío, y un aviso que no llegó después de dos
-    // intentos: el primero respondió 503 y el segundo no tuvo respuesta
     private Task<object[]> AvisoFallidoAsync(int envioId, bool suscripcionActiva) => portal.ConsultarAsync($"""
         WITH suscripcion AS (
             INSERT INTO "SuscripcionesAvisos"("OperadorId", "ComercioId", "TipoEvento", "UrlDestino", "ClaveFirma",

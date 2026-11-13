@@ -18,23 +18,16 @@ using Testcontainers.RabbitMq;
 
 namespace LastMileUY.API.Tests.PuntaAPunta;
 
-// La API completa, tal como arranca en desarrollo, contra un PostgreSQL real en Docker:
-// aplica las migraciones, corre los seeders (operadores, despachadores, comercios, destinatarios
-// reglas, vehículos y repartidores) y se le habla por HTTP iniciando sesión con esos usuarios. Nada se simula.
-// También levanta un RabbitMQ real: la API publica ahí los eventos de envío, y una cola de la prueba
-// los recibe todos (EventosRecibidos), como los recibiría el worker.
 public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string Clave = "Prueba1234";
 
-    // Usuarios que crean los seeders de la API (ver IdentitySeeder)
     public const string Operador1 = "operador@prueba.test";
     public const string Operador2 = "operador2@prueba.test";
     public const string Despachador1 = "despachador@prueba.test";
     public const string Comercio1 = "comercio@prueba.test";
     public const string Comercio2 = "comercio2@prueba.test";
 
-    // Un repartidor por operador (IdentitySeeder + RutasSeeder, que le crea la ficha de repartidor)
     public const string Repartidor1 = "repartidor@prueba.test";
     public const string Repartidor2 = "repartidor2@prueba.test";
 
@@ -42,7 +35,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     private readonly RabbitMqContainer rabbit = new RabbitMqBuilder("rabbitmq:4.1-alpine").Build();
     private IConnection? conexionRabbit;
 
-    // Lo que llegó a la cola de la prueba, con las propiedades del mensaje
     public record EventoRecibido(EstadoEnvioCambiado Evento, string? MessageId, string? CorrelationId, string Cuerpo);
 
     private readonly ConcurrentQueue<EventoRecibido> eventosRecibidos = new();
@@ -52,7 +44,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     public int IdComercio1 { get; private set; }
     public int IdComercio2 { get; private set; }
 
-    // Las firmas y fotos de las pruebas van a una carpeta temporal, no al proyecto
     public string DirectorioEvidencias { get; } =
         Path.Combine(Path.GetTempPath(), "lastmileuy-evidencias-" + Guid.NewGuid().ToString("N"));
 
@@ -60,10 +51,8 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await Task.WhenAll(contenedor.StartAsync(), rabbit.StartAsync());
 
-        // La cola de la prueba tiene que existir antes de que la API publique (los seeders ya crean envíos)
         await EscucharEventosAsync();
 
-        // Arranca la API: migraciones + seeders
         _ = Server;
 
         IdOperador1 = await ConsultarIdAsync("SELECT \"Id\" FROM \"Operadores\" WHERE \"Nombre\" = 'Operador Prueba 1'");
@@ -71,10 +60,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         IdComercio1 = await ConsultarIdAsync("SELECT \"Id\" FROM \"Comercios\" WHERE \"Nombre\" = 'Comercio Prueba 1'");
         IdComercio2 = await ConsultarIdAsync("SELECT \"Id\" FROM \"Comercios\" WHERE \"Nombre\" = 'Comercio Prueba 2'");
 
-        // Los seeders vinculan el comercio 1 con los dos operadores y el comercio 2 solo con el operador 1
-        // (IdentitySeeder.SeedVinculosPruebaAsync). Acá el comercio 2 pasa a trabajar
-        // también con el operador 2, para que el operador 2 tenga envíos propios (y el comercio 2
-        // tenga que elegir operador al iniciar sesión).
         await EjecutarAsync($"""
             INSERT INTO "OperadoresComercios"("OperadorId", "ComercioId", "FechaVinculacion", "Activo")
                 VALUES ({IdOperador2}, {IdComercio2}, now(), true)
@@ -117,7 +102,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("SeedComercioPrueba:Email", Comercio1);
         builder.UseSetting("SeedComercioPrueba:Password", Clave);
         builder.UseSetting("Evidencias:Directorio", DirectorioEvidencias);
-        // Muchas pruebas crean claves de API para el mismo comercio
         builder.UseSetting("ApiPublica:ClavesActivas", "1000");
         builder.UseSetting("ConnectionStrings:RabbitMQ", rabbit.GetConnectionString());
         builder.UseSetting("ConnectionStrings:Outbox", new NpgsqlConnectionStringBuilder(contenedor.GetConnectionString())
@@ -137,8 +121,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 
 
 
-
-    // Espera (hasta 15 segundos) a que llegue a RabbitMQ un evento que cumpla la condición
     public async Task<EventoRecibido> EsperarEventoAsync(Func<EstadoEnvioCambiado, bool> condicion)
     {
         var limite = DateTime.UtcNow.AddSeconds(15);
@@ -156,7 +138,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         throw new TimeoutException("No llegó el evento esperado a RabbitMQ.");
     }
 
-    // Cola exclusiva de la prueba, unida al exchange de envíos como la del worker
     private async Task EscucharEventosAsync()
     {
         conexionRabbit = await new ConnectionFactory { Uri = new Uri(rabbit.GetConnectionString()) }
@@ -181,9 +162,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
 
         await canal.BasicConsumeAsync(cola.QueueName, autoAck: true, consumer: consumidor);
     }
-
-    // Un cliente HTTP con sesión iniciada (guarda la cookie como un navegador).
-    // operadorId: para un comercio que trabaja con varios operadores.
 
     public async Task<HttpClient> IniciarSesionAsync(string email, int? operadorId = null)
     {
@@ -233,8 +211,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         return cliente;
     }
 
-
-    // La cookie de sesión es Secure: se usa https, como en producción
     public HttpClient ClienteSinSesion() => CreateClient(new WebApplicationFactoryClientOptions
     {
         BaseAddress = new Uri("https://localhost"),
@@ -242,7 +218,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         AllowAutoRedirect = false
     });
 
-    // Primer destinatario (y su primera dirección) de un comercio, leído con el superusuario
     public async Task<(int DestinatarioId, int DireccionId)> DestinatarioDeAsync(int comercioId)
     {
         await using var conexion = new NpgsqlConnection(contenedor.GetConnectionString());
@@ -269,8 +244,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         return Convert.ToInt32(await comando.ExecuteScalarAsync());
     }
 
-    // Deja mensajes en una cola de RabbitMQ (la crea si no existe), como lo haría el worker con la de
-    // fallidos. Vacía la cola antes, para que cada prueba sepa cuántos hay.
     public async Task PublicarEnColaAsync(string cola, params (string Cuerpo, string Error)[] mensajes)
     {
         await using var canal = await conexionRabbit!.CreateChannelAsync();
@@ -290,8 +263,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         }
     }
 
-    // Una consulta como el usuario de la aplicación (lastmileuy_app, sujeto a RLS), con las variables de
-    // sesión que carga la API en cada conexión. Para probar la barrera de la base sin pasar por EF
     public async Task<long> ContarComoAplicacionAsync(string variables, string sql)
     {
         var cadena = new NpgsqlConnectionStringBuilder(contenedor.GetConnectionString())
@@ -313,7 +284,6 @@ public class ApiDePuntaAPunta : WebApplicationFactory<Program>, IAsyncLifetime
         return Convert.ToInt64(await comando.ExecuteScalarAsync());
     }
 
-    // SQL con el superusuario (saltea RLS): para armar datos que la API no deja crear
     public async Task EjecutarAsync(string sql)
     {
         await using var conexion = new NpgsqlConnection(contenedor.GetConnectionString());

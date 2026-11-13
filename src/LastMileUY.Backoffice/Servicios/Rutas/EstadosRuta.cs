@@ -1,8 +1,5 @@
 namespace LastMileUY.Backoffice.Servicios;
 
-// Cómo se muestra cada estado de la hoja de ruta. "Valor" es el nombre que manda la API (enum EstadoRuta).
-// Ojo con las clases: el Dockerfile compila Tailwind mirando solo Pages/, así que tienen que
-// aparecer también en alguna página (son las mismas de los estados del listado de envíos).
 public static class EstadosRuta
 {
     public const string Planificada = "Planificada";

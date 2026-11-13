@@ -14,7 +14,6 @@ public class DevolucionConfiguration
 
         builder.HasKey(d => d.Id);
 
-        // Cada devolución corresponde a un único envío.
         builder.HasOne<Envio>()
             .WithOne(e => e.Devolucion)
             .HasForeignKey<Devolucion>(d => d.EnvioId)
@@ -27,7 +26,6 @@ public class DevolucionConfiguration
         builder.Property(d => d.Observaciones)
             .HasMaxLength(1000);
 
-        // Un envío solo puede tener un proceso de devolución.
         builder.HasIndex(d => d.EnvioId)
             .IsUnique();
     }

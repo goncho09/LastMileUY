@@ -15,13 +15,9 @@ namespace LastMileUY.API.Tests.Sincronizacion;
 
 using static BaseConDosOperadores;
 
-// Sincronización de la app del repartidor contra la base real: evidencia según la regla de cada
-// operador, reenvíos sin duplicar, conflictos, resultado por operación y avance de la ruta.
-// Reglas de la base de prueba: el operador A pide firma; el B pide foto y documento del receptor.
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
 {
-    // Lo mínimo para que se reconozca como PNG (alcanza para la validación)
     private static readonly string Png = Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
 
     private readonly AlmacenEnMemoria almacen = new();
@@ -44,7 +40,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
             .Include(e => e.IntentosEntrega).ThenInclude(i => i.PruebaEntrega)
             .FirstAsync(e => e.Id == envios[0]);
 
-        // Se usa la hora del celular, no la de llegada
         Assert.Equal(hace2Horas, envio.FechaEntrega!.Value, TimeSpan.FromSeconds(1));
         var intento = Assert.Single(envio.IntentosEntrega);
         Assert.True(intento.Exitoso);
@@ -52,12 +47,10 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
         Assert.Equal("Ana Silva", intento.PruebaEntrega!.NombreReceptor);
         Assert.NotNull(await almacen.LeerAsync(intento.PruebaEntrega.FirmaArchivoKey!));
 
-        // El evento queda en el historial con la ubicación
         var evento = await db.EventosEnvio.Where(e => e.EnvioId == envios[0]).OrderByDescending(e => e.Id).FirstAsync();
         Assert.Equal("Repartidor", evento.Origen);
         Assert.Equal(-34.9m, evento.Latitud);
 
-        // La única parada se resolvió: la ruta arrancó y terminó
         var rutaGuardada = await db.Rutas.FirstAsync(r => r.Id == ruta);
         Assert.Equal(EstadoRuta.Finalizada, rutaGuardada.Estado);
         Assert.Equal(hace2Horas, rutaGuardada.FechaInicio!.Value, TimeSpan.FromSeconds(1));
@@ -82,7 +75,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
         var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorB, 2);
 
         var resultados = (await SincronizarAsync(OperadorB, repartidor,
-            // Con firma pero sin foto ni documento: no alcanza para el operador B
             Entrega(ruta, envios[0], firma: Png),
             Entrega(ruta, envios[1], firma: null, foto: Png, documento: "1.234.567-8"))).Resultados;
 
@@ -98,7 +90,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
         var operacion = Entrega(ruta, envios[0], firma: Png);
 
         var primera = Assert.Single((await SincronizarAsync(OperadorA, repartidor, operacion)).Resultados);
-        // La app no recibió la respuesta y la manda otra vez
         var segunda = Assert.Single((await SincronizarAsync(OperadorA, repartidor, operacion)).Resultados);
 
         Assert.Equal("Aplicada", primera.Resultado);
@@ -127,7 +118,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
     {
         var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorA);
 
-        // Mientras el repartidor estaba sin señal, el despachador devolvió el envío al depósito
         await using (var db = baseDeDatos.CrearContexto(OperadorA))
         {
             var envio = await db.Envios.FirstAsync(e => e.Id == envios[0]);
@@ -148,7 +138,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
     public async Task Dos_operaciones_distintas_sobre_el_mismo_envio_la_segunda_es_conflicto()
     {
         var (ruta, repartidor, envios) = await DatosDeRutas.CrearRutaDespachadaAsync(baseDeDatos, OperadorA, 2);
-        // Dos envíos: así la ruta sigue en curso después de la primera operación (si no, termina)
 
         var resultados = (await SincronizarAsync(OperadorA, repartidor,
             Entrega(ruta, envios[0], firma: Png),
@@ -170,7 +159,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
 
         await using (var db = baseDeDatos.CrearContexto(OperadorA))
         {
-            // Queda un envío en tránsito: la ruta sigue en curso
             Assert.Equal(EstadoRuta.EnCurso, (await db.Rutas.FirstAsync(r => r.Id == ruta)).Estado);
 
             var intento = await db.IntentosEntrega.SingleAsync(i => i.EnvioId == envios[0]);
@@ -230,7 +218,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
             Entrega(ruta, envios[0], firma: Png))).Resultados);
 
         Assert.Contains("otro repartidor", deOtroRepartidor.Mensaje);
-        // Para el operador B la ruta del A no existe (EF + RLS), y el envío tampoco
         Assert.Contains("no existe", deOtroOperador.Mensaje);
         Assert.Null(deOtroOperador.EstadoEnvio);
     }
@@ -286,7 +273,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
         Assert.NotNull(await consultas.ObtenerEvidenciaAsync(aplicada.IntentoEntregaId!.Value, "firma"));
         Assert.Null(await consultas.ObtenerEvidenciaAsync(aplicada.IntentoEntregaId.Value, "foto"));
 
-        // El operador B no ve ni las operaciones ni la evidencia
         await using var dbB = baseDeDatos.CrearContexto(OperadorB);
         var consultasB = new ConsultasSincronizacionService(dbB, almacen);
         Assert.Empty((await consultasB.ListarOperacionesAsync(1, 20, ruta, null)).Items);
@@ -334,7 +320,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
         Observaciones = observaciones
     };
 
-    // Un motivo de no entrega del operador (lo crea si todavía no tiene)
     private async Task<int> MotivoAsync(int operadorId)
     {
         await using var db = baseDeDatos.CrearContexto(operadorId);
@@ -350,7 +335,6 @@ public class SincronizacionTests(BaseConDosOperadores baseDeDatos)
         return motivo.Id;
     }
 
-    // Guarda las imágenes en memoria en vez de en disco
     private class AlmacenEnMemoria : IAlmacenEvidencias
     {
         private readonly Dictionary<string, Imagen> imagenes = [];

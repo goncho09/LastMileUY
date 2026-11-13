@@ -7,8 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Rutas.Infrastructure;
 
-// Vehículos y repartidores de los operadores de prueba, para poder armar hojas de ruta.
-// Los usuarios con rol Repartidor los crea IdentitySeeder; acá se les crea su ficha de repartidor.
 public static class RutasSeeder
 {
     public static async Task SeedPruebaAsync(IServiceProvider services, IReadOnlyList<int> operadoresId)
@@ -24,7 +22,6 @@ public static class RutasSeeder
         {
             var operadorId = operadoresId[i];
 
-            // Se guarda como ese operador: el filtro de EF y el RLS no dejan crear datos de otro
             var contexto = new ContextoOperadorFijo(operadorId);
             var opciones = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseNpgsql(cadena)

@@ -146,7 +146,6 @@ public sealed class PublicadorReintentosOutboxWorker(
                     "Error publicando reintento {Id}",
                     mensaje.MensajeFallidoId);
 
-                // No seguimos publicando si falló un mensaje.
                 break;
             }
         }

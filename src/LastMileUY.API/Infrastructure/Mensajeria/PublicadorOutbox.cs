@@ -9,14 +9,6 @@ using RabbitMQ.Client;
 
 namespace LastMileUY.API.Infrastructure.Mensajeria;
 
-// Publica en RabbitMQ los mensajes del outbox, en orden, y los marca como publicados.
-// - Se conecta a la base con su propio usuario (lastmileuy_publicador), que solo puede leer y
-//   marcar el outbox: la aplicación solo puede escribirlo (ver la migración Outbox).
-// - Con varias instancias de la API, FOR UPDATE SKIP LOCKED reparte los mensajes: cada uno lo toma
-//   una sola instancia.
-// - Espera la confirmación de RabbitMQ antes de marcar el mensaje. Si se cae entre publicar y marcar,
-//   el mensaje sale dos veces: el worker descarta el repetido por EventoId (entrega "al menos una vez").
-// - Si RabbitMQ no está, reintenta con espera creciente (hasta un minuto) sin perder nada.
 public class PublicadorOutbox(
     NpgsqlDataSource baseOutbox,
     ConexionRabbitMq rabbit,
@@ -25,7 +17,6 @@ public class PublicadorOutbox(
 {
     private const int Lote = 50;
 
-    // Cada cuánto revisa la tabla aunque nadie avise (mensajes de otra instancia, reintentos)
     private static readonly TimeSpan Revision = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan EsperaMaxima = TimeSpan.FromMinutes(1);
 
@@ -42,7 +33,6 @@ public class PublicadorOutbox(
                 var publicados = await PublicarLoteAsync(stoppingToken);
                 fallosSeguidos = 0;
 
-                // Lote lleno: puede haber más esperando
                 if (publicados == Lote)
                     continue;
 
@@ -58,14 +48,11 @@ public class PublicadorOutbox(
                 var espera = TimeSpan.FromSeconds(Math.Min(Math.Pow(2, fallosSeguidos), EsperaMaxima.TotalSeconds));
                 logger.LogWarning(ex, "No se pudo publicar el outbox; se reintenta en {Espera}", espera);
 
-                // Si la API se está apagando, esto corta con OperationCanceledException y el host lo da por terminado
                 await Task.Delay(espera, stoppingToken);
             }
         }
     }
 
-    // Toma hasta un lote de pendientes, los publica y los marca. Si uno falla, anota el error y corta
-    // ahí, para no publicar los siguientes antes que él.
     private async Task<int> PublicarLoteAsync(CancellationToken cancellationToken)
     {
         await using var conexion = await baseOutbox.OpenConnectionAsync(cancellationToken);
@@ -181,8 +168,6 @@ public class PublicadorOutbox(
             Headers = encabezados
         };
 
-        // mandatory: si no hay ninguna cola para recibirlo, RabbitMQ lo devuelve y queda en el outbox
-        // (si no, lo descartaría en silencio). Con la confirmación activada, falla acá.
         await canal.BasicPublishAsync(
             TopologiaMensajeria.ExchangeEnvios,
             evento.Tipo,

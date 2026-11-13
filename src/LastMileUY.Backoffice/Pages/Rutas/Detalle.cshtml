@@ -43,7 +43,6 @@
     else
     {
 <div id="contenido-detalle-ruta" class="space-y-7">
-        <!-- Encabezado -->
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
                 <div class="flex flex-wrap items-center gap-3">
@@ -69,7 +68,6 @@
             }
         </div>
 
-        <!-- Repartidor, vehículo y carga -->
         <section class="grid gap-4 md:grid-cols-3">
             <div class="rounded-2xl border border-white/10 bg-[#171923] p-5">
                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Repartidor</p>
@@ -109,7 +107,6 @@
             </div>
         </section>
 
-        <!-- Paradas -->
         <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">
             <div class="border-b border-white/10 px-5 py-5 sm:px-6">
                 <h2 class="text-base font-semibold text-white">Paradas</h2>
@@ -171,7 +168,6 @@
             </div>
         </section>
 
-        <!-- Lo que llegó desde la app del repartidor -->
         @if (ruta.Estado != EstadosRuta.Planificada)
         {
             <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#171923]">

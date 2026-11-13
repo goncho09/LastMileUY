@@ -21,7 +21,6 @@ app.MapPost("/avisos/{**ruta}", async (
     ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
-    // Identificar el aviso.
     if (!Guid.TryParse(
             pedido.Headers[EncabezadosAvisos.AvisoId].ToString(),
             out var avisoId))
@@ -29,7 +28,6 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // Identificar la suscripción que recibe el aviso.
     if (!int.TryParse(
             pedido.Headers[FirmaAvisos.EncabezadoSuscripcionId].ToString(),
             NumberStyles.None,
@@ -39,8 +37,6 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // Obtener la clave correspondiente a esa suscripción.
-    // El receptor no consulta la base de datos de LastMileUY.
     var claveFirma = registro.Obtener(suscripcionId);
 
     if (string.IsNullOrWhiteSpace(claveFirma))
@@ -52,7 +48,6 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // Validar el timestamp.
     if (!long.TryParse(
             pedido.Headers[FirmaAvisos.EncabezadoTimestamp].ToString(),
             NumberStyles.None,
@@ -62,7 +57,6 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // Aceptamos una diferencia máxima de cinco minutos.
     var ahora = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
     if (timestamp < ahora - 300 || timestamp > ahora + 300)
@@ -74,7 +68,6 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // Obtener la firma recibida.
     var firmaRecibida = pedido.Headers[
         FirmaAvisos.EncabezadoFirma].ToString();
 
@@ -83,13 +76,11 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // Leer el contenido exacto que envió el Worker.
     using var lector = new StreamReader(pedido.Body);
 
     var contenido = await lector.ReadToEndAsync(
         cancellationToken);
 
-    // Verificar la firma HMAC-SHA256.
     if (!FirmaAvisos.Verificar(
             claveFirma,
             suscripcionId,
@@ -106,8 +97,6 @@ app.MapPost("/avisos/{**ruta}", async (
         return Results.Unauthorized();
     }
 
-    // El aviso ya está autenticado.
-    // Conservamos las opciones del receptor de prueba.
     var respuesta = estado ?? StatusCodes.Status200OK;
 
     var encabezados = pedido.Headers

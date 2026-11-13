@@ -129,7 +129,6 @@
         </p>
     </div>
 
-    <!-- Filtros -->
     <form method="get"
           class="grid items-end gap-4 border-b border-white/10 p-6 md:grid-cols-4">
 
@@ -190,7 +189,6 @@
         </div>
     </form>
 
-    <!-- Resultados -->
     @if (Model.Error is not null)
     {
         <div role="alert" class="p-6 text-sm text-red-300">
@@ -293,7 +291,6 @@
             </table>
         </div>
     
-        <!-- Paginación -->
         @if (Model.Resultado.Total > Model.Resultado.TamanoPagina)
         {
             <nav aria-label="Paginación"

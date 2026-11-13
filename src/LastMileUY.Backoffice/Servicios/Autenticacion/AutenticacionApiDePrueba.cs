@@ -1,9 +1,5 @@
 namespace LastMileUY.Backoffice.Servicios;
 
-// Con los datos de prueba no hay API contra la cual validar: cualquier email y contraseña
-// entran como un operador de prueba. Solo se usa con Api:UsarDatosDePrueba = true.
-// Para probar los permisos: un email que empiece con "despachador" entra como Despachador,
-// y uno que empiece con "administrador" entra como Administrador (sin operador, como en la API).
 public class AutenticacionApiDePrueba : IAutenticacionApi
 {
     public Task<SesionIniciada?> IniciarSesionAsync(string email, string password, CancellationToken ct = default)

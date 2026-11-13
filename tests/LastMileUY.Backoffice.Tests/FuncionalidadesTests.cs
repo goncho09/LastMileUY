@@ -14,8 +14,6 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using IndexFuncionalidades = LastMileUY.Backoffice.Pages.Funcionalidades.IndexModel;
 
-// Banderas de funcionalidad por operador en el Backoffice: la pantalla del administrador y lo que
-// cambia en las pantallas del operador cuando una está apagada
 public class FuncionalidadesTests
 {
     [Fact]
@@ -35,7 +33,6 @@ public class FuncionalidadesTests
 
         var ahora = await api.ListarAsync();
         Assert.False(Activa(ahora, 1, Contracts.Operadores.Funcionalidades.SeguimientoPublico));
-        // Solo ese operador y esa funcionalidad
         Assert.True(Activa(ahora, 2, Contracts.Operadores.Funcionalidades.SeguimientoPublico));
         Assert.True(Activa(ahora, 1, Contracts.Operadores.Funcionalidades.OrdenSugerido));
     }
@@ -68,7 +65,6 @@ public class FuncionalidadesTests
         Assert.False(sinOrden.OrdenSugeridoHabilitado);
     }
 
-    // Si la API lo rechaza por estar apagado, se muestra su motivo y no "no tenés permiso"
     [Fact]
     public async Task El_rechazo_por_funcionalidad_apagada_muestra_el_motivo_de_la_api()
     {

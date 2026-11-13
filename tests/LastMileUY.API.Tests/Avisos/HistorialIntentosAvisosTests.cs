@@ -11,7 +11,6 @@ namespace LastMileUY.API.Tests.Avisos;
 
 using static BaseConDosOperadores;
 
-// El historial de intentos de los avisos (IntentosAvisos) también queda aislado por operador (ADR-01)
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class HistorialIntentosAvisosTests(BaseConDosOperadores baseDeDatos)
 {
@@ -20,7 +19,6 @@ public class HistorialIntentosAvisosTests(BaseConDosOperadores baseDeDatos)
     {
         int avisoId;
 
-        // Un aviso de un envío del operador A, con dos intentos
         await using (var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido))
         {
             var configuracion = new ConfigurationBuilder().Build();
@@ -54,7 +52,6 @@ public class HistorialIntentosAvisosTests(BaseConDosOperadores baseDeDatos)
             Assert.Equal(2, await conA.IntentosAvisos.CountAsync(i => i.EntregaAvisoId == avisoId));
         }
 
-        // Ni con el filtro de EF ni salteándolo (lo frena el RLS de la base)
         await using var conB = baseDeDatos.CrearContexto(OperadorB);
         Assert.Equal(0, await conB.IntentosAvisos.CountAsync(i => i.EntregaAvisoId == avisoId));
         Assert.Equal(0, await conB.IntentosAvisos.IgnoreQueryFilters().CountAsync(i => i.EntregaAvisoId == avisoId));

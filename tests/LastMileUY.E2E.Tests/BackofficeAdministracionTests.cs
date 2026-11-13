@@ -4,11 +4,6 @@ using Microsoft.Playwright;
 using static BackofficeEnNavegador;
 using static Microsoft.Playwright.Assertions;
 
-// Administración global del Backoffice (operadores y comercios), como la usa el administrador de la
-// plataforma, con los datos de prueba en memoria. Lo que valida la API está en
-// AdministracionGlobalHttpTests. Encontró: lo creado desaparecía al volver al listado (los servicios de
-// prueba eran Scoped), los campos del operador no tenían estilo (clases de daisyUI, que el proyecto no
-// usa), "Editar operador" no era una página, y los rechazos de la API (correo repetido) no se mostraban
 [Collection(ColeccionBackofficeEnNavegador.Nombre)]
 public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
 {
@@ -21,7 +16,6 @@ public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
 
         await pagina.GotoAsync("/Operadores/Crear");
 
-        // Los campos del operador se ven como los demás (con borde), no como texto suelto
         var campoNombre = pagina.GetByLabel("Nombre del operador");
         Assert.NotEqual("0px", await campoNombre.EvaluateAsync<string>("e => getComputedStyle(e).borderTopWidth"));
 
@@ -33,11 +27,9 @@ public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Status)).ToContainTextAsync("Operador creado correctamente.");
         await Expect(pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = nombre })).ToBeVisibleAsync();
 
-        // Sigue ahí al volver a entrar
         await pagina.ReloadAsync();
         await Expect(pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = nombre })).ToBeVisibleAsync();
 
-        // Editarlo desde el listado (el enlace llevaba a una página que no existía)
         await pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = nombre }).GetByRole(AriaRole.Link, new() { Name = "Editar" }).ClickAsync();
         await Expect(pagina.GetByRole(AriaRole.Main).GetByRole(AriaRole.Heading, new() { Name = "Editar operador", Level = 1 })).ToBeVisibleAsync();
         await Expect(pagina.GetByLabel("Nombre del operador")).ToHaveValueAsync(nombre);
@@ -46,7 +38,6 @@ public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Status)).ToContainTextAsync("Operador actualizado correctamente.");
         await Expect(pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = nombre + " editado" })).ToBeVisibleAsync();
 
-        // El mismo correo para otro responsable se rechaza con el motivo
         await pagina.GotoAsync("/Operadores/Crear");
         await pagina.GetByLabel("Nombre del operador").FillAsync(nombre + " bis");
         await CompletarUsuarioInicialAsync(pagina, email);
@@ -69,7 +60,6 @@ public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
         var fila = pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = nombre });
         await Expect(fila).ToBeVisibleAsync();
 
-        // Vincularlo con un operador: aparece con su nombre
         await fila.GetByRole(AriaRole.Link, new() { Name = "Operadores" }).ClickAsync();
         await pagina.GetByLabel("Operador disponible").SelectOptionAsync(new SelectOptionValue { Label = "Envíos del Sur" });
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Vincular" }).ClickAsync();
@@ -77,8 +67,6 @@ public class BackofficeAdministracionTests(BackofficeEnNavegador backoffice)
         await Expect(pagina.GetByRole(AriaRole.Row).Filter(new() { HasText = "Envíos del Sur" })).ToBeVisibleAsync();
     }
 
-    // "Sin permiso" mandaba a todos a envíos, que el administrador tampoco puede ver: ahora va al inicio,
-    // que lleva a cada perfil a lo suyo
     [Fact]
     public async Task Sin_permiso_el_administrador_vuelve_a_su_inicio()
     {

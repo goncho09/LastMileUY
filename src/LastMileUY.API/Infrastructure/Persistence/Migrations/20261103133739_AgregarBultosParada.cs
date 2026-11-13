@@ -39,9 +39,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 table: "BultosParada",
                 column: "BultoId");
 
-            // Aislamiento entre operadores (ADR-01): se ve si se ve la parada, que ya pasa por la política
-            // de Paradas (y esa por la de Envios). Además, el bulto tiene que ser del envío de esa parada:
-            // una parada no puede llevar un bulto de otro envío.
             migrationBuilder.Sql("""
                 ALTER TABLE "BultosParada" ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE "BultosParada" FORCE ROW LEVEL SECURITY;
@@ -60,7 +57,6 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // La política se va con la tabla
             migrationBuilder.DropTable(
                 name: "BultosParada");
         }

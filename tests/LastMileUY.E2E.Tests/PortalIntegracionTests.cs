@@ -5,9 +5,6 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
-// La pantalla Integración del portal (claves de la API pública, docs/api-publica.md), como la usa el
-// comercio: crea una clave, la ve una sola vez, su sistema la usa contra la API real, y al revocarla
-// desde la pantalla deja de funcionar
 [Collection(ColeccionPortalComercioEnNavegador.Nombre)]
 public class PortalIntegracionTests(PortalComercioEnNavegador portal)
 {
@@ -20,14 +17,12 @@ public class PortalIntegracionTests(PortalComercioEnNavegador portal)
         await pagina.GotoAsync("/integracion");
         await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "Integración", Exact = true })).ToBeVisibleAsync();
 
-        // Sin nombre no se puede crear
         var crear = pagina.GetByRole(AriaRole.Button, new() { Name = "Crear clave" });
         await Expect(crear).ToBeDisabledAsync();
 
         await pagina.GetByLabel("Nombre", new() { Exact = true }).FillAsync(nombre);
         await crear.ClickAsync();
 
-        // La clave completa se ve una vez, al crearla
         var panel = pagina.GetByRole(AriaRole.Heading, new() { Name = "Clave creada" });
         await Expect(panel).ToBeVisibleAsync();
         var campo = pagina.GetByLabel("Clave de API", new() { Exact = true });
@@ -39,16 +34,13 @@ public class PortalIntegracionTests(PortalComercioEnNavegador portal)
         await Expect(fila).ToContainTextAsync("Nunca");
         await Expect(fila).ToContainTextAsync(clave[..13]);
 
-        // El sistema del comercio la usa contra la API, sin sesión
         Assert.Equal(HttpStatusCode.OK, await ConsultarConClaveAsync(clave));
 
-        // Al volver a entrar ya no se ve el secreto, y figura el último uso
         await pagina.ReloadAsync();
         await Expect(panel).ToBeHiddenAsync();
         await Expect(pagina.GetByText(clave)).ToHaveCountAsync(0);
         await Expect(fila).Not.ToContainTextAsync("Nunca");
 
-        // Revocar pide confirmación y se puede cancelar
         await fila.GetByRole(AriaRole.Button, new() { Name = $"Revocar la clave {nombre}" }).ClickAsync();
         var confirmacion = pagina.GetByRole(AriaRole.Heading, new() { Name = $"¿Revocar la clave «{nombre}»?" });
         await Expect(confirmacion).ToBeVisibleAsync();
@@ -64,8 +56,6 @@ public class PortalIntegracionTests(PortalComercioEnNavegador portal)
         Assert.Equal(HttpStatusCode.Unauthorized, await ConsultarConClaveAsync(clave));
     }
 
-    // Una clave del ambiente de pruebas: se elige al crearla, se distingue en la tabla y funciona contra
-    // la API (con su propio listado de envíos, vacío de los de verdad)
     [Fact]
     public async Task Crea_una_clave_del_ambiente_de_pruebas()
     {
@@ -88,8 +78,6 @@ public class PortalIntegracionTests(PortalComercioEnNavegador portal)
         Assert.Equal(HttpStatusCode.OK, await ConsultarConClaveAsync(clave));
     }
 
-    // La documentación navegable (Scalar) se abre sin sesión y carga el documento de la v1: se ven
-    // los endpoints de la API pública con su descripción
     [Fact]
     public async Task La_documentacion_de_la_api_publica_se_ve_en_el_navegador()
     {

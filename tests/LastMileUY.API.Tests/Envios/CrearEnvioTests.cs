@@ -6,7 +6,6 @@ namespace LastMileUY.API.Tests.Envios;
 
 using static BaseConDosOperadores;
 
-// Crear un envío completo con EF contra la base real, como lo hará el alta de envíos
 [Collection(ColeccionBaseConDosOperadores.Nombre)]
 public class CrearEnvioTests(BaseConDosOperadores baseDeDatos)
 {

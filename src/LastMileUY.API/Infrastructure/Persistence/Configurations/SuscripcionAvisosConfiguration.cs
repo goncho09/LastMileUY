@@ -15,13 +15,11 @@ public class SuscripcionAvisosConfiguration
 
         builder.HasKey(s => s.Id);
 
-        // Cada suscripción pertenece a un operador.
         builder.HasOne<Operador>()
             .WithMany(o => o.SuscripcionesAvisos)
             .HasForeignKey(s => s.OperadorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cada suscripción pertenece a un comercio.
         builder.HasOne<Comercio>()
             .WithMany(c => c.SuscripcionesAvisos)
             .HasForeignKey(s => s.ComercioId)
@@ -39,12 +37,9 @@ public class SuscripcionAvisosConfiguration
             .HasMaxLength(128)
             .IsRequired();
 
-        // Las suscripciones que ya existían quedan en la versión 1: siguen recibiendo lo mismo
         builder.Property(s => s.VersionContrato)
             .HasDefaultValue(1);
 
-        // Facilita buscar las suscripciones activas
-        // de un comercio para un evento determinado.
         builder.HasIndex(s => new
         {
             s.OperadorId,

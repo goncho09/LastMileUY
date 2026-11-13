@@ -2,7 +2,6 @@ using LastMileUY.Contracts.Operadores;
 
 namespace LastMileUY.Backoffice.Servicios;
 
-// Dos operadores en memoria, para trabajar la pantalla sin la API (Api:UsarDatosDePrueba = true)
 public class FuncionalidadesApiDePrueba : IFuncionalidadesApi
 {
     private readonly Dictionary<(int OperadorId, string Clave), bool> decisiones = [];

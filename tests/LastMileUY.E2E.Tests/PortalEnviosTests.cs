@@ -3,7 +3,6 @@ namespace LastMileUY.E2E.Tests;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
-// "Mis envíos" del portal: buscar y filtrar el listado, y abrir el detalle de un envío
 [Collection(ColeccionPortalComercioEnNavegador.Nombre)]
 public class PortalEnviosTests(PortalComercioEnNavegador portal)
 {
@@ -18,7 +17,6 @@ public class PortalEnviosTests(PortalComercioEnNavegador portal)
         var pagina = await portal.IniciarSesionAsync(OperadorPrueba1);
         await pagina.GotoAsync("/envios");
 
-        // Busca mientras se escribe, sin botón
         var buscar = pagina.GetByLabel("Buscar", new() { Exact = true });
         await buscar.FillAsync(referencia);
         var filas = pagina.Locator("tbody tr");
@@ -40,13 +38,10 @@ public class PortalEnviosTests(PortalComercioEnNavegador portal)
         await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "Bultos (1)" })).ToBeVisibleAsync();
         await Expect(pagina.GetByText("Todavía no hubo intentos de entrega.")).ToBeVisibleAsync();
 
-        // Volver al listado
         await pagina.GetByRole(AriaRole.Link, new() { Name = "Mis envíos" }).First.ClickAsync();
         await pagina.WaitForURLAsync("**/envios");
     }
 
-    // Entregado parcialmente es un estado de la API que el portal no tenía en su lista: se mostraba el
-    // nombre interno y no se podía filtrar por él
     [Fact]
     public async Task Filtra_por_entregado_parcialmente_y_lo_muestra_con_su_texto()
     {

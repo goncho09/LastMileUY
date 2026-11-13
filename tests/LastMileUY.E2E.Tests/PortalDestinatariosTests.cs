@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using static Microsoft.Playwright.Assertions;
 
-// El comercio carga destinatarios desde su portal, como lo haría una persona, y les manda envíos
 [Collection(ColeccionPortalComercioEnNavegador.Nombre)]
 public class PortalDestinatariosTests(PortalComercioEnNavegador portal)
 {
@@ -14,7 +13,6 @@ public class PortalDestinatariosTests(PortalComercioEnNavegador portal)
         var pagina = await portal.IniciarSesionAsync();
         var apellido = "Navegador" + Random.Shared.Next(1000, 9999);
 
-        // Desde el formulario de envíos: "¿No está en la lista?"
         await pagina.GotoAsync("/envios/nuevo");
         await pagina.GetByRole(AriaRole.Link, new() { Name = "Cargá un destinatario nuevo" }).ClickAsync();
         await Expect(pagina.GetByRole(AriaRole.Heading, new() { Name = "Nuevo destinatario" })).ToBeVisibleAsync();
@@ -27,13 +25,11 @@ public class PortalDestinatariosTests(PortalComercioEnNavegador portal)
         await pagina.GetByLabel("Ciudad o localidad").FillAsync("San José de Mayo");
         await pagina.GetByLabel("Departamento").SelectOptionAsync("San José");
 
-        // Una ubicación mal escrita se avisa antes de mandar
         var ubicacion = pagina.GetByLabel("Ubicación en el mapa");
         await ubicacion.FillAsync("cerca de la plaza");
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Guardar destinatario" }).ClickAsync();
         await Expect(pagina.GetByRole(AriaRole.Alert)).ToContainTextAsync("latitud y longitud");
 
-        // Como la copia Google Maps
         await ubicacion.FillAsync("-34.3375, -56.7136");
         await pagina.GetByRole(AriaRole.Button, new() { Name = "Guardar destinatario" }).ClickAsync();
 
@@ -42,7 +38,6 @@ public class PortalDestinatariosTests(PortalComercioEnNavegador portal)
         await Expect(tarjeta).ToContainTextAsync("Av. Artigas 456, San José de Mayo (San José)");
         await Expect(tarjeta).ToContainTextAsync("Con ubicación");
 
-        // Vuelve al envío y el destinatario nuevo ya está para elegir
         await pagina.GetByRole(AriaRole.Link, new() { Name = "Crear el envío" }).ClickAsync();
         await pagina.WaitForURLAsync("**/envios/nuevo");
         await pagina.GetByLabel("Destinatario").SelectOptionAsync(new SelectOptionValue { Label = $"{apellido}, Lucía" });
