@@ -100,12 +100,24 @@ public class ConsumidorEventosEnvio(
         await canal.QueueDeclareAsync(
             TopologiaMensajeria.ColaWorker, durable: true, exclusive: false, autoDelete: false,
             cancellationToken: cancellationToken);
+        await canal.QueueDeclareAsync(
+            "lastmileuy.correos",
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            cancellationToken: cancellationToken);
+
         await canal.QueueBindAsync(
             TopologiaMensajeria.ColaWorker, TopologiaMensajeria.ExchangeEnvios,
             TopologiaMensajeria.PatronEventosEnvio, cancellationToken: cancellationToken);
         await canal.QueueBindAsync(
             TopologiaMensajeria.ColaWorker, TopologiaMensajeria.ExchangeEnvios,
             TopologiaMensajeria.PatronEventosBulto, cancellationToken: cancellationToken);
+        await canal.QueueBindAsync(
+            "lastmileuy.correos",
+            TopologiaMensajeria.ExchangeEnvios,
+            TopologiaMensajeria.PatronEnvioAdmitido,
+            cancellationToken: cancellationToken);
 
         for (var nivel = 1; nivel <= opciones.EsperasReintento.Length; nivel++)
         {

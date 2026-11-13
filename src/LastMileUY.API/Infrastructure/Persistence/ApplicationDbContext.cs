@@ -88,6 +88,9 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
     public DbSet<MensajeReintentoOutbox> MensajesReintentoOutbox
         => Set<MensajeReintentoOutbox>();
 
+    public DbSet<CorreoSeguimiento> CorreosSeguimiento
+        => Set<CorreoSeguimiento>();
+
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
 
     public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
@@ -243,6 +246,11 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
                     oc.ComercioId == c.Id &&
                     oc.OperadorId == OperadorActual &&
                     oc.Activo));
+
+        modelBuilder.Entity<CorreoSeguimiento>()
+            .HasQueryFilter(x =>
+                x.OperadorId == OperadorActual &&
+                x.ComercioId == ComercioActual);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

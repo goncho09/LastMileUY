@@ -60,7 +60,12 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(
 builder.Services.AddSingleton<RepositorioMensajesFallidos>();
 builder.Services.AddSingleton<SenalAvisos>();
 builder.Services.AddSingleton<IProcesadorEventos, ProcesadorAvisos>();
+
 builder.Services.AddHostedService<ConsumidorEventosEnvio>();
+builder.Services.AddHostedService<ConsumidorCorreos>();
+
+builder.Services.AddTransient<ServicioCorreo>();
+builder.Services.AddTransient<RepositorioCorreos>();
 
 var permitirLocales = builder.Configuration.GetValue<bool>("Avisos:PermitirDestinosLocales");
 builder.Services.AddHttpClient<ClienteAvisos>(http => http.Timeout = ClienteAvisos.TiempoMaximo)

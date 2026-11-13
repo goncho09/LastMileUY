@@ -192,6 +192,12 @@
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://jaeger:4317"
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: "http://prometheus:9090/api/v1/otlp"
       OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: "http/protobuf"
+      Correo__Host: smtp.gmail.com
+      Correo__Puerto: "587"
+      Correo__Usuario: ${CORREO_USUARIO}
+      Correo__Contrasena: ${CORREO_CONTRASENA}
+      Correo__Remitente: ${CORREO_USUARIO}
+      Correo__UrlSeguimiento: http://localhost:8084
     depends_on:
       rabbitmq:
         condition: service_healthy
