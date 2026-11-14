@@ -140,12 +140,17 @@ public class ConsultasRutasService(ApplicationDbContext db)
                     .Select(x => x.Bulto)
                     .ToList());
 
-        var evidencias = await db.ReglasOperativas.AsNoTracking()
-            .Where(r => r.Activa)
-            .ToDictionaryAsync(
-                r => r.Modalidad,
-                r => new EvidenciaRequeridaDto(r.RequiereFirma, r.RequiereFotografia, r.RequiereDocumentoReceptor),
-                cancellationToken);
+        var idsReglas = filas.Select(x => x.Envio.ReglaOperativaId).OfType<int>().Distinct().ToList();
+        var reglas = await db.ReglasOperativas.AsNoTracking()
+            .Where(r => r.Activa || idsReglas.Contains(r.Id))
+            .ToListAsync(cancellationToken);
+
+        EvidenciaRequeridaDto Evidencia(Envio envio) =>
+            (envio.ReglaOperativaId is int reglaId
+                ? reglas.FirstOrDefault(r => r.Id == reglaId)
+                : reglas.FirstOrDefault(r => r.Activa && r.Modalidad == envio.Modalidad)) is { } regla
+                ? new EvidenciaRequeridaDto(regla.RequiereFirma, regla.RequiereFotografia, regla.RequiereDocumentoReceptor)
+                : EvidenciaRequeridaDto.Ninguna;
 
         var paradas = filas
             .Select(x => new ParadaDto(
@@ -160,7 +165,7 @@ public class ConsultasRutasService(ApplicationDbContext db)
                 x.PesoKg,
                 x.VolumenM3 / Bulto.CentimetrosCubicosPorMetroCubico,
                 x.Envio.Modalidad.ToString(),
-                evidencias.GetValueOrDefault(x.Envio.Modalidad, EvidenciaRequeridaDto.Ninguna),
+                Evidencia(x.Envio),
                 bultosPorEnvio.GetValueOrDefault(
                     x.Envio.Id,
                     Array.Empty<BultoRutaDto>())))

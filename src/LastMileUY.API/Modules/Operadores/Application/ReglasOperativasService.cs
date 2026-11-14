@@ -17,9 +17,16 @@ public class ReglasOperativasService(ApplicationDbContext db, IContextoOperador 
             .OrderBy(r => r.Modalidad)
             .ThenByDescending(r => r.Activa)
             .ThenBy(r => r.Nombre)
+            .ThenByDescending(r => r.FechaCreacion)
             .ToListAsync(ct);
 
-        return reglas.Select(ADto).ToList();
+        var usos = await db.Envios.AsNoTracking()
+            .Where(e => e.ReglaOperativaId != null)
+            .GroupBy(e => e.ReglaOperativaId!.Value)
+            .Select(g => new { ReglaId = g.Key, Cantidad = g.Count() })
+            .ToDictionaryAsync(x => x.ReglaId, x => x.Cantidad, ct);
+
+        return reglas.Select(r => ADto(r) with { EnviosAsociados = usos.GetValueOrDefault(r.Id) }).ToList();
     }
 
     public async Task<ReglaOperativaConfiguracionDto> CrearAsync(GuardarReglaOperativaRequest request, CancellationToken ct = default)
@@ -43,12 +50,31 @@ public class ReglasOperativasService(ApplicationDbContext db, IContextoOperador 
         if (regla is null)
             return false;
 
-        Aplicar(new ReglaOperativa(), request);
+        var nueva = new ReglaOperativa { OperadorId = regla.OperadorId, Activa = regla.Activa };
+        Aplicar(nueva, request);
+
+        var enUso = await db.Envios.AnyAsync(e => e.ReglaOperativaId == regla.Id, ct);
 
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
-        if (regla.Activa)
-            await DesactivarOtrasAsync(ConfiguracionComun.Modalidad(request.Modalidad), regla.Id, ct);
-        Aplicar(regla, request);
+
+        if (enUso)
+        {
+            regla.Activa = false;
+            await db.SaveChangesAsync(ct);
+
+            if (nueva.Activa)
+                await DesactivarOtrasAsync(nueva.Modalidad, null, ct);
+
+            db.ReglasOperativas.Add(nueva);
+        }
+        else
+        {
+            if (regla.Activa)
+                await DesactivarOtrasAsync(nueva.Modalidad, regla.Id, ct);
+
+            Aplicar(regla, request);
+        }
+
         await db.GuardarAsync(Repetida, ct);
         await transaccion.CommitAsync(ct);
         return true;

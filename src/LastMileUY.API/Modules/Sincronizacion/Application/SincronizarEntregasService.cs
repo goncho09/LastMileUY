@@ -237,9 +237,7 @@ public class SincronizarEntregasService(
                 "no se aplicó. Lo resuelve el despachador.");
         }
 
-        var regla = await db.ObtenerVigenteAsync(
-            envio.Modalidad,
-            cancellationToken);
+        var regla = await db.ReglaDelEnvioAsync(envio, cancellationToken);
 
         var ubicacion = (operacion.Latitud, operacion.Longitud);
 

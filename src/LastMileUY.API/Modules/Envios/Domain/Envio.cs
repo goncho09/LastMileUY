@@ -48,6 +48,8 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
 
     public int? CuadroTarifarioId { get; set; }
 
+    public int? ReglaOperativaId { get; set; }
+
     public ICollection<Bulto> Bultos { get; set; } = new List<Bulto>();
 
     public ICollection<EventoEnvio> Eventos { get; set; }

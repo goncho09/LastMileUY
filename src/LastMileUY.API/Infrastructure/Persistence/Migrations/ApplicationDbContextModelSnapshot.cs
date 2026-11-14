@@ -749,6 +749,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int?>("ReglaOperativaId")
+                        .HasColumnType("integer");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -815,6 +818,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.HasIndex("DestinatarioId");
 
                     b.HasIndex("FranjaHorariaId");
+
+                    b.HasIndex("ReglaOperativaId");
 
                     b.HasIndex("ZonaId");
 
@@ -2521,6 +2526,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OperadorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.ReglaOperativa", null)
+                        .WithMany()
+                        .HasForeignKey("ReglaOperativaId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Zona", null)
                         .WithMany()

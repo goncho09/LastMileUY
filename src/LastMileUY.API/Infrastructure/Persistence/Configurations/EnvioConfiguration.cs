@@ -86,6 +86,11 @@ public class EnvioConfiguration : IEntityTypeConfiguration<Envio>
             .HasForeignKey(e => e.ZonaId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne<ReglaOperativa>()
+            .WithMany()
+            .HasForeignKey(e => e.ReglaOperativaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne<Destinatario>()
             .WithMany(d => d.Envios)
             .HasForeignKey(e => e.DestinatarioId)

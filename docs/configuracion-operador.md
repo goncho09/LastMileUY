@@ -39,6 +39,15 @@ El envío guarda la zona, la franja, el costo y el cuadro con el que se calculó
 
 Hay como máximo una regla activa para Estándar y una para Urgente, y lo garantiza un índice único filtrado de la base. Crear o activar una regla desactiva la anterior de la misma modalidad. Las dos cosas se hacen en una transacción y en ese orden, para no chocar con el índice.
 
+**Cada envío conserva su regla.** Al crear un envío se guarda la regla vigente de su modalidad (`Envios.ReglaOperativaId`). Los intentos, el plazo y la evidencia que se le exigen salen siempre de esa regla, aunque después se cambie o se desactive:
+
+- **Editar una regla que ya usa algún envío no la modifica:** se crea una regla nueva con los valores nuevos, que pasa a ser la vigente, y la anterior queda inactiva con sus valores originales. Así un envío creado bajo la regla vieja no cambia de tratamiento a mitad de camino.
+- **Una regla que todavía no usa ningún envío se edita en el lugar**, porque no hay nada que proteger.
+- La pantalla muestra cuántos envíos usa cada regla.
+- Los envíos creados antes de este cambio se completaron, en la migración, con la regla que estaba vigente para su modalidad. Si alguno quedó sin regla, usa la vigente.
+
+Lo usan el cambio de estado manual, la sincronización de la app del repartidor, el detalle del envío y la evidencia que pide la hoja de ruta.
+
 ## Cuadro tarifario: versiones con fecha
 
 Los precios no se editan en el lugar. Cada cambio es una **versión nueva** con su fecha de inicio:
@@ -69,6 +78,7 @@ Todo está bajo `/api/operador` y pide el rol Operador.
 ## Pruebas
 
 - `ConfiguracionOperadorDePuntaAPuntaTests` (API): alta, repetidos, datos inválidos, aislamiento entre operadores, una regla vigente por modalidad, versiones del cuadro y permisos.
+- `ReglasVersionadasDePuntaAPuntaTests` (API): editar una regla en uso crea una versión nueva; el envío viejo conserva la suya y el nuevo toma la nueva.
 - `ZonaFranjaYTarifaEnAltaDePuntaAPuntaTests` (API): precio con el cuadro vigente, Urgente sin tarifa, peso fuera de rango, dirección fuera de cobertura, franja de otra zona o de otro operador, zonas superpuestas y alta por la API pública.
 - `CalculoDeTarifaTests`: la fórmula del precio, los ajustes, el volumen y qué zona gana.
 - `BackofficeConfiguracionTests` (navegador): vehículo con decimales, zona con franja, versión nueva del cuadro y acceso del despachador.

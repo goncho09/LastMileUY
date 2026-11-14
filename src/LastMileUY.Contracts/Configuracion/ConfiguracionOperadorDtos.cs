@@ -64,7 +64,10 @@ public record ReglaOperativaConfiguracionDto(
     bool RequiereFirma,
     bool RequiereFotografia,
     bool RequiereDocumentoReceptor,
-    bool Activa);
+    bool Activa)
+{
+    public int EnviosAsociados { get; init; }
+}
 
 public record GuardarReglaOperativaRequest(
     string Nombre,
