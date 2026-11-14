@@ -14,5 +14,5 @@ public static class TopologiaMensajeria
 
     public const string ColaCorreos = "lastmileuy.correos";
 
-    public const string PatronEnvioAdmitido = TiposEvento.EnvioAdmitido;
+    public static readonly string[] PatronesCorreos = [TiposEvento.EnvioAdmitido, TiposEvento.EnvioEstadoCambiado];
 }

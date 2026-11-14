@@ -64,8 +64,9 @@ builder.Services.AddSingleton<IProcesadorEventos, ProcesadorAvisos>();
 builder.Services.AddHostedService<ConsumidorEventosEnvio>();
 builder.Services.AddHostedService<ConsumidorCorreos>();
 
-builder.Services.AddTransient<ServicioCorreo>();
-builder.Services.AddTransient<RepositorioCorreos>();
+builder.Services.AddSingleton<IEnviadorCorreo, ServicioCorreo>();
+builder.Services.AddSingleton<RepositorioCorreos>();
+builder.Services.AddSingleton<ProcesadorCorreos>();
 
 var permitirLocales = builder.Configuration.GetValue<bool>("Avisos:PermitirDestinosLocales");
 builder.Services.AddHttpClient<ClienteAvisos>(http => http.Timeout = ClienteAvisos.TiempoMaximo)

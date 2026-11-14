@@ -234,4 +234,89 @@ public sealed class RepositorioCorreos(NpgsqlDataSource datos)
 
         await tx.CommitAsync(ct);
     }
+
+    public async Task MarcarSinDestinatarioAsync(
+        Guid eventoId,
+        Guid reservaId,
+        int operadorId,
+        int comercioId,
+        string motivo,
+        CancellationToken ct)
+    {
+        await using var conexion = await datos.OpenConnectionAsync(ct);
+        await using var tx = await conexion.BeginTransactionAsync(ct);
+
+        await ConfigurarContextoAsync(conexion, tx, operadorId, comercioId, ct);
+
+        await using var comando = new NpgsqlCommand("""
+            UPDATE "CorreosSeguimiento"
+            SET
+                "Estado" = 'SinDestinatario',
+                "UltimoError" = @motivo,
+                "ReservaId" = NULL,
+                "ReservaHasta" = NULL
+            WHERE "EventoId" = @evento
+              AND "ReservaId" = @reserva
+              AND "OperadorId" = @operador
+              AND "ComercioId" = @comercio
+              AND "Estado" = 'EnProceso'
+            """, conexion, tx);
+
+        comando.Parameters.AddWithValue("evento", eventoId);
+        comando.Parameters.AddWithValue("reserva", reservaId);
+        comando.Parameters.AddWithValue("operador", operadorId);
+        comando.Parameters.AddWithValue("comercio", comercioId);
+        comando.Parameters.AddWithValue("motivo", motivo);
+
+        if (await comando.ExecuteNonQueryAsync(ct) != 1)
+            throw new InvalidOperationException("No se pudo cerrar el correo: reserva inválida o reemplazada.");
+
+        await tx.CommitAsync(ct);
+    }
+
+    public async Task<DestinatarioCorreo?> DestinatarioAsync(
+        int envioId,
+        int operadorId,
+        int comercioId,
+        CancellationToken ct)
+    {
+        await using var conexion = await datos.OpenConnectionAsync(ct);
+        await using var tx = await conexion.BeginTransactionAsync(ct);
+
+        await ConfigurarContextoAsync(conexion, tx, operadorId, comercioId, ct);
+
+        await using var comando = new NpgsqlCommand("""
+            SELECT d."Email", d."Nombre", d."Apellido", c."Nombre"
+            FROM "Envios" e
+            JOIN "Destinatarios" d ON d."Id" = e."DestinatarioId"
+            JOIN "Comercios" c ON c."Id" = e."ComercioId"
+            WHERE e."Id" = @envio
+              AND e."OperadorId" = @operador
+              AND e."ComercioId" = @comercio
+              AND d."ComercioId" = @comercio
+            """, conexion, tx);
+
+        comando.Parameters.AddWithValue("envio", envioId);
+        comando.Parameters.AddWithValue("operador", operadorId);
+        comando.Parameters.AddWithValue("comercio", comercioId);
+
+        DestinatarioCorreo? destinatario = null;
+
+        await using (var lector = await comando.ExecuteReaderAsync(ct))
+        {
+            if (await lector.ReadAsync(ct))
+            {
+                destinatario = new DestinatarioCorreo(
+                    lector.IsDBNull(0) ? null : lector.GetString(0),
+                    lector.IsDBNull(1) ? "" : lector.GetString(1),
+                    lector.IsDBNull(2) ? "" : lector.GetString(2),
+                    lector.IsDBNull(3) ? "" : lector.GetString(3));
+            }
+        }
+
+        await tx.CommitAsync(ct);
+        return destinatario;
+    }
 }
+
+public sealed record DestinatarioCorreo(string? Email, string Nombre, string Apellido, string Comercio);
