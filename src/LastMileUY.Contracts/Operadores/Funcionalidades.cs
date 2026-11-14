@@ -5,6 +5,7 @@ public static class Funcionalidades
     public const string OrdenSugerido = "orden-sugerido";
     public const string SeguimientoPublico = "seguimiento-publico";
     public const string AvisosComercios = "avisos-comercios";
+    public const string VerificacionCarga = "verificacion-carga";
 
     public static readonly IReadOnlyList<DefinicionFuncionalidad> Todas =
     [
@@ -19,7 +20,11 @@ public static class Funcionalidades
         new(AvisosComercios,
             "Avisos a comercios",
             "Los comercios se suscriben para recibir por HTTP cada cambio de estado de sus envíos.",
-            PorDefecto: true)
+            PorDefecto: true),
+        new(VerificacionCarga,
+            "Verificación de carga obligatoria",
+            "Una hoja de ruta solo se despacha si el depósito verificó que todos sus bultos se cargaron en el vehículo.",
+            PorDefecto: false)
     ];
 
     public static DefinicionFuncionalidad? Buscar(string clave) =>

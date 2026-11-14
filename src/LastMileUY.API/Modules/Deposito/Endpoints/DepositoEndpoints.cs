@@ -49,6 +49,38 @@ public static class DepositoEndpoints
                     : Results.NotFound()))
             .WithName("ResolverDiscrepancia");
 
+        grupo.MapGet("/cargas", async (CargaVehiculoService servicio, CancellationToken ct) =>
+                Results.Ok(await servicio.PorCargarAsync(ct)))
+            .WithName("RutasPorCargar");
+
+        grupo.MapGet("/cargas/{rutaId:int}", async (int rutaId, CargaVehiculoService servicio, CancellationToken ct) =>
+                await servicio.ObtenerAsync(rutaId, ct) is { } carga ? Results.Ok(carga) : Results.NotFound())
+            .WithName("ObtenerCargaDeRuta");
+
+        grupo.MapPost("/cargas/{rutaId:int}/verificaciones", async (
+                int rutaId,
+                VerificarCargaRequest request,
+                CargaVehiculoService servicio,
+                ClaimsPrincipal usuario,
+                CancellationToken ct) =>
+            await Ejecutar(async () =>
+                await servicio.VerificarAsync(rutaId, request, usuario.FindFirstValue(ClaimTypes.NameIdentifier), ct) is { } carga
+                    ? Results.Ok(carga)
+                    : Results.NotFound()))
+            .WithName("VerificarCarga");
+
+        grupo.MapPost("/cargas/{rutaId:int}/envios/{envioId:int}/quitar", async (
+                int rutaId,
+                int envioId,
+                CargaVehiculoService servicio,
+                ClaimsPrincipal usuario,
+                CancellationToken ct) =>
+            await Ejecutar(async () =>
+                await servicio.QuitarEnvioAsync(rutaId, envioId, usuario.FindFirstValue(ClaimTypes.NameIdentifier), ct)
+                    ? Results.NoContent()
+                    : Results.NotFound()))
+            .WithName("QuitarEnvioDeLaCarga");
+
         return app;
     }
 

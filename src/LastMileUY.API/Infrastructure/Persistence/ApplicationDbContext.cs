@@ -96,6 +96,10 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     public DbSet<RecepcionBulto> RecepcionesBulto => Set<RecepcionBulto>();
 
+    public DbSet<VerificacionCarga> VerificacionesCarga => Set<VerificacionCarga>();
+
+    public DbSet<VerificacionCargaBulto> VerificacionesCargaBulto => Set<VerificacionCargaBulto>();
+
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
 
     public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
@@ -233,6 +237,7 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<FranjaHoraria>().HasQueryFilter(x => Zonas.Any(z => z.Id == x.ZonaId));
 
         modelBuilder.Entity<RecepcionBulto>().HasQueryFilter(x => RecepcionesDeposito.Any(r => r.Id == x.RecepcionDepositoId));
+        modelBuilder.Entity<VerificacionCargaBulto>().HasQueryFilter(x => VerificacionesCarga.Any(v => v.Id == x.VerificacionCargaId));
 
         modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
             (ComercioActual != null

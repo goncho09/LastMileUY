@@ -303,6 +303,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<OpcionesEntregaService>();
 builder.Services.AddScoped<RecepcionDepositoService>();
+builder.Services.AddScoped<CargaVehiculoService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
 builder.Services.AddScoped<OperadorActualService>();

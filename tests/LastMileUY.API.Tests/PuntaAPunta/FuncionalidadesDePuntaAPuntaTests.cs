@@ -26,7 +26,7 @@ public class FuncionalidadesDePuntaAPuntaTests(ApiDePuntaAPunta api)
         {
             var operador = lista.Single(o => o.OperadorId == operadorId);
             Assert.Equal(Funcionalidades.Todas.Select(f => f.Clave), operador.Funcionalidades.Select(f => f.Clave));
-            Assert.All(operador.Funcionalidades, f => Assert.True(f.Activa));
+            Assert.All(operador.Funcionalidades, f => Assert.Equal(f.PorDefecto, f.Activa));
         }
 
         foreach (var email in new[] { Operador1, Despachador1, Comercio1 })

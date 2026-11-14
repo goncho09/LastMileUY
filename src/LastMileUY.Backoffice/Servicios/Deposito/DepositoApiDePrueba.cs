@@ -108,4 +108,86 @@ public sealed class DepositoApiDePrueba : IDepositoApi
 
         return Task.CompletedTask;
     }
+
+    private readonly List<CargaRutaDto> cargas =
+    [
+        new(1, "Centro mañana", DateOnly.FromDateTime(DateTime.Today), "Planificada", "Carlos Méndez", "SBC 1234",
+            EstadosCarga.SinVerificar, null,
+        [
+            new("KX4M7P2QW9TA-1", 601, "KX4M7P2QW9TA", 1, "Lucía Pérez", "Ropa", null),
+            new("KX4M7P2QW9TA-2", 601, "KX4M7P2QW9TA", 1, "Lucía Pérez", null, null),
+            new("PL8R3N6YD2HC-1", 602, "PL8R3N6YD2HC", 2, "Martín Rodríguez", "Libros", null),
+            new("ZV5J9T4BM7QE-1", 603, "ZV5J9T4BM7QE", 3, "Ana Silva", null, null)
+        ])
+    ];
+
+    public Task<IReadOnlyList<RutaPorCargarDto>> RutasPorCargarAsync(CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            return Task.FromResult<IReadOnlyList<RutaPorCargarDto>>(cargas
+                .Where(c => c.SePuedeVerificar)
+                .Select(c => new RutaPorCargarDto(c.RutaId, c.Nombre, c.Fecha, c.Repartidor, c.Vehiculo,
+                    c.Bultos.Select(b => b.EnvioId).Distinct().Count(), c.Bultos.Count, c.EstadoCarga))
+                .ToList());
+        }
+    }
+
+    public Task<CargaRutaDto?> CargaAsync(int rutaId, CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            return Task.FromResult(cargas.FirstOrDefault(c => c.RutaId == rutaId));
+        }
+    }
+
+    public Task<CargaRutaDto> VerificarCargaAsync(int rutaId, VerificarCargaRequest request, CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            var indice = cargas.FindIndex(c => c.RutaId == rutaId);
+
+            if (indice < 0)
+                throw new OperacionRechazadaException("La ruta ya no existe.");
+
+            var escaneados = request.BultosCargados.Select(c => c.Trim().ToUpperInvariant()).ToHashSet();
+            var ajenos = escaneados.Where(c => cargas[indice].Bultos.All(b => b.Codigo != c)).ToList();
+
+            if (ajenos.Count > 0)
+                throw new OperacionRechazadaException($"No son de esta ruta: {string.Join(", ", ajenos)}.");
+
+            var bultos = cargas[indice].Bultos.Select(b => b with { Cargado = escaneados.Contains(b.Codigo) }).ToList();
+
+            cargas[indice] = cargas[indice] with
+            {
+                Bultos = bultos,
+                UltimaVerificacion = DateTime.UtcNow,
+                EstadoCarga = bultos.All(b => b.Cargado == true) ? EstadosCarga.Verificada : EstadosCarga.Incompleta
+            };
+
+            return Task.FromResult(cargas[indice]);
+        }
+    }
+
+    public Task QuitarEnvioAsync(int rutaId, int envioId, CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            var indice = cargas.FindIndex(c => c.RutaId == rutaId);
+
+            if (indice < 0)
+                throw new OperacionRechazadaException("La ruta ya no existe.");
+
+            var bultos = cargas[indice].Bultos.Where(b => b.EnvioId != envioId).ToList();
+
+            cargas[indice] = cargas[indice] with
+            {
+                Bultos = bultos,
+                EstadoCarga = cargas[indice].UltimaVerificacion is null ? EstadosCarga.SinVerificar
+                    : bultos.All(b => b.Cargado == true) ? EstadosCarga.Verificada : EstadosCarga.Incompleta
+            };
+        }
+
+        return Task.CompletedTask;
+    }
 }

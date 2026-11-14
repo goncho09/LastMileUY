@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
+using LastMileUY.API.Modules.Deposito.Application;
 using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.Contracts.Deposito;
 using LastMileUY.Contracts.Operadores;
 using LastMileUY.API.Modules.Rutas.Application;
 using LastMileUY.Contracts.Rutas;
@@ -145,12 +147,23 @@ public static class RutasEndpoints
                 int id,
                 PlanificarRutaService planificar,
                 ConsultasRutasService consultas,
+                FuncionalidadesService funcionalidades,
+                CargaVehiculoService carga,
                 IContextoOperador contextoOperador,
                 ClaimsPrincipal usuario,
                 CancellationToken cancellationToken) =>
             {
-                if (contextoOperador.OperadorId is null)
+                if (contextoOperador.OperadorId is not int operadorId)
                     return Results.Forbid();
+
+                if (await funcionalidades.EstaActivaAsync(operadorId, Funcionalidades.VerificacionCarga, cancellationToken)
+                    && await carga.EstadoCargaAsync(id, cancellationToken) != EstadosCarga.Verificada)
+                {
+                    return Results.Conflict(new
+                    {
+                        mensaje = "Antes de despachar, el depósito tiene que verificar que todos los bultos están cargados en el vehículo."
+                    });
+                }
 
                 try
                 {
