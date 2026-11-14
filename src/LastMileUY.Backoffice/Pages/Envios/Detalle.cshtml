@@ -144,6 +144,14 @@
                         <dd class="text-right text-slate-200">@(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")</dd>
                     </div>
                     <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Zona</dt>
+                        <dd class="text-right text-slate-200">@(envio.Zona ?? "Fuera de cobertura")</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-400">Franja</dt>
+                        <dd class="text-right text-slate-200">@(envio.Franja is { } franja ? $"{franja.Nombre} ({franja.HoraInicio:HH\\:mm} a {franja.HoraFin:HH\\:mm})" : "Sin franja")</dd>
+                    </div>
+                    <div class="flex justify-between gap-4">
                         <dt class="text-slate-400">Origen</dt>
                         <dd class="text-right text-slate-200">@CanalesIngreso.Texto(envio.Canal)</dd>
                     </div>
@@ -161,7 +169,7 @@
                     </div>
                     <div class="flex justify-between gap-4 border-t border-white/[0.07] pt-4">
                         <dt class="font-medium text-slate-300">Costo</dt>
-                        <dd class="text-right font-semibold text-violet-300">@Formato.Pesos(envio.CostoEnvio)</dd>
+                        <dd class="text-right font-semibold text-violet-300">@(envio.CostoEnvio is null ? "Sin tarifa" : Formato.Pesos(envio.CostoEnvio))</dd>
                     </div>
                 </dl>
             </section>

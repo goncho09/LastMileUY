@@ -2,6 +2,7 @@ using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Tarifas.Application;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
@@ -137,10 +138,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
                 new Claim(ClaimTypes.Role, "Operador")
             ], "Test"));
 
-        var creado = await new CrearEnvioService(
-            db,
-            new ContextoOperadorFijo(OperadorA)
-        ).EjecutarAsync(request, usuario);
+        var creado = await new CrearEnvioService(db, new ContextoOperadorFijo(OperadorA), new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System)).EjecutarAsync(request, usuario);
 
         await using var otra = baseDeDatos.CrearContexto(OperadorA);
         var envio = await otra.Envios.Include(e => e.Bultos).Include(e => e.Eventos).SingleAsync(e => e.Id == creado.Id);
@@ -174,19 +172,13 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
 
         await using (var db = baseDeDatos.CrearContexto(OperadorA))
         {
-            await new CrearEnvioService(
-                db,
-                new ContextoOperadorFijo(OperadorA)
-            ).EjecutarAsync(request, usuario);
+            await new CrearEnvioService(db, new ContextoOperadorFijo(OperadorA), new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System)).EjecutarAsync(request, usuario);
         }
 
         await using var otra = baseDeDatos.CrearContexto(OperadorA);
 
         await Assert.ThrowsAsync<EnvioDuplicadoException>(() =>
-            new CrearEnvioService(
-                otra,
-                new ContextoOperadorFijo(OperadorA)
-            ).EjecutarAsync(request, usuario));
+            new CrearEnvioService(otra, new ContextoOperadorFijo(OperadorA), new OpcionesEntregaService(otra), new TarificadorEnvios(otra, TimeProvider.System)).EjecutarAsync(request, usuario));
     }
 
     [Fact]
@@ -209,10 +201,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
             ], "Test"));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            new CrearEnvioService(
-                db,
-                new ContextoOperadorFijo(OperadorA)
-            ).EjecutarAsync(request, usuario));
+            new CrearEnvioService(db, new ContextoOperadorFijo(OperadorA), new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System)).EjecutarAsync(request, usuario));
     }
 
 
@@ -246,10 +235,7 @@ public class CambioDeEstadoTests(BaseConDosOperadores baseDeDatos)
                 ]
             };
 
-            var creado = await new CrearEnvioService(
-                db,
-                new ContextoOperadorFijo(OperadorA)
-            ).EjecutarAsync(request, CrearUsuarioOperador());
+            var creado = await new CrearEnvioService(db, new ContextoOperadorFijo(OperadorA), new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System)).EjecutarAsync(request, CrearUsuarioOperador());
 
             envioId = creado.Id;
 

@@ -299,6 +299,7 @@ builder.Services.AddAuthorization(options =>
 
 
 builder.Services.AddScoped<CrearEnvioService>();
+builder.Services.AddScoped<OpcionesEntregaService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
 builder.Services.AddScoped<OperadorActualService>();
@@ -332,6 +333,7 @@ builder.Services.AddScoped<VehiculosService>();
 builder.Services.AddScoped<MotivosNoEntregaService>();
 builder.Services.AddScoped<ReglasOperativasService>();
 builder.Services.AddScoped<CuadrosTarifariosService>();
+builder.Services.AddScoped<TarificadorEnvios>();
 builder.Services.AddSingleton<AmbientePruebasService.Cache>();
 builder.Services.AddSingleton<IntentosFallidosClaveApi>();
 

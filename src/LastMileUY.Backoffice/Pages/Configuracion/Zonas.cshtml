@@ -27,6 +27,7 @@
                         <thead class="@Estilos.CabeceraTabla">
                             <tr>
                                 <th scope="col" class="@Estilos.Celda">Zona</th>
+                                <th scope="col" class="@Estilos.Celda">Cubre</th>
                                 <th scope="col" class="@Estilos.Celda">Franjas</th>
                                 <th scope="col" class="@Estilos.Celda">Estado</th>
                                 <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
@@ -42,6 +43,9 @@
                                         {
                                             <p class="mt-1 text-xs text-slate-400">@zona.Descripcion</p>
                                         }
+                                    </td>
+                                    <td class="@Estilos.Celda @(zona.Departamento is null ? "text-slate-500" : "text-slate-300")">
+                                        @LastMileUY.Backoffice.Pages.Configuracion.ZonasModel.Cobertura(zona)
                                     </td>
                                     <td class="@Estilos.Celda text-slate-300">
                                         <a asp-page="FranjasHorarias" asp-route-zona="@zona.Id" class="text-violet-300 hover:text-violet-200">
@@ -89,6 +93,26 @@
                     <label asp-for="Formulario.Descripcion" class="@Estilos.Etiqueta">Descripción</label>
                     <textarea asp-for="Formulario.Descripcion" maxlength="500" rows="3" placeholder="Barrios que cubre" class="@Estilos.Campo"></textarea>
                     <span asp-validation-for="Formulario.Descripcion" class="@Estilos.ErrorCampo"></span>
+                </div>
+
+                <div>
+                    <label asp-for="Formulario.Departamento" class="@Estilos.Etiqueta">Departamento</label>
+                    <select asp-for="Formulario.Departamento" class="@Estilos.Campo">
+                        <option value="">Sin definir</option>
+                        @foreach (var departamento in LastMileUY.Contracts.Destinatarios.DepartamentosUruguay.Todos)
+                        {
+                            <option value="@departamento">@departamento</option>
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label asp-for="Formulario.Localidades" class="@Estilos.Etiqueta">Localidades</label>
+                    <textarea asp-for="Formulario.Localidades" rows="3" placeholder="Ej. Pocitos, Punta Carretas, Buceo" class="@Estilos.Campo" aria-describedby="ayuda-localidades"></textarea>
+                    <p id="ayuda-localidades" class="mt-1.5 text-xs text-slate-400">
+                        Separadas por coma. Vacío cubre todo el departamento. Los envíos toman la zona por la ciudad o localidad de la dirección.
+                    </p>
+                    <span asp-validation-for="Formulario.Localidades" class="@Estilos.ErrorCampo"></span>
                 </div>
 
                 <div class="flex flex-wrap justify-end gap-3">

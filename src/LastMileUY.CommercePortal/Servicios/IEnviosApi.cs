@@ -10,6 +10,8 @@ public interface IEnviosApi
     Task<PaginaDto<EnvioResumenDto>> ListarAsync(int pagina, int tamanioPagina, string? estado, string? buscar, CancellationToken ct = default);
 
     Task<EnvioDetalleDto?> ObtenerAsync(int id, CancellationToken ct = default);
+
+    Task<OpcionesEntregaDto?> OpcionesEntregaAsync(int direccionId, CancellationToken ct = default);
 }
 
 public record ResultadoAlta(EnvioResponse? Envio, string? Error)

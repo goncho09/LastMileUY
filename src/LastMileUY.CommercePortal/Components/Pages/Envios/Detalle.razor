@@ -52,6 +52,20 @@
                 <dt class="text-xs text-slate-500">Referencia</dt>
                 <dd class="mt-1 text-slate-200">@(envio.ReferenciaExterna ?? "—")</dd>
             </div>
+            <div>
+                <dt class="text-xs text-slate-500">Modalidad y franja</dt>
+                <dd class="mt-1 text-slate-200">
+                    @(envio.Modalidad == "Urgente" ? "Urgente" : "Estándar")@(envio.Franja is { } franja ? $" · {franja.Nombre} ({franja.HoraInicio:HH\\:mm} a {franja.HoraFin:HH\\:mm})" : "")
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-500">Zona</dt>
+                <dd class="mt-1 text-slate-200">@(envio.Zona ?? "Fuera de cobertura")</dd>
+            </div>
+            <div>
+                <dt class="text-xs text-slate-500">Costo</dt>
+                <dd class="mt-1 text-slate-200">@(envio.CostoEnvio is { } costo ? "$ " + costo.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-UY")) : "Sin tarifa")</dd>
+            </div>
         </dl>
 
         <section class="rounded-2xl border border-white/10 bg-[#151927]" aria-labelledby="titulo-bultos">

@@ -61,4 +61,17 @@ public class EnviosApiHttp(HttpClient http, SesionActual sesion)
 
         return await respuesta.Content.ReadFromJsonAsync<EnvioDetalleDto>(ct);
     }
+
+    public async Task<OpcionesEntregaDto?> OpcionesEntregaAsync(int direccionId, CancellationToken ct = default)
+    {
+        using var pedido = new HttpRequestMessage(HttpMethod.Get, $"api/envios/opciones-entrega?direccionId={direccionId}");
+        using var respuesta = await EnviarAsync(pedido, ct);
+
+        if (respuesta.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden)
+            return null;
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return await respuesta.Content.ReadFromJsonAsync<OpcionesEntregaDto>(ct);
+    }
 }

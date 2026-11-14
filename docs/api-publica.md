@@ -108,6 +108,13 @@ genere envíos duplicados. Para eso:
 
 Así el comercio puede corregir las filas rechazadas y volver a mandar el lote entero. Las que ya entraron no se duplican.
 
+Cada envío, suelto o en lote, acepta además dos campos opcionales:
+
+- `modalidad`: `Estandar` (por defecto) o `Urgente`;
+- `franjaHorariaId`: una franja activa de la zona de la dirección.
+
+La zona y el costo los calcula la API a partir de la dirección y del cuadro tarifario vigente, y vuelven en la respuesta (`zona`, `franja`, `costoEnvio`). Si no hay tarifa que corresponda, el envío se crea con `costoEnvio: null`. El detalle está en [configuracion-operador.md](configuracion-operador.md).
+
 ```http
 POST /api/v1/envios/lote
 X-Api-Key: lmuy_live_...

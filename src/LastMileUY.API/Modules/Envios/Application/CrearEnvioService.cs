@@ -4,6 +4,9 @@ using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Comercios.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
 using LastMileUY.API.Modules.Integraciones.Application;
+using LastMileUY.API.Modules.Operadores.Application;
+using LastMileUY.API.Modules.Operadores.Domain;
+using LastMileUY.API.Modules.Tarifas.Application;
 using LastMileUY.Contracts.Envios;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -12,7 +15,9 @@ namespace LastMileUY.API.Modules.Envios.Application;
 
 public class CrearEnvioService(
     ApplicationDbContext db,
-    IContextoOperador contextoOperador)
+    IContextoOperador contextoOperador,
+    OpcionesEntregaService opcionesEntrega,
+    TarificadorEnvios tarificador)
 {
     public static CanalIngreso CanalDe(ClaimsPrincipal usuario) =>
         usuario.HasClaim(c => c.Type == AutenticacionClaveApi.ClaimClaveApiId) ? CanalIngreso.Api
@@ -97,12 +102,22 @@ public class CrearEnvioService(
             throw new ArgumentException(
                 "La dirección no existe, está inactiva o no pertenece al destinatario.");
 
+        var modalidad = string.IsNullOrWhiteSpace(request.Modalidad)
+            ? ModalidadEnvio.Estandar
+            : ConfiguracionComun.Modalidad(request.Modalidad);
+
+        var zona = await opcionesEntrega.ZonaParaAsync(direccion.Departamento, direccion.Ciudad, cancellationToken);
+        var franja = await FranjaElegidaAsync(request.FranjaHorariaId, zona, cancellationToken);
+
         var envio = new Envio
         {
             ComercioId = request.ComercioId,
             DestinatarioId = request.DestinatarioId,
             ReferenciaExterna = referencia,
-            Canal = canal
+            Canal = canal,
+            Modalidad = modalidad,
+            ZonaId = zona?.Id,
+            FranjaHorariaId = franja?.Id
         };
 
         envio.AsignarDireccionEntrega(new DireccionEntrega(
@@ -131,6 +146,18 @@ public class CrearEnvioService(
             });
         }
 
+        if (zona is not null
+            && await tarificador.CotizarAsync(
+                zona.Id,
+                modalidad,
+                envio.Bultos.Sum(b => b.PesoKg),
+                TarificadorEnvios.VolumenM3(envio.Bultos),
+                cancellationToken) is { } cotizacion)
+        {
+            envio.CostoEnvio = cotizacion.Costo;
+            envio.CuadroTarifarioId = cotizacion.CuadroTarifarioId;
+        }
+
         envio.RegistrarAdmision(canal == CanalIngreso.Portal ? "Portal" : "API", responsableId);
 
         db.Envios.Add(envio);
@@ -152,8 +179,32 @@ public class CrearEnvioService(
             ComercioId = envio.ComercioId,
             DestinatarioId = envio.DestinatarioId,
             Estado = envio.Estado.ToString(),
-            FechaCreacion = envio.FechaCreacion
+            FechaCreacion = envio.FechaCreacion,
+            Modalidad = envio.Modalidad.ToString(),
+            Zona = zona?.Nombre,
+            Franja = franja?.Nombre,
+            CostoEnvio = envio.CostoEnvio
         };
+    }
+
+    private async Task<FranjaHoraria?> FranjaElegidaAsync(int? franjaId, Zona? zona, CancellationToken ct)
+    {
+        if (franjaId is null)
+            return null;
+
+        var franja = await db.FranjasHorarias.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == franjaId && f.Activa, ct)
+            ?? throw new ArgumentException("La franja horaria no existe o no está activa.");
+
+        if (zona is null)
+            throw new ArgumentException(
+                "La dirección no está en ninguna zona de cobertura, así que no se le puede elegir franja.");
+
+        if (franja.ZonaId != zona.Id)
+            throw new ArgumentException(
+                $"La franja \"{franja.Nombre}\" no es de la zona \"{zona.Nombre}\", que es la de la dirección.");
+
+        return franja;
     }
 
     private static void ValidarBultos(List<CrearBultoRequest>? bultos)

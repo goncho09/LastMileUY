@@ -21,6 +21,13 @@ public class ZonaConfiguration : IEntityTypeConfiguration<Zona>
             .HasMaxLength(150)
             .IsRequired();
 
+        builder.Property(z => z.Departamento)
+            .HasMaxLength(100);
+
+        builder.Property(z => z.Localidades)
+            .HasColumnType("text[]")
+            .HasDefaultValueSql("'{}'");
+
         builder.Property(z => z.Descripcion)
             .HasMaxLength(500);
 

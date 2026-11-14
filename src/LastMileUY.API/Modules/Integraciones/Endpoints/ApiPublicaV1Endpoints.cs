@@ -79,7 +79,9 @@ public static class ApiPublicaV1Endpoints
                         DestinatarioId = request.DestinatarioId,
                         DireccionId = request.DireccionId,
                         ReferenciaExterna = request.ReferenciaExterna,
-                        Bultos = request.Bultos ?? []
+                        Bultos = request.Bultos ?? [],
+                        Modalidad = request.Modalidad,
+                        FranjaHorariaId = request.FranjaHorariaId
                     }, usuario, ct);
 
                     return Results.Created($"/api/v1/envios/{envio.Id}", envio);
@@ -99,7 +101,7 @@ public static class ApiPublicaV1Endpoints
             .Produces(StatusCodes.Status409Conflict)
             .WithName("V1CrearEnvio")
             .WithSummary("Crea un envío")
-            .WithDescription("Si se manda una referencia externa que ya existe, responde 409 y no crea otro envío.");
+            .WithDescription("Si se manda una referencia externa que ya existe, responde 409 y no crea otro envío. La zona sale de la dirección y el costo del cuadro tarifario vigente; si no hay tarifa que corresponda, el envío se crea sin costo. modalidad es Estandar (por defecto) o Urgente, y franjaHorariaId tiene que ser una franja activa de la zona de la dirección.");
 
         envios.MapPost("/lote", async (
                 ImportarEnviosRequest request,

@@ -20,8 +20,19 @@ public class ZonasModel(IConfiguracionApi api, ILogger<ZonasModel> logger) : Pag
         Zonas = await api.ListarZonasAsync(ct);
 
         if (Request.Method == HttpMethods.Get && Editar is int id && Zonas.FirstOrDefault(z => z.Id == id) is { } zona)
-            Formulario = new FormularioZona { Nombre = zona.Nombre, Descripcion = zona.Descripcion };
+            Formulario = new FormularioZona
+            {
+                Nombre = zona.Nombre,
+                Descripcion = zona.Descripcion,
+                Departamento = zona.Departamento,
+                Localidades = string.Join(", ", zona.Localidades)
+            };
     }
+
+    public static string Cobertura(ZonaDto zona) =>
+        zona.Departamento is null ? "Sin definir"
+        : zona.Localidades.Count == 0 ? $"Todo {zona.Departamento}"
+        : $"{string.Join(", ", zona.Localidades)} ({zona.Departamento})";
 
     public Task<IActionResult> OnPostGuardarAsync(CancellationToken ct) =>
         EjecutarAsync(
@@ -51,6 +62,17 @@ public class ZonasModel(IConfiguracionApi api, ILogger<ZonasModel> logger) : Pag
         [StringLength(500, ErrorMessage = "La descripción puede tener hasta 500 caracteres.")]
         public string? Descripcion { get; set; }
 
-        public GuardarZonaRequest ARequest() => new(Nombre.Trim(), Descripcion);
+        public string? Departamento { get; set; }
+
+        [StringLength(4000, ErrorMessage = "La lista de localidades es demasiado larga.")]
+        public string? Localidades { get; set; }
+
+        public GuardarZonaRequest ARequest() => new(
+            Nombre.Trim(),
+            Descripcion,
+            string.IsNullOrWhiteSpace(Departamento) ? null : Departamento,
+            (Localidades ?? "")
+                .Split([',', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList());
     }
 }

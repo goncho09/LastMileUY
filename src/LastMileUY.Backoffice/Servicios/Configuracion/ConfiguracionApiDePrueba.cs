@@ -13,11 +13,11 @@ public sealed class ConfiguracionApiDePrueba : IConfiguracionApi
         [
             new(1, 1, "Mañana", new TimeOnly(9, 0), new TimeOnly(13, 0), true),
             new(2, 1, "Tarde", new TimeOnly(14, 0), new TimeOnly(18, 0), true)
-        ]),
+        ]) { Departamento = "Montevideo", Localidades = ["Centro", "Cordón", "Ciudad Vieja"] },
         new(2, "Costa", "Pocitos, Buceo y Malvín", true,
         [
             new(3, 2, "Todo el día", new TimeOnly(9, 0), new TimeOnly(18, 0), true)
-        ])
+        ]) { Departamento = "Montevideo", Localidades = ["Pocitos", "Buceo", "Malvín"] }
     ];
 
     private readonly List<VehiculoConfiguracionDto> vehiculos =
@@ -66,7 +66,11 @@ public sealed class ConfiguracionApiDePrueba : IConfiguracionApi
             if (zonas.Any(z => Igual(z.Nombre, nombre)))
                 throw new OperacionRechazadaException($"Ya existe una zona llamada \"{nombre}\".");
 
-            zonas.Add(new ZonaDto(++ultimoId, nombre, Opcional(request.Descripcion), true, []));
+            zonas.Add(new ZonaDto(++ultimoId, nombre, Opcional(request.Descripcion), true, [])
+            {
+                Departamento = Opcional(request.Departamento),
+                Localidades = request.Localidades ?? []
+            });
         }
 
         return Task.CompletedTask;
@@ -80,7 +84,13 @@ public sealed class ConfiguracionApiDePrueba : IConfiguracionApi
             if (zonas.Any(z => z.Id != id && Igual(z.Nombre, nombre)))
                 throw new OperacionRechazadaException($"Ya existe una zona llamada \"{nombre}\".");
 
-            Reemplazar(zonas, z => z.Id == id, z => z with { Nombre = nombre, Descripcion = Opcional(request.Descripcion) });
+            Reemplazar(zonas, z => z.Id == id, z => z with
+            {
+                Nombre = nombre,
+                Descripcion = Opcional(request.Descripcion),
+                Departamento = Opcional(request.Departamento),
+                Localidades = request.Localidades ?? []
+            });
         }
 
         return Task.CompletedTask;
