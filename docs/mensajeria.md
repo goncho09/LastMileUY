@@ -326,6 +326,40 @@ Ejemplo del cuerpo JSON:
 }
 ```
 
+## Correos de seguimiento al destinatario
+
+El worker también le avisa por correo al destinatario. Usa su propia cola, `lastmileuy.correos`, atada a `envio.admitido` y `envio.estado_cambiado`.
+
+**Qué estados mandan correo.** Solo los que le importan al destinatario y solo si el evento es público:
+
+| Estado | Asunto |
+|---|---|
+| Admitido | Registramos tu envío |
+| EnTransito | Tu envío está en camino |
+| Entregado | Entregamos tu envío |
+| EntregadoParcialmente | Entregamos parte de tu envío |
+| NoEntregado | No pudimos entregar tu envío |
+| Reprogramado | Reprogramamos la entrega de tu envío |
+| EnDevolucion | Tu envío vuelve al comercio |
+| Devuelto | Tu envío volvió al comercio |
+
+Los pasos internos (en depósito, asignado a ruta) y los eventos de bulto no mandan nada.
+
+**Un correo por evento.** La tabla `CorreosSeguimiento` guarda cada evento con su estado:
+
+| Estado | Qué significa |
+|---|---|
+| `EnProceso` | Reservado. La reserva vence a los 5 minutos, por si el worker se cae a mitad de camino. |
+| `Enviado` | El servidor de correo lo aceptó. Si el evento llega de nuevo, no se manda otra vez. |
+| `Fallido` | El servidor de correo falló. Se reintenta: hay tres intentos en total, con un minuto entre cada uno, y después va a `lastmileuy.correos.fallidos`. |
+| `SinDestinatario` | No se mandó porque el destinatario no tiene email, el email no es válido o el envío no existe para ese operador. El motivo queda en `UltimoError`. Es un estado final: no se reintenta y no se marca como enviado. |
+
+Si el correo salió pero no se pudo anotar como `Enviado`, el mensaje va directo a fallidos para revisarlo a mano. Reintentarlo podría mandarle el mismo correo dos veces al destinatario.
+
+**Aislamiento.** El worker lee el envío y el destinatario con el contexto de operador y comercio del evento, igual que la API. Un evento con un operador que no es el del envío no encuentra nada y termina en `SinDestinatario`.
+
+**Configuración:** `Correo:Host`, `Correo:Puerto`, `Correo:Usuario`, `Correo:Contrasena`, `Correo:Remitente` y `Correo:UrlSeguimiento`, la base del enlace al seguimiento público.
+
 ## El tablero en vivo del backoffice
 
 El backoffice también escucha los eventos (`SignalR/ConsumidorEventosEnvio`) y avisa por SignalR a
