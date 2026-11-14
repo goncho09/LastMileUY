@@ -143,7 +143,7 @@ public class ConsultasEnviosService(
             envio.IntentosEntrega.Add(intento);
         }
 
-        var regla = await db.ObtenerVigenteAsync(envio.Modalidad, cancellationToken);
+        var regla = await db.ReglaDelEnvioAsync(envio, cancellationToken);
 
         return new EnvioDetalleDto(
             envio.Id,

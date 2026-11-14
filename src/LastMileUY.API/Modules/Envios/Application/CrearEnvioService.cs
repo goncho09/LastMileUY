@@ -117,7 +117,8 @@ public class CrearEnvioService(
             Canal = canal,
             Modalidad = modalidad,
             ZonaId = zona?.Id,
-            FranjaHorariaId = franja?.Id
+            FranjaHorariaId = franja?.Id,
+            ReglaOperativaId = (await db.ObtenerVigenteAsync(modalidad, cancellationToken))?.Id
         };
 
         envio.AsignarDireccionEntrega(new DireccionEntrega(

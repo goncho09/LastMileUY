@@ -85,7 +85,7 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
             }
         }
 
-        var regla = await db.ObtenerVigenteAsync(envio.Modalidad, cancellationToken);
+        var regla = await db.ReglaDelEnvioAsync(envio, cancellationToken);
 
         try
         {

@@ -7,7 +7,7 @@
 
 <div class="mx-auto max-w-[1600px] space-y-7 motion-safe:animate-lm-form-in">
 
-    <partial name="_Encabezado" model="@(("Reglas operativas", "Cuántos intentos de entrega hay, cada cuánto, el plazo y qué evidencia se pide. Rige una sola regla por modalidad: activar una desactiva la otra.", Model.Error))" />
+    <partial name="_Encabezado" model="@(("Reglas operativas", "Cuántos intentos de entrega hay, cada cuánto, el plazo y qué evidencia se pide. Rige una sola regla por modalidad: activar una desactiva la otra. Cada envío conserva la regla con la que se creó.", Model.Error))" />
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
 
@@ -52,6 +52,10 @@
                                             <span class="ml-2 @(regla.Activa ? Estilos.Activo : Estilos.Inactivo)">@(regla.Activa ? "Vigente" : "Inactiva")</span>
                                         </p>
                                         <p class="mt-1 text-xs text-slate-400">@ReglasOperativasModel.TextoModalidad(regla.Modalidad)@(regla.Descripcion is null ? "" : $" · {regla.Descripcion}")</p>
+                                        @if (regla.EnviosAsociados > 0)
+                                        {
+                                            <p class="mt-1 text-xs text-slate-500">La usan @regla.EnviosAsociados envíos. Si la editás se crea una versión nueva y ellos siguen con esta.</p>
+                                        }
                                     </td>
                                     <td class="@Estilos.Celda text-slate-300">@regla.MaximoIntentosEntrega, cada @regla.HorasEntreIntentos h</td>
                                     <td class="@Estilos.Celda text-slate-300">
