@@ -62,7 +62,9 @@ public class ImportarEnviosService(
                 DestinatarioId = fila.DestinatarioId,
                 DireccionId = fila.DireccionId,
                 ReferenciaExterna = referencia,
-                Bultos = fila.Bultos ?? []
+                Bultos = fila.Bultos ?? [],
+                Modalidad = fila.Modalidad,
+                FranjaHorariaId = fila.FranjaHorariaId
             }, usuario, ct);
 
             return new ResultadoImportacionDto(

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace LastMileUY.Contracts.Envios;
 
@@ -19,4 +19,8 @@ public class CrearEnvioRequest
     [MinLength(1)]
     [MaxLength(50)]
     public List<CrearBultoRequest> Bultos { get; set; } = [];
+
+    public string? Modalidad { get; set; }
+
+    public int? FranjaHorariaId { get; set; }
 }

@@ -16,6 +16,10 @@ public class EnvioApiRequest
     public int DireccionId { get; set; }
 
     public List<CrearBultoRequest> Bultos { get; set; } = [];
+
+    public string? Modalidad { get; set; }
+
+    public int? FranjaHorariaId { get; set; }
 }
 
 public static class ResultadosImportacion

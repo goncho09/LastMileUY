@@ -25,6 +25,10 @@ public record EnvioDetalleDto(
 
     public DateTime? FechaLimiteEntrega { get; init; }
 
+    public string? Zona { get; init; }
+
+    public FranjaEntregaDto? Franja { get; init; }
+
     public IReadOnlyList<IntentoEntregaDto> Intentos { get; init; } = [];
 }
 

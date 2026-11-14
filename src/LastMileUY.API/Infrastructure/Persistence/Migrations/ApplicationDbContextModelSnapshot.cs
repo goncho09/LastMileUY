@@ -599,6 +599,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<int?>("ZonaId")
+                        .HasColumnType("integer");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "DireccionEntrega", "LastMileUY.API.Modules.Envios.Domain.Envio.DireccionEntrega#DireccionEntrega", b1 =>
                         {
                             b1.IsRequired();
@@ -656,6 +659,8 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.HasIndex("DestinatarioId");
 
                     b.HasIndex("FranjaHorariaId");
+
+                    b.HasIndex("ZonaId");
 
                     b.HasIndex("OperadorId", "ComercioId", "ReferenciaExterna")
                         .IsUnique()
@@ -1411,9 +1416,19 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<bool>("Activa")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Departamento")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Descripcion")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.PrimitiveCollection<List<string>>("Localidades")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -2284,6 +2299,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OperadorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Zona", null)
+                        .WithMany()
+                        .HasForeignKey("ZonaId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Identidad.Domain.Usuario", b =>

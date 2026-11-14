@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Envios.Application;
+using LastMileUY.API.Modules.Tarifas.Application;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Envios;
 using static LastMileUY.API.Tests.Multitenancy.BaseConDosOperadores;
@@ -22,9 +23,7 @@ public class AltaPorComercioTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido);
 
-        var servicio = new CrearEnvioService(
-            db,
-            new ContextoOperadorFijo(OperadorA, ComercioCompartido));
+        var servicio = new CrearEnvioService(db, new ContextoOperadorFijo(OperadorA, ComercioCompartido), new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System));
 
         var envio = await servicio.EjecutarAsync(
             new CrearEnvioRequest
@@ -55,9 +54,7 @@ public class AltaPorComercioTests(BaseConDosOperadores baseDeDatos)
     {
         await using var db = baseDeDatos.CrearContexto(OperadorA, ComercioCompartido);
 
-        var servicio = new CrearEnvioService(
-            db,
-            new ContextoOperadorFijo(OperadorA, ComercioCompartido));
+        var servicio = new CrearEnvioService(db, new ContextoOperadorFijo(OperadorA, ComercioCompartido), new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System));
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             servicio.EjecutarAsync(

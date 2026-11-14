@@ -53,6 +53,14 @@
                     <p class="text-xs uppercase tracking-wide text-slate-500">Estado</p>
                     <p class="mt-1 font-semibold text-white">@creado.Estado</p>
                 </div>
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Zona y franja</p>
+                    <p class="mt-1 text-sm text-slate-200">@(creado.Zona ?? "Fuera de cobertura")@(creado.Franja is null ? "" : $" · {creado.Franja}")</p>
+                </div>
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-slate-500">Costo</p>
+                    <p class="mt-1 text-sm text-slate-200">@(creado.CostoEnvio is { } costo ? "$ " + costo.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-UY")) : "Sin tarifa")</p>
+                </div>
                 <div class="sm:col-span-2">
                     <p class="text-xs uppercase tracking-wide text-slate-500">Fecha de creación</p>
                     <p class="mt-1 text-sm text-slate-200">@creado.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
@@ -122,7 +130,7 @@
                         </label>
                         <select id="direccion"
                                 class="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                                @bind="direccionId"
+                                @bind="direccionId" @bind:after="CargarOpcionesAsync"
                                 disabled="@(destinatarioElegido is null || destinatarioElegido.Direcciones.Count == 0)">
                             <option value="">Elegí una dirección…</option>
                             @if (destinatarioElegido is not null)
@@ -139,6 +147,43 @@
                             <p class="mt-2 text-xs text-red-300">
                                 Este destinatario no tiene direcciones activas.
                                 <a href="/destinatarios" class="font-medium underline underline-offset-2">Agregale una</a>
+                            </p>
+                        }
+                    </div>
+
+                    <div>
+                        <label for="modalidad" class="mb-2 block text-sm font-medium text-slate-200">Modalidad</label>
+                        <select id="modalidad"
+                                class="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                                @bind="modalidad">
+                            <option value="Estandar">Estándar</option>
+                            <option value="Urgente">Urgente</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="franja" class="mb-2 block text-sm font-medium text-slate-200">
+                            Franja horaria <span class="font-normal text-slate-500">(opcional)</span>
+                        </label>
+                        <select id="franja"
+                                class="w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                @bind="franjaId"
+                                disabled="@(opciones is null || opciones.Franjas.Count == 0)">
+                            <option value="">Sin franja</option>
+                            @if (opciones is not null)
+                            {
+                                foreach (var franja in opciones.Franjas)
+                                {
+                                    <option value="@franja.Id">@franja.Nombre (@franja.HoraInicio.ToString("HH:mm") a @franja.HoraFin.ToString("HH:mm"))</option>
+                                }
+                            }
+                        </select>
+                        @if (direccionId is not null && opciones is not null)
+                        {
+                            <p class="mt-2 text-xs text-slate-400">
+                                @(opciones.Zona is null
+                                    ? "La dirección está fuera de las zonas del operador: se entrega sin franja."
+                                    : $"Zona {opciones.Zona}.")
                             </p>
                         }
                     </div>
@@ -279,6 +324,9 @@
     private int? destinatarioId;
     private int? direccionId;
     private string? referenciaExterna;
+    private string modalidad = "Estandar";
+    private int? franjaId;
+    private OpcionesEntregaDto? opciones;
     private List<CrearBultoRequest> bultos = [new()];
 
     private readonly List<string> errores = [];
@@ -309,8 +357,33 @@
         }
     }
 
-    private void AlCambiarDestinatario() =>
+    private async Task AlCambiarDestinatario()
+    {
         direccionId = destinatarioElegido?.Direcciones.FirstOrDefault()?.Id;
+        await CargarOpcionesAsync();
+    }
+
+    private async Task CargarOpcionesAsync()
+    {
+        opciones = null;
+        franjaId = null;
+
+        if (direccionId is not int id)
+            return;
+
+        try
+        {
+            opciones = await EnviosApi.OpcionesEntregaAsync(id);
+        }
+        catch (SesionVencidaException)
+        {
+            IrAlLogin();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogWarning(ex, "No se pudieron cargar las franjas de la dirección {DireccionId}", id);
+        }
+    }
 
     private void AgregarBulto()
     {
@@ -342,6 +415,8 @@
                 DestinatarioId = destinatarioId!.Value,
                 DireccionId = direccionId!.Value,
                 ReferenciaExterna = string.IsNullOrWhiteSpace(referenciaExterna) ? null : referenciaExterna.Trim(),
+                Modalidad = modalidad,
+                FranjaHorariaId = franjaId,
                 Bultos = bultos
                     .Select(b => new CrearBultoRequest
                     {

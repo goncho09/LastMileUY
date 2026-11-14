@@ -181,7 +181,19 @@ public class ConsultasEnviosService(
                     regla.RequiereFotografia,
                     regla.RequiereDocumentoReceptor),
             FechaLimiteEntrega = regla is null ? null : envio.FechaCreacion.AddHours(regla.PlazoEntregaHoras),
-            Intentos = await IntentosAsync(envio.Id, cancellationToken)
+            Intentos = await IntentosAsync(envio.Id, cancellationToken),
+            Zona = envio.ZonaId is null
+                ? null
+                : await db.Zonas.AsNoTracking()
+                    .Where(z => z.Id == envio.ZonaId)
+                    .Select(z => z.Nombre)
+                    .FirstOrDefaultAsync(cancellationToken),
+            Franja = envio.FranjaHorariaId is null
+                ? null
+                : await db.FranjasHorarias.AsNoTracking()
+                    .Where(f => f.Id == envio.FranjaHorariaId)
+                    .Select(f => new FranjaEntregaDto(f.Id, f.Nombre, f.HoraInicio, f.HoraFin))
+                    .FirstOrDefaultAsync(cancellationToken)
         };
     }
 

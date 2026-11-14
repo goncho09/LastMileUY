@@ -94,7 +94,7 @@
           "Envíos"
         ],
         "summary": "Crea un envío",
-        "description": "Si se manda una referencia externa que ya existe, responde 409 y no crea otro envío.",
+        "description": "Si se manda una referencia externa que ya existe, responde 409 y no crea otro envío. La zona sale de la dirección y el costo del cuadro tarifario vigente; si no hay tarifa que corresponda, el envío se crea sin costo. modalidad es Estandar (por defecto) o Urgente, y franjaHorariaId tiene que ser una franja activa de la zona de la dirección.",
         "operationId": "V1CrearEnvio",
         "requestBody": {
           "content": {
@@ -827,6 +827,21 @@
             "items": {
               "$ref": "#/components/schemas/CrearBultoRequest"
             }
+          },
+          "modalidad": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "franjaHorariaId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -946,6 +961,22 @@
             ],
             "format": "date-time"
           },
+          "zona": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "franja": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FranjaEntregaDto"
+              }
+            ]
+          },
           "intentos": {
             "type": "array",
             "items": {
@@ -990,6 +1021,30 @@
           "fechaCreacion": {
             "type": "string",
             "format": "date-time"
+          },
+          "modalidad": {
+            "type": "string"
+          },
+          "zona": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "franja": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "costoEnvio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -1085,6 +1140,36 @@
           },
           "origen": {
             "type": "string"
+          }
+        }
+      },
+      "FranjaEntregaDto": {
+        "required": [
+          "id",
+          "nombre",
+          "horaInicio",
+          "horaFin"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "horaInicio": {
+            "type": "string",
+            "format": "time"
+          },
+          "horaFin": {
+            "type": "string",
+            "format": "time"
           }
         }
       },

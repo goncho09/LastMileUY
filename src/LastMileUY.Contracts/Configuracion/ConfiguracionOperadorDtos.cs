@@ -7,7 +7,12 @@ public record ZonaDto(
     string Nombre,
     string? Descripcion,
     bool Activa,
-    IReadOnlyList<FranjaHorariaDto> Franjas);
+    IReadOnlyList<FranjaHorariaDto> Franjas)
+{
+    public string? Departamento { get; init; }
+
+    public IReadOnlyList<string> Localidades { get; init; } = [];
+}
 
 public record FranjaHorariaDto(
     int Id,
@@ -17,7 +22,11 @@ public record FranjaHorariaDto(
     TimeOnly HoraFin,
     bool Activa);
 
-public record GuardarZonaRequest(string Nombre, string? Descripcion);
+public record GuardarZonaRequest(
+    string Nombre,
+    string? Descripcion,
+    string? Departamento = null,
+    IReadOnlyList<string>? Localidades = null);
 
 public record GuardarFranjaHorariaRequest(string Nombre, TimeOnly HoraInicio, TimeOnly HoraFin);
 

@@ -40,6 +40,8 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
 
     public CanalIngreso Canal { get; set; } = CanalIngreso.Api;
 
+    public int? ZonaId { get; set; }
+
     public int? FranjaHorariaId { get; set; }
 
     public Devolucion? Devolucion { get; set; }

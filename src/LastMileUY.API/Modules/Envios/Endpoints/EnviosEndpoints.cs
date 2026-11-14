@@ -84,6 +84,17 @@ public static class EnviosEndpoints
                     "OperarioDeposito"))
             .WithName("ObtenerEnvioPorId");
 
+        group.MapGet("/opciones-entrega", async (
+                int direccionId,
+                OpcionesEntregaService opciones,
+                CancellationToken ct) =>
+                await opciones.ObtenerAsync(direccionId, ct) is { } resultado
+                    ? Results.Ok(resultado)
+                    : Results.NotFound())
+            .RequireAuthorization(politica =>
+                politica.RequireRole("Comercio", "Operador"))
+            .WithName("ObtenerOpcionesEntrega");
+
         group.MapPost("/", async (
                 CrearEnvioRequest request,
                 CrearEnvioService service,

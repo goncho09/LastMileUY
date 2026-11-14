@@ -2,6 +2,7 @@ using System.Security.Claims;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.API.Modules.Envios.Domain;
+using LastMileUY.API.Modules.Tarifas.Application;
 using LastMileUY.API.Tests.Multitenancy;
 using LastMileUY.Contracts.Envios;
 using Microsoft.AspNetCore.Http;
@@ -142,7 +143,7 @@ public class CanalIngresoTests(BaseConDosOperadores baseDeDatos)
             ? new ContextoOperadorFijo(OperadorA, ComercioCompartido)
             : new ContextoOperadorFijo(OperadorA);
 
-        var creado = await new CrearEnvioService(db, contextoOperador)
+        var creado = await new CrearEnvioService(db, contextoOperador, new OpcionesEntregaService(db), new TarificadorEnvios(db, TimeProvider.System))
             .EjecutarAsync(request, CrearUsuario(rol));
 
         return creado.Id;
