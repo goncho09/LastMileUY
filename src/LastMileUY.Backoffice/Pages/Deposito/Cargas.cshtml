@@ -1,0 +1,62 @@
+@page
+@model LastMileUY.Backoffice.Pages.Deposito.CargasModel
+@{
+    ViewData["Title"] = "Carga de vehículos";
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7">
+
+    <partial name="_Encabezado" model="@(("Carga de vehículos", "Las hojas de ruta que todavía no salieron. Antes de despachar, se verifica que cada bulto esté arriba del vehículo.", Model.Error))" />
+
+    <partial name="_Pestanas" model="@("Cargas")" />
+
+    <section class="@Estilos.Tarjeta" aria-labelledby="titulo-cargas">
+        <div class="@Estilos.EncabezadoTarjeta">
+            <h2 id="titulo-cargas" class="text-base font-semibold text-white">Rutas por salir</h2>
+        </div>
+
+        @if (Model.Rutas.Count == 0)
+        {
+            <p class="px-6 py-10 text-center text-sm text-slate-400">No hay hojas de ruta planificadas.</p>
+        }
+        else
+        {
+            <div class="overflow-x-auto">
+                <table class="@Estilos.Tabla">
+                    <thead class="@Estilos.CabeceraTabla">
+                        <tr>
+                            <th scope="col" class="@Estilos.Celda">Ruta</th>
+                            <th scope="col" class="@Estilos.Celda">Repartidor y vehículo</th>
+                            <th scope="col" class="@Estilos.Celda">Envíos</th>
+                            <th scope="col" class="@Estilos.Celda">Bultos</th>
+                            <th scope="col" class="@Estilos.Celda">Carga</th>
+                            <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var ruta in Model.Rutas)
+                        {
+                            var (texto, clase) = CargasModel.EstadoCarga(ruta.EstadoCarga);
+                            <tr>
+                                <td class="@Estilos.Celda">
+                                    <p class="font-medium text-white">@ruta.Nombre</p>
+                                    <p class="mt-1 text-xs text-slate-400">@Formato.Fecha(ruta.Fecha)</p>
+                                </td>
+                                <td class="@Estilos.Celda text-slate-300">@ruta.Repartidor · <span class="font-mono">@ruta.Vehiculo</span></td>
+                                <td class="@Estilos.Celda text-slate-300">@ruta.CantidadEnvios</td>
+                                <td class="@Estilos.Celda text-slate-300">@ruta.CantidadBultos</td>
+                                <td class="@Estilos.Celda">
+                                    <span class="rounded border px-1.5 py-0.5 text-xs whitespace-nowrap @clase">@texto</span>
+                                </td>
+                                <td class="@Estilos.Celda text-right">
+                                    <a asp-page="Carga" asp-route-ruta="@ruta.Id" class="@Estilos.BotonSecundario"
+                                       aria-label="Verificar la carga de @ruta.Nombre">Verificar</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

@@ -32,7 +32,8 @@ public abstract class PaginaConfiguracion(ILogger logger) : PageModel
             try
             {
                 await accion();
-                TempData["Aviso"] = aviso;
+                if (aviso.Length > 0)
+                    TempData["Aviso"] = aviso;
                 return RedirectToPage(rutaAlTerminar);
             }
             catch (OperacionRechazadaException ex)

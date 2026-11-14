@@ -11,6 +11,7 @@ problemas a uno solo, o para que un operador no use algo que no contrató.
 | `orden-sugerido` | Orden sugerido de paradas | Prendida | El Backoffice no muestra "Ordenar por recorrido" y `POST /api/rutas/sugerir-orden` contesta **403** con el motivo. |
 | `seguimiento-publico` | Seguimiento público | Prendida | `GET /api/seguimiento/{codigo}` contesta **404** para los envíos de ese operador, como si el código no existiera. |
 | `avisos-comercios` | Avisos a comercios | Prendida | El comercio ve sus suscripciones, pero crearlas, cambiarlas o regenerar la clave da **403** con el motivo (el portal lo muestra). El worker deja de registrar avisos nuevos para ese operador. Los que ya estaban pendientes se mandan igual: se generaron cuando estaba prendida. |
+| `verificacion-carga` | Verificación de carga obligatoria | Apagada | Las rutas se despachan sin verificar la carga (como siempre). Prendida, `POST /api/rutas/{id}/despachar` contesta **409** si el depósito no verificó que todos los bultos están cargados. Ver [deposito.md](deposito.md). |
 
 El catálogo está en `LastMileUY.Contracts/Operadores/Funcionalidades.cs`: clave, nombre, descripción y
 valor por defecto. Agregar una nueva es sumarla ahí y poner el corte donde corresponda.

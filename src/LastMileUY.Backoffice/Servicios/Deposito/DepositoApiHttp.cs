@@ -42,6 +42,35 @@ public sealed class DepositoApiHttp(HttpClient http) : IDepositoApi
         await VerificarAsync(respuesta, ct);
     }
 
+    public async Task<IReadOnlyList<RutaPorCargarDto>> RutasPorCargarAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<RutaPorCargarDto>>($"{Base}/cargas", ct) ?? [];
+
+    public async Task<CargaRutaDto?> CargaAsync(int rutaId, CancellationToken ct = default)
+    {
+        using var respuesta = await http.GetAsync($"{Base}/cargas/{rutaId}", ct);
+
+        if (respuesta.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        respuesta.EnsureSuccessStatusCode();
+        return await respuesta.Content.ReadFromJsonAsync<CargaRutaDto>(ct);
+    }
+
+    public async Task<CargaRutaDto> VerificarCargaAsync(int rutaId, VerificarCargaRequest request, CancellationToken ct = default)
+    {
+        using var respuesta = await http.PostAsJsonAsync($"{Base}/cargas/{rutaId}/verificaciones", request, ct);
+        await VerificarAsync(respuesta, ct);
+
+        return await respuesta.Content.ReadFromJsonAsync<CargaRutaDto>(ct)
+            ?? throw new InvalidOperationException("La API no devolvió la carga.");
+    }
+
+    public async Task QuitarEnvioAsync(int rutaId, int envioId, CancellationToken ct = default)
+    {
+        using var respuesta = await http.PostAsync($"{Base}/cargas/{rutaId}/envios/{envioId}/quitar", null, ct);
+        await VerificarAsync(respuesta, ct);
+    }
+
     private static async Task VerificarAsync(HttpResponseMessage respuesta, CancellationToken ct)
     {
         switch (respuesta.StatusCode)

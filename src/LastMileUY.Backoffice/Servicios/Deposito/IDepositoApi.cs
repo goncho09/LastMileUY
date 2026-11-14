@@ -13,4 +13,12 @@ public interface IDepositoApi
     Task<IReadOnlyList<RecepcionDto>> DiscrepanciasAsync(bool soloPendientes, CancellationToken ct = default);
 
     Task ResolverAsync(int recepcionId, string resolucion, CancellationToken ct = default);
+
+    Task<IReadOnlyList<RutaPorCargarDto>> RutasPorCargarAsync(CancellationToken ct = default);
+
+    Task<CargaRutaDto?> CargaAsync(int rutaId, CancellationToken ct = default);
+
+    Task<CargaRutaDto> VerificarCargaAsync(int rutaId, VerificarCargaRequest request, CancellationToken ct = default);
+
+    Task QuitarEnvioAsync(int rutaId, int envioId, CancellationToken ct = default);
 }

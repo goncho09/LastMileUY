@@ -278,6 +278,70 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("RecepcionesDeposito", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.VerificacionCarga", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Completa")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("FechaHora")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResponsableId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<int>("RutaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId");
+
+                    b.HasIndex("RutaId", "FechaHora");
+
+                    b.ToTable("VerificacionesCarga", (string)null);
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.VerificacionCargaBulto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BultoId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Cargado")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("VerificacionCargaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BultoId");
+
+                    b.HasIndex("VerificacionCargaId", "BultoId")
+                        .IsUnique();
+
+                    b.ToTable("VerificacionesCargaBulto", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Destinatarios.Domain.Destinatario", b =>
                 {
                     b.Property<int>("Id")
@@ -2307,6 +2371,36 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.VerificacionCarga", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Rutas.Domain.Ruta", null)
+                        .WithMany()
+                        .HasForeignKey("RutaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.VerificacionCargaBulto", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Envios.Domain.Bulto", null)
+                        .WithMany()
+                        .HasForeignKey("BultoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Deposito.Domain.VerificacionCarga", null)
+                        .WithMany("Bultos")
+                        .HasForeignKey("VerificacionCargaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Destinatarios.Domain.Destinatario", b =>
                 {
                     b.HasOne("LastMileUY.API.Modules.Comercios.Domain.Comercio", null)
@@ -2827,6 +2921,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.RecepcionDeposito", b =>
+                {
+                    b.Navigation("Bultos");
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.VerificacionCarga", b =>
                 {
                     b.Navigation("Bultos");
                 });

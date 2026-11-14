@@ -1,0 +1,116 @@
+@page
+@model LastMileUY.Backoffice.Pages.Deposito.CargaModel
+@{
+    ViewData["Title"] = "Verificar carga";
+    var carga = Model.Carga;
+}
+
+<div class="mx-auto max-w-[1100px] space-y-7">
+
+    <partial name="_Encabezado" model="@(("Verificar carga", "Escaneá cada bulto a medida que sube al vehículo. Si alguno no aparece, podés bajar su envío de la ruta: vuelve a En depósito para la próxima salida.", Model.Error))" />
+
+    <a asp-page="Cargas" class="text-sm text-violet-300 hover:text-violet-200">Volver a la carga de vehículos</a>
+
+    @if (carga is not null)
+    {
+        var (texto, clase) = CargasModel.EstadoCarga(carga.EstadoCarga);
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-ruta">
+            <div class="@Estilos.EncabezadoTarjeta flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="titulo-ruta" class="text-base font-semibold text-white">@carga.Nombre</h2>
+                    <p class="mt-1 text-xs text-slate-400">
+                        @Formato.Fecha(carga.Fecha) · @carga.Repartidor · <span class="font-mono">@carga.Vehiculo</span>
+                        @if (carga.UltimaVerificacion is { } ultima)
+                        {
+                            <span> · última verificación @Formato.Fecha(ultima)</span>
+                        }
+                    </p>
+                </div>
+                <span class="rounded border px-1.5 py-0.5 text-xs whitespace-nowrap @clase">@texto</span>
+            </div>
+
+            @if (!carga.SePuedeVerificar)
+            {
+                <p class="px-6 py-8 text-sm text-slate-300">Esta ruta ya salió. La carga no se puede cambiar.</p>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Verificar" asp-route-ruta="@carga.RutaId" class="space-y-5 p-5">
+                    <div>
+                        <label for="escaneo" class="@Estilos.Etiqueta">Escanear bulto</label>
+                        <input id="escaneo" autocomplete="off" autofocus placeholder="Código del bulto" class="@Estilos.Campo max-w-md font-mono" />
+                        <p id="aviso-escaneo" class="mt-1.5 text-sm text-slate-400" role="status">Cada código escaneado marca su bulto como cargado.</p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="@Estilos.Tabla">
+                            <thead class="@Estilos.CabeceraTabla">
+                                <tr>
+                                    <th scope="col" class="@Estilos.Celda">Cargado</th>
+                                    <th scope="col" class="@Estilos.Celda">Bulto</th>
+                                    <th scope="col" class="@Estilos.Celda">Parada</th>
+                                    <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                @foreach (var bulto in carga.Bultos)
+                                {
+                                    <tr class="@(bulto.Cargado == false ? "bg-red-500/[0.06]" : "")">
+                                        <td class="@Estilos.Celda">
+                                            <input type="checkbox" name="Cargados" value="@bulto.Codigo" data-codigo="@bulto.Codigo"
+                                                   checked="@(bulto.Cargado == true)" class="@Estilos.Casilla"
+                                                   aria-label="@bulto.Codigo cargado" />
+                                        </td>
+                                        <td class="@Estilos.Celda">
+                                            <p class="font-mono text-sm text-white">@bulto.Codigo</p>
+                                            @if (bulto.Descripcion is not null)
+                                            {
+                                                <p class="mt-1 text-xs text-slate-400">@bulto.Descripcion</p>
+                                            }
+                                            @if (bulto.Cargado == false)
+                                            {
+                                                <p class="mt-1 text-xs text-red-300">No se cargó en la última verificación</p>
+                                            }
+                                        </td>
+                                        <td class="@Estilos.Celda text-slate-300">@bulto.OrdenParada · @bulto.Destinatario</td>
+                                        <td class="@Estilos.Celda text-right">
+                                            @if (bulto.Cargado == false)
+                                            {
+                                                <button type="submit" form="quitar-@bulto.EnvioId" class="@Estilos.BotonSecundario"
+                                                        aria-label="Bajar el envío @bulto.CodigoSeguimiento de la ruta">
+                                                    Bajar envío
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <label asp-for="Observaciones" class="@Estilos.Etiqueta">Observaciones</label>
+                        <textarea asp-for="Observaciones" maxlength="500" rows="2" class="@Estilos.Campo"></textarea>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="@Estilos.BotonPrincipal">Guardar verificación</button>
+                    </div>
+                </form>
+
+                @foreach (var envioId in carga.Bultos.Where(b => b.Cargado == false).Select(b => (b.EnvioId, b.CodigoSeguimiento)).Distinct())
+                {
+                    <form id="quitar-@envioId.EnvioId" method="post" asp-page-handler="Quitar" asp-route-ruta="@carga.RutaId" class="hidden">
+                        <input type="hidden" name="envioId" value="@envioId.EnvioId" />
+                        <input type="hidden" name="codigo" value="@envioId.CodigoSeguimiento" />
+                    </form>
+                }
+            }
+        </section>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/carga.js" asp-append-version="true"></script>
+}

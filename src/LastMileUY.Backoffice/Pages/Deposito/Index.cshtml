@@ -8,6 +8,8 @@
 
     <partial name="_Encabezado" model="@(("Recepción de bultos", "Los envíos que el comercio ya cargó y todavía no ingresaron al depósito. Escaneá o escribí el código de un envío o de un bulto para recibirlo.", Model.Error))" />
 
+    <partial name="_Pestanas" model="@("Index")" />
+
     <form method="post" asp-page-handler="Buscar" class="flex flex-wrap items-end gap-3" role="search">
         <div class="min-w-[260px] flex-1 sm:max-w-md">
             <label asp-for="Codigo" class="@Estilos.Etiqueta">Código del envío o del bulto</label>

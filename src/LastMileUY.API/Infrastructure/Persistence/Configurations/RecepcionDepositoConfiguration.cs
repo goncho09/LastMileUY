@@ -52,3 +52,40 @@ public class RecepcionBultoConfiguration : IEntityTypeConfiguration<RecepcionBul
         builder.HasIndex(b => new { b.RecepcionDepositoId, b.BultoId }).IsUnique();
     }
 }
+
+public class VerificacionCargaConfiguration : IEntityTypeConfiguration<VerificacionCarga>
+{
+    public void Configure(EntityTypeBuilder<VerificacionCarga> builder)
+    {
+        builder.ToTable("VerificacionesCarga");
+
+        builder.HasKey(v => v.Id);
+
+        builder.HasOne<Operador>().WithMany().HasForeignKey(v => v.OperadorId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<LastMileUY.API.Modules.Rutas.Domain.Ruta>().WithMany().HasForeignKey(v => v.RutaId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(v => v.ResponsableId).HasMaxLength(450);
+        builder.Property(v => v.Observaciones).HasMaxLength(500);
+
+        builder.HasMany(v => v.Bultos)
+            .WithOne()
+            .HasForeignKey(b => b.VerificacionCargaId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(v => new { v.RutaId, v.FechaHora });
+    }
+}
+
+public class VerificacionCargaBultoConfiguration : IEntityTypeConfiguration<VerificacionCargaBulto>
+{
+    public void Configure(EntityTypeBuilder<VerificacionCargaBulto> builder)
+    {
+        builder.ToTable("VerificacionesCargaBulto");
+
+        builder.HasKey(b => b.Id);
+
+        builder.HasOne<Bulto>().WithMany().HasForeignKey(b => b.BultoId).OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(b => new { b.VerificacionCargaId, b.BultoId }).IsUnique();
+    }
+}

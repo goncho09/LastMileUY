@@ -1,0 +1,13 @@
+@model string
+
+<nav class="flex gap-1 border-b border-white/[0.07]" aria-label="Secciones del depósito">
+    @foreach (var (pagina, texto) in new[] { ("Index", "Recepción"), ("Cargas", "Carga de vehículos") })
+    {
+        var actual = Model == pagina;
+        <a asp-page="@pagina"
+           aria-current="@(actual ? "page" : null)"
+           class="-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors @(actual ? "border-violet-400 text-white" : "border-transparent text-slate-400 hover:text-slate-200")">
+            @texto
+        </a>
+    }
+</nav>
