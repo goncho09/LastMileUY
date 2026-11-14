@@ -1,4 +1,4 @@
-﻿  services:
+  services:
     postgres:
       ports: !reset [ ]
       restart: unless-stopped
@@ -8,6 +8,8 @@
       restart: unless-stopped
     
     rabbitmq:
+      # Identidad estable necesaria para recuperar el volumen Mnesia en otra VM.
+      hostname: ${RABBITMQ_RESTORE_HOST:-3e1f8b7531b6}
       ports: !reset [ ]
       environment:
         RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Configurar RABBITMQ_PASSWORD}
@@ -59,7 +61,7 @@
       environment:
         DOTNET_ENVIRONMENT: Production
         Avisos__PermitirDestinosLocales: "false"
-        Correo__UrlSeguimiento: https://seguimiento.20-226-58-41.sslip.io
+        Correo__UrlSeguimiento: ${URL_SEGUIMIENTO:?Configurar URL_SEGUIMIENTO}
       restart: unless-stopped
     
     grafana:
