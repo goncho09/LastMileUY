@@ -1,0 +1,130 @@
+@page
+@model LastMileUY.Backoffice.Pages.Deposito.RecibirModel
+@{
+    ViewData["Title"] = "Recibir envío";
+    var envio = Model.Envio;
+}
+
+<div class="mx-auto max-w-[1100px] space-y-7">
+
+    <partial name="_Encabezado" model="@(("Recibir envío", "Revisá cada bulto contra lo que declaró el comercio. Si un bulto no llegó, el envío no ingresa y queda como discrepancia hasta que llegue.", Model.Error))" />
+
+    <a asp-page="Index" class="text-sm text-violet-300 hover:text-violet-200">Volver a la recepción</a>
+
+    @if (envio is not null)
+    {
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-envio">
+            <div class="@Estilos.EncabezadoTarjeta flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="titulo-envio" class="font-mono text-base font-semibold text-white">@envio.CodigoSeguimiento</h2>
+                    <p class="mt-1 text-xs text-slate-400">@envio.Comercio · para @envio.Destinatario</p>
+                </div>
+                <span class="rounded border border-white/10 px-1.5 py-0.5 text-xs whitespace-nowrap text-slate-300">@envio.Estado</span>
+            </div>
+
+            @if (!envio.SePuedeRecibir)
+            {
+                <p class="px-6 py-8 text-sm text-slate-300">Este envío ya ingresó al depósito. No hay nada para recibir.</p>
+            }
+            else
+            {
+                <form method="post" asp-route-codigo="@Model.Codigo" class="space-y-5 p-5">
+                    <div class="overflow-x-auto">
+                        <table class="@Estilos.Tabla">
+                            <thead class="@Estilos.CabeceraTabla">
+                                <tr>
+                                    <th scope="col" class="@Estilos.Celda">Bulto</th>
+                                    <th scope="col" class="@Estilos.Celda">Declarado</th>
+                                    <th scope="col" class="@Estilos.Celda">Cómo llegó</th>
+                                    <th scope="col" class="@Estilos.Celda">Peso medido (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                @for (var i = 0; i < Model.Bultos.Count; i++)
+                                {
+                                    var fila = Model.Bultos[i];
+                                    var declarado = Model.Declarado(fila.Codigo);
+                                    <tr class="@(fila.Escaneado ? "bg-violet-500/[0.06]" : "")">
+                                        <td class="@Estilos.Celda">
+                                            <input type="hidden" name="Bultos[@i].Codigo" value="@fila.Codigo" />
+                                            <p class="font-mono text-sm text-white">@fila.Codigo</p>
+                                            @if (declarado?.Descripcion is not null)
+                                            {
+                                                <p class="mt-1 text-xs text-slate-400">@declarado.Descripcion</p>
+                                            }
+                                        </td>
+                                        <td class="@Estilos.Celda text-slate-300">
+                                            @if (declarado is not null)
+                                            {
+                                                <span>@Formato.Numero(declarado.PesoKg) kg</span>
+                                                <span class="block text-xs text-slate-500">@Formato.Numero(declarado.LargoCm) × @Formato.Numero(declarado.AnchoCm) × @Formato.Numero(declarado.AltoCm) cm</span>
+                                            }
+                                        </td>
+                                        <td class="@Estilos.Celda">
+                                            <label for="estado-@i" class="sr-only">Cómo llegó @fila.Codigo</label>
+                                            <select id="estado-@i" name="Bultos[@i].Estado" class="@Estilos.Campo">
+                                                <option value="@EstadosBultoRecibido.Recibido" selected="@(fila.Estado == EstadosBultoRecibido.Recibido)">Recibido</option>
+                                                <option value="@EstadosBultoRecibido.Danado" selected="@(fila.Estado == EstadosBultoRecibido.Danado)">Dañado</option>
+                                                <option value="@EstadosBultoRecibido.Faltante" selected="@(fila.Estado == EstadosBultoRecibido.Faltante)">No llegó</option>
+                                            </select>
+                                        </td>
+                                        <td class="@Estilos.Celda">
+                                            <label for="peso-@i" class="sr-only">Peso medido de @fila.Codigo</label>
+                                            <input id="peso-@i" name="Bultos[@i].PesoMedidoKg" type="number" min="0.01" max="1000" step="0.01"
+                                                   value="@fila.PesoMedidoKg?.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                   placeholder="Opcional" class="@Estilos.Campo w-32" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="text-xs text-slate-400">
+                        Si el peso medido difiere más de un 10 % del declarado, queda como discrepancia para avisarle al comercio. El precio del envío no cambia.
+                    </p>
+
+                    <div>
+                        <label asp-for="Observaciones" class="@Estilos.Etiqueta">Observaciones</label>
+                        <textarea asp-for="Observaciones" maxlength="500" rows="2" class="@Estilos.Campo"></textarea>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="@Estilos.BotonPrincipal">Registrar recepción</button>
+                    </div>
+                </form>
+            }
+        </section>
+
+        @if (envio.Recepciones.Count > 0)
+        {
+            <section class="@Estilos.Tarjeta" aria-labelledby="titulo-historial">
+                <div class="@Estilos.EncabezadoTarjeta">
+                    <h2 id="titulo-historial" class="text-base font-semibold text-white">Recepciones anteriores</h2>
+                </div>
+                <ul class="divide-y divide-white/5">
+                    @foreach (var recepcion in envio.Recepciones)
+                    {
+                        <li class="px-5 py-4 text-sm">
+                            <p class="text-white">
+                                @Formato.Fecha(recepcion.FechaHora) ·
+                                @(recepcion.Aceptada ? "Ingresó" : "No ingresó")
+                                @(recepcion.TieneDiscrepancias ? (recepcion.Pendiente ? "· discrepancia pendiente" : "· discrepancia resuelta") : "")
+                            </p>
+                            <ul class="mt-1 space-y-0.5 text-slate-400">
+                                @foreach (var linea in IndexModel.Detalle(recepcion))
+                                {
+                                    <li>@linea</li>
+                                }
+                            </ul>
+                            @if (recepcion.Resolucion is not null)
+                            {
+                                <p class="mt-1 text-xs text-slate-400">Resolución: @recepcion.Resolucion</p>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+    }
+</div>

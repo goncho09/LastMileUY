@@ -186,6 +186,98 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("OperadoresComercios", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.RecepcionBulto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BultoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PesoDeclaradoKg")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("PesoMedidoKg")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int>("RecepcionDepositoId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BultoId");
+
+                    b.HasIndex("RecepcionDepositoId", "BultoId")
+                        .IsUnique();
+
+                    b.ToTable("RecepcionesBulto", (string)null);
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.RecepcionDeposito", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Aceptada")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ComercioId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EnvioId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaHora")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaResolucion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Resolucion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ResponsableId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("ResueltaPor")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<bool>("TieneDiscrepancias")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComercioId");
+
+                    b.HasIndex("EnvioId");
+
+                    b.HasIndex("OperadorId", "FechaHora")
+                        .HasFilter("\"TieneDiscrepancias\" AND \"FechaResolucion\" IS NULL");
+
+                    b.ToTable("RecepcionesDeposito", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Destinatarios.Domain.Destinatario", b =>
                 {
                     b.Property<int>("Id")
@@ -2179,6 +2271,42 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.RecepcionBulto", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Envios.Domain.Bulto", null)
+                        .WithMany()
+                        .HasForeignKey("BultoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Deposito.Domain.RecepcionDeposito", null)
+                        .WithMany("Bultos")
+                        .HasForeignKey("RecepcionDepositoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.RecepcionDeposito", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Comercios.Domain.Comercio", null)
+                        .WithMany()
+                        .HasForeignKey("ComercioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Envios.Domain.Envio", null)
+                        .WithMany()
+                        .HasForeignKey("EnvioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Destinatarios.Domain.Destinatario", b =>
                 {
                     b.HasOne("LastMileUY.API.Modules.Comercios.Domain.Comercio", null)
@@ -2696,6 +2824,11 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Navigation("SuscripcionesAvisos");
 
                     b.Navigation("Usuarios");
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Deposito.Domain.RecepcionDeposito", b =>
+                {
+                    b.Navigation("Bultos");
                 });
 
             modelBuilder.Entity("LastMileUY.API.Modules.Destinatarios.Domain.Destinatario", b =>

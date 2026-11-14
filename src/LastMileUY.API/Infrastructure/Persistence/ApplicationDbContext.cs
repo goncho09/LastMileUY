@@ -2,6 +2,7 @@
 using LastMileUY.API.Infrastructure.Mensajeria;
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Comercios.Domain;
+using LastMileUY.API.Modules.Deposito.Domain;
 using LastMileUY.API.Modules.Destinatarios.Domain;
 using LastMileUY.API.Modules.Entregas.Domain;
 using LastMileUY.API.Modules.Envios.Domain;
@@ -90,6 +91,10 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     public DbSet<CorreoSeguimiento> CorreosSeguimiento
         => Set<CorreoSeguimiento>();
+
+    public DbSet<RecepcionDeposito> RecepcionesDeposito => Set<RecepcionDeposito>();
+
+    public DbSet<RecepcionBulto> RecepcionesBulto => Set<RecepcionBulto>();
 
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();
 
@@ -226,6 +231,8 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
         modelBuilder.Entity<DetalleLiquidacion>().HasQueryFilter(x => Liquidaciones.Any(l => l.Id == x.LiquidacionId));
 
         modelBuilder.Entity<FranjaHoraria>().HasQueryFilter(x => Zonas.Any(z => z.Id == x.ZonaId));
+
+        modelBuilder.Entity<RecepcionBulto>().HasQueryFilter(x => RecepcionesDeposito.Any(r => r.Id == x.RecepcionDepositoId));
 
         modelBuilder.Entity<Destinatario>().HasQueryFilter(d =>
             (ComercioActual != null

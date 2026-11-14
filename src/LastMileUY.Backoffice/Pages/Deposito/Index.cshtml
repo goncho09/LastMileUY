@@ -1,0 +1,117 @@
+@page
+@model LastMileUY.Backoffice.Pages.Deposito.IndexModel
+@{
+    ViewData["Title"] = "Depósito";
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7">
+
+    <partial name="_Encabezado" model="@(("Recepción de bultos", "Los envíos que el comercio ya cargó y todavía no ingresaron al depósito. Escaneá o escribí el código de un envío o de un bulto para recibirlo.", Model.Error))" />
+
+    <form method="post" asp-page-handler="Buscar" class="flex flex-wrap items-end gap-3" role="search">
+        <div class="min-w-[260px] flex-1 sm:max-w-md">
+            <label asp-for="Codigo" class="@Estilos.Etiqueta">Código del envío o del bulto</label>
+            <input asp-for="Codigo" autocomplete="off" autofocus placeholder="Ej. QK7P2M9XA4TB-1" class="@Estilos.Campo font-mono" />
+        </div>
+        <button type="submit" class="@Estilos.BotonPrincipal">Recibir</button>
+    </form>
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-por-recibir">
+            <div class="@Estilos.EncabezadoTarjeta flex items-center justify-between gap-3">
+                <h2 id="titulo-por-recibir" class="text-base font-semibold text-white">Por recibir</h2>
+                <span class="text-xs text-slate-400">@Model.PorRecibir.Count envíos</span>
+            </div>
+
+            @if (Model.PorRecibir.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">No hay envíos esperando ingreso.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="@Estilos.Tabla">
+                        <thead class="@Estilos.CabeceraTabla">
+                            <tr>
+                                <th scope="col" class="@Estilos.Celda">Envío</th>
+                                <th scope="col" class="@Estilos.Celda">Comercio</th>
+                                <th scope="col" class="@Estilos.Celda">Bultos</th>
+                                <th scope="col" class="@Estilos.Celda"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var envio in Model.PorRecibir)
+                            {
+                                <tr>
+                                    <td class="@Estilos.Celda">
+                                        <p class="font-mono text-sm font-medium text-white">@envio.CodigoSeguimiento</p>
+                                        <p class="mt-1 text-xs text-slate-400">@envio.Destinatario · @Formato.Fecha(envio.FechaCreacion)</p>
+                                        @if (envio.TuvoRecepcionIncompleta)
+                                        {
+                                            <p class="mt-1 text-xs text-amber-300">Le faltaron bultos en una recepción anterior</p>
+                                        }
+                                    </td>
+                                    <td class="@Estilos.Celda text-slate-300">@envio.Comercio</td>
+                                    <td class="@Estilos.Celda text-slate-300">@envio.CantidadBultos</td>
+                                    <td class="@Estilos.Celda text-right">
+                                        <a asp-page="Recibir" asp-route-codigo="@envio.CodigoSeguimiento" class="@Estilos.BotonSecundario"
+                                           aria-label="Recibir el envío @envio.CodigoSeguimiento">Recibir</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="@Estilos.Tarjeta h-fit" aria-labelledby="titulo-discrepancias">
+            <div class="@Estilos.EncabezadoTarjeta flex items-center justify-between gap-3">
+                <h2 id="titulo-discrepancias" class="text-base font-semibold text-white">Discrepancias pendientes</h2>
+                <span class="text-xs text-slate-400">@Model.Discrepancias.Count</span>
+            </div>
+
+            @if (Model.Discrepancias.Count == 0)
+            {
+                <p class="px-6 py-10 text-center text-sm text-slate-400">No hay discrepancias sin resolver.</p>
+            }
+            else
+            {
+                <ul class="divide-y divide-white/5">
+                    @foreach (var recepcion in Model.Discrepancias)
+                    {
+                        <li class="space-y-3 px-5 py-4">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                    <p class="font-mono text-sm font-medium text-white">@recepcion.CodigoSeguimiento</p>
+                                    <p class="mt-1 text-xs text-slate-400">@recepcion.Comercio · @Formato.Fecha(recepcion.FechaHora)</p>
+                                </div>
+                                <span class="rounded border px-1.5 py-0.5 text-xs whitespace-nowrap @(recepcion.Aceptada ? "border-amber-500/30 text-amber-300" : "border-red-500/30 text-red-300")">
+                                    @(recepcion.Aceptada ? "Ingresó con observaciones" : "No ingresó: faltan bultos")
+                                </span>
+                            </div>
+                            <ul class="space-y-0.5 text-sm text-slate-300">
+                                @foreach (var linea in IndexModel.Detalle(recepcion))
+                                {
+                                    <li>@linea</li>
+                                }
+                            </ul>
+                            @if (recepcion.Observaciones is not null)
+                            {
+                                <p class="text-xs text-slate-400">@recepcion.Observaciones</p>
+                            }
+                            <form method="post" asp-page-handler="Resolver" asp-route-id="@recepcion.Id" class="flex flex-wrap items-end gap-2">
+                                <div class="min-w-[220px] flex-1">
+                                    <label for="resolucion-@recepcion.Id" class="sr-only">Resolución de @recepcion.CodigoSeguimiento</label>
+                                    <input id="resolucion-@recepcion.Id" name="Resolucion" maxlength="500" placeholder="Cómo se resolvió" class="@Estilos.Campo" />
+                                </div>
+                                <button type="submit" class="@Estilos.BotonSecundario">Marcar resuelta</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+</div>

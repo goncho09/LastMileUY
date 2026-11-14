@@ -9,6 +9,7 @@
     var enEnvios = paginaActual.StartsWith("/Envios", StringComparison.OrdinalIgnoreCase);
     var enRutas = paginaActual.StartsWith("/Rutas", StringComparison.OrdinalIgnoreCase);
     var enSincronizacion = paginaActual.StartsWith("/Sincronizacion", StringComparison.OrdinalIgnoreCase);
+    var enDeposito = paginaActual.StartsWith("/Deposito", StringComparison.OrdinalIgnoreCase);
     var enOperador = paginaActual.StartsWith("/Operador", StringComparison.OrdinalIgnoreCase);
     var enTablero = paginaActual.StartsWith("/Tablero", StringComparison.OrdinalIgnoreCase);
     var enMensajesFallidos = paginaActual.StartsWith(
@@ -85,7 +86,7 @@
                 
 
 
-    @if (!User.IsInRole("Administrador"))
+    @if (!User.IsInRole("Administrador") && !Permisos.SoloDeposito(User))
                 {
                 <a asp-page="/Index"
                        aria-current="@(enInicio ? "page" : null)"
@@ -148,6 +149,20 @@
                             Usuarios
                         </a>
                     }
+                }
+
+                @if (Permisos.PuedeUsarDeposito(User))
+                {
+                    <a asp-page="/Deposito/Index"
+                       aria-current="@(enDeposito ? "page" : null)"
+                       class="@(claseNavBase) @(enDeposito ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M3 9.5 12 4l9 5.5V20H3zM7 20v-7h10v7M7 16h10"/>
+                        </svg>
+                        Depósito
+                    </a>
                 }
 
                 @if (Permisos.PuedeVerConfiguracion(User) || User.IsInRole("Operador"))

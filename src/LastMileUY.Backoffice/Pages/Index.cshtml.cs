@@ -24,6 +24,11 @@ public class IndexModel(
             return RedirectToPage("/MensajesFallidos/Index");
         }
 
+        if (Permisos.SoloDeposito(User))
+        {
+            return RedirectToPage("/Deposito/Index");
+        }
+
         try
         {
             var datos = await ObtenerEstadisticasAsync(ct);

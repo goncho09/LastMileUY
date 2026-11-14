@@ -17,14 +17,17 @@ public class AutenticacionApiDePrueba : IAutenticacionApi
                 "Administrador de prueba", email, null, null, null, [Permisos.Administrador]));
         }
 
-        var esDespachador = email.StartsWith(Permisos.Despachador, StringComparison.OrdinalIgnoreCase);
+        var (nombre, rol) =
+            email.StartsWith(Permisos.Despachador, StringComparison.OrdinalIgnoreCase) ? ("Despachador de prueba", Permisos.Despachador)
+            : email.StartsWith("deposito", StringComparison.OrdinalIgnoreCase) ? ("Depósito de prueba", Permisos.OperarioDeposito)
+            : ("Operador de prueba", Permisos.Operador);
 
         return Task.FromResult<SesionIniciada?>(new SesionIniciada(
-            esDespachador ? "Despachador de prueba" : "Operador de prueba",
+            nombre,
             email,
             1,
             null,
             OperadorApiDePrueba.Operador,
-            [esDespachador ? Permisos.Despachador : Permisos.Operador]));
+            [rol]));
     }
 }
