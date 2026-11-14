@@ -34,6 +34,9 @@ builder.Services.AddRazorPages(opciones =>
         "/Sincronizacion", Permisos.PoliticaOperacion);
 
     opciones.Conventions.AuthorizeFolder(
+        "/Deposito", Permisos.PoliticaDeposito);
+
+    opciones.Conventions.AuthorizeFolder(
         "/MensajesFallidos", Permisos.PoliticaAdministracionGlobal);
 
     opciones.Conventions.AuthorizeFolder(
@@ -54,7 +57,9 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Permisos.PoliticaAdministracionGlobal,
         politica => politica.RequireRole(Permisos.RolesAdministracionGlobal))
     .AddPolicy(Permisos.PoliticaOperacion,
-        politica => politica.RequireRole(Permisos.RolesOperacion));
+        politica => politica.RequireRole(Permisos.RolesOperacion))
+    .AddPolicy(Permisos.PoliticaDeposito,
+        politica => politica.RequireRole(Permisos.RolesDeposito));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(opciones =>
@@ -102,6 +107,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IGestionOperadoresApi>(s => s.GetRequiredService<GestionOperadoresApiDePrueba>());
     builder.Services.AddSingleton<IGestionComerciosApi, GestionComerciosApiDePrueba>();
     builder.Services.AddSingleton<IConfiguracionApi, ConfiguracionApiDePrueba>();
+    builder.Services.AddSingleton<IDepositoApi, DepositoApiDePrueba>();
 
 }
 else
@@ -115,6 +121,14 @@ else
     builder.Services.AddTransient<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IConfiguracionApi, ConfiguracionApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IDepositoApi, DepositoApiHttp>(cliente =>
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);

@@ -7,13 +7,22 @@ public static class Permisos
     public const string Operador = "Operador";
     public const string Despachador = "Despachador";
     public const string Administrador = "Administrador";
+    public const string OperarioDeposito = "OperarioDeposito";
 
     public const string PoliticaBackoffice = "Backoffice";
     public const string PoliticaConfiguracion = "ConfiguracionDelOperador";
     public const string PoliticaAdministracionGlobal = "AdministracionGlobal";
     public const string PoliticaOperacion = "OperacionLogistica";
+    public const string PoliticaDeposito = "Deposito";
 
-    public static readonly string[] RolesBackoffice = [Administrador, Operador, Despachador];
+    public static readonly string[] RolesBackoffice = [Administrador, Operador, Despachador, OperarioDeposito];
+
+    public static readonly string[] RolesDeposito = [Operador, Despachador, OperarioDeposito];
+
+    public static bool PuedeUsarDeposito(ClaimsPrincipal usuario) => RolesDeposito.Any(usuario.IsInRole);
+
+    public static bool SoloDeposito(ClaimsPrincipal usuario) =>
+        usuario.IsInRole(OperarioDeposito) && !RolesOperacion.Any(usuario.IsInRole) && !usuario.IsInRole(Administrador);
 
     public static readonly string[] RolesAdministracionGlobal =
         [Administrador];
@@ -40,7 +49,8 @@ public static class Permisos
 
     public static string Perfil(ClaimsPrincipal usuario)
     {
-        var roles = usuario.FindAll(ClaimTypes.Role).Select(c => c.Value).Where(RolesBackoffice.Contains).ToList();
+        var roles = usuario.FindAll(ClaimTypes.Role).Select(c => c.Value).Where(RolesBackoffice.Contains)
+            .Select(r => r == OperarioDeposito ? "Operario de depósito" : r).ToList();
 
         return roles.Count switch
         {

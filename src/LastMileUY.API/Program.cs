@@ -8,6 +8,8 @@ using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Infrastructure.Persistence;
 using LastMileUY.API.Modules.Comercios.Application;
 using LastMileUY.API.Modules.Comercios.Endpoints;
+using LastMileUY.API.Modules.Deposito.Application;
+using LastMileUY.API.Modules.Deposito.Endpoints;
 using LastMileUY.API.Modules.Destinatarios.Application;
 using LastMileUY.API.Modules.Destinatarios.Endpoints;
 using LastMileUY.API.Modules.Entregas.Application;
@@ -300,6 +302,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<CrearEnvioService>();
 builder.Services.AddScoped<OpcionesEntregaService>();
+builder.Services.AddScoped<RecepcionDepositoService>();
 builder.Services.AddScoped<ConsultasEnviosService>();
 builder.Services.AddScoped<CambiarEstadoEnvioService>();
 builder.Services.AddScoped<OperadorActualService>();
@@ -478,6 +481,7 @@ app.MapOperadorEndpoints();
 app.MapConfiguracionOperadorEndpoints();
 app.MapDestinatariosEndpoints();
 app.MapRutasEndpoints();
+app.MapDepositoEndpoints();
 app.MapSincronizacionEndpoints();
 app.MapSeguimientoEndpoints();
 app.MapSuscripcionesAvisosEndpoints();

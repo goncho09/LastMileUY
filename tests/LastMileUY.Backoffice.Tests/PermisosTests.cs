@@ -17,6 +17,7 @@ public class PermisosTests
     [InlineData("Despachador", true)]
     [InlineData("Repartidor", false)]
     [InlineData("Comercio", false)]
+    [InlineData("OperarioDeposito", true)]
     [InlineData("Administrador", true)]
     public void Solo_los_perfiles_del_Backoffice_pueden_entrar(string rol, bool puede)
     {
@@ -60,6 +61,23 @@ public class PermisosTests
         Assert.Equal("Operador y Despachador", Permisos.Perfil(Usuario("Operador", "Despachador")));
         Assert.Equal("Sin perfil", Permisos.Perfil(Usuario()));
     }
+
+    [Theory]
+    [InlineData("OperarioDeposito", true, true)]
+    [InlineData("Operador", true, false)]
+    [InlineData("Despachador", true, false)]
+    [InlineData("Administrador", false, false)]
+    public void El_operario_de_deposito_solo_ve_el_deposito(string rol, bool usaDeposito, bool soloDeposito)
+    {
+        var usuario = Usuario(rol);
+
+        Assert.Equal(usaDeposito, Permisos.PuedeUsarDeposito(usuario));
+        Assert.Equal(soloDeposito, Permisos.SoloDeposito(usuario));
+    }
+
+    [Fact]
+    public void El_operario_de_deposito_se_muestra_con_nombre() =>
+        Assert.Equal("Operario de depósito", Permisos.Perfil(Usuario("OperarioDeposito")));
 
     [Fact]
     public async Task Sin_permiso_el_cambio_de_estado_no_llega_a_la_api()
