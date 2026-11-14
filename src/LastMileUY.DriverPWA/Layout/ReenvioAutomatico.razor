@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject SincronizacionService Sincronizacion
+@inject CargaVehiculoService Carga
 
 @code {
     private IJSObjectReference? moduloConexion;
@@ -27,6 +28,7 @@
         try
         {
             await Sincronizacion.SincronizarPendientesAsync();
+            await Carga.EnviarPendientesAsync();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
                                        or UnauthorizedAccessException or InvalidOperationException)

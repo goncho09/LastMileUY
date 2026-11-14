@@ -54,10 +54,47 @@ public class CargaVehiculoDePuntaAPuntaTests(ApiDePuntaAPunta api)
         var completa = await VerificarAsync(despachador, rutaId, [.. codigos]);
         Assert.Equal(EstadosCarga.Verificada, completa.EstadoCarga);
 
-        using var ajeno = await despachador.PostAsJsonAsync($"api/deposito/cargas/{rutaId}/verificaciones",
-            new VerificarCargaRequest([codigos[0], "NOEXISTE-1"]));
-        Assert.Equal(HttpStatusCode.BadRequest, ajeno.StatusCode);
+        Assert.Empty(completa.Sobrantes);
         Assert.Equal(envioIds.Length, completa.Bultos.Select(b => b.EnvioId).Distinct().Count());
+
+        var conSobrante = await VerificarAsync(despachador, rutaId, [.. codigos, "otraruta-1"]);
+        Assert.Equal(EstadosCarga.Verificada, conSobrante.EstadoCarga);
+        Assert.Equal(["OTRARUTA-1"], conSobrante.Sobrantes);
+        Assert.Equal("Deposito", conSobrante.OrigenUltimaVerificacion);
+    }
+
+    [Fact]
+    public async Task El_repartidor_registra_la_carga_desde_la_app_con_faltantes_y_sobrantes()
+    {
+        var operador = await api.IniciarSesionAsync(Operador1);
+        var despachador = await api.IniciarSesionAsync(Despachador1);
+        var repartidor = await api.IniciarSesionAsync(Repartidor1);
+        var otroRepartidor = await api.IniciarSesionAsync(Repartidor2);
+        var (rutaId, _) = await RutasDePuntaAPunta.RutaConEnviosAsync(api, operador, despachador, 314, 1, bultosPorEnvio: 2);
+        var codigos = (await despachador.GetFromJsonAsync<CargaRutaDto>($"api/deposito/cargas/{rutaId}"))!.Bultos
+            .Select(b => b.Codigo).ToList();
+
+        using (var antesDeSalir = await repartidor.PostAsJsonAsync($"api/rutas/mias/{rutaId}/carga", new VerificarCargaRequest(codigos)))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, antesDeSalir.StatusCode);
+        }
+
+        await RutasDePuntaAPunta.DespacharAsync(despachador, rutaId);
+
+        var escaneadoSinConexion = DateTime.UtcNow.AddMinutes(-20);
+        using var respuesta = await repartidor.PostAsJsonAsync($"api/rutas/mias/{rutaId}/carga",
+            new VerificarCargaRequest([codigos[0], "AJENO-1"], null, escaneadoSinConexion));
+        Assert.Equal(HttpStatusCode.OK, respuesta.StatusCode);
+        var carga = (await respuesta.Content.ReadFromJsonAsync<CargaRutaDto>())!;
+
+        Assert.Equal(EstadosCarga.Incompleta, carga.EstadoCarga);
+        Assert.Equal("Repartidor", carga.OrigenUltimaVerificacion);
+        Assert.Equal(["AJENO-1"], carga.Sobrantes);
+        Assert.False(carga.Bultos.Single(b => b.Codigo == codigos[1]).Cargado);
+        Assert.Equal(escaneadoSinConexion, carga.UltimaVerificacion!.Value, TimeSpan.FromSeconds(1));
+
+        using var ajena = await otroRepartidor.PostAsJsonAsync($"api/rutas/mias/{rutaId}/carga", new VerificarCargaRequest(codigos));
+        Assert.Equal(HttpStatusCode.NotFound, ajena.StatusCode);
     }
 
     [Fact]

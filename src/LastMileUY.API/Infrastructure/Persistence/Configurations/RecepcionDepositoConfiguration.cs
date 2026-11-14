@@ -66,6 +66,8 @@ public class VerificacionCargaConfiguration : IEntityTypeConfiguration<Verificac
 
         builder.Property(v => v.ResponsableId).HasMaxLength(450);
         builder.Property(v => v.Observaciones).HasMaxLength(500);
+        builder.Property(v => v.Origen).HasMaxLength(20);
+        builder.Property(v => v.Sobrantes).HasColumnType("text[]").HasDefaultValueSql("'{}'");
 
         builder.HasMany(v => v.Bultos)
             .WithOne()

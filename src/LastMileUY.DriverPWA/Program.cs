@@ -22,5 +22,6 @@ builder.Services.AddScoped<SincronizacionService>();
 builder.Services.AddScoped<ColaOperacionesService>();
 builder.Services.AddScoped<OperacionesConfirmadasService>();
 builder.Services.AddScoped<BultosIdentificadosService>();
+builder.Services.AddScoped<CargaVehiculoService>();
 
 await builder.Build().RunAsync();

@@ -1,0 +1,296 @@
+@page "/rutas/{Id:int}/carga"
+@using LastMileUY.Contracts.Rutas
+@using LastMileUY.DriverPWA.Services
+@implements IAsyncDisposable
+@inject RutasService RutasService
+@inject CargaVehiculoService Carga
+@inject IJSRuntime JS
+
+<PageTitle>Cargar el vehículo</PageTitle>
+
+<div class="min-h-dvh bg-canvas">
+<div class="mx-auto max-w-2xl px-4 pt-4 pb-10">
+    <a href="/rutas/@Id" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-violet-700">← Hoja de ruta</a>
+
+    @if (cargando)
+    {
+        <p class="text-sm text-slate-500">Cargando la hoja de ruta...</p>
+    }
+    else if (ruta is null)
+    {
+        <div class="aviso aviso-error" role="alert">No se encontró la hoja de ruta en el celular. Abrila una vez con conexión.</div>
+    }
+    else
+    {
+        <h1 class="text-lg font-semibold text-slate-900">Cargar el vehículo</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Escaneá cada bulto al subirlo. La app avisa si falta alguno o si subiste uno que no es de esta hoja.
+        </p>
+
+        @if (aviso is not null)
+        {
+            <div class="aviso @claseAviso mt-4 text-sm" role="status">@aviso</div>
+        }
+
+        <div class="mt-4 rounded-lg border border-line bg-white p-4">
+            <div class="flex min-w-0 flex-col gap-2 sm:flex-row">
+                <label for="codigo-carga" class="sr-only">Código del bulto</label>
+                <input id="codigo-carga" type="text" class="campo min-w-0 font-mono sm:flex-1" placeholder="Código del bulto"
+                       @bind="codigo" @bind:event="oninput" @onkeydown="AlPresionarTecla" />
+                <button type="button" class="boton boton-principal shrink-0 sm:w-auto" @onclick="() => RegistrarAsync(codigo)">Cargar</button>
+            </div>
+
+            @if (!camaraActiva)
+            {
+                <button type="button" class="boton boton-secundario mt-2" @onclick="AbrirCamara">
+                    <Icono Nombre="escaner" Clase="h-4 w-4 text-slate-500" />
+                    Escanear con cámara
+                </button>
+            }
+            else
+            {
+                <div class="mt-2 w-full overflow-hidden rounded-md border border-line bg-slate-950 p-1">
+                    <div id="@idEscaner" class="w-full overflow-hidden"></div>
+                </div>
+                <button type="button" class="boton mt-2 border border-red-200 bg-white text-red-700" @onclick="CerrarCamaraAsync">Cerrar cámara</button>
+            }
+
+            @if (ultimo is not null)
+            {
+                <p class="mt-3 text-sm @(ultimoEsSobrante ? "text-amber-700" : "text-emerald-700")" role="status">@ultimo</p>
+            }
+
+            <div class="mt-4">
+                <div class="mb-1.5 flex justify-between text-xs font-medium text-slate-500">
+                    <span>Cargados</span>
+                    <span>@cargados de @bultos.Count</span>
+                </div>
+                <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div class="h-full rounded-full bg-violet-600 transition-[width]" style="width:@(bultos.Count == 0 ? 0 : cargados * 100 / bultos.Count)%"></div>
+                </div>
+            </div>
+        </div>
+
+        @if (Sobrantes.Count > 0)
+        {
+            <div class="aviso aviso-alerta mt-4 text-sm" role="alert">
+                <p class="font-medium">No son de esta hoja (sobrantes): bajalos del vehículo.</p>
+                <p class="mt-1 font-mono">@string.Join(", ", Sobrantes)</p>
+            </div>
+        }
+
+        <h2 class="mt-6 mb-2 text-sm font-semibold text-slate-900">
+            @(Faltantes.Count == 0 ? "Están todos los bultos" : $"Faltan {Faltantes.Count}")
+        </h2>
+
+        <div class="space-y-2">
+            @foreach (var (parada, bulto) in bultos)
+            {
+                var cargado = escaneados.Contains(bulto.Codigo.ToUpperInvariant());
+                <div @key="bulto.Id" class="flex items-center justify-between gap-2 rounded-md border px-3 py-2.5 @(cargado ? "border-emerald-200 bg-emerald-50/60" : "border-line bg-white")">
+                    <div class="min-w-0">
+                        <div class="font-mono text-[13px] font-medium text-slate-900 [overflow-wrap:anywhere]">@bulto.Codigo</div>
+                        <div class="mt-0.5 text-xs text-slate-500">Parada @parada.Orden · @parada.Destinatario.Nombre @parada.Destinatario.Apellido</div>
+                    </div>
+                    @if (cargado)
+                    {
+                        <span class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-700"><Icono Nombre="check" Clase="h-3.5 w-3.5" /> Cargado</span>
+                    }
+                    else
+                    {
+                        <span class="shrink-0 text-xs font-medium text-amber-700">Falta</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <button type="button" class="boton boton-principal mt-6" disabled="@enviando" @onclick="ConfirmarAsync">
+            @(enviando ? "Enviando..." : "Confirmar carga")
+        </button>
+
+        @if (pendiente)
+        {
+            <p class="mt-2 text-xs text-slate-500">La última confirmación está guardada en el celular y se envía sola cuando vuelva la conexión.</p>
+        }
+    }
+</div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private readonly string idEscaner = $"escaner-carga-{Guid.NewGuid():N}";
+
+    private RutaDetalleDto? ruta;
+    private List<(ParadaDto Parada, BultoRutaDto Bulto)> bultos = [];
+    private HashSet<string> escaneados = [];
+    private string codigo = "";
+    private string? ultimo;
+    private bool ultimoEsSobrante;
+    private string? aviso;
+    private string claseAviso = "aviso-ok";
+    private bool cargando = true;
+    private bool enviando;
+    private bool pendiente;
+    private bool camaraActiva;
+    private bool iniciarCamaraPendiente;
+    private DotNetObjectReference<CargaVehiculo>? referenciaDotNet;
+
+    private int cargados => bultos.Count(b => escaneados.Contains(b.Bulto.Codigo.ToUpperInvariant()));
+
+    private List<string> Faltantes => bultos
+        .Where(b => !escaneados.Contains(b.Bulto.Codigo.ToUpperInvariant()))
+        .Select(b => b.Bulto.Codigo)
+        .ToList();
+
+    private List<string> Sobrantes => escaneados
+        .Where(c => bultos.All(b => !string.Equals(b.Bulto.Codigo, c, StringComparison.OrdinalIgnoreCase)))
+        .Order()
+        .ToList();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        cargando = true;
+
+        try
+        {
+            ruta = await RutasService.ObtenerRutaAsync(Id);
+            bultos = ruta?.Paradas
+                .OrderBy(p => p.Orden)
+                .SelectMany(p => (p.Bultos ?? []).Where(ResultadoPorBulto.PorEntregar).Select(b => (p, b)))
+                .ToList() ?? [];
+            escaneados = await Carga.LeerEscaneadosAsync(Id);
+            await Carga.EnviarPendientesAsync();
+            pendiente = await Carga.TienePendienteAsync(Id);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            aviso = ex.Message;
+            claseAviso = "aviso-error";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task AlPresionarTecla(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await RegistrarAsync(codigo);
+    }
+
+    private async Task RegistrarAsync(string valor)
+    {
+        var limpio = valor.Trim().ToUpperInvariant();
+        codigo = "";
+
+        if (limpio.Length == 0 || limpio.Length > 40)
+            return;
+
+        var esDeLaHoja = bultos.Any(b => string.Equals(b.Bulto.Codigo, limpio, StringComparison.OrdinalIgnoreCase));
+        var nuevo = escaneados.Add(limpio);
+
+        ultimoEsSobrante = !esDeLaHoja;
+        ultimo = !nuevo ? $"{limpio} ya estaba escaneado."
+            : esDeLaHoja ? $"{limpio} cargado."
+            : $"{limpio} no es de esta hoja de ruta.";
+
+        if (nuevo)
+            await Carga.GuardarEscaneadosAsync(Id, escaneados);
+    }
+
+    private async Task ConfirmarAsync()
+    {
+        enviando = true;
+
+        try
+        {
+            var (resultado, mensaje) = await Carga.ConfirmarAsync(Id, escaneados);
+            pendiente = resultado == ResultadoEnvioCarga.Guardada;
+
+            (aviso, claseAviso) = resultado switch
+            {
+                ResultadoEnvioCarga.Enviada when Faltantes.Count == 0 && Sobrantes.Count == 0 => ("Carga confirmada: están todos los bultos.", "aviso-ok"),
+                ResultadoEnvioCarga.Enviada => ("Carga enviada con faltantes o sobrantes. El despachador la ve en el Backoffice.", "aviso-alerta"),
+                ResultadoEnvioCarga.Guardada => ("Sin conexión: la carga quedó guardada y se envía sola cuando vuelva la señal.", "aviso-info"),
+                _ => (mensaje, "aviso-error")
+            };
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+
+    private void AbrirCamara()
+    {
+        camaraActiva = true;
+        iniciarCamaraPendiente = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!iniciarCamaraPendiente || !camaraActiva)
+            return;
+
+        iniciarCamaraPendiente = false;
+        referenciaDotNet ??= DotNetObjectReference.Create(this);
+
+        try
+        {
+            await JS.InvokeVoidAsync("lastMileEscaner.iniciar", idEscaner, referenciaDotNet);
+        }
+        catch (JSException)
+        {
+            camaraActiva = false;
+            ultimo = "No se pudo abrir la cámara. Revisá los permisos o escribí el código.";
+            ultimoEsSobrante = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CerrarCamaraAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("lastMileEscaner.detener", idEscaner);
+        }
+        catch (JSException)
+        {
+        }
+
+        camaraActiva = false;
+    }
+
+    [JSInvokable]
+    public Task EscanerCerrado() =>
+        InvokeAsync(() =>
+        {
+            camaraActiva = false;
+            StateHasChanged();
+        });
+
+    [JSInvokable]
+    public Task CodigoEscaneado(string valor) =>
+        InvokeAsync(async () =>
+        {
+            camaraActiva = false;
+            await RegistrarAsync(valor);
+            StateHasChanged();
+        });
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("lastMileEscaner.detener", idEscaner);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException)
+        {
+        }
+
+        referenciaDotNet?.Dispose();
+    }
+}

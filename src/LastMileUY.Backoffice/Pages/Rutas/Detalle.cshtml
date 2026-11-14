@@ -69,6 +69,12 @@
                     </a>
                 </form>
             }
+            else if (ruta.Estado is "Despachada" or "EnCurso" && Permisos.PuedeUsarDeposito(User))
+            {
+                <a asp-page="/Deposito/Carga" asp-route-ruta="@ruta.Id" class="text-sm text-violet-300 hover:text-violet-200">
+                    Ver la carga del vehículo
+                </a>
+            }
         </div>
 
         <section class="grid gap-4 md:grid-cols-3">

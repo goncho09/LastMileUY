@@ -72,7 +72,11 @@ public class CargaVehiculoService(ApplicationDbContext db, TimeProvider reloj)
             bultos
                 .Select(b => new BultoACargarDto(b.Codigo, b.EnvioId, b.CodigoSeguimiento, b.Orden, b.Destinatario,
                     b.Descripcion, cargados.TryGetValue(b.BultoId, out var cargado) ? cargado : null))
-                .ToList());
+                .ToList())
+        {
+            Sobrantes = ultima?.Sobrantes ?? [],
+            OrigenUltimaVerificacion = ultima?.Origen
+        };
     }
 
     public async Task<CargaRutaDto?> VerificarAsync(
@@ -89,30 +93,69 @@ public class CargaVehiculoService(ApplicationDbContext db, TimeProvider reloj)
         if (ruta.Estado != EstadoRuta.Planificada)
             throw new ConflictoDepositoException("Solo se verifica la carga de una ruta que todavía no salió.");
 
+        await GuardarVerificacionAsync(ruta, request, responsableId, OrigenesVerificacion.Deposito, ct);
+        return await ObtenerAsync(rutaId, ct);
+    }
+
+    public async Task<CargaRutaDto?> VerificarDelRepartidorAsync(
+        int rutaId,
+        string usuarioId,
+        VerificarCargaRequest request,
+        CancellationToken ct = default)
+    {
+        var ruta = await (
+                from r in db.Rutas.AsNoTracking()
+                join rep in db.Repartidores on r.RepartidorId equals rep.Id
+                where r.Id == rutaId && rep.UsuarioId == usuarioId
+                select r)
+            .FirstOrDefaultAsync(ct);
+
+        if (ruta is null)
+            return null;
+
+        if (ruta.Estado is not (EstadoRuta.Despachada or EstadoRuta.EnCurso))
+            throw new ConflictoDepositoException("La ruta ya terminó: no se puede registrar la carga.");
+
+        await GuardarVerificacionAsync(ruta, request, usuarioId, OrigenesVerificacion.Repartidor, ct);
+        return await ObtenerAsync(rutaId, ct);
+    }
+
+    private async Task GuardarVerificacionAsync(
+        Ruta ruta,
+        VerificarCargaRequest request,
+        string? responsableId,
+        string origen,
+        CancellationToken ct)
+    {
         var observaciones = string.IsNullOrWhiteSpace(request.Observaciones) ? null : request.Observaciones.Trim();
 
         if (observaciones?.Length > 500)
             throw new ArgumentException("Las observaciones pueden tener hasta 500 caracteres.");
 
-        var bultos = await BultosDeLaRutaAsync(rutaId, ct);
         var escaneados = (request.BultosCargados ?? [])
             .Select(c => c?.Trim().ToUpperInvariant() ?? "")
             .Where(c => c.Length > 0)
             .ToHashSet();
 
-        var ajenos = escaneados.Where(c => bultos.All(b => b.Codigo != c)).ToList();
+        if (escaneados.Count > 500 || escaneados.Any(c => c.Length > 40))
+            throw new ArgumentException("Hay demasiados códigos o alguno es demasiado largo.");
 
-        if (ajenos.Count > 0)
-            throw new ArgumentException($"No son de esta ruta: {string.Join(", ", ajenos)}.");
+        var bultos = await BultosDeLaRutaAsync(ruta.Id, ct);
+        var ahora = reloj.GetUtcNow().UtcDateTime;
+        var enElDispositivo = request.VerificadoEn is { } cuando
+            ? (cuando.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(cuando, DateTimeKind.Utc) : cuando.ToUniversalTime())
+            : ahora;
 
         var verificacion = new VerificacionCarga
         {
             OperadorId = ruta.OperadorId,
             RutaId = ruta.Id,
-            FechaHora = reloj.GetUtcNow().UtcDateTime,
+            FechaHora = enElDispositivo < ahora ? enElDispositivo : ahora,
             ResponsableId = responsableId,
             Observaciones = observaciones,
+            Origen = origen,
             Completa = bultos.Count > 0 && bultos.All(b => escaneados.Contains(b.Codigo)),
+            Sobrantes = escaneados.Where(c => bultos.All(b => b.Codigo != c)).Order().ToList(),
             Bultos = bultos
                 .Select(b => new VerificacionCargaBulto { BultoId = b.BultoId, Cargado = escaneados.Contains(b.Codigo) })
                 .ToList()
@@ -120,8 +163,6 @@ public class CargaVehiculoService(ApplicationDbContext db, TimeProvider reloj)
 
         db.VerificacionesCarga.Add(verificacion);
         await db.SaveChangesAsync(ct);
-
-        return await ObtenerAsync(rutaId, ct);
     }
 
     public async Task<bool> QuitarEnvioAsync(int rutaId, int envioId, string? responsableId, CancellationToken ct = default)

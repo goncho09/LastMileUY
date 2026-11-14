@@ -23,16 +23,29 @@
                         @Formato.Fecha(carga.Fecha) · @carga.Repartidor · <span class="font-mono">@carga.Vehiculo</span>
                         @if (carga.UltimaVerificacion is { } ultima)
                         {
-                            <span> · última verificación @Formato.Fecha(ultima)</span>
+                            <span> · última verificación @Formato.Fecha(ultima) @(carga.OrigenUltimaVerificacion == "Repartidor" ? "desde la app del repartidor" : "en el depósito")</span>
                         }
                     </p>
                 </div>
                 <span class="rounded border px-1.5 py-0.5 text-xs whitespace-nowrap @clase">@texto</span>
             </div>
 
+            @if (carga.Sobrantes.Count > 0)
+            {
+                <div role="alert" class="mx-5 mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                    Se escanearon bultos que no son de esta ruta: <span class="font-mono">@string.Join(", ", carga.Sobrantes)</span>
+                </div>
+            }
+
             @if (!carga.SePuedeVerificar)
             {
-                <p class="px-6 py-8 text-sm text-slate-300">Esta ruta ya salió. La carga no se puede cambiar.</p>
+                <div class="space-y-3 px-6 py-6 text-sm text-slate-300">
+                    <p>Esta ruta ya salió. Desde ahora la carga la registra el repartidor en la app.</p>
+                    @if (carga.Bultos.Any(b => b.Cargado == false))
+                    {
+                        <p class="text-red-300">Faltaron en la última verificación: <span class="font-mono">@string.Join(", ", carga.Bultos.Where(b => b.Cargado == false).Select(b => b.Codigo))</span></p>
+                    }
+                </div>
             }
             else
             {

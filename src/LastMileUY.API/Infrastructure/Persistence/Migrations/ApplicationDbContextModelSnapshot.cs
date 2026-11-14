@@ -299,12 +299,23 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<int>("OperadorId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Origen")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("ResponsableId")
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
                     b.Property<int>("RutaId")
                         .HasColumnType("integer");
+
+                    b.PrimitiveCollection<List<string>>("Sobrantes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'");
 
                     b.HasKey("Id");
 
