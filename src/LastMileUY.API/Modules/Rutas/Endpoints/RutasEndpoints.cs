@@ -232,6 +232,30 @@ public static class RutasEndpoints
             .RequireAuthorization(p => p.RequireRole("Repartidor"))
             .WithName("ObtenerMiRutaPorId");
 
+        group.MapPost("/mias/{id:int}/carga", async (
+                int id,
+                VerificarCargaRequest request,
+                CargaVehiculoService carga,
+                IContextoOperador contextoOperador,
+                ClaimsPrincipal usuario,
+                CancellationToken cancellationToken) =>
+            {
+                if (contextoOperador.OperadorId is null)
+                    return Results.Forbid();
+
+                var usuarioId = usuario.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (string.IsNullOrEmpty(usuarioId))
+                    return Results.Unauthorized();
+
+                return await LastMileUY.API.Modules.Deposito.Endpoints.DepositoEndpoints.Ejecutar(async () =>
+                    await carga.VerificarDelRepartidorAsync(id, usuarioId, request, cancellationToken) is { } resultado
+                        ? Results.Ok(resultado)
+                        : Results.NotFound(new { mensaje = "Ruta no encontrada." }));
+            })
+            .RequireAuthorization(p => p.RequireRole("Repartidor"))
+            .WithName("RegistrarCargaDelRepartidor");
+
         group.MapGet("/{id:int}/hoja", async (
                 int id,
                 ConsultasRutasService consultas,

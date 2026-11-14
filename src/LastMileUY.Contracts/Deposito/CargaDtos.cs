@@ -38,6 +38,13 @@ public record CargaRutaDto(
     IReadOnlyList<BultoACargarDto> Bultos)
 {
     public bool SePuedeVerificar => Estado == "Planificada";
+
+    public IReadOnlyList<string> Sobrantes { get; init; } = [];
+
+    public string? OrigenUltimaVerificacion { get; init; }
 }
 
-public record VerificarCargaRequest(IReadOnlyList<string> BultosCargados, string? Observaciones = null);
+public record VerificarCargaRequest(
+    IReadOnlyList<string> BultosCargados,
+    string? Observaciones = null,
+    DateTime? VerificadoEn = null);

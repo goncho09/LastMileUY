@@ -18,7 +18,18 @@ public class VerificacionCarga : IPerteneceAOperador
 
     public bool Completa { get; set; }
 
+    public string Origen { get; set; } = OrigenesVerificacion.Deposito;
+
+    public List<string> Sobrantes { get; set; } = [];
+
     public ICollection<VerificacionCargaBulto> Bultos { get; set; } = new List<VerificacionCargaBulto>();
+}
+
+public static class OrigenesVerificacion
+{
+    public const string Deposito = "Deposito";
+
+    public const string Repartidor = "Repartidor";
 }
 
 public class VerificacionCargaBulto
