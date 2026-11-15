@@ -14,19 +14,35 @@ Ejecutar los comandos desde la **raíz del repositorio**.
 
 ## 1. Validación sin destruir
 
+## 1. Validación previa al despliegue
+
+Ejecutar manualmente:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy\validar-preflight-local.ps1
 ```
 
-Resultado esperado: `PREFLIGHT_LOCAL_OK`. Valida sintaxis PowerShell, formato de scripts Bash, Terraform y configuración Compose. No prueba la recuperación real ni modifica Azure.
+Resultado esperado: `PREFLIGHT_LOCAL_OK`.
 
-Comprobar el plan Terraform:
+El preflight verifica:
 
-```powershell
-terraform -chdir=infra/terraform plan
-```
+- Herramientas locales: PowerShell, Git, Azure CLI, Terraform, Docker, SSH y SCP.
+- Repositorio Git y estado de los cambios locales.
+- Autenticación y suscripción activa de Azure.
+- Funcionamiento de Docker Desktop.
+- Sintaxis de scripts PowerShell y Bash.
+- Existencia de archivos esenciales para el despliegue.
+- Inicialización y validación de Terraform.
+- `terraform plan`, exigiendo que no existan cambios de infraestructura pendientes.
+- Configuración de Docker Compose con variables temporales de validación.
 
-Antes de una operación normal se espera `No changes`. Si aparece una eliminación o reemplazo inesperado, **detenerse**. No aplicar planes `.tfplan` viejos.
+**El preflight se ejecuta automáticamente al iniciar `main-azure.ps1 -Destroy`, antes de realizar el respaldo o modificar infraestructura.**
+
+También puede ejecutarse independientemente para comprobar el entorno sin destruir recursos.
+
+Si alguna comprobación falla, el proceso se cancela.
+
+El preflight no garantiza la recuperación de los datos ni sustituye las verificaciones del respaldo.
 
 ## 2. Reconstrucción completa desde cero
 
