@@ -108,6 +108,17 @@ genere envíos duplicados. Para eso:
 
 Así el comercio puede corregir las filas rechazadas y volver a mandar el lote entero. Las que ya entraron no se duplican.
 
+### Importación de un archivo desde el Portal
+
+El comercio también puede importar sin programar nada: en el Portal, **Mis envíos → Importar archivo**, sube un CSV con un envío por fila. Hay una plantilla para descargar.
+
+- **Columnas:** `referencia`, `nombre`, `apellido`, `calle`, `numero`, `ciudad`, `departamento`, `peso_kg`, `largo_cm`, `ancho_cm` y `alto_cm` son obligatorias. Opcionales: `email`, `telefono`, `apartamento`, `modalidad`, `bultos` (cantidad, todos con esas medidas) y `descripcion`. Separado por `;` o `,`, con comillas si un valor tiene el separador, y acepta decimales con coma.
+- **Mismo mecanismo:** el Portal manda el archivo a `POST /api/envios/importacion` (solo usuarios de comercio). La API arma los envíos y los pasa por la misma importación de arriba, así que vale todo lo dicho: referencia obligatoria, `Creado` / `Existente` / `Rechazado` por fila, y reimportar el archivo no duplica nada.
+- **Destinatarios sin duplicar:** el archivo trae los datos del destinatario, no su id. Se reutiliza el destinatario del comercio con el mismo email, o con el mismo nombre, apellido y teléfono si no hay email. Su dirección se reutiliza si coincide calle, número, apartamento y ciudad; si no, se le agrega. Una fila cuya referencia ya existe no toca los destinatarios.
+- **Errores por fila:** cada resultado trae el número de fila del archivo. Si faltan columnas obligatorias, se rechaza el archivo entero y se dice cuáles. Hasta 500 envíos y 1 MB por archivo.
+
+Pruebas: `ImportacionArchivoDePuntaAPuntaTests`. Importa un archivo con filas válidas, una con peso 0, una sin referencia y una con un departamento que no existe; lo reimporta y verifica que no se duplicaron envíos, destinatarios ni direcciones. Comprueba también que falten columnas y que un operador no pueda usarlo.
+
 Cada envío, suelto o en lote, acepta además dos campos opcionales:
 
 - `modalidad`: `Estandar` (por defecto) o `Urgente`;
