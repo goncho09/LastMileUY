@@ -214,9 +214,9 @@ sudo systemctl disable --now lastmileuy-update.timer 2>/dev/null || true
 mark completa
 sudo touch "$STATE/restauracion-completa"
 sudo chown azureuser:azureuser "$STATE/restauracion-completa"
-# Habilitar solamente el actualizador revisado: no aplica migraciones automaticamente.
+# Habilitar solo el actualizador revisado con respaldo y lista de migraciones aprobadas.
 UPDATER="$PROJECT/scripts/deploy/actualizar-azure.sh"
-if [[ -f "$UPDATER" ]] && grep -Fq 'BLOQUEADO: la version nueva necesita migraciones EF Core.' "$UPDATER" && ! grep -Fq -- '--apply-migrations' "$UPDATER" && bash -n "$UPDATER"; then
+if [[ -f "$UPDATER" ]] && grep -Fq 'crear_backup_postgres "$VERSION_NUEVA"' "$UPDATER" && grep -Fq -- '--apply-migrations' "$UPDATER" && grep -Fq '20261115173523_IndicadoresDiarios' "$UPDATER" && bash -n "$UPDATER"; then
   sudo systemctl daemon-reload
   sudo systemctl enable --now lastmileuy-update.timer
   echo 'ACTUALIZADOR_HABILITADO_OK'

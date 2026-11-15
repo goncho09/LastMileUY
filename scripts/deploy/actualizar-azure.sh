@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 PROYECTO="/opt/lastmileuy"
 REPO="ghcr.io/goncho09/lastmileuy"
@@ -158,6 +159,9 @@ log 'Conservando las imagenes instaladas antes de actualizar...'
 ROLLBACK=$(crear_respaldo_y_override "$VERSION_ACTUAL")
 DESPLIEGUE_OK=false
 CONTENEDORES_CAMBIADOS=false
+MIGRACIONES_APLICADAS=false
+MIGRACIONES_INICIADAS=false
+BACKUP_MIGRACIONES=""
 rollback_si_falla() {
   local codigo=$?
   trap - EXIT INT TERM
@@ -179,6 +183,11 @@ rollback_si_falla() {
       log 'ERROR CRITICO: no pudo restaurarse el marcador de version.'
       codigo=1
     fi
+  fi
+  if [[ "$MIGRACIONES_INICIADAS" == true ]]; then
+    log "ATENCION: las migraciones pueden haber modificado PostgreSQL. No se revierte la base automaticamente."
+    log "Revisar backup: ${BACKUP_MIGRACIONES:-no disponible}."
+    codigo=1
   fi
   exit "$codigo"
 }
@@ -202,11 +211,45 @@ set +e
 codigo_migraciones=$?
 set -e
 if [[ "$codigo_migraciones" -eq 10 ]]; then
-  log "BLOQUEADO: la version nueva necesita migraciones EF Core."
-  log "No se modifico PostgreSQL ni se reemplazaron contenedores."
-  log "Se requiere un despliegue de migraciones planificado y compatible con rollback."
-  log 'Se mantiene la version anterior. No se aplicaron migraciones.'
-  exit 0
+  log "Hay migraciones pendientes. Verificando que esten aprobadas para despliegue automatico..."
+  # Solo estas tres migraciones se revisaron como aditivas.
+  # Las futuras requieren una revision explicita antes de automatizarlas.
+  PENDIENTES=$("${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \\
+    LastMileUY.API.dll --check-migrations 2>&1) || codigo_pendientes=$?
+  [[ "${codigo_pendientes:-0}" -eq 10 ]] || {
+    log "ERROR: la segunda comprobacion de migraciones no devolvio 10."
+    exit 1
+  }
+  mapfile -t LISTA_PENDIENTES < <(printf '%s\\n' "$PENDIENTES" | grep -E '^[0-9]{14}_[A-Za-z0-9_]+$' || true)
+  [[ ${#LISTA_PENDIENTES[@]} -gt 0 ]] || {
+    log "ERROR: no se pudo identificar las migraciones pendientes."
+    exit 1
+  }
+  for migracion in "${LISTA_PENDIENTES[@]}"; do
+    case "$migracion" in
+      20261115161837_Rendiciones|20261115164206_ReprogramacionPublica|20261115173523_IndicadoresDiarios) ;;
+      *) log "BLOQUEADO: migracion no revisada para despliegue automatico: $migracion"; exit 1 ;;
+    esac
+  done
+
+  # No iniciar la migracion sin un backup local verificable.
+  crear_backup_postgres "$VERSION_NUEVA"
+  BACKUP_MIGRACIONES=$(find "$ESTADO/backups" -maxdepth 1 -type f \\
+    -name "postgres-${VERSION_NUEVA}-*.dump" -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
+  [[ -n "$BACKUP_MIGRACIONES" && -s "$BACKUP_MIGRACIONES" ]] || {
+    log "ERROR: no se encontro el backup verificado."
+    exit 1
+  }
+
+  log "Aplicando migraciones EF Core aprobadas..."
+  MIGRACIONES_INICIADAS=true
+  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \\
+    LastMileUY.API.dll --apply-migrations
+  MIGRACIONES_APLICADAS=true
+
+  log "Comprobando que no queden migraciones pendientes..."
+  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \\
+    LastMileUY.API.dll --check-migrations
 elif [[ "$codigo_migraciones" -ne 0 ]]; then
   log "ERROR: comprobacion de migraciones fallo (codigo $codigo_migraciones)."
   exit 1
