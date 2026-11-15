@@ -49,22 +49,46 @@ try {
     )) {
         throw "Repositorio incorrecto: $repoNormalizado"
     }
-    $version = (& git rev-parse HEAD).Trim()
-    Assert-ExitCode 'Git rev-parse HEAD'
-    if ($version -notmatch '^[0-9a-f]{40}$') { throw 'No se pudo obtener el commit completo.' }
+
+    # Verificar si hay cambios locales antes de cambiar de rama.
+    $dirty = @(& git status --porcelain)
+    Assert-ExitCode 'Git status'
+
+    if ($dirty.Count -gt 0) {
+        throw 'Hay cambios locales sin guardar. Hacé commit o stash antes de continuar.'
+    }
+
+    # Cambiar automáticamente a main.
     $branch = (& git branch --show-current).Trim()
     Assert-ExitCode 'Git branch'
-    if ($branch -ne 'main') { throw "La rama actual es '$branch', se esperaba 'main'." }
-    $dirty = @(& git status --porcelain --untracked-files=no)
-    Assert-ExitCode 'Git status'
-    if ($dirty.Count -gt 0) {
-        throw 'Hay cambios locales en archivos rastreados. Revisalos antes del destroy.'
+
+    if ($branch -ne 'main') {
+        Write-Host "Cambiando de '$branch' a 'main'..." -ForegroundColor Cyan
+        & git switch main
+        Assert-ExitCode 'Git switch main'
     }
-    & git fetch origin main --quiet
-    Assert-ExitCode 'Git fetch origin main'
+
+    # Actualizar main desde GitHub sin generar commits de merge.
+    Write-Host 'Actualizando main desde GitHub...' -ForegroundColor Cyan
+    & git pull --ff-only origin main
+    Assert-ExitCode 'Git pull --ff-only origin main'
+
+    # Verificar que main esté sincronizada.
+    $version = (& git rev-parse HEAD).Trim()
+    Assert-ExitCode 'Git rev-parse HEAD'
+
+    if ($version -notmatch '^[0-9a-f]{40}$') {
+        throw 'No se pudo obtener el commit completo.'
+    }
+
     $remote = (& git rev-parse origin/main).Trim()
     Assert-ExitCode 'Git rev-parse origin/main'
-    if ($version -ne $remote) { throw 'main local no coincide con origin/main. Ejecutá git pull --ff-only origin main.' }
+
+    if ($version -ne $remote) {
+        throw 'main local no coincide con origin/main después del pull.'
+    }
+
+    Write-Host 'Repositorio en main y actualizado correctamente.' -ForegroundColor Green
 
     Write-Host 'Comprobando sesión de Azure...'
     $accountJson = & az account show --output json 2>$null
