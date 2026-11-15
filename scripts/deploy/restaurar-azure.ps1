@@ -6,6 +6,7 @@ param(
   [string]$SshKey = (Join-Path $HOME 'LastMileUY-Azure/ssh/lastmileuy_azure_nueva'),
   [string]$EnvFile = (Join-Path $HOME 'LastMileUY-Azure/config/.env.azure'),
   [switch]$ValidateOnly,
+  [switch]$Resume,
   [int]$MaxAgeMinutes = 240
 )
 $ErrorActionPreference='Stop'
@@ -103,7 +104,7 @@ if ($ValidateOnly) {
   Write-Host 'VALIDACION_LOCAL_OK: no se modifico Azure.' -ForegroundColor Green
   return
 }
-if ($age -gt $MaxAgeMinutes) { throw "Respaldo demasiado antiguo: $([math]::Round($age)) minutos. Maximo: $MaxAgeMinutes" }
+if (-not $Resume -and $age -gt $MaxAgeMinutes) { throw "Respaldo demasiado antiguo: $([math]::Round($age)) minutos. Maximo: $MaxAgeMinutes" }
 
 foreach($cmd in @('terraform','ssh','scp')) {
   if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { throw "Falta $cmd" }
@@ -117,8 +118,10 @@ $ip=$ip.Trim()
 if ($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$') { throw "IP inesperada: $ip" }
 $dest="azureuser@$ip"
 $sshOpts=@('-i',$SshKey,'-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','ConnectTimeout=15')
-$remote="/home/azureuser/lastmileuy-restauracion-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-& ssh @sshOpts $dest "mkdir -m 700 '$remote'"
+# Ruta deterministica para permitir reintentos sin perder marcadores.
+$backupHash=(Get-FileHash -LiteralPath $hashFile -Algorithm SHA256).Hash.ToLowerInvariant()
+$remote="/home/azureuser/lastmileuy-restauracion-$backupHash"
+& ssh @sshOpts $dest "mkdir -p -m 700 '$remote'"
 CheckExit 'Crear carpeta remota'
 & scp @sshOpts -r "${BackupDir}/." "${dest}:${remote}/"
 CheckExit 'Subir respaldo'
@@ -128,6 +131,10 @@ $script=Join-Path $PSScriptRoot 'restaurar-vm.sh'
 if (-not (Test-Path -LiteralPath $script)) { throw "Falta $script" }
 & scp @sshOpts $script "${dest}:${remote}/restaurar-vm.sh"
 CheckExit 'Subir restaurador'
+$caddy=Join-Path $PSScriptRoot 'configurar-caddy.sh'
+if (-not (Test-Path -LiteralPath $caddy -PathType Leaf)) { throw "Falta $caddy" }
+& scp @sshOpts $caddy "${dest}:${remote}/configurar-caddy.sh"
+CheckExit 'Subir configurador Caddy'
 & ssh @sshOpts $dest "bash '$remote/restaurar-vm.sh' '$remote' '$version' '$ip'"
 CheckExit 'Restauracion remota'
 Write-Host 'RESTAURACION_COMPLETA_OK' -ForegroundColor Green
