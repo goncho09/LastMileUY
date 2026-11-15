@@ -8,7 +8,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Seguimiento.Application;
 
-public partial class SeguimientoPublicoService(ApplicationDbContext db, FuncionalidadesService funcionalidades)
+public partial class SeguimientoPublicoService(
+    ApplicationDbContext db,
+    FuncionalidadesService funcionalidades,
+    ReprogramacionPublicaService? reprogramaciones = null)
 {
     public async Task<SeguimientoPublicoDto?> ObtenerAsync(string codigo, CancellationToken cancellationToken = default)
     {
@@ -84,7 +87,35 @@ public partial class SeguimientoPublicoService(ApplicationDbContext db, Funciona
             envio.Departamento,
             operador,
             eventos,
-            bultos);
+            bultos,
+            reprogramaciones is null ? null : await reprogramaciones.OpcionesAsync(envio.OperadorId, envio.Id, cancellationToken));
+    }
+
+    public async Task<(int Id, int OperadorId)?> UbicarAsync(string codigo, CancellationToken cancellationToken = default)
+    {
+        codigo = codigo.Trim().ToUpperInvariant();
+
+        if (!FormatoCodigo().IsMatch(codigo))
+            return null;
+
+        await using var transaccion = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT set_config('app.codigo_seguimiento', {codigo}, true)", cancellationToken);
+
+        var envio = await db.Envios
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(e => e.CodigoSeguimiento == codigo)
+            .Select(e => new { e.Id, e.OperadorId })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        await transaccion.CommitAsync(cancellationToken);
+
+        if (envio is null || !await funcionalidades.EstaActivaAsync(envio.OperadorId, Funcionalidades.SeguimientoPublico, cancellationToken))
+            return null;
+
+        return (envio.Id, envio.OperadorId);
     }
 
     [GeneratedRegex("^[A-Z0-9]{4,32}$")]

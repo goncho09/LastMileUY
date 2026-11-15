@@ -747,6 +747,9 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("FechaEntrega")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("FechaEntregaSolicitada")
+                        .HasColumnType("date");
+
                     b.Property<int?>("FranjaHorariaId")
                         .HasColumnType("integer");
 
@@ -2003,6 +2006,42 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("EventosEnvio", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Seguimiento.Domain.SolicitudReprogramacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comentario")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("EnvioId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("FechaSolicitada")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("FranjaHorariaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId");
+
+                    b.HasIndex("EnvioId", "FechaCreacion");
+
+                    b.ToTable("SolicitudesReprogramacion", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Sincronizacion.Domain.OperacionSincronizada", b =>
                 {
                     b.Property<int>("Id")
@@ -2833,6 +2872,21 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.HasOne("LastMileUY.API.Modules.Envios.Domain.Envio", null)
                         .WithMany("Eventos")
                         .HasForeignKey("EnvioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Seguimiento.Domain.SolicitudReprogramacion", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Envios.Domain.Envio", null)
+                        .WithMany()
+                        .HasForeignKey("EnvioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
