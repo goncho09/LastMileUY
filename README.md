@@ -126,7 +126,8 @@ se genera.
 | [docs/funcionalidades.md](docs/funcionalidades.md) | Funcionalidades por operador (banderas): cuáles hay, quién las cambia y qué cortan |
 | [docs/api-publica.md](docs/api-publica.md) | API pública para comercios: claves, versiones, importación sin duplicados, topes y documentación navegable |
 | [docs/configuracion-operador.md](docs/configuracion-operador.md) | Zonas, franjas, cuadro tarifario, vehículos, reglas operativas y motivos de no entrega |
-| [docs/deposito.md](docs/deposito.md) | Depósito: recepción de bultos, discrepancias y verificación de carga |
+| [docs/deposito.md](docs/deposito.md) | Depósito: recepción de bultos, discrepancias y verificación de carga, rendición |
+| [docs/reportes.md](docs/reportes.md) | Reportes de gestión, liquidación por comercio y cuenta del comercio |
 
 ## Antes de desplegar fuera de desarrollo
 

@@ -1,0 +1,200 @@
+@page
+@model LastMileUY.Backoffice.Pages.Reportes.IndexModel
+@{
+    ViewData["Title"] = "Reportes de gestión";
+    var reporte = Model.Reporte;
+}
+
+<div class="mx-auto max-w-[1600px] space-y-7">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-semibold tracking-tight text-white">Reportes de gestión</h1>
+            <p class="mt-2 text-sm text-slate-400">Cumplimiento, motivos de no entrega, volumen y liquidación de los envíos dados de alta en el período.</p>
+        </div>
+
+        <form method="get" class="flex flex-wrap items-end gap-3">
+            <div>
+                <label for="desde" class="mb-1.5 block text-xs font-medium text-slate-400">Desde</label>
+                <input id="desde" name="desde" type="date" value="@Model.Desde?.ToString("yyyy-MM-dd")" required
+                       class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white" />
+            </div>
+            <div>
+                <label for="hasta" class="mb-1.5 block text-xs font-medium text-slate-400">Hasta</label>
+                <input id="hasta" name="hasta" type="date" value="@Model.Hasta?.ToString("yyyy-MM-dd")" required
+                       class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white" />
+            </div>
+            <button type="submit" class="rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Ver</button>
+        </form>
+    </div>
+
+    @if (Model.Error is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">@Model.Error</div>
+    }
+
+    @if (reporte is not null)
+    {
+        <section class="rounded-2xl border border-white/[0.07] bg-surface p-5 sm:p-6" aria-labelledby="titulo-volumen">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="titulo-volumen" class="text-base font-semibold text-white">Volumen por día</h2>
+                <p class="text-sm text-slate-400"><span class="font-semibold text-white">@reporte.TotalEnvios</span> envíos en el período</p>
+            </div>
+            <div class="mt-5 flex h-40 items-end gap-[2px]" role="img"
+                 aria-label="Envíos por día entre @reporte.Desde.ToString("dd/MM") y @reporte.Hasta.ToString("dd/MM")">
+                @foreach (var dia in reporte.Volumen)
+                {
+                    var alto = dia.Envios * 100 / Model.MaximoVolumen;
+                    <div class="group relative flex h-full min-w-0 flex-1 items-end">
+                        <div class="w-full rounded-t bg-violet-500/80 transition-colors group-hover:bg-violet-400" style="height:@(Math.Max(alto, dia.Envios > 0 ? 2 : 0))%"></div>
+                        <span class="pointer-events-none absolute bottom-full left-1/2 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-xs text-white group-hover:block">
+                            @dia.Dia.ToString("dd/MM"): @dia.Envios envíos, @dia.Entregados entregados
+                        </span>
+                    </div>
+                }
+            </div>
+            <div class="mt-2 flex justify-between text-xs text-slate-500">
+                <span>@reporte.Desde.ToString("dd/MM")</span>
+                <span>@reporte.Hasta.ToString("dd/MM")</span>
+            </div>
+        </section>
+
+        <div class="grid gap-7 xl:grid-cols-2">
+            @foreach (var (titulo, filas) in new[] { ("Cumplimiento por zona", reporte.PorZona), ("Cumplimiento por comercio", reporte.PorComercio) })
+            {
+                <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
+                    <h2 class="border-b border-white/[0.07] px-5 py-4 text-base font-semibold text-white">@titulo</h2>
+                    @if (filas.Count == 0)
+                    {
+                        <p class="px-5 py-8 text-center text-sm text-slate-400">Sin envíos en el período.</p>
+                    }
+                    else
+                    {
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[520px] text-left text-sm">
+                                <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3">Nombre</th>
+                                        <th scope="col" class="px-4 py-3 text-right">Envíos</th>
+                                        <th scope="col" class="px-4 py-3 text-right">Entregados</th>
+                                        <th scope="col" class="px-4 py-3 text-right">A tiempo</th>
+                                        <th scope="col" class="px-4 py-3 text-right">No entregados</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-white/5">
+                                    @foreach (var fila in filas)
+                                    {
+                                        <tr>
+                                            <td class="px-4 py-3 text-white">@fila.Nombre</td>
+                                            <td class="px-4 py-3 text-right text-slate-300">@fila.Envios</td>
+                                            <td class="px-4 py-3 text-right text-slate-300">@fila.Entregados <span class="text-xs text-slate-500">(@IndexModel.Porcentaje(fila.PorcentajeEntregados))</span></td>
+                                            <td class="px-4 py-3 text-right text-slate-300">@fila.ATiempo <span class="text-xs text-slate-500">(@IndexModel.Porcentaje(fila.PorcentajeATiempo))</span></td>
+                                            <td class="px-4 py-3 text-right text-slate-300">@fila.NoEntregados</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+            }
+
+            <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
+                <h2 class="border-b border-white/[0.07] px-5 py-4 text-base font-semibold text-white">Efectividad por repartidor</h2>
+                @if (reporte.PorRepartidor.Count == 0)
+                {
+                    <p class="px-5 py-8 text-center text-sm text-slate-400">Sin intentos de entrega en el período.</p>
+                }
+                else
+                {
+                    <table class="w-full text-left text-sm">
+                        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Repartidor</th>
+                                <th scope="col" class="px-4 py-3 text-right">Intentos</th>
+                                <th scope="col" class="px-4 py-3 text-right">Exitosos</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var fila in reporte.PorRepartidor)
+                            {
+                                <tr>
+                                    <td class="px-4 py-3 text-white">@fila.Repartidor</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@fila.Intentos</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@fila.Exitosos <span class="text-xs text-slate-500">(@IndexModel.Porcentaje(fila.Porcentaje))</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
+
+            <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface">
+                <h2 class="border-b border-white/[0.07] px-5 py-4 text-base font-semibold text-white">Motivos de no entrega</h2>
+                @if (reporte.Motivos.Count == 0)
+                {
+                    <p class="px-5 py-8 text-center text-sm text-slate-400">Ningún intento fallido en el período.</p>
+                }
+                else
+                {
+                    var total = reporte.Motivos.Sum(m => m.Cantidad);
+                    <ul class="space-y-3 p-5">
+                        @foreach (var motivo in reporte.Motivos)
+                        {
+                            <li>
+                                <div class="flex justify-between text-sm"><span class="text-white">@motivo.Motivo</span><span class="text-slate-400">@motivo.Cantidad</span></div>
+                                <div class="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+                                    <div class="h-full rounded-full bg-amber-400/80" style="width:@(motivo.Cantidad * 100 / total)%"></div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-labelledby="titulo-liquidacion">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4">
+                <div>
+                    <h2 id="titulo-liquidacion" class="text-base font-semibold text-white">Liquidación por comercio</h2>
+                    <p class="mt-1 text-xs text-slate-400">Importe calculado con la tarifa guardada en cada envío al darlo de alta.</p>
+                </div>
+                <a asp-page-handler="Csv" asp-route-desde="@Model.Desde?.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.Hasta?.ToString("yyyy-MM-dd")"
+                   class="rounded-md border border-white/10 px-3 py-2 text-sm font-medium text-slate-200 hover:border-violet-400/40 hover:text-white">Descargar CSV</a>
+            </div>
+            @if (reporte.Liquidacion.Count == 0)
+            {
+                <p class="px-5 py-8 text-center text-sm text-slate-400">Sin envíos en el período.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[640px] text-left text-sm">
+                        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Comercio</th>
+                                <th scope="col" class="px-4 py-3 text-right">Envíos</th>
+                                <th scope="col" class="px-4 py-3 text-right">Entregados</th>
+                                <th scope="col" class="px-4 py-3 text-right">Devueltos</th>
+                                <th scope="col" class="px-4 py-3 text-right">Sin tarifa</th>
+                                <th scope="col" class="px-4 py-3 text-right">Importe</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var fila in reporte.Liquidacion)
+                            {
+                                <tr>
+                                    <td class="px-4 py-3 text-white">@fila.Comercio</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@fila.Envios</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@fila.Entregados</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@fila.Devueltos</td>
+                                    <td class="px-4 py-3 text-right @(fila.SinTarifa > 0 ? "text-amber-300" : "text-slate-300")">@fila.SinTarifa</td>
+                                    <td class="px-4 py-3 text-right font-semibold text-white">$ @fila.Importe.ToString("N2", new System.Globalization.CultureInfo("es-UY"))</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
