@@ -77,6 +77,15 @@ public class Ruta : IPerteneceAOperador
         }
     }
 
+    public void Cerrar(DateTime cuando)
+    {
+        if (Estado is EstadoRuta.Despachada or EstadoRuta.EnCurso)
+        {
+            Estado = EstadoRuta.Finalizada;
+            FechaFin = cuando;
+        }
+    }
+
     public void FinalizarSiTermino(IEnumerable<EstadoEnvio> estadosDeSusEnvios)
     {
         if (Estado == EstadoRuta.EnCurso

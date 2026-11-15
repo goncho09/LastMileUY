@@ -1,0 +1,129 @@
+@page
+@model LastMileUY.Backoffice.Pages.Deposito.RendicionModel
+@{
+    ViewData["Title"] = "Rendición";
+    var rendicion = Model.Rendicion;
+}
+
+<div class="mx-auto max-w-[1100px] space-y-7">
+
+    <partial name="_Encabezado" model="@(("Rendición de la ruta", "Escaneá cada bulto que trae el repartidor. Al confirmar, los envíos sin entregar vuelven al depósito (o al comercio si se agotaron los intentos) y la ruta se cierra.", Model.Error))" />
+
+    <a asp-page="Rendiciones" class="text-sm text-violet-300 hover:text-violet-200">Volver a las rendiciones</a>
+
+    @if (rendicion is not null)
+    {
+        var (texto, clase) = RendicionesModel.EstadoRendicion(rendicion.EstadoRendicion);
+
+        <section class="@Estilos.Tarjeta" aria-labelledby="titulo-ruta">
+            <div class="@Estilos.EncabezadoTarjeta flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 id="titulo-ruta" class="text-base font-semibold text-white">@rendicion.Nombre</h2>
+                    <p class="mt-1 text-xs text-slate-400">
+                        @Formato.Fecha(rendicion.Fecha) · @rendicion.Repartidor · @rendicion.CantidadEntregados entregados · @rendicion.CantidadNoEntregados sin entregar
+                    </p>
+                </div>
+                <span class="rounded border px-1.5 py-0.5 text-xs whitespace-nowrap @clase">@texto</span>
+            </div>
+
+            @if (rendicion.DeclaradaEn is { } declarada)
+            {
+                <div class="mx-5 mt-5 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                    <p>El repartidor rindió desde la app el @Formato.Fecha(declarada).</p>
+                    @if (rendicion.ObservacionesRepartidor is not null)
+                    {
+                        <p class="mt-1 text-slate-400">@rendicion.ObservacionesRepartidor</p>
+                    }
+                </div>
+            }
+
+            @if (rendicion.EstadoRendicion == EstadosRendicion.Confirmada)
+            {
+                <div class="space-y-3 px-6 py-6 text-sm text-slate-300">
+                    <p>Rendición confirmada el @Formato.Fecha(rendicion.ConfirmadaEn!.Value). La ruta quedó cerrada.</p>
+                    @if (rendicion.Faltantes.Count > 0)
+                    {
+                        <p class="text-red-300">No volvieron: <span class="font-mono">@string.Join(", ", rendicion.Faltantes)</span></p>
+                    }
+                    @if (rendicion.Sobrantes.Count > 0)
+                    {
+                        <p class="text-amber-200">Se escanearon bultos que no eran de esta ruta: <span class="font-mono">@string.Join(", ", rendicion.Sobrantes)</span></p>
+                    }
+                    @if (rendicion.Observaciones is not null)
+                    {
+                        <p class="text-slate-400">@rendicion.Observaciones</p>
+                    }
+                </div>
+            }
+            else if (!rendicion.SePuedeConfirmar)
+            {
+                <p class="px-6 py-6 text-sm text-slate-300">Esta ruta todavía no salió: no hay nada para rendir.</p>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Confirmar" asp-route-ruta="@rendicion.RutaId" class="space-y-5 p-5">
+                    <div>
+                        <label for="escaneo" class="@Estilos.Etiqueta">Escanear bulto</label>
+                        <input id="escaneo" autocomplete="off" autofocus placeholder="Código del bulto" class="@Estilos.Campo max-w-md font-mono" />
+                        <p id="aviso-escaneo" class="mt-1.5 text-sm text-slate-400" role="status">Cada código escaneado marca su bulto como recibido.</p>
+                        <div id="sobrantes"></div>
+                    </div>
+
+                    @if (rendicion.BultosADevolver.Count == 0)
+                    {
+                        <p class="text-sm text-slate-300">Se entregó todo: no vuelve ningún bulto. Confirmá para cerrar la ruta.</p>
+                    }
+                    else
+                    {
+                        <div class="overflow-x-auto">
+                            <table class="@Estilos.Tabla">
+                                <thead class="@Estilos.CabeceraTabla">
+                                    <tr>
+                                        <th scope="col" class="@Estilos.Celda">Recibido</th>
+                                        <th scope="col" class="@Estilos.Celda">Bulto</th>
+                                        <th scope="col" class="@Estilos.Celda">Envío</th>
+                                        <th scope="col" class="@Estilos.Celda">Al confirmar</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-white/5">
+                                    @foreach (var bulto in rendicion.BultosADevolver)
+                                    {
+                                        <tr>
+                                            <td class="@Estilos.Celda">
+                                                <input type="checkbox" name="Recibidos" value="@bulto.Codigo" data-codigo="@bulto.Codigo"
+                                                       class="@Estilos.Casilla" aria-label="@bulto.Codigo recibido" />
+                                            </td>
+                                            <td class="@Estilos.Celda">
+                                                <p class="font-mono text-sm text-white">@bulto.Codigo</p>
+                                                <p class="mt-1 text-xs @(bulto.Declarado ? "text-slate-400" : "text-amber-300")">
+                                                    @(bulto.Declarado ? "El repartidor lo declaró" : "El repartidor no lo declaró")
+                                                </p>
+                                            </td>
+                                            <td class="@Estilos.Celda text-slate-300">
+                                                <span class="font-mono text-xs">@bulto.CodigoSeguimiento</span> · @bulto.Destinatario
+                                            </td>
+                                            <td class="@Estilos.Celda text-slate-300">@RendicionModel.Destino(bulto.EstadoEnvio)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <div>
+                        <label asp-for="Observaciones" class="@Estilos.Etiqueta">Observaciones</label>
+                        <textarea asp-for="Observaciones" maxlength="500" rows="2" class="@Estilos.Campo"></textarea>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="@Estilos.BotonPrincipal">Confirmar rendición</button>
+                    </div>
+                </form>
+            }
+        </section>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/rendicion.js" asp-append-version="true"></script>
+}

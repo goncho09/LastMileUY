@@ -1,7 +1,7 @@
 @model string
 
 <nav class="flex gap-1 border-b border-white/[0.07]" aria-label="Secciones del depósito">
-    @foreach (var (pagina, texto) in new[] { ("Index", "Recepción"), ("Cargas", "Carga de vehículos") })
+    @foreach (var (pagina, texto) in new[] { ("Index", "Recepción"), ("Cargas", "Carga de vehículos"), ("Rendiciones", "Rendiciones") })
     {
         var actual = Model == pagina;
         <a asp-page="@pagina"

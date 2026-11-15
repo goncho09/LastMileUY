@@ -56,6 +56,29 @@ La ruta tiene que estar Planificada: una vez despachada, la carga ya no se cambi
 
 **Por qué así:** la verificación se guarda aparte (`VerificacionesCarga` y `VerificacionesCargaBulto`) y la ruta no cambia de estado. Si hay varias verificaciones vale la última, así que verificar de nuevo después de cargar lo que faltaba alcanza.
 
+## Rendición al volver al depósito (req. 22)
+
+Cuando el repartidor vuelve, rinde la hoja de ruta: entrega en el depósito lo que no pudo entregar y la ruta se cierra. Son dos pasos:
+
+1. **El repartidor declara desde la app** (Hoja de ruta → "Rendir al volver al depósito"). La app calcula sola qué bultos tiene que devolver: los que el servidor marca sin entregar y los que quedaron sin entregar en operaciones que todavía no se sincronizaron. Funciona sin conexión: la rendición queda guardada en el celular y se manda cuando hay señal, **después** de sus entregas pendientes, para que el servidor la reciba en orden.
+2. **El depósito confirma escaneando** (Depósito → Rendiciones). Ve lo que declaró el repartidor y escanea cada bulto que recibe. Un código que no es de la ruta queda como sobrante.
+
+Al confirmar, en una transacción:
+
+| Estado del envío | Si volvieron todos sus bultos |
+|---|---|
+| En tránsito (sin intento) | Vuelve a **En depósito**. |
+| No entregado o entregado parcialmente | Pasa a **Reprogramado** si la regla del envío todavía permite intentos; si no, a **En devolución** y se abre su devolución. |
+| Entregado, reprogramado o en devolución | No cambia. |
+
+- Si falta algún bulto de un envío, ese envío **no se toca**: queda como faltante en la rendición para investigarlo.
+- La ruta pasa a **Finalizada** aunque haya faltantes; la rendición guarda los faltantes y sobrantes.
+- Cada cambio pasa por la máquina de estados y queda en el historial del envío. Se usa la regla operativa con la que se creó cada envío.
+
+**Devoluciones.** Cuando un envío pasa a En devolución (por la rendición, por la política de entrega parcial o a mano) se abre su `Devolucion` con el motivo. Al pasar a Devuelto se cierra con la fecha.
+
+**Por qué en dos pasos:** el repartidor es quien sabe qué trae y puede rendir sin señal, pero lo que cambia el estado de los envíos es lo que el depósito recibe de verdad. Así una declaración equivocada no deja un envío en el depósito cuando en realidad se perdió.
+
 ## API
 
 Todo está bajo `/api/deposito` y lo pueden usar los perfiles Operador, Despachador y Operario de depósito.
@@ -69,12 +92,17 @@ Todo está bajo `/api/deposito` y lo pueden usar los perfiles Operador, Despacha
 | POST | `/discrepancias/{id}/resolver` | `{ resolucion }`. 409 si no estaba pendiente. |
 | GET | `/cargas` | Las rutas Planificadas con su cantidad de envíos y bultos y el estado de la carga. |
 | GET | `/cargas/{rutaId}` | Los bultos de la ruta, por parada, y si estaban en la última verificación. |
-| POST | `/cargas/{rutaId}/verificaciones` | `{ bultosCargados: [codigos], observaciones? }`. 400 si un código no es de la ruta, 409 si la ruta ya salió. |
+| POST | `/cargas/{rutaId}/verificaciones` | `{ bultosCargados: [codigos], observaciones? }`. Un código que no es de la ruta queda como sobrante. 409 si la ruta ya salió. |
 | POST | `/cargas/{rutaId}/envios/{envioId}/quitar` | Baja el envío de la ruta y lo vuelve a EnDeposito. 409 si la ruta ya salió. |
+| GET | `/rendiciones` | Las rutas que ya salieron y no tienen la rendición confirmada. |
+| GET | `/rendiciones/{rutaId}` | Los bultos que tienen que volver, lo que declaró el repartidor y, si ya se confirmó, faltantes y sobrantes. |
+| POST | `/rendiciones/{rutaId}` | `{ bultosRecibidos: [codigos], observaciones? }`. Confirma la rendición, mueve los envíos y cierra la ruta. 409 si ya estaba confirmada o la ruta no salió. |
+
+El repartidor declara con `POST /api/rutas/mias/{rutaId}/rendicion` `{ bultosDevueltos, observaciones?, declaradaEn? }`. Solo sobre sus rutas (404 si no es suya) y 409 si el depósito ya confirmó.
 
 ## Aislamiento
 
-`RecepcionesDeposito` tiene `OperadorId` y `ComercioId`, con filtro de EF y RLS igual que los envíos. `RecepcionesBulto` hereda el aislamiento de su recepción. `VerificacionesCarga` tiene `OperadorId` con filtro y RLS, y `VerificacionesCargaBulto` hereda de su verificación. Un operador no ve ni puede recibir envíos de otro: la API responde 404.
+`RecepcionesDeposito` tiene `OperadorId` y `ComercioId`, con filtro de EF y RLS igual que los envíos. `RecepcionesBulto` hereda el aislamiento de su recepción. `VerificacionesCarga` tiene `OperadorId` con filtro y RLS, y `VerificacionesCargaBulto` hereda de su verificación. `Rendiciones` hereda de su ruta y `Devoluciones` de su envío. Un operador no ve ni puede recibir envíos de otro: la API responde 404.
 
 ## Pruebas
 
@@ -86,4 +114,7 @@ Todo está bajo `/api/deposito` y lo pueden usar los perfiles Operador, Despacha
   - aislamiento entre operadores, también contado directo en la base con el usuario de la aplicación;
   - un operario de depósito real recibe pero no puede planificar rutas.
 - `CargaVehiculoDePuntaAPuntaTests` (API): verificación incompleta y completa, códigos ajenos, despacho bloqueado con la funcionalidad prendida, bajar un envío (vuelve a En depósito y se renumeran las paradas), y que otro operador no ve la carga.
+- `RendicionDePuntaAPuntaTests` (API): el repartidor declara y el depósito confirma con un faltante y un sobrante (envío fallido → Reprogramado, sin intento → En depósito, el faltante no se toca, la ruta se cierra), no se rinde dos veces, otro operador no ve la rendición, y con los intentos agotados el envío vuelve al comercio.
+- `DevolucionTests`: pasar a En devolución abre la devolución y pasar a Devuelto la cierra.
+- `RendicionServiceTests` (app): qué bultos devolver, con operaciones todavía sin sincronizar.
 - `PermisosTests` (Backoffice): qué ve el operario de depósito.

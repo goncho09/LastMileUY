@@ -21,4 +21,10 @@ public interface IDepositoApi
     Task<CargaRutaDto> VerificarCargaAsync(int rutaId, VerificarCargaRequest request, CancellationToken ct = default);
 
     Task QuitarEnvioAsync(int rutaId, int envioId, CancellationToken ct = default);
+    Task<IReadOnlyList<RutaPorRendirDto>> RutasPorRendirAsync(CancellationToken ct = default);
+
+    Task<RendicionRutaDto?> RendicionAsync(int rutaId, CancellationToken ct = default);
+
+    Task<RendicionRutaDto> ConfirmarRendicionAsync(int rutaId, ConfirmarRendicionRequest request, CancellationToken ct = default);
+
 }

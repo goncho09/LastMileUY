@@ -120,8 +120,19 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
             FechaEntrega = cuando;
         }
 
+        if (nuevoEstado == EstadoEnvio.EnDevolucion && Devolucion is null)
+        {
+            var motivoDevolucion = string.IsNullOrWhiteSpace(descripcion) ? "Vuelve al comercio." : descripcion.Trim();
+            Devolucion = new Devolucion { Motivo = motivoDevolucion.Length > 500 ? motivoDevolucion[..500] : motivoDevolucion, FechaInicio = cuando };
+        }
+
         if (nuevoEstado == EstadoEnvio.Devuelto)
         {
+            if (Devolucion is not null)
+            {
+                Devolucion.FechaFinalizacion = cuando;
+            }
+
             foreach (var bulto in Bultos.Where(b => b.Estado is EstadoBulto.Pendiente or EstadoBulto.NoEntregado))
             {
                 bulto.CambiarEstado(EstadoBulto.Devuelto);

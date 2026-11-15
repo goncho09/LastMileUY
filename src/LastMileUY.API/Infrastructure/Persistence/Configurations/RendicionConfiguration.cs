@@ -20,6 +20,20 @@ public class RendicionConfiguration : IEntityTypeConfiguration<Rendicion>
         builder.Property(r => r.Observaciones)
             .HasMaxLength(1000);
 
+        builder.Property(r => r.ObservacionesRepartidor).HasMaxLength(500);
+
+        builder.Property(r => r.ConfirmadaPor).HasMaxLength(450);
+
+        builder.Property(r => r.BultosDeclarados).HasColumnType("text[]").HasDefaultValueSql("'{}'");
+
+        builder.Property(r => r.BultosRecibidos).HasColumnType("text[]").HasDefaultValueSql("'{}'");
+
+        builder.Property(r => r.Faltantes).HasColumnType("text[]").HasDefaultValueSql("'{}'");
+
+        builder.Property(r => r.Sobrantes).HasColumnType("text[]").HasDefaultValueSql("'{}'");
+
+        builder.Ignore(r => r.Confirmada);
+
         builder.HasIndex(r => r.RutaId)
             .IsUnique();
     }

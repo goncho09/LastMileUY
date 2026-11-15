@@ -190,4 +190,68 @@ public sealed class DepositoApiDePrueba : IDepositoApi
 
         return Task.CompletedTask;
     }
+
+    private readonly List<RendicionRutaDto> rendiciones =
+    [
+        new(2, "Pocitos tarde", DateOnly.FromDateTime(DateTime.Today), "EnCurso", "Lucía Fernández",
+            EstadosRendicion.Declarada, 5, 2,
+        [
+            new("MN3K8R2TX5WA-1", 611, "MN3K8R2TX5WA", "Pablo Gómez", "NoEntregado", true, null),
+            new("QD7H4P9LC2VZ-1", 612, "QD7H4P9LC2VZ", "Sofía Díaz", "EnTransito", true, null)
+        ])
+        {
+            DeclaradaEn = DateTime.UtcNow.AddMinutes(-15),
+            ObservacionesRepartidor = "Un destinatario no estaba."
+        }
+    ];
+
+    public Task<IReadOnlyList<RutaPorRendirDto>> RutasPorRendirAsync(CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            return Task.FromResult<IReadOnlyList<RutaPorRendirDto>>(rendiciones
+                .Where(r => r.EstadoRendicion != EstadosRendicion.Confirmada)
+                .Select(r => new RutaPorRendirDto(r.RutaId, r.Nombre, r.Fecha, r.Repartidor, r.EstadoRuta,
+                    r.CantidadEntregados, r.BultosADevolver.Count, r.EstadoRendicion))
+                .ToList());
+        }
+    }
+
+    public Task<RendicionRutaDto?> RendicionAsync(int rutaId, CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            return Task.FromResult(rendiciones.FirstOrDefault(r => r.RutaId == rutaId));
+        }
+    }
+
+    public Task<RendicionRutaDto> ConfirmarRendicionAsync(int rutaId, ConfirmarRendicionRequest request, CancellationToken ct = default)
+    {
+        lock (candado)
+        {
+            var indice = rendiciones.FindIndex(r => r.RutaId == rutaId);
+
+            if (indice < 0)
+                throw new OperacionRechazadaException("La ruta ya no existe.");
+
+            if (rendiciones[indice].EstadoRendicion == EstadosRendicion.Confirmada)
+                throw new OperacionRechazadaException("La rendición de esta hoja de ruta ya está confirmada.");
+
+            var recibidos = request.BultosRecibidos.Select(c => c.Trim().ToUpperInvariant()).ToHashSet();
+            var actual = rendiciones[indice];
+
+            rendiciones[indice] = actual with
+            {
+                EstadoRendicion = EstadosRendicion.Confirmada,
+                EstadoRuta = "Finalizada",
+                BultosADevolver = actual.BultosADevolver.Select(b => b with { Recibido = recibidos.Contains(b.Codigo) }).ToList(),
+                ConfirmadaEn = DateTime.UtcNow,
+                Observaciones = request.Observaciones,
+                Faltantes = actual.BultosADevolver.Where(b => !recibidos.Contains(b.Codigo)).Select(b => b.Codigo).ToList(),
+                Sobrantes = recibidos.Where(c => actual.BultosADevolver.All(b => b.Codigo != c)).ToList()
+            };
+
+            return Task.FromResult(rendiciones[indice]);
+        }
+    }
 }
