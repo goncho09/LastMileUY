@@ -182,7 +182,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
 
     public const int MaximoAjustes = 5;
 
-    private static void ReemplazarAjustes(Tarifa tarifa, IReadOnlyList<AjusteTarifaDto> ajustes)
+    private void ReemplazarAjustes(Tarifa tarifa, IReadOnlyList<AjusteTarifaDto> ajustes)
     {
         if (ajustes.Count > MaximoAjustes)
             throw new ArgumentException($"Una tarifa puede tener hasta {MaximoAjustes} recargos o bonificaciones.");
@@ -200,6 +200,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
             return new AjusteTarifa { Nombre = nombre, Tipo = tipo, Porcentaje = Math.Round(a.Porcentaje, 2), Activo = true };
         }).ToList();
 
+        db.Set<AjusteTarifa>().RemoveRange(tarifa.Ajustes);
         tarifa.Ajustes.Clear();
 
         foreach (var ajuste in nuevos)

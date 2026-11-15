@@ -65,6 +65,7 @@ public class ReportesDePuntaAPuntaTests(ApiDePuntaAPunta api)
 
         var cuenta = (await comercio.GetFromJsonAsync<ReporteGestionDto>($"api/reportes/mi-cuenta?{Periodo()}"))!;
         Assert.Single(cuenta.Liquidacion);
+        Assert.Empty(cuenta.PorRepartidor);
 
         using var csv = await despachador.GetAsync($"api/reportes/liquidacion.csv?{Periodo()}");
         Assert.Equal("text/csv", csv.Content.Headers.ContentType!.MediaType);

@@ -226,6 +226,16 @@ public class ConfiguracionOperadorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.Equal(["Combustible", "Cliente frecuente"], copiada.Ajustes.Select(a => a.Nombre));
         Assert.Equal("Bonificacion", copiada.Ajustes[1].Tipo);
 
+        using var editada = await operador.PutAsJsonAsync($"api/operador/cuadros-tarifarios/{nuevo.Id}/tarifas/{copiada.Id}",
+            new GuardarTarifaRequest(copiada.Nombre, zona.Id, "Estandar", 0m, 5m, 0m, 0.5m, 260m, 30m, [new AjusteTarifaDto("Temporada alta", "Recargo", 15m)]));
+        Assert.Equal(HttpStatusCode.NoContent, editada.StatusCode);
+
+        var conAjusteNuevo = Assert.Single((await operador.GetFromJsonAsync<CuadroTarifarioDto>($"api/operador/cuadros-tarifarios/{nuevo.Id}"))!.Tarifas);
+        Assert.Equal("Temporada alta", Assert.Single(conAjusteNuevo.Ajustes).Nombre);
+
+        var original = Assert.Single((await operador.GetFromJsonAsync<CuadroTarifarioDto>($"api/operador/cuadros-tarifarios/{cuadro.Id}"))!.Tarifas);
+        Assert.Equal(2, original.Ajustes.Count);
+
         var anterior = (await operador.GetFromJsonAsync<CuadroTarifarioDto>($"api/operador/cuadros-tarifarios/{cuadro.Id}"))!;
         Assert.Equal(manana.AddDays(10), anterior.VigenciaHasta);
 

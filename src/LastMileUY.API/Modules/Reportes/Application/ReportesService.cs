@@ -50,7 +50,7 @@ public class ReportesService(ApplicationDbContext db)
                 join ru in db.Rutas on p.RutaId equals ru.Id
                 join rep in db.Repartidores on ru.RepartidorId equals rep.Id
                 join u in db.Users on rep.UsuarioId equals u.Id
-                where i.FechaHora >= inicio && i.FechaHora < fin
+                where i.FechaHora >= inicio && i.FechaHora < fin && comercioId == null
                 select new { Repartidor = u.Nombre + " " + u.Apellido, i.Exitoso })
             .ToListAsync(ct);
 
