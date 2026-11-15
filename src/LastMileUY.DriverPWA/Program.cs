@@ -24,5 +24,6 @@ builder.Services.AddScoped<OperacionesConfirmadasService>();
 builder.Services.AddScoped<BultosIdentificadosService>();
 builder.Services.AddScoped<CargaVehiculoService>();
 builder.Services.AddScoped<RendicionService>();
+builder.Services.AddScoped<PosicionesService>();
 
 await builder.Build().RunAsync();

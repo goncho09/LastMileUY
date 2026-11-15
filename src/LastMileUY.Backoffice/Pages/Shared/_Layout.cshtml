@@ -7,7 +7,8 @@
 
     var enInicio = paginaActual.Equals("/Index", StringComparison.OrdinalIgnoreCase);
     var enEnvios = paginaActual.StartsWith("/Envios", StringComparison.OrdinalIgnoreCase);
-    var enRutas = paginaActual.StartsWith("/Rutas", StringComparison.OrdinalIgnoreCase);
+    var enFlota = paginaActual.Equals("/Rutas/Flota", StringComparison.OrdinalIgnoreCase);
+    var enRutas = paginaActual.StartsWith("/Rutas", StringComparison.OrdinalIgnoreCase) && !enFlota;
     var enSincronizacion = paginaActual.StartsWith("/Sincronizacion", StringComparison.OrdinalIgnoreCase);
     var enDeposito = paginaActual.StartsWith("/Deposito", StringComparison.OrdinalIgnoreCase);
     var enOperador = paginaActual.StartsWith("/Operador", StringComparison.OrdinalIgnoreCase);
@@ -121,6 +122,17 @@
                                   d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>
                         </svg>
                         Hojas de ruta
+                    </a>
+
+                    <a asp-page="/Rutas/Flota"
+                       aria-current="@(enFlota ? "page" : null)"
+                       class="@(claseNavBase) @(enFlota ? claseNavActivo : claseNavInactivo)">
+                        <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor"
+                             stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                        </svg>
+                        Flota en vivo
                     </a>
 
 

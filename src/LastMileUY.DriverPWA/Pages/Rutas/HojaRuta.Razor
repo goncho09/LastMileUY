@@ -53,6 +53,7 @@
 
             @if (ruta.Estado is "Despachada" or "EnCurso")
             {
+                <SeguimientoPosicion RutaId="@Id" />
                 <a href="/rutas/@Id/carga" class="boton boton-secundario mb-4">
                     <Icono Nombre="escaner" Clase="h-4 w-4 text-slate-500" />
                     Cargar el vehículo

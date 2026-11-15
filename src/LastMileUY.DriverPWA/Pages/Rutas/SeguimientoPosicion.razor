@@ -1,0 +1,60 @@
+@using LastMileUY.DriverPWA.Services
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject PosicionesService Posiciones
+
+<p class="mb-4 text-xs text-slate-500" role="status">
+    @(activo ? "Compartiendo tu ubicación con el despachador mientras la ruta está en curso." : "No se pudo acceder a la ubicación del celular.")
+</p>
+
+@code {
+    [Parameter, EditorRequired]
+    public int RutaId { get; set; }
+
+    private DotNetObjectReference<SeguimientoPosicion>? referencia;
+    private int idSeguimiento = -1;
+    private bool activo = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        referencia = DotNetObjectReference.Create(this);
+
+        try
+        {
+            idSeguimiento = await JS.InvokeAsync<int>("lastMilePosicion.iniciar", referencia, 30000);
+        }
+        catch (JSException)
+        {
+            idSeguimiento = -1;
+        }
+
+        if (idSeguimiento < 0)
+        {
+            activo = false;
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task PosicionRecibida(decimal latitud, decimal longitud, string fechaHora)
+    {
+        if (DateTime.TryParse(fechaHora, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var fecha))
+            await Posiciones.RegistrarAsync(RutaId, latitud, longitud, fecha);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("lastMilePosicion.detener", idSeguimiento);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException)
+        {
+        }
+
+        referencia?.Dispose();
+    }
+}
