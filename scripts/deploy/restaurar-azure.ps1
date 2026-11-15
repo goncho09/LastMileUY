@@ -9,6 +9,7 @@ param(
   [switch]$Resume,
   [int]$MaxAgeMinutes = 240
 )
+. (Join-Path $PSScriptRoot 'consola-azure.ps1')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 
@@ -121,20 +122,14 @@ $sshOpts=@('-i',$SshKey,'-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-
 # Ruta deterministica para permitir reintentos sin perder marcadores.
 $backupHash=(Get-FileHash -LiteralPath $hashFile -Algorithm SHA256).Hash.ToLowerInvariant()
 $remote="/home/azureuser/lastmileuy-restauracion-$backupHash"
-& ssh @sshOpts $dest "mkdir -p -m 700 '$remote'"
-CheckExit 'Crear carpeta remota'
-& scp @sshOpts -r "${BackupDir}/." "${dest}:${remote}/"
-CheckExit 'Subir respaldo'
-& scp @sshOpts $EnvFile "${dest}:${remote}/.env.azure"
-CheckExit 'Subir configuracion privada'
+Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOpts) + @($dest,"mkdir -p -m 700 '$remote'")) -Label 'Crear carpeta remota'
+Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q','-r',"${BackupDir}/.","${dest}:${remote}/")) -Label 'Subir respaldo'
+Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$EnvFile,"${dest}:${remote}/.env.azure")) -Label 'Subir configuracion privada'
 $script=Join-Path $PSScriptRoot 'restaurar-vm.sh'
 if (-not (Test-Path -LiteralPath $script)) { throw "Falta $script" }
-& scp @sshOpts $script "${dest}:${remote}/restaurar-vm.sh"
-CheckExit 'Subir restaurador'
+Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$script,"${dest}:${remote}/restaurar-vm.sh")) -Label 'Subir restaurador'
 $caddy=Join-Path $PSScriptRoot 'configurar-caddy.sh'
 if (-not (Test-Path -LiteralPath $caddy -PathType Leaf)) { throw "Falta $caddy" }
-& scp @sshOpts $caddy "${dest}:${remote}/configurar-caddy.sh"
-CheckExit 'Subir configurador Caddy'
-& ssh @sshOpts $dest "bash '$remote/restaurar-vm.sh' '$remote' '$version' '$ip'"
-CheckExit 'Restauracion remota'
+Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$caddy,"${dest}:${remote}/configurar-caddy.sh")) -Label 'Subir configurador Caddy'
+Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOpts) + @($dest,"bash '$remote/restaurar-vm.sh' '$remote' '$version' '$ip'")) -Label 'Restauracion remota (Docker, PostgreSQL, HTTPS)' -ShowNotices
 Write-Host 'RESTAURACION_COMPLETA_OK' -ForegroundColor Green

@@ -6,6 +6,7 @@ param(
     [string]$BackupRoot = (Join-Path $HOME 'LastMileUY-Azure/backups')
 )
 
+. (Join-Path $PSScriptRoot 'consola-azure.ps1')
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -173,13 +174,11 @@ for n in lastmileuy-lastmileuy.api-1 lastmileuy-lastmileuy.backoffice-1 lastmile
 $remoteBackupSucceeded = $false
 try {
     Write-Host "Generando respaldo remoto en $dest ..." -ForegroundColor Cyan
-    & ssh @sshArgs $dest $remoteCommand
-    if ($LASTEXITCODE -ne 0) { throw 'Fallo el respaldo remoto. No se destruira Azure.' }
+    Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshArgs) + @($dest,$remoteCommand)) -Label 'Respaldo remoto (PostgreSQL/RabbitMQ/volumenes)'
     $remoteBackupSucceeded = $true
 
     Write-Host "Descargando respaldo a $local ..." -ForegroundColor Cyan
-    & scp @sshArgs -r "${dest}:${remote}/." "$local/"
-    if ($LASTEXITCODE -ne 0) { throw 'Fallo la descarga. No se destruira Azure.' }
+    Invoke-LmNative -FilePath 'scp' -Arguments (@($sshArgs) + @('-q','-r',"${dest}:${remote}/.","$local/")) -Label 'Descarga del respaldo'
 $hashFile = Join-Path $local 'SHA256SUMS'
 
 if (-not (Test-Path -LiteralPath $hashFile)) { throw 'Falta SHA256SUMS. NO destruir Azure.' }
@@ -213,14 +212,13 @@ foreach ($f in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $local $f) -PathType Leaf)) { throw "Falta $f. NO destruir Azure." }
 }
 
-Write-Host "Respaldo descargado y SHA256 verificados: $local" -ForegroundColor Green
+Complete-LmStage "Backup descargado e integridad SHA256 OK: $local"
 Write-Host 'Servicios remotos y timer permanecen detenidos hasta confirmar reconstruccion o cancelar.' -ForegroundColor Yellow
 }
 catch {
     if ($remoteBackupSucceeded) {
         Write-Warning 'La descarga o validacion local fallo. Reanudando servicios en la VM original...'
-        & ssh @sshArgs $dest $resumeCommand
-        if ($LASTEXITCODE -ne 0) { Write-Warning 'No se pudieron reanudar todos los servicios. Revisar la VM por SSH.' }
+        try { Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshArgs) + @($dest,$resumeCommand)) -Label 'Reanudacion tras fallo de backup' } catch { Write-Warning 'No se pudieron reanudar todos los servicios. Revisar la VM por SSH.' }
     }
     throw
 }

@@ -8,6 +8,8 @@ param(
   [string]$EnvFile = (Join-Path $HOME 'LastMileUY-Azure/config/.env.azure')
 )
 
+. (Join-Path $PSScriptRoot 'consola-azure.ps1')
+
 # Validaciones locales previas al despliegue
 if ($Destroy) {
   Write-Host ""
@@ -42,7 +44,8 @@ $logDir=Join-Path $HOME 'LastMileUY-Azure/logs'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $logFile=Join-Path $logDir ("reconstruccion-{0}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
 
-Write-Host "LOG: $logFile" -ForegroundColor Cyan
+Write-Host 'LastMileUY | Despliegue Azure' -ForegroundColor Cyan
+Write-Host "Logs: $logFile" -ForegroundColor DarkGray
 
 Start-Transcript -LiteralPath $logFile -ErrorAction Stop | Out-Null
 
@@ -50,6 +53,8 @@ try {
   & $entry @params
   if (-not $?) { throw 'El proceso principal no termino correctamente' }
 } finally {
+  Write-Progress -Id 1 -Activity 'LastMileUY | Reconstruccion Azure' -Completed
   Stop-Transcript | Out-Null
-  Write-Host "Log guardado: $logFile" -ForegroundColor Cyan
+  Write-Host "Resumen: $logFile" -ForegroundColor DarkGray
+  Write-Host "Detalles tecnicos: $env:LASTMILEUY_DETAIL_LOG" -ForegroundColor DarkGray
 }

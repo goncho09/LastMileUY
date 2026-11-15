@@ -18,6 +18,7 @@ function Mostrar-Accesos([string]$ip, [string]$key) {
   }
   Write-Host '========================================'
 }
+. (Join-Path $PSScriptRoot 'consola-azure.ps1')
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $root=(Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -52,13 +53,10 @@ if (Test-Path -LiteralPath $journalPath) {
 function TF([string[]]$TerraformArgs) {
   # No redirigir stderr de ejecutables nativos: PowerShell 5.1 puede convertir
   # advertencias normales en errores terminantes con ErrorActionPreference Stop.
-  & terraform "-chdir=$tf" @TerraformArgs
-  $code=$LASTEXITCODE
-  if ($code -ne 0) { throw "Terraform fallo: $($TerraformArgs -join ' ') (codigo $code)" }
+  Invoke-LmNative -FilePath 'terraform' -Arguments (@("-chdir=$tf") + $TerraformArgs) -Label ("Terraform " + ($TerraformArgs -join ' '))
 }
 function Invoke-Remote([string]$target,[string[]]$sshOptions,[string]$command,[string]$label) {
-  & ssh @sshOptions $target $command
-  if ($LASTEXITCODE -ne 0) { throw "$label fallo (codigo $LASTEXITCODE)" }
+  Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOptions) + @($target,$command)) -Label $label
 }
 function Wait-SSH([string]$target,[string[]]$sshOptions) {
   for($i=0;$i -lt 60;$i++) {
@@ -89,9 +87,8 @@ $tfvars=Get-Content -LiteralPath (Join-Path $tf 'terraform.tfvars') -Raw
 if ($tfvars -notmatch '(?m)^\s*vm_size\s*=\s*"([^"]+)"') { throw 'No se pudo determinar vm_size desde terraform.tfvars' }
 $vmSize=$Matches[1]
 
-if ($vmSize -eq 'Standard_D2as_v4') {
-  Write-Warning 'La VM configurada es Standard_D2as_v4; no es elegible para asumir cobertura Azure Free.'
-}
+# La SKU sigue siendo validada; no repetir el aviso informativo en cada ejecucion.
+Add-Content -LiteralPath $env:LASTMILEUY_DETAIL_LOG -Value "VM configurada: $vmSize (comprobar costos en Azure)"
 
 # La IP publica puede cambiar. Solo en modo Destroy se actualiza la regla SSH.
 # La regla se aplica de forma aislada antes del backup: no abrir SSH a Internet.
@@ -121,8 +118,10 @@ if ($Destroy) {
   }
 }
 
-TF -TerraformArgs @('init','-input=false')
-TF -TerraformArgs @('validate')
+Set-LmStage 1 'Validando infraestructura' 'Terraform init / validate'
+TF -TerraformArgs @('init','-input=false','-no-color')
+TF -TerraformArgs @('validate','-no-color')
+Complete-LmStage 'Terraform init y validate'
 if (-not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
   if ($Destroy) { throw 'No combinar -ResumeBackupDir con -Destroy' }
   if (-not (Test-Path -LiteralPath $ResumeBackupDir -PathType Container)) { throw 'No existe el respaldo de reanudacion' }
@@ -153,8 +152,7 @@ if (-not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
   & ssh @sshOpts $newDest 'test -w /opt/lastmileuy/.git && test -f /etc/systemd/system/lastmileuy-update.timer && command -v caddy >/dev/null && docker compose version >/dev/null'
   $projectReady=($LASTEXITCODE -eq 0)
   if (-not $projectReady) {
-    & scp @sshOpts $installer "${newDest}:/home/azureuser/instalar-azure.sh"
-    if ($LASTEXITCODE -ne 0) { throw 'Copia del instalador fallida' }
+    Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$installer,"${newDest}:/home/azureuser/instalar-azure.sh")) -Label 'Copia del instalador'
     Invoke-Remote $newDest $sshOpts 'sudo bash /home/azureuser/instalar-azure.sh' 'Instalacion base'
   } else { Write-Host 'Instalacion base ya disponible; se conserva la restauracion parcial.' }
   & $restore -BackupDir $ResumeBackupDir -TerraformDir $tf -SshKey $SshKey -EnvFile $EnvFile -MaxAgeMinutes 1000000 -Resume
@@ -183,14 +181,15 @@ if ($Destroy -and $sshNeedsUpdate) {
     if ($sshRules.Count -ne 1 -or $sshRules[0].source_address_prefix -ne "$publicIpv4/32") {
       throw 'Plan SSH no contiene la IP publica esperada'
     }
-    Write-Host 'Aplicando exclusivamente la regla SSH del NSG (sin recrear la VM)...' -ForegroundColor Cyan
+    Write-Host 'Actualizando acceso SSH restringido...' -ForegroundColor Cyan
     TF -TerraformArgs @('apply','-input=false','-auto-approve',$planFile)
   } finally {
     Remove-Item -LiteralPath $planFile -Force -ErrorAction SilentlyContinue
   }
 }
-Write-Host 'Plan Terraform (solo lectura; no se aplica):' -ForegroundColor Cyan
+Write-Host 'Verificando plan Terraform...' -ForegroundColor DarkGray
 TF -TerraformArgs @('plan','-input=false','-no-color')
+Complete-LmStage 'Plan Terraform verificado'
 
 if (-not $Destroy) {
   $latest=Get-ChildItem -LiteralPath $BackupRoot -Directory -ErrorAction SilentlyContinue |
@@ -215,7 +214,7 @@ Invoke-Remote $dest $sshOpts 'echo SSH_OK' 'Comprobacion SSH previa'
 $maintenanceStopped=$false
 $vmDestroyed=$false
 try {
-  Write-Host 'Creando respaldo nuevo de PostgreSQL, RabbitMQ y volumenes...' -ForegroundColor Cyan
+  Set-LmStage 2 'Respaldo y verificacion' 'PostgreSQL, RabbitMQ, volumenes y hashes SHA256'
   & $backupScript -TerraformDir $tf -SshKey $SshKey -BackupRoot $BackupRoot
   if (-not $?) { throw "El script de respaldo fallo" }
   # El backup remoto termina con servicios detenidos; desde aqui hay que reanudarlos si algo falla.
@@ -227,7 +226,7 @@ try {
   # Los servicios permanecen detenidos durante validacion y confirmacion.
   & $restore -BackupDir $backup.FullName -ValidateOnly
   if (-not $?) { throw "La validacion del respaldo fallo" }
-  Write-Host "RESPALDO VALIDADO: $($backup.FullName)" -ForegroundColor Green
+  Complete-LmStage "Respaldo validado: $($backup.FullName)"
 
   # respaldar-azure.ps1 deja aplicaciones, RabbitMQ, monitorizacion y timer detenidos.
   # No volver a iniciar ni detener servicios aqui.
@@ -246,26 +245,35 @@ try {
   Save-Journal $backup.FullName 'DESTROY_INICIADO'
   # Desde este momento no suponemos que la VM anterior sobreviva si Terraform falla.
   $vmDestroyed=$true
-  TF -TerraformArgs @('destroy','-input=false','-auto-approve')
+  Set-LmStage 3 'Destruyendo infraestructura' 'Terraform destroy (esperando Azure)'
+  TF -TerraformArgs @('destroy','-input=false','-auto-approve','-no-color')
+  Complete-LmStage 'Infraestructura destruida'
   Save-Journal $backup.FullName 'DESTROY_COMPLETO'
-  TF -TerraformArgs @('apply','-input=false','-auto-approve')
+  Set-LmStage 4 'Recreando infraestructura' 'Terraform apply (esperando Azure)'
+  TF -TerraformArgs @('apply','-input=false','-auto-approve','-no-color')
+  Complete-LmStage 'Infraestructura recreada'
   Save-Journal $backup.FullName 'VM_RECREADA'
 
   $newIp=(& terraform "-chdir=$tf" output -raw public_ip)
   if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($newIp)) { throw 'No se pudo obtener la nueva IP publica' }
   $newIp=$newIp.Trim()
   $newDest="azureuser@$newIp"
+  Set-LmStage 5 'Preparando servidor' 'SSH, cloud-init y Docker'
   Wait-SSH $newDest $sshOpts
   Invoke-Remote $newDest $sshOpts 'sudo cloud-init status --wait && docker compose version' 'Preparacion cloud-init/Docker'
-  & scp @sshOpts $installer "${newDest}:/home/azureuser/instalar-azure.sh"
-  if ($LASTEXITCODE -ne 0) { throw 'No se pudo copiar instalar-azure.sh' }
+  Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$installer,"${newDest}:/home/azureuser/instalar-azure.sh")) -Label 'Copia del instalador'
   Invoke-Remote $newDest $sshOpts 'sudo bash /home/azureuser/instalar-azure.sh' 'Instalacion base'
+  Complete-LmStage 'Servidor preparado'
 
+  Set-LmStage 6 'Restaurando datos y aplicaciones' 'Subiendo backup, contenedores y HTTPS'
   & $restore -BackupDir $backup.FullName -TerraformDir $tf -SshKey $SshKey -EnvFile $EnvFile -Resume
   if (-not $?) { throw "La restauracion fallo" }
+  Complete-LmStage 'Restauracion completada'
+  Set-LmStage 7 'Verificacion final' 'Accesos y estado de actualizacion'
   if (Test-Path -LiteralPath $journalPath) { Remove-Item -LiteralPath $journalPath -Force }
   Mostrar-Accesos $newIp $SshKey
   Write-Host "RECONSTRUCCION_Y_RESTAURACION_OK: https://api.$($newIp -replace '\.','-').sslip.io" -ForegroundColor Green
+  Complete-LmStage 'Reconstruccion terminada'
 }
 catch {
   if ($vmDestroyed -and (Test-Path -LiteralPath $journalPath)) {
