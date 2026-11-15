@@ -1,0 +1,125 @@
+@page
+@model LastMileUY.Backoffice.Pages.Rutas.FlotaModel
+@{
+    ViewData["Title"] = "Flota en vivo";
+    var flota = Model.Flota;
+}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+<div class="mx-auto max-w-[1600px] space-y-7">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-white">Flota en vivo</h1>
+        <p class="mt-2 text-sm text-slate-400">
+            Dónde está cada vehículo que salió a la calle y qué envíos están por pasarse de su ventana o de su plazo.
+            Se actualiza solo.
+        </p>
+    </div>
+
+    <div id="mapa-flota" class="h-[420px] w-full overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-label="Mapa con la última posición de cada vehículo"></div>
+
+    <div id="contenido-flota" class="space-y-7" data-marcadores="@Model.Marcadores">
+        @if (Model.Error is not null)
+        {
+            <div role="alert" class="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-300">@Model.Error</div>
+        }
+
+        @if (flota is not null)
+        {
+            <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-labelledby="titulo-riesgo">
+                <div class="border-b border-white/[0.07] px-5 py-5 sm:px-6">
+                    <h2 id="titulo-riesgo" class="text-base font-semibold text-white">Envíos en riesgo (@flota.EnRiesgo.Count)</h2>
+                    <p class="mt-1 text-xs text-slate-400">Sin entregar y con su franja o su plazo vencido o a menos de una hora.</p>
+                </div>
+
+                @if (flota.EnRiesgo.Count == 0)
+                {
+                    <p class="px-6 py-8 text-center text-sm text-slate-400">Ningún envío en riesgo ahora.</p>
+                }
+                else
+                {
+                    <div class="w-full overflow-x-auto">
+                        <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+                            <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">Envío</th>
+                                    <th scope="col" class="px-4 py-3">Destinatario</th>
+                                    <th scope="col" class="px-4 py-3">Ruta</th>
+                                    <th scope="col" class="px-4 py-3">Motivo</th>
+                                    <th scope="col" class="px-4 py-3">Límite</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                @foreach (var envio in flota.EnRiesgo)
+                                {
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <a asp-page="/Envios/Detalle" asp-route-id="@envio.EnvioId" class="font-mono text-xs font-semibold text-violet-300 hover:text-violet-200">@envio.CodigoSeguimiento</a>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-300">@envio.Destinatario</td>
+                                        <td class="px-4 py-3">
+                                            <a asp-page="/Rutas/Detalle" asp-route-id="@envio.RutaId" class="text-slate-300 hover:text-white">@envio.Ruta</a>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-400">@envio.Motivo</td>
+                                        <td class="px-4 py-3">
+                                            <span class="rounded border px-1.5 py-0.5 text-xs whitespace-nowrap @(envio.Vencido ? "border-red-500/30 text-red-300" : "border-amber-500/30 text-amber-300")">
+                                                @(envio.Vencido ? "Vencido" : "Vence") @Formato.Fecha(envio.Limite)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+
+            <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-labelledby="titulo-vehiculos">
+                <div class="border-b border-white/[0.07] px-5 py-5 sm:px-6">
+                    <h2 id="titulo-vehiculos" class="text-base font-semibold text-white">Vehículos en la calle (@flota.Rutas.Count)</h2>
+                </div>
+
+                @if (flota.Rutas.Count == 0)
+                {
+                    <p class="px-6 py-8 text-center text-sm text-slate-400">No hay rutas despachadas ni en curso.</p>
+                }
+                else
+                {
+                    <div class="w-full overflow-x-auto">
+                        <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+                            <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3">Ruta</th>
+                                    <th scope="col" class="px-4 py-3">Repartidor y vehículo</th>
+                                    <th scope="col" class="px-4 py-3">Paradas pendientes</th>
+                                    <th scope="col" class="px-4 py-3">Última posición</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                @foreach (var ruta in flota.Rutas)
+                                {
+                                    <tr>
+                                        <td class="px-4 py-3">
+                                            <a asp-page="/Rutas/Detalle" asp-route-id="@ruta.RutaId" class="font-medium text-white hover:text-violet-200">@ruta.Ruta</a>
+                                            <p class="mt-1 text-xs text-slate-500">@EstadosRuta.Texto(ruta.Estado)</p>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-300">@ruta.Repartidor · <span class="font-mono">@ruta.Vehiculo</span></td>
+                                        <td class="px-4 py-3 text-slate-300">@ruta.Pendientes de @ruta.Paradas</td>
+                                        <td class="px-4 py-3 @(FlotaModel.Desactualizada(ruta, flota.Generado) ? "text-amber-300" : "text-slate-300")">
+                                            @Model.Hace(ruta.UltimaPosicion)
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="~/js/flota.js" asp-append-version="true"></script>
+}

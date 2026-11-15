@@ -700,6 +700,9 @@
   .h-100 {
     height: calc(var(--spacing) * 100);
   }
+  .h-\[420px\] {
+    height: 420px;
+  }
   .h-auto {
     height: auto;
   }
@@ -864,6 +867,9 @@
   }
   .min-w-\[720px\] {
     min-width: 720px;
+  }
+  .min-w-\[760px\] {
+    min-width: 760px;
   }
   .min-w-\[900px\] {
     min-width: 900px;

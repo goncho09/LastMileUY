@@ -173,3 +173,33 @@ Para el orden sugerido, `IdentitySeeder` le pone un depósito a cada operador de
 Camino Carrasco) y ubicación aproximada a las direcciones de prueba. Agrega además una destinataria
 con cuatro direcciones repartidas por Montevideo. En una base cargada antes, completa la ubicación de
 las direcciones de prueba que no la tenían.
+
+## Posición de la flota y envíos en riesgo (req. 23 y 29)
+
+**En la app del repartidor:** mientras la hoja de ruta está Despachada o En curso y la tiene abierta, la app toma la posición del celular cada 30 segundos (`posicion.js` con `watchPosition`). Cada posición se guarda primero en el celular y se manda en lotes cada minuto, o cuando vuelve la conexión: sin señal no se pierden, se mandan después con su hora real. Se guardan como máximo las últimas 500.
+
+- **Límite de la PWA:** una aplicación web no puede seguir la posición con la pantalla apagada o en segundo plano, como pide la 6.11 para MAUI. El equipo es de 3 integrantes y la letra permite reemplazar la app MAUI por una PWA, así que el seguimiento funciona mientras la app está abierta.
+
+**API:**
+- `POST /api/rutas/mias/{id}/posiciones` (Repartidor): `{ posiciones: [{ latitud, longitud, fechaHora }] }`, hasta 200 por lote.
+  - Solo sobre sus rutas (404 si no es suya) y en la calle (409 si no salió o ya terminó).
+  - Descarta coordenadas inválidas, horas en el futuro o de hace más de 2 días, y repetidas: reenviar el mismo lote no duplica nada, porque la hora se guarda al segundo y no se repite por ruta.
+  - Devuelve cuántas guardó y cuántas descartó.
+- `GET /api/flota` (Operador, Despachador): las rutas en la calle con su última posición y cuántas paradas les quedan, y los **envíos en riesgo**.
+
+**Envío en riesgo:** asignado o en tránsito, y con su límite vencido o a menos de una hora. El límite es el más cercano de:
+- el fin de su franja horaria el día de la ruta, en hora de Uruguay;
+- su plazo comprometido: fecha de alta + `PlazoEntregaHoras` de la regla con la que se creó.
+
+**Backoffice:** página **Flota en vivo** (`/Rutas/Flota`), con mapa (Leaflet + OpenStreetMap), la tabla de envíos en riesgo y la de vehículos. Se actualiza cada 20 segundos y cada vez que llega por SignalR un cambio de estado de un envío. Una posición de hace más de 15 minutos se marca como desactualizada.
+
+**Aislamiento:** `Posiciones` hereda de su ruta (filtro de EF y RLS por `EXISTS`), así que otro operador no ve la flota.
+
+**Pruebas:**
+- `FlotaDePuntaAPuntaTests`:
+  - antes de despachar da 409;
+  - un lote con repetidas, una latitud inválida y una hora futura guarda 2 y descarta 3;
+  - reenviarlo no guarda nada;
+  - el tablero muestra la última posición y las paradas pendientes;
+  - otro repartidor recibe 404, otro operador no la ve, y un repartidor no entra al tablero.
+- `LimiteEntregaTests`: el cierre de la franja en hora de Uruguay y que gana el límite más cercano.

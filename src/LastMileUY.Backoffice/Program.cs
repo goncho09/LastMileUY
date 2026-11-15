@@ -108,6 +108,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IGestionComerciosApi, GestionComerciosApiDePrueba>();
     builder.Services.AddSingleton<IConfiguracionApi, ConfiguracionApiDePrueba>();
     builder.Services.AddSingleton<IDepositoApi, DepositoApiDePrueba>();
+    builder.Services.AddSingleton<IFlotaApi, FlotaApiDePrueba>();
 
 }
 else
@@ -121,6 +122,14 @@ else
     builder.Services.AddTransient<ReenviarCookieApi>();
 
     builder.Services.AddHttpClient<IConfiguracionApi, ConfiguracionApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IFlotaApi, FlotaApiHttp>(cliente =>
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);
