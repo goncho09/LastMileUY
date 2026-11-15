@@ -67,3 +67,42 @@ CREATE POLICY seguimiento_publico ON "Envios"
 ## Operadores sin seguimiento público
 
 El administrador puede apagar el seguimiento público para un operador (ver [funcionalidades.md](funcionalidades.md)). Si está apagado, los códigos de ese operador contestan 404, igual que un código que no existe.
+
+## Reprogramación pedida por el destinatario (req. 26)
+
+En la página de seguimiento, si el envío lo permite, aparece "¿No vas a estar?": el destinatario elige otro día (y, si su zona tiene franjas, una franja) y deja un comentario opcional para el repartidor.
+
+**Las reglas las pone el operador** (`PoliticaReprogramacion`), con la regla operativa con la que se creó el envío:
+
+| Situación | ¿Se puede? |
+|---|---|
+| Admitido, en depósito, no entregado o reprogramado | Sí |
+| Asignado a ruta o en tránsito | No: "ya está en camino" |
+| Entregado, en devolución, devuelto o extraviado | No |
+| Intentos fallidos ≥ máximo de la regla | No: el envío vuelve al comercio |
+| Ya pidió una reprogramación desde el último intento | No: una por intento |
+
+- **Fecha mínima:** hoy (hora de Uruguay) + las horas entre intentos de la regla, redondeadas a días, al menos 1. **Fecha máxima:** 14 días.
+- **Franja:** solo las activas de la zona del envío. Se manda por nombre, no por id, para no exponer identificadores internos.
+
+**Qué pasa al pedirla** (`POST /api/seguimiento/{codigo}/reprogramacion`, anónimo y con la misma limitación de tasa):
+
+- Se guarda la solicitud en `SolicitudesReprogramacion` (con `OperadorId`, filtro de EF y RLS).
+- El envío guarda la **fecha pedida** y, si eligió, la nueva franja.
+- Si estaba **No entregado**, pasa a **Reprogramado** por la máquina de estados, con el pedido en el historial. Eso dispara el correo "Reprogramamos la entrega de tu envío".
+- **Al planificar:** no se puede asignar el envío a una ruta con fecha anterior a la pedida (400 con el motivo).
+- Se invalida el caché del seguimiento de ese código.
+- Respuestas: 204 si se aceptó, 409 con el motivo si las reglas no lo permiten, 404 si el código no existe o el operador no tiene seguimiento público.
+
+**Cómo escribe sin usuario:** la página es anónima, así que no hay operador en la sesión. La API ubica el envío por el código (como la consulta) y después abre un contexto de base **solo de ese operador** (`FabricaContextoOperador`), con los mismos filtros, RLS, outbox e invalidación de caché que una petición normal. El destinatario no puede tocar nada más que su envío.
+
+**Pruebas:**
+- `ReprogramacionPublicaDePuntaAPuntaTests`:
+  - asignado no se puede;
+  - tras un intento fallido se puede;
+  - una fecha fuera de rango o una franja inventada dan 409;
+  - el pedido válido lo deja Reprogramado con la fecha;
+  - un segundo pedido da 409;
+  - no se puede planificar antes de la fecha pedida, el mismo día sí;
+  - un código inexistente da 404.
+- `PoliticaReprogramacionTests` cubre cada fila de la tabla y la fecha mínima.

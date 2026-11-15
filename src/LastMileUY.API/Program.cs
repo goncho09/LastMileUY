@@ -331,6 +331,8 @@ builder.Services.AddScoped<GestionComerciosService>();
 builder.Services.AddScoped<ClavesApiService>();
 builder.Services.AddScoped<ImportarEnviosService>();
 builder.Services.AddScoped<ImportarArchivoService>();
+builder.Services.AddScoped<FabricaContextoOperador>();
+builder.Services.AddScoped<ReprogramacionPublicaService>();
 builder.Services.AddScoped<AmbientePruebasService>();
 builder.Services.AddScoped<SimularEnvioService>();
 builder.Services.AddSingleton(TimeProvider.System);

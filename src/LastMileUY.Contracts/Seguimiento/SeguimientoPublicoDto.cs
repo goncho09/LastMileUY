@@ -9,7 +9,8 @@ public record SeguimientoPublicoDto(
     string Departamento,
     OperadorPublicoDto Operador,
     IReadOnlyList<EventoPublicoDto> Eventos,
-    AvanceBultosDto? Bultos = null);
+    AvanceBultosDto? Bultos = null,
+    ReprogramacionPublicaDto? Reprogramacion = null);
 
 public record AvanceBultosDto(
     int Total,
@@ -27,3 +28,16 @@ public record OperadorPublicoDto(
 public record EventoPublicoDto(
     DateTime FechaHora,
     string Estado);
+
+public record FranjaPublicaDto(string Nombre, TimeOnly HoraInicio, TimeOnly HoraFin);
+
+public record ReprogramacionPublicaDto(
+    bool Permitida,
+    string? Motivo,
+    DateOnly FechaMinima,
+    DateOnly FechaMaxima,
+    IReadOnlyList<FranjaPublicaDto> Franjas,
+    DateOnly? FechaSolicitada,
+    string? FranjaSolicitada);
+
+public record SolicitarReprogramacionRequest(DateOnly Fecha, string? Franja = null, string? Comentario = null);

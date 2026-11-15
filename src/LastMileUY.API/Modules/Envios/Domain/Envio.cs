@@ -44,6 +44,8 @@ public class Envio : IPerteneceAOperador, IPerteneceAComercio
 
     public int? FranjaHorariaId { get; set; }
 
+    public DateOnly? FechaEntregaSolicitada { get; set; }
+
     public Devolucion? Devolucion { get; set; }
 
     public int? CuadroTarifarioId { get; set; }

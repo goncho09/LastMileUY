@@ -144,6 +144,13 @@ public class PlanificarRutaService(ApplicationDbContext db)
                     + "solo se pueden asignar envíos en depósito o reprogramados.");
             }
 
+            if (envio.FechaEntregaSolicitada is { } pedida && request.Fecha < pedida)
+            {
+                throw new ArgumentException(
+                    $"El destinatario del envío {envio.CodigoSeguimiento} pidió la entrega para el {pedida:dd/MM/yyyy}: "
+                    + "no se puede asignar a una ruta anterior.");
+            }
+
             if (!envio.Bultos.Any(EsPendiente))
             {
                 throw new ArgumentException(

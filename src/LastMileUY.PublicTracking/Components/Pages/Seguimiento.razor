@@ -86,6 +86,62 @@ else
             </dl>
         </section>
 
+        @if (envio.Reprogramacion is { } reprogramacion
+             && (reprogramacion.Permitida || reprogramacion.FechaSolicitada is not null || avisoReprogramacion is not null))
+        {
+            <section class="tarjeta reprogramar" aria-labelledby="titulo-reprogramar">
+                <h2 id="titulo-reprogramar">¿No vas a estar?</h2>
+
+                @if (avisoReprogramacion is not null)
+                {
+                    <p class="aviso aviso-ok" role="status">@avisoReprogramacion</p>
+                }
+
+                @if (errorReprogramacion is not null)
+                {
+                    <p class="aviso aviso-error" role="alert">@errorReprogramacion</p>
+                }
+
+                @if (reprogramacion.FechaSolicitada is { } fecha)
+                {
+                    <p>
+                        Pediste la entrega para el <strong>@fecha.ToString("dd/MM/yyyy")</strong>@(reprogramacion.FranjaSolicitada is { } franja ? $", en la franja {franja}" : "").
+                    </p>
+                }
+
+                @if (reprogramacion.Permitida)
+                {
+                    <p class="suave">
+                        Elegí otro día para la entrega, entre el @reprogramacion.FechaMinima.ToString("dd/MM") y el @reprogramacion.FechaMaxima.ToString("dd/MM").
+                    </p>
+                    <form method="post" @formname="reprogramar" @onsubmit="ReprogramarAsync" class="reprogramar-form">
+                        <AntiforgeryToken/>
+                        <label for="fecha-reprogramacion">Nueva fecha</label>
+                        <input id="fecha-reprogramacion" type="date" name="Pedido.Fecha" required
+                               min="@reprogramacion.FechaMinima.ToString("yyyy-MM-dd")"
+                               max="@reprogramacion.FechaMaxima.ToString("yyyy-MM-dd")"/>
+
+                        @if (reprogramacion.Franjas.Count > 0)
+                        {
+                            <label for="franja-reprogramacion">Franja horaria</label>
+                            <select id="franja-reprogramacion" name="Pedido.Franja">
+                                <option value="">Cualquier horario</option>
+                                @foreach (var franja in reprogramacion.Franjas)
+                                {
+                                    <option value="@franja.Nombre">@franja.Nombre (@franja.HoraInicio.ToString("HH:mm") a @franja.HoraFin.ToString("HH:mm"))</option>
+                                }
+                            </select>
+                        }
+
+                        <label for="comentario-reprogramacion">Comentario para el repartidor (opcional)</label>
+                        <textarea id="comentario-reprogramacion" name="Pedido.Comentario" maxlength="300" rows="2"></textarea>
+
+                        <button type="submit">Pedir la nueva fecha</button>
+                    </form>
+                }
+            </section>
+        }
+
         <section class="tarjeta" aria-labelledby="titulo-historial">
             <h2 id="titulo-historial">Historial</h2>
             <ol class="historial">
@@ -109,8 +165,51 @@ else
 @code {
     [Parameter] public string Codigo { get; set; } = string.Empty;
 
+    [SupplyParameterFromForm(FormName = "reprogramar")]
+    public FormularioReprogramacion? Pedido { get; set; }
+
     private SeguimientoPublicoDto? envio;
     private string? error;
+    private string? avisoReprogramacion;
+    private string? errorReprogramacion;
+
+    public sealed class FormularioReprogramacion
+    {
+        public DateOnly? Fecha { get; set; }
+
+        public string? Franja { get; set; }
+
+        public string? Comentario { get; set; }
+    }
+
+    private async Task ReprogramarAsync()
+    {
+        if (Pedido?.Fecha is not { } fecha)
+        {
+            errorReprogramacion = "Elegí la nueva fecha.";
+            return;
+        }
+
+        try
+        {
+            errorReprogramacion = await Api.SolicitarReprogramacionAsync(Codigo,
+                new SolicitarReprogramacionRequest(fecha, Pedido.Franja, Pedido.Comentario));
+
+            if (errorReprogramacion is null)
+            {
+                avisoReprogramacion = $"Listo: pedimos la entrega para el {fecha:dd/MM/yyyy}.";
+                envio = await Api.ObtenerAsync(Codigo);
+            }
+        }
+        catch (ConsultasExcedidasException)
+        {
+            errorReprogramacion = "Se hicieron muchas consultas seguidas. Probá de nuevo en un minuto.";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            errorReprogramacion = "No pudimos registrar el pedido. Probá de nuevo más tarde.";
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
