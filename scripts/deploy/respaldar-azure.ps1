@@ -138,7 +138,7 @@ docker exec lastmileuy-postgres pg_dumpall -U lastmileuy --globals-only > "$DIR/
 test -s "$DIR/postgres.dump"
 test -s "$DIR/globals.sql"
 docker exec -i lastmileuy-postgres pg_restore --list < "$DIR/postgres.dump" >/dev/null
-echo "Deteniendo RabbitMQ, Grafana y Prometheus para copiar volúmenes..."
+echo "Deteniendo RabbitMQ, Grafana y Prometheus para copiar volumenes..."
 for name in "${CONSISTENCY[@]}"; do stop_if_running "$name"; done
 for vol in "${VOLUMES[@]}"; do
   mountpoint=$(docker volume inspect -f '{{.Mountpoint}}' "$vol")
@@ -160,6 +160,7 @@ BACKUP_OK=true
 echo "RESPALDO_REMOTO_OK=$DIR"
 '@
 
+$remoteScript = $remoteScript -replace "`r`n", "`n"
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($remoteScript))
 $remoteCommand = "echo '$encoded' | base64 -d | bash -s -- '$remote'"
 $sshArgs = @('-i',$SshKey,'-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new')
@@ -167,7 +168,7 @@ $resumeCommand = @'
 set -e
 for n in lastmileuy-rabbitmq lastmileuy-grafana lastmileuy-prometheus; do docker start "$n" >/dev/null 2>&1 || true; done
 for n in lastmileuy-lastmileuy.api-1 lastmileuy-lastmileuy.backoffice-1 lastmileuy-lastmileuy.commerceportal-1 lastmileuy-lastmileuy.driverpwa-1 lastmileuy-lastmileuy.publictracking-1 lastmileuy-lastmileuy.worker-1 lastmileuy-lastmileuy.receptoravisos-1; do docker start "$n" >/dev/null 2>&1 || true; done
-sudo -n systemctl start lastmileuy-update.timer 2>/dev/null || true
+# Timer deliberadamente deshabilitado mientras no se valide el actualizador.
 '@
 $remoteBackupSucceeded = $false
 try {

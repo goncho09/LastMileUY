@@ -114,31 +114,15 @@ crear_respaldo_y_override() {
   printf '%s\n' "$override"
 }
 
-verificar_api_restaurada() {
-  local intento codigo
-  for intento in {1..20}; do
-    codigo=$(curl --silent --output /dev/null       --write-out '%{http_code}' --max-time 5       http://127.0.0.1:8080/ || true)
-
-    if [[ "$codigo" =~ ^[1-5][0-9][0-9]$ ]]; then
-      log "API restaurada responde HTTP $codigo."
-      return 0
-    fi
-    sleep 3
-  done
-  log "La API restaurada no responde."
-  return 1
-}
-
 restaurar() {
   local override="$1"
   log "Intentando restaurar las imágenes anteriores..."
   docker compose --project-directory "$PROYECTO" --env-file .env.azure \
-    -f compose.yaml -f docker-compose.azure.yml -f "$override" \
-    up -d --no-build --no-deps "${SERVICIOS[@]/#/lastmileuy.}"
-  verificar_contenedores
-  # La versión anterior puede no tener /health.
-  verificar_api_restaurada
-  verificar_http "Backoffice restaurado" "http://127.0.0.1:8081/Login"
+    -f compose.yaml -f docker-compose.azure.yml -f compose.deploy.yaml -f "$override" \
+    up -d --no-build --no-deps "${SERVICIOS[@]/#/lastmileuy.}" || return 1
+  verificar_contenedores || return 1
+  verificar_http "API restaurada" "http://127.0.0.1:8080/health" || return 1
+  verificar_http "Backoffice restaurado" "http://127.0.0.1:8081/Login" || return 1
   log "Rollback verificado."
 }
 
@@ -163,8 +147,46 @@ if [[ -n "$(git status --porcelain)" ]]; then
   log "Hay cambios locales en el repositorio. Se bloquea el despliegue para protegerlos."
   exit 1
 fi
-git merge --ff-only origin/main
+# Proteger el codigo y las imagenes ANTES de cambiar el checkout.
+COMMIT_ANTERIOR=$(git rev-parse HEAD)
+[[ "$VERSION_ACTUAL" =~ ^[a-f0-9]{40}$ ]] || {
+  log 'Version instalada desconocida: rollback automatico bloqueado.'; exit 1;
+}
+export LASTMILEUY_VERSION="$VERSION_ACTUAL"
+"${compose_base[@]}" config --quiet
+log 'Conservando las imagenes instaladas antes de actualizar...'
+ROLLBACK=$(crear_respaldo_y_override "$VERSION_ACTUAL")
+DESPLIEGUE_OK=false
+CONTENEDORES_CAMBIADOS=false
+rollback_si_falla() {
+  local codigo=$?
+  trap - EXIT INT TERM
+  if [[ "$DESPLIEGUE_OK" != true ]]; then
+    log "Actualizacion no completada (codigo $codigo). Volviendo al commit anterior..."
+    if ! git reset --hard "$COMMIT_ANTERIOR"; then
+      log 'ERROR CRITICO: no pudo recuperarse el commit anterior.'
+      codigo=1
+    fi
+    export LASTMILEUY_VERSION="$VERSION_ACTUAL"
+    if [[ "$CONTENEDORES_CAMBIADOS" == true ]]; then
+      if ! restaurar "$ROLLBACK"; then
+        log 'ERROR CRITICO: rollback de servicios fallo; revisar manualmente.'
+        codigo=1
+      fi
+    fi
+    if ! { printf '%s\n' "$VERSION_ACTUAL" > "$VERSION_FILE.tmp" &&
+            mv "$VERSION_FILE.tmp" "$VERSION_FILE"; }; then
+      log 'ERROR CRITICO: no pudo restaurarse el marcador de version.'
+      codigo=1
+    fi
+  fi
+  exit "$codigo"
+}
+trap rollback_si_falla EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
+git merge --ff-only origin/main
 export LASTMILEUY_VERSION="$VERSION_NUEVA"
 "${compose_base[@]}" config --quiet
 
@@ -173,9 +195,6 @@ for servicio in "${SERVICIOS[@]}"; do
   "${compose_base[@]}" pull "lastmileuy.$servicio"
 done
 
-log "Guardando respaldo de las imágenes actuales..."
-ROLLBACK=$(crear_respaldo_y_override "$VERSION_NUEVA")
-
 log "Comprobando migraciones de la imagen nueva contra PostgreSQL..."
 set +e
 "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
@@ -183,47 +202,22 @@ set +e
 codigo_migraciones=$?
 set -e
 if [[ "$codigo_migraciones" -eq 10 ]]; then
-  log "Hay migraciones pendientes."
-
-  crear_backup_postgres "$VERSION_NUEVA"
-
-  log "Aplicando migraciones de EF Core..."
-
-  if ! "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
-	  LastMileUY.API.dll --apply-migrations; then
-	  log "ERROR: falló la migración. No se actualizarán los contenedores."
-	  log "La base de datos puede haber cambiado parcialmente. Revisar el backup antes de reintentar."
-	  exit 1
-  fi
-
-  log "Comprobando que no quedan migraciones pendientes..."
-  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
-    LastMileUY.API.dll --check-migrations
-
-  log "Migraciones aplicadas correctamente."
+  log "BLOQUEADO: la version nueva necesita migraciones EF Core."
+  log "No se modifico PostgreSQL ni se reemplazaron contenedores."
+  log "Se requiere un despliegue de migraciones planificado y compatible con rollback."
+  log 'Se mantiene la version anterior. No se aplicaron migraciones.'
+  exit 0
 elif [[ "$codigo_migraciones" -ne 0 ]]; then
-  log "No se pudo comprobar el estado de las migraciones (código $codigo_migraciones). Despliegue bloqueado."
+  log "ERROR: comprobacion de migraciones fallo (codigo $codigo_migraciones)."
   exit 1
 fi
 
-DESPLIEGUE_OK=false
-rollback_si_falla() {
-  local codigo=$?
-  trap - ERR
-  if [[ "$DESPLIEGUE_OK" != true && -n "${ROLLBACK:-}" && -f "$ROLLBACK" ]]; then
-    if ! restaurar "$ROLLBACK"; then
-      log "ERROR CRÍTICO: falló también la recuperación. Intervención manual necesaria."
-    fi
-  fi
-  exit "$codigo"
-}
-trap rollback_si_falla ERR
-
 log "Actualizando los siete servicios..."
+CONTENEDORES_CAMBIADOS=true
 "${compose_base[@]}" up -d --no-build --no-deps "${SERVICIOS[@]/#/lastmileuy.}"
 verificar_aplicacion
 printf '%s\n' "$VERSION_NUEVA" > "$VERSION_FILE.tmp"
 mv "$VERSION_FILE.tmp" "$VERSION_FILE"
 DESPLIEGUE_OK=true
-trap - ERR
+trap - EXIT INT TERM
 log "Despliegue completado: $VERSION_NUEVA"

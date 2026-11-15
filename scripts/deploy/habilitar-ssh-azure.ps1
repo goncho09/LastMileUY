@@ -1,6 +1,6 @@
-﻿param(
+param(
     [string]$TerraformDir = (Join-Path (Get-Location) 'infra/terraform'),
-    [string]$SshKey = (Join-Path $HOME '.ssh/lastmileuy_azure_nueva'),
+    [string]$SshKey = (Join-Path $HOME 'LastMileUY-Azure/ssh/lastmileuy_azure_nueva'),
     [string]$SshUser = 'azureuser'
 )
 
@@ -133,7 +133,17 @@ try {
             throw 'Terraform apply fallo.'
         }
 
-        Write-Host "Configuracion SSH aplicada." -ForegroundColor Green
+        # Persistir tambien en tfvars: de lo contrario el siguiente plan revertiria la regla.
+        $tfvarsPath=Join-Path $TerraformDir 'terraform.tfvars'
+        $tfvars=Get-Content -LiteralPath $tfvarsPath -Raw
+        if ($tfvars -notmatch '(?m)^\s*ssh_allowed_cidr\s*=\s*"[^"\r\n]+"') {
+            throw 'SSH aplicado, pero no se pudo localizar ssh_allowed_cidr en terraform.tfvars. Actualizarlo manualmente antes de otro apply.'
+        }
+        $newTfvars=[regex]::Replace($tfvars, '(?m)^(\s*ssh_allowed_cidr\s*=\s*)"[^"\r\n]+"', {
+            param($match) $match.Groups[1].Value + '"' + $cidr + '"'
+        })
+        [IO.File]::WriteAllText($tfvarsPath,$newTfvars,(New-Object Text.UTF8Encoding($false)))
+        Write-Host "Configuracion SSH aplicada y terraform.tfvars sincronizado." -ForegroundColor Green
     }
 }
 finally {

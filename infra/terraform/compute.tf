@@ -14,7 +14,8 @@ resource "azurerm_linux_virtual_machine" "lastmileuy" {
 
   lifecycle {
     ignore_changes = [
-      admin_ssh_key
+      admin_ssh_key,
+      custom_data
     ]
   }
 
