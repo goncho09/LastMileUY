@@ -1,3 +1,4 @@
+```
 #requires -Version 5.1
 [CmdletBinding()]
 param(
@@ -53,10 +54,10 @@ if (Test-Path -LiteralPath $journalPath) {
 function TF([string[]]$TerraformArgs) {
   # No redirigir stderr de ejecutables nativos: PowerShell 5.1 puede convertir
   # advertencias normales en errores terminantes con ErrorActionPreference Stop.
-  Invoke-LmNative -FilePath 'terraform' -Arguments (@("-chdir=$tf") + $TerraformArgs) -Label ("Terraform " + ($TerraformArgs -join ' '))
+  Invoke-LmNative -FilePath 'terraform' -Arguments (@("-chdir=$tf") + $TerraformArgs) -Label ("Terraform " + ($TerraformArgs -join ' ')) -LiveStatus
 }
 function Invoke-Remote([string]$target,[string[]]$sshOptions,[string]$command,[string]$label) {
-  Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOptions) + @($target,$command)) -Label $label
+  Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOptions) + @($target,$command)) -Label $label -LiveStatus
 }
 function Wait-SSH([string]$target,[string[]]$sshOptions) {
   for($i=0;$i -lt 60;$i++) {
@@ -119,7 +120,9 @@ if ($Destroy) {
 }
 
 Set-LmStage 1 'Validando infraestructura' 'Terraform init / validate'
+Write-LmDetail 'Inicializando Terraform...'
 TF -TerraformArgs @('init','-input=false','-no-color')
+Write-LmDetail 'Validando configuracion de Terraform...'
 TF -TerraformArgs @('validate','-no-color')
 Complete-LmStage 'Terraform init y validate'
 if (-not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
@@ -146,17 +149,21 @@ if (-not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
   if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($newIp)) { throw 'Sin IP de VM' }
   $newDest="azureuser@$($newIp.Trim())"
   $sshOpts=@('-i',$SshKey,'-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','ConnectTimeout=15')
+  Write-LmDetail 'Esperando conectividad SSH...'
   Wait-SSH $newDest $sshOpts
   Invoke-Remote $newDest $sshOpts 'sudo cloud-init status --wait' 'Cloud-init'
   # El primer intento puede haberse interrumpido durante el instalador.
   & ssh @sshOpts $newDest 'test -w /opt/lastmileuy/.git && test -f /etc/systemd/system/lastmileuy-update.timer && command -v caddy >/dev/null && docker compose version >/dev/null'
   $projectReady=($LASTEXITCODE -eq 0)
   if (-not $projectReady) {
-    Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$installer,"${newDest}:/home/azureuser/instalar-azure.sh")) -Label 'Copia del instalador'
-    Invoke-Remote $newDest $sshOpts 'sudo bash /home/azureuser/instalar-azure.sh' 'Instalacion base'
+    Write-LmDetail 'Subiendo instalador al servidor...'
+  Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$installer,"${newDest}:/home/azureuser/instalar-azure.sh")) -Label 'Copia del instalador'
+    Write-LmDetail 'Instalando dependencias, Docker y Caddy...'
+  Invoke-Remote $newDest $sshOpts 'sudo bash /home/azureuser/instalar-azure.sh' 'Instalacion base'
   } else { Write-Host 'Instalacion base ya disponible; se conserva la restauracion parcial.' }
   & $restore -BackupDir $ResumeBackupDir -TerraformDir $tf -SshKey $SshKey -EnvFile $EnvFile -MaxAgeMinutes 1000000 -Resume
   if (-not $?) { throw 'Restauracion reanudada fallida' }
+  Write-LmDetail 'Confirmando resultado de restauracion y actualizacion automatica...'
   if (Test-Path -LiteralPath $journalPath) { Remove-Item -LiteralPath $journalPath -Force }
   Mostrar-Accesos $newIp $SshKey
   Write-Host 'REANUDACION_OK (sin ejecutar destroy)' -ForegroundColor Green
@@ -188,6 +195,7 @@ if ($Destroy -and $sshNeedsUpdate) {
   }
 }
 Write-Host 'Verificando plan Terraform...' -ForegroundColor DarkGray
+Write-LmDetail 'Analizando cambios de infraestructura...'
 TF -TerraformArgs @('plan','-input=false','-no-color')
 Complete-LmStage 'Plan Terraform verificado'
 
@@ -215,6 +223,7 @@ $maintenanceStopped=$false
 $vmDestroyed=$false
 try {
   Set-LmStage 2 'Respaldo y verificacion' 'PostgreSQL, RabbitMQ, volumenes y hashes SHA256'
+  Write-LmDetail 'Generando respaldo remoto...'
   & $backupScript -TerraformDir $tf -SshKey $SshKey -BackupRoot $BackupRoot
   if (-not $?) { throw "El script de respaldo fallo" }
   # El backup remoto termina con servicios detenidos; desde aqui hay que reanudarlos si algo falla.
@@ -224,6 +233,7 @@ try {
     Sort-Object Name -Descending | Select-Object -First 1
   if ($null -eq $backup) { throw 'No se encontro un backup nuevo. Destruccion bloqueada.' }
   # Los servicios permanecen detenidos durante validacion y confirmacion.
+  Write-LmDetail 'Comprobando integridad de hashes y volumenes...'
   & $restore -BackupDir $backup.FullName -ValidateOnly
   if (-not $?) { throw "La validacion del respaldo fallo" }
   Complete-LmStage "Respaldo validado: $($backup.FullName)"
@@ -246,10 +256,12 @@ try {
   # Desde este momento no suponemos que la VM anterior sobreviva si Terraform falla.
   $vmDestroyed=$true
   Set-LmStage 3 'Destruyendo infraestructura' 'Terraform destroy (esperando Azure)'
+  Write-LmDetail 'Solicitando eliminacion de recursos a Azure...'
   TF -TerraformArgs @('destroy','-input=false','-auto-approve','-no-color')
   Complete-LmStage 'Infraestructura destruida'
   Save-Journal $backup.FullName 'DESTROY_COMPLETO'
   Set-LmStage 4 'Recreando infraestructura' 'Terraform apply (esperando Azure)'
+  Write-LmDetail 'Creando red, almacenamiento y maquina virtual...'
   TF -TerraformArgs @('apply','-input=false','-auto-approve','-no-color')
   Complete-LmStage 'Infraestructura recreada'
   Save-Journal $backup.FullName 'VM_RECREADA'
@@ -259,17 +271,23 @@ try {
   $newIp=$newIp.Trim()
   $newDest="azureuser@$newIp"
   Set-LmStage 5 'Preparando servidor' 'SSH, cloud-init y Docker'
+  Write-LmDetail 'Esperando conectividad SSH...'
   Wait-SSH $newDest $sshOpts
+  Write-LmDetail 'Esperando cloud-init y comprobando Docker...'
   Invoke-Remote $newDest $sshOpts 'sudo cloud-init status --wait && docker compose version' 'Preparacion cloud-init/Docker'
+  Write-LmDetail 'Subiendo instalador al servidor...'
   Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$installer,"${newDest}:/home/azureuser/instalar-azure.sh")) -Label 'Copia del instalador'
+  Write-LmDetail 'Instalando dependencias, Docker y Caddy...'
   Invoke-Remote $newDest $sshOpts 'sudo bash /home/azureuser/instalar-azure.sh' 'Instalacion base'
   Complete-LmStage 'Servidor preparado'
 
   Set-LmStage 6 'Restaurando datos y aplicaciones' 'Subiendo backup, contenedores y HTTPS'
+  Write-LmDetail 'Enviando backup y comenzando la restauracion...'
   & $restore -BackupDir $backup.FullName -TerraformDir $tf -SshKey $SshKey -EnvFile $EnvFile -Resume
   if (-not $?) { throw "La restauracion fallo" }
   Complete-LmStage 'Restauracion completada'
   Set-LmStage 7 'Verificacion final' 'Accesos y estado de actualizacion'
+  Write-LmDetail 'Confirmando resultado de restauracion y actualizacion automatica...'
   if (Test-Path -LiteralPath $journalPath) { Remove-Item -LiteralPath $journalPath -Force }
   Mostrar-Accesos $newIp $SshKey
   Write-Host "RECONSTRUCCION_Y_RESTAURACION_OK: https://api.$($newIp -replace '\.','-').sslip.io" -ForegroundColor Green
@@ -289,3 +307,5 @@ catch {
   }
   throw
 }
+
+```
