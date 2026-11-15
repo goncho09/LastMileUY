@@ -159,6 +159,28 @@ public static class EnviosEndpoints
             .RequireAuthorization(politica => politica.RequireRole("Comercio"))
             .WithName("ImportarArchivoDeEnvios");
 
+        group.MapGet("/devoluciones", async (bool? pendientes, DevolucionesService devoluciones, CancellationToken ct) =>
+                Results.Ok(await devoluciones.ListarAsync(pendientes ?? false, ct)))
+            .RequireAuthorization(politica => politica.RequireRole("Comercio", "Operador", "Despachador"))
+            .WithName("ListarDevoluciones");
+
+        group.MapPost("/{id:int}/devolucion/recibida", async (
+                int id, DevolucionesService devoluciones, ClaimsPrincipal usuario, CancellationToken ct) =>
+            {
+                try
+                {
+                    return await devoluciones.ConfirmarRecibidaAsync(id, usuario.FindFirstValue(ClaimTypes.NameIdentifier), ct)
+                        ? Results.NoContent()
+                        : Results.NotFound();
+                }
+                catch (TransicionInvalidaException ex)
+                {
+                    return Results.Conflict(new { mensaje = ex.Message });
+                }
+            })
+            .RequireAuthorization(politica => politica.RequireRole("Comercio"))
+            .WithName("ConfirmarDevolucionRecibida");
+
         group.MapPatch("/{id:int}/estado", async (
                 int id,
                 CambiarEstadoRequest request,

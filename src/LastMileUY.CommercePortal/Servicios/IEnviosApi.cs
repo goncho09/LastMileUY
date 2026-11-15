@@ -27,3 +27,10 @@ public interface ICuentaApi
 {
     Task<LastMileUY.Contracts.Reportes.ReporteGestionDto?> ObtenerAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default);
 }
+
+public interface IDevolucionesApi
+{
+    Task<List<LastMileUY.Contracts.Envios.DevolucionComercioDto>> ListarAsync(bool soloPendientes, CancellationToken ct = default);
+
+    Task<string?> ConfirmarRecibidaAsync(int envioId, CancellationToken ct = default);
+}

@@ -1621,6 +1621,53 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                     b.ToTable("Zonas", (string)null);
                 });
 
+            modelBuilder.Entity("LastMileUY.API.Modules.Reportes.Domain.IndicadorDiario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CalculadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Cerrado")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly>("Dia")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Entregados")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EntregadosATiempo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EnviosCreados")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Importe")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)");
+
+                    b.Property<int>("IntentosFallidos")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("NoEntregados")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Dia")
+                        .IsUnique();
+
+                    b.ToTable("IndicadoresDiarios", (string)null);
+                });
+
             modelBuilder.Entity("LastMileUY.API.Modules.Rutas.Domain.BultoParada", b =>
                 {
                     b.Property<int>("ParadaId")
@@ -2753,6 +2800,15 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
                         .WithMany("Zonas")
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LastMileUY.API.Modules.Reportes.Domain.IndicadorDiario", b =>
+                {
+                    b.HasOne("LastMileUY.API.Modules.Operadores.Domain.Operador", null)
+                        .WithMany()
                         .HasForeignKey("OperadorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

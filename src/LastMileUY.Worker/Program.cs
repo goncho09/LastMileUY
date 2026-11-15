@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using LastMileUY.Contracts.Mensajeria;
 using LastMileUY.Worker;
 using Npgsql;
@@ -72,6 +73,9 @@ var permitirLocales = builder.Configuration.GetValue<bool>("Avisos:PermitirDesti
 builder.Services.AddHttpClient<ClienteAvisos>(http => http.Timeout = ClienteAvisos.TiempoMaximo)
     .ConfigurePrimaryHttpMessageHandler(() => ClienteAvisos.CrearManejador(permitirLocales));
 builder.Services.AddHostedService<DespachadorAvisos>();
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<CierreDiario>();
+builder.Services.AddHostedService(servicios => servicios.GetRequiredService<CierreDiario>());
 
 
 var host = builder.Build();

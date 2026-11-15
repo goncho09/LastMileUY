@@ -120,3 +120,12 @@ El repartidor declara con `POST /api/rutas/mias/{rutaId}/rendicion` `{ bultosDev
 - `DevolucionTests`: pasar a En devolución abre la devolución y pasar a Devuelto la cierra.
 - `RendicionServiceTests` (app): qué bultos devolver, con operaciones todavía sin sincronizar.
 - `PermisosTests` (Backoffice): qué ve el operario de depósito.
+
+## Devoluciones al comercio
+
+Un envío llega a **En devolución** por la rendición (intentos agotados), por la política de entrega parcial o a mano, y en ese momento se abre su devolución con el motivo. En el Portal, **Devoluciones** le muestra al comercio sus envíos que vuelven, con el motivo y desde cuándo. Cuando recibe el paquete toca **Lo recibí**: el envío pasa a **Devuelto** por la máquina de estados (origen "Comercio"), los bultos quedan devueltos y la devolución se cierra con la fecha.
+
+- `GET /api/envios/devoluciones?pendientes=true|false` (Comercio, Operador, Despachador; cada uno ve solo lo suyo por los filtros de operador y comercio).
+- `POST /api/envios/{id}/devolucion/recibida` (Comercio): 204, o 409 si el envío no está en devolución.
+
+Lo prueba el final de `Con_los_intentos_agotados_el_envio_vuelve_al_comercio`: la devolución aparece con su motivo, el comercio la confirma, una segunda confirmación da 409 y queda cerrada con fecha.
