@@ -175,7 +175,7 @@
                                 @for (var i = 0; i < Model.Formulario.Ajustes.Count; i++)
                                 {
                                     <div class="grid grid-cols-[1fr_auto_6rem] gap-2">
-                                        <label for="ajuste-nombre-@i" class="sr-only">Nombre del ajuste @(i + 1)</label>
+                                        <label for="ajuste-nombre-@i" class="sr-only">Concepto del ajuste @(i + 1)</label>
                                         <input id="ajuste-nombre-@i" name="Formulario.Ajustes[@i].Nombre" value="@Model.Formulario.Ajustes[i].Nombre" maxlength="100" placeholder="Ej. Combustible" class="@Estilos.Campo" />
                                         <label for="ajuste-tipo-@i" class="sr-only">Tipo del ajuste @(i + 1)</label>
                                         <select id="ajuste-tipo-@i" name="Formulario.Ajustes[@i].Tipo" class="@Estilos.Campo">
