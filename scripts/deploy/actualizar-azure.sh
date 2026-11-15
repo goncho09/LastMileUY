@@ -166,6 +166,11 @@ rollback_si_falla() {
   local codigo=$?
   trap - EXIT INT TERM
   if [[ "$DESPLIEGUE_OK" != true ]]; then
+    if [[ "$MIGRACIONES_INICIADAS" == true ]]; then
+      log "ERROR: migraciones iniciadas; no se cambia a imagen antigua automaticamente sobre una BD potencialmente nueva."
+      log "Respaldo pre-migracion: ${BACKUP_MIGRACIONES:-desconocido}"
+      exit 1
+    fi
     log "Actualizacion no completada (codigo $codigo). Volviendo al commit anterior..."
     if ! git reset --hard "$COMMIT_ANTERIOR"; then
       log 'ERROR CRITICO: no pudo recuperarse el commit anterior.'
@@ -183,11 +188,6 @@ rollback_si_falla() {
       log 'ERROR CRITICO: no pudo restaurarse el marcador de version.'
       codigo=1
     fi
-  fi
-  if [[ "$MIGRACIONES_INICIADAS" == true ]]; then
-    log "ATENCION: las migraciones pueden haber modificado PostgreSQL. No se revierte la base automaticamente."
-    log "Revisar backup: ${BACKUP_MIGRACIONES:-no disponible}."
-    codigo=1
   fi
   exit "$codigo"
 }
@@ -214,13 +214,14 @@ if [[ "$codigo_migraciones" -eq 10 ]]; then
   log "Hay migraciones pendientes. Verificando que esten aprobadas para despliegue automatico..."
   # Solo estas tres migraciones se revisaron como aditivas.
   # Las futuras requieren una revision explicita antes de automatizarlas.
-  PENDIENTES=$("${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \\
+  codigo_pendientes=0
+  PENDIENTES=$("${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
     LastMileUY.API.dll --check-migrations 2>&1) || codigo_pendientes=$?
   [[ "${codigo_pendientes:-0}" -eq 10 ]] || {
     log "ERROR: la segunda comprobacion de migraciones no devolvio 10."
     exit 1
   }
-  mapfile -t LISTA_PENDIENTES < <(printf '%s\\n' "$PENDIENTES" | grep -E '^[0-9]{14}_[A-Za-z0-9_]+$' || true)
+  mapfile -t LISTA_PENDIENTES < <(printf '%s\n' "$PENDIENTES" | sed -nE 's/^[[:space:]]*([0-9]{14}_[A-Za-z0-9_]+)[[:space:]]*$/\1/p' || true)
   [[ ${#LISTA_PENDIENTES[@]} -gt 0 ]] || {
     log "ERROR: no se pudo identificar las migraciones pendientes."
     exit 1
@@ -234,8 +235,8 @@ if [[ "$codigo_migraciones" -eq 10 ]]; then
 
   # No iniciar la migracion sin un backup local verificable.
   crear_backup_postgres "$VERSION_NUEVA"
-  BACKUP_MIGRACIONES=$(find "$ESTADO/backups" -maxdepth 1 -type f \\
-    -name "postgres-${VERSION_NUEVA}-*.dump" -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
+  BACKUP_MIGRACIONES=$(find "$ESTADO/backups" -maxdepth 1 -type f \
+    -name "postgres-${VERSION_NUEVA}-*.dump" -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
   [[ -n "$BACKUP_MIGRACIONES" && -s "$BACKUP_MIGRACIONES" ]] || {
     log "ERROR: no se encontro el backup verificado."
     exit 1
@@ -243,12 +244,12 @@ if [[ "$codigo_migraciones" -eq 10 ]]; then
 
   log "Aplicando migraciones EF Core aprobadas..."
   MIGRACIONES_INICIADAS=true
-  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \\
+  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
     LastMileUY.API.dll --apply-migrations
   MIGRACIONES_APLICADAS=true
 
   log "Comprobando que no queden migraciones pendientes..."
-  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \\
+  "${compose_base[@]}" run --rm --no-deps --entrypoint dotnet lastmileuy.api \
     LastMileUY.API.dll --check-migrations
 elif [[ "$codigo_migraciones" -ne 0 ]]; then
   log "ERROR: comprobacion de migraciones fallo (codigo $codigo_migraciones)."

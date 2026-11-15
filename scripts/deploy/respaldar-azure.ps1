@@ -121,9 +121,9 @@ stop_if_running() {
     docker stop -t 45 "$name" >/dev/null
   fi
 }
-echo "Pausando aplicaciones para evitar escrituras y nuevos mensajes..."
+echo "PASO: Deteniendo aplicaciones para obtener un respaldo consistente..."
 for name in "${APPS[@]}"; do stop_if_running "$name"; done
-echo "Guardando estado de colas..."
+echo "PASO: Guardando y comprobando colas RabbitMQ..."
 docker exec lastmileuy-rabbitmq rabbitmqctl list_queues name messages_ready messages_unacknowledged > "$DIR/rabbitmq-colas.txt"
 if awk 'NR > 1 && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ && ($2 > 0 || $3 > 0) { pendientes=1 } END { exit !pendientes }' "$DIR/rabbitmq-colas.txt"; then
   echo "Hay mensajes pendientes en RabbitMQ. Respaldo cancelado." >&2
@@ -133,17 +133,18 @@ fi
 docker exec lastmileuy-rabbitmq rabbitmqctl export_definitions /tmp/lastmileuy-definitions.json >/dev/null
 docker cp lastmileuy-rabbitmq:/tmp/lastmileuy-definitions.json "$DIR/rabbitmq-definitions.json"
 docker exec lastmileuy-rabbitmq rm -f /tmp/lastmileuy-definitions.json
-echo "Generando dump PostgreSQL con aplicaciones detenidas..."
+echo "PASO: Exportando PostgreSQL y roles..."
 docker exec lastmileuy-postgres pg_dump -U lastmileuy -d lastmileuy -Fc > "$DIR/postgres.dump"
 docker exec lastmileuy-postgres pg_dumpall -U lastmileuy --globals-only > "$DIR/globals.sql"
 test -s "$DIR/postgres.dump"
 test -s "$DIR/globals.sql"
 docker exec -i lastmileuy-postgres pg_restore --list < "$DIR/postgres.dump" >/dev/null
-echo "Deteniendo RabbitMQ, Grafana y Prometheus para copiar volumenes..."
+echo "PASO: Deteniendo servicios persistentes para respaldar volumenes..."
 for name in "${CONSISTENCY[@]}"; do stop_if_running "$name"; done
 for vol in "${VOLUMES[@]}"; do
   mountpoint=$(docker volume inspect -f '{{.Mountpoint}}' "$vol")
   [[ "$mountpoint" == /var/lib/docker/volumes/*/_data ]] || { echo "Ruta de volumen inesperada: $vol" >&2; exit 1; }
+  echo "PASO: Comprimiendo volumen $vol..."
   sudo -n tar -C "$mountpoint" -czf - . > "$DIR/volumes/$vol.tar.gz"
   tar -tzf "$DIR/volumes/$vol.tar.gz" >/dev/null
 done
@@ -156,6 +157,7 @@ rabbitmq=offline_volume_and_definitions
 compose_project=lastmileuy
 EOF
 (cd "$DIR" && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+echo "PASO: Verificando checksums SHA256 remotos..."
 (cd "$DIR" && sha256sum -c SHA256SUMS)
 BACKUP_OK=true
 echo "RESPALDO_REMOTO_OK=$DIR"
@@ -174,11 +176,12 @@ for n in lastmileuy-lastmileuy.api-1 lastmileuy-lastmileuy.backoffice-1 lastmile
 $remoteBackupSucceeded = $false
 try {
     Write-Host "Generando respaldo remoto en $dest ..." -ForegroundColor Cyan
-    Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshArgs) + @($dest,$remoteCommand)) -Label 'Respaldo remoto (PostgreSQL/RabbitMQ/volumenes)'
+    Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshArgs) + @($dest,$remoteCommand)) -Label 'Respaldo remoto (PostgreSQL/RabbitMQ/volumenes)' -LiveStatus
     $remoteBackupSucceeded = $true
 
-    Write-Host "Descargando respaldo a $local ..." -ForegroundColor Cyan
+    Write-LmDetail "Descargando respaldo a $local ..."
     Invoke-LmNative -FilePath 'scp' -Arguments (@($sshArgs) + @('-q','-r',"${dest}:${remote}/.","$local/")) -Label 'Descarga del respaldo'
+Write-LmDetail 'Validando SHA256 del respaldo descargado...'
 $hashFile = Join-Path $local 'SHA256SUMS'
 
 if (-not (Test-Path -LiteralPath $hashFile)) { throw 'Falta SHA256SUMS. NO destruir Azure.' }

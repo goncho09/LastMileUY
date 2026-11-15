@@ -8,10 +8,12 @@ ESTADO=/var/lib/lastmileuy-deploy
 [[ $EUID -eq 0 ]] || { echo 'Ejecutar con sudo' >&2; exit 1; }
 id "$USUARIO" >/dev/null
 
+echo "PASO: Actualizando repositorios de paquetes..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y ca-certificates curl git jq tar gzip openssh-client caddy
 
+echo "PASO: Comprobando motor Docker y Compose..."
 if ! command -v docker >/dev/null 2>&1; then
     apt-get update
     apt-get install -y docker.io docker-compose-v2
@@ -26,6 +28,7 @@ systemctl stop caddy || true
 
 usermod -aG docker "$USUARIO"
 
+echo "PASO: Preparando codigo de LastMileUY en el servidor..."
 if [[ ! -e "$DESTINO/.git" ]]; then
   [[ ! -e "$DESTINO" || -z "$(ls -A "$DESTINO" 2>/dev/null)" ]] || { echo 'Destino ocupado' >&2; exit 1; }
   git clone --branch main "$REPO_URL" "$DESTINO"
@@ -45,6 +48,7 @@ fi
 }
 chown -R "$USUARIO:$USUARIO" "$DESTINO"
 
+echo "PASO: Instalando unidades systemd del actualizador..."
 install -d -o "$USUARIO" -g "$USUARIO" -m 750 "$ESTADO"
 install -m 644 "$DESTINO/scripts/deploy/lastmileuy-update.service" /etc/systemd/system/lastmileuy-update.service
 install -m 644 "$DESTINO/scripts/deploy/lastmileuy-update.timer" /etc/systemd/system/lastmileuy-update.timer

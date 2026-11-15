@@ -125,11 +125,16 @@ $remote="/home/azureuser/lastmileuy-restauracion-$backupHash"
 Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOpts) + @($dest,"mkdir -p -m 700 '$remote'")) -Label 'Crear carpeta remota'
 Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q','-r',"${BackupDir}/.","${dest}:${remote}/")) -Label 'Subir respaldo'
 Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$EnvFile,"${dest}:${remote}/.env.azure")) -Label 'Subir configuracion privada'
+Write-LmDetail 'Backup remoto transferido.'
 $script=Join-Path $PSScriptRoot 'restaurar-vm.sh'
 if (-not (Test-Path -LiteralPath $script)) { throw "Falta $script" }
 Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$script,"${dest}:${remote}/restaurar-vm.sh")) -Label 'Subir restaurador'
+# El actualizador revisado viaja por separado: el restore fija el checkout al SHA antiguo.
+$updater=Join-Path $PSScriptRoot 'actualizar-azure.sh'
+if (-not (Test-Path -LiteralPath $updater -PathType Leaf)) { throw "Falta $updater" }
+Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$updater,"${dest}:${remote}/actualizar-azure.sh")) -Label 'Subir actualizador revisado'
 $caddy=Join-Path $PSScriptRoot 'configurar-caddy.sh'
 if (-not (Test-Path -LiteralPath $caddy -PathType Leaf)) { throw "Falta $caddy" }
 Invoke-LmNative -FilePath 'scp' -Arguments (@($sshOpts) + @('-q',$caddy,"${dest}:${remote}/configurar-caddy.sh")) -Label 'Subir configurador Caddy'
-Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOpts) + @($dest,"bash '$remote/restaurar-vm.sh' '$remote' '$version' '$ip'")) -Label 'Restauracion remota (Docker, PostgreSQL, HTTPS)' -ShowNotices
+Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOpts) + @($dest,"bash '$remote/restaurar-vm.sh' '$remote' '$version' '$ip'")) -Label 'Restauracion remota (Docker, PostgreSQL, HTTPS)' -ShowNotices -LiveStatus
 Write-Host 'RESTAURACION_COMPLETA_OK' -ForegroundColor Green
