@@ -45,7 +45,11 @@ public class CuadroTarifarioModel(IConfiguracionApi api, ILogger<CuadroTarifario
                 VolumenMinimoM3 = t.VolumenMinimoM3,
                 VolumenMaximoM3 = t.VolumenMaximoM3,
                 PrecioBase = t.PrecioBase,
-                PrecioPorKgAdicional = t.PrecioPorKgAdicional
+                PrecioPorKgAdicional = t.PrecioPorKgAdicional,
+                Ajustes = t.Ajustes.Select(a => new FormularioAjuste { Nombre = a.Nombre, Tipo = a.Tipo, Porcentaje = a.Porcentaje })
+                    .Concat(Enumerable.Range(0, 3).Select(_ => new FormularioAjuste()))
+                    .Take(Math.Max(3, t.Ajustes.Count))
+                    .ToList()
             };
         }
     }
@@ -107,8 +111,25 @@ public class CuadroTarifarioModel(IConfiguracionApi api, ILogger<CuadroTarifario
         [Range(typeof(decimal), "0", "9999999", ErrorMessage = "El precio no puede ser negativo.")]
         public decimal PrecioPorKgAdicional { get; set; }
 
+        public List<FormularioAjuste> Ajustes { get; set; } = [new(), new(), new()];
+
         public GuardarTarifaRequest ARequest() =>
             new(Nombre.Trim(), ZonaId ?? 0, Modalidad, PesoMinimoKg, PesoMaximoKg, VolumenMinimoM3, VolumenMaximoM3,
-                PrecioBase, PrecioPorKgAdicional);
+                PrecioBase, PrecioPorKgAdicional,
+                Ajustes
+                    .Where(a => !string.IsNullOrWhiteSpace(a.Nombre))
+                    .Select(a => new AjusteTarifaDto(a.Nombre!.Trim(), a.Tipo, a.Porcentaje ?? 0))
+                    .ToList());
+    }
+
+    public class FormularioAjuste
+    {
+        [StringLength(100, ErrorMessage = "Hasta 100 caracteres.")]
+        public string? Nombre { get; set; }
+
+        public string Tipo { get; set; } = "Recargo";
+
+        [Range(typeof(decimal), "0.01", "100", ErrorMessage = "Entre 0,01 y 100 %.")]
+        public decimal? Porcentaje { get; set; }
     }
 }

@@ -37,6 +37,10 @@
             <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold @ClaseEstado(envio.Estado)">
                 @TextoEstado(envio.Estado)
             </span>
+            <a href="/envios/@envio.Id/etiquetas"
+               class="ml-auto inline-flex items-center rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-violet-500/40 hover:text-white">
+                Imprimir etiquetas
+            </a>
         </div>
 
         <dl class="grid gap-4 rounded-2xl border border-white/10 bg-[#151927] p-5 text-sm sm:grid-cols-3">

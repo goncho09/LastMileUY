@@ -66,7 +66,10 @@ public sealed class ProcesadorCorreos(
                 destinatario.Apellido,
                 destinatario.Comercio,
                 evento.CodigoSeguimiento,
-                EnlaceSeguimiento(evento.CodigoSeguimiento)),
+                EnlaceSeguimiento(evento.CodigoSeguimiento),
+                destinatario.Operador,
+                destinatario.ColorOperador,
+                destinatario.LogoOperador),
             PlantillaCorreoSeguimiento.Para(evento.Estado)!);
 
         try

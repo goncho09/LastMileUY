@@ -286,8 +286,9 @@ public sealed class RepositorioCorreos(NpgsqlDataSource datos)
         await ConfigurarContextoAsync(conexion, tx, operadorId, comercioId, ct);
 
         await using var comando = new NpgsqlCommand("""
-            SELECT d."Email", d."Nombre", d."Apellido", c."Nombre"
+            SELECT d."Email", d."Nombre", d."Apellido", c."Nombre", o."Nombre", o."ColorPrimario", o."LogoUrl"
             FROM "Envios" e
+            JOIN "Operadores" o ON o."Id" = e."OperadorId"
             JOIN "Destinatarios" d ON d."Id" = e."DestinatarioId"
             JOIN "Comercios" c ON c."Id" = e."ComercioId"
             WHERE e."Id" = @envio
@@ -310,7 +311,10 @@ public sealed class RepositorioCorreos(NpgsqlDataSource datos)
                     lector.IsDBNull(0) ? null : lector.GetString(0),
                     lector.IsDBNull(1) ? "" : lector.GetString(1),
                     lector.IsDBNull(2) ? "" : lector.GetString(2),
-                    lector.IsDBNull(3) ? "" : lector.GetString(3));
+                    lector.IsDBNull(3) ? "" : lector.GetString(3),
+                    lector.IsDBNull(4) ? null : lector.GetString(4),
+                    lector.IsDBNull(5) ? null : lector.GetString(5),
+                    lector.IsDBNull(6) ? null : lector.GetString(6));
             }
         }
 
@@ -319,4 +323,6 @@ public sealed class RepositorioCorreos(NpgsqlDataSource datos)
     }
 }
 
-public sealed record DestinatarioCorreo(string? Email, string Nombre, string Apellido, string Comercio);
+public sealed record DestinatarioCorreo(
+    string? Email, string Nombre, string Apellido, string Comercio,
+    string? Operador = null, string? ColorOperador = null, string? LogoOperador = null);

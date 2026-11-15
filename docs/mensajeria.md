@@ -343,6 +343,8 @@ El worker también le avisa por correo al destinatario. Usa su propia cola, `las
 | EnDevolucion | Tu envío vuelve al comercio |
 | Devuelto | Tu envío volvió al comercio |
 
+**Con la marca del operador (req. 5).** El correo lleva el nombre del operador en el encabezado y en el asunto, su color primario en los botones y detalles, y su logo si es una URL `https`. Si el color no es un hexadecimal válido o el logo no es seguro, se usa la marca de la plataforma; todo se escapa, así que un nombre con HTML no se inyecta. Lo prueba `PlantillaCorreoSeguimientoTests`.
+
 Los pasos internos (en depósito, asignado a ruta) y los eventos de bulto no mandan nada.
 
 **Un correo por evento.** La tabla `CorreosSeguimiento` guarda cada evento con su estado:

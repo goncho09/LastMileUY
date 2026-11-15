@@ -111,7 +111,12 @@ public record TarifaDto(
     decimal VolumenMaximoM3,
     decimal PrecioBase,
     decimal PrecioPorKgAdicional,
-    bool Activa);
+    bool Activa)
+{
+    public IReadOnlyList<AjusteTarifaDto> Ajustes { get; init; } = [];
+}
+
+public record AjusteTarifaDto(string Nombre, string Tipo, decimal Porcentaje);
 
 public record CrearCuadroTarifarioRequest(DateOnly VigenciaDesde, bool CopiarTarifasDeLaAnterior);
 
@@ -124,4 +129,5 @@ public record GuardarTarifaRequest(
     decimal VolumenMinimoM3,
     decimal VolumenMaximoM3,
     decimal PrecioBase,
-    decimal PrecioPorKgAdicional);
+    decimal PrecioPorKgAdicional,
+    IReadOnlyList<AjusteTarifaDto>? Ajustes = null);

@@ -47,3 +47,24 @@ input:-webkit-autofill:active {
 .blazor-error-boundary::after {
     content: "Ocurrió un error inesperado.";
 }
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .etiquetas,
+    .etiquetas * {
+        visibility: visible;
+    }
+
+    .etiquetas {
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+    }
+
+    .etiqueta {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}

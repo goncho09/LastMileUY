@@ -8,7 +8,10 @@ public sealed record DatosCorreoSeguimiento(
     string Apellido,
     string Comercio,
     string CodigoSeguimiento,
-    string UrlSeguimiento);
+    string UrlSeguimiento,
+    string? Operador = null,
+    string? ColorOperador = null,
+    string? LogoOperador = null);
 
 public sealed record NovedadEnvio(string Estado, string Asunto, string Aviso, string Mensaje);
 
@@ -51,7 +54,10 @@ public static class PlantillaCorreoSeguimiento
         var nombreCompleto = string.Join(" ", new[] { datos.Nombre, datos.Apellido }
             .Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
         var saludo = string.IsNullOrWhiteSpace(datos.Nombre) ? "Hola" : $"Hola, {datos.Nombre.Trim()}";
-        var asunto = $"{novedad.Asunto} - LastMileUY";
+        var marca = string.IsNullOrWhiteSpace(datos.Operador) ? "LastMileUY" : datos.Operador.Trim();
+        var color = datos.ColorOperador is { } c && System.Text.RegularExpressions.Regex.IsMatch(c, "^#[0-9A-Fa-f]{6}$") ? c : "#4d3fa0";
+        var logo = Uri.TryCreate(datos.LogoOperador, UriKind.Absolute, out var urlLogo) && urlLogo.Scheme == Uri.UriSchemeHttps ? urlLogo.AbsoluteUri : null;
+        var asunto = $"{novedad.Asunto} - {marca}";
 
         var texto = $"""
             {saludo}
@@ -65,7 +71,7 @@ public static class PlantillaCorreoSeguimiento
 
             Seguí tu envío: {datos.UrlSeguimiento}
 
-            LastMileUY - Seguimiento de envíos
+            {marca} - Seguimiento de envíos
             Si no reconocés este envío, comunicate con el comercio.
             """;
 
@@ -84,12 +90,12 @@ public static class PlantillaCorreoSeguimiento
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f6f5fa;">
                 <tr><td align="center" style="padding:28px 12px;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #e4e2ec;border-radius:8px;overflow:hidden;">
-                    <tr><td style="background:#1f1e26;padding:22px 28px;">
-                      <div style="font-size:20px;font-weight:700;color:#ffffff;">LastMileUY</div>
+                    <tr><td style="background:#1f1e26;border-bottom:4px solid {{color}};padding:22px 28px;">
+                      {{(logo is null ? "" : $"<img src=\"{H(logo)}\" alt=\"\" height=\"32\" style=\"display:block;height:32px;margin-bottom:8px;\">")}}<div style="font-size:20px;font-weight:700;color:#ffffff;">{{H(marca)}}</div>
                       <div style="font-size:13px;color:#a9a6b8;margin-top:4px;">Seguimiento de envíos</div>
                     </td></tr>
                     <tr><td style="padding:28px;">
-                      <div style="font-size:13px;font-weight:bold;color:#4d3fa0;">{{H(novedad.Aviso)}}</div>
+                      <div style="font-size:13px;font-weight:bold;color:{{color}};">{{H(novedad.Aviso)}}</div>
                       <h1 style="font-size:22px;line-height:1.3;margin:8px 0 12px;color:#1c1b22;">{{H(saludo)}}</h1>
                       <p style="font-size:15px;line-height:1.7;color:#5d5a6b;margin:0 0 24px;">{{H(novedad.Mensaje)}}</p>
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5fa;border:1px solid #e4e2ec;border-radius:6px;">
@@ -99,16 +105,16 @@ public static class PlantillaCorreoSeguimiento
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.6;border-top:1px solid #e4e2ec;">
                             <tr><td style="color:#5d5a6b;padding:8px 0 4px;">Destinatario</td><td align="right" style="color:#1c1b22;padding:8px 0 4px;">{{H(nombreCompleto)}}</td></tr>
                             <tr><td style="color:#5d5a6b;padding:4px 0;">Comercio</td><td align="right" style="color:#1c1b22;padding:4px 0;">{{H(datos.Comercio)}}</td></tr>
-                            <tr><td style="color:#5d5a6b;padding:4px 0;">Estado</td><td align="right" style="font-weight:bold;color:#4d3fa0;padding:4px 0;">{{H(novedad.Estado)}}</td></tr>
+                            <tr><td style="color:#5d5a6b;padding:4px 0;">Estado</td><td align="right" style="font-weight:bold;color:{{color}};padding:4px 0;">{{H(novedad.Estado)}}</td></tr>
                           </table>
                         </td></tr>
                       </table>
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;">
-                        <tr><td align="center" bgcolor="#4d3fa0" style="border-radius:6px;">
+                        <tr><td align="center" bgcolor="{{color}}" style="border-radius:6px;">
                           <a href="{{url}}" style="display:block;padding:14px 18px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;">Seguir mi envío</a>
                         </td></tr>
                       </table>
-                      <p style="font-size:12px;line-height:1.6;overflow-wrap:anywhere;margin:16px 0 22px;color:#5d5a6b;">Si el botón no funciona, copiá este enlace: <a href="{{url}}" style="color:#4d3fa0;">{{url}}</a></p>
+                      <p style="font-size:12px;line-height:1.6;overflow-wrap:anywhere;margin:16px 0 22px;color:#5d5a6b;">Si el botón no funciona, copiá este enlace: <a href="{{url}}" style="color:{{color}};">{{url}}</a></p>
                       <div style="border-top:1px solid #e4e2ec;padding-top:18px;color:#5d5a6b;font-size:12px;line-height:1.6;">Este correo es una notificación automática. Si no reconocés este envío, comunicate con el comercio.</div>
                     </td></tr>
                   </table>

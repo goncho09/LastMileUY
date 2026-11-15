@@ -363,7 +363,10 @@ public sealed class ConfiguracionApiDePrueba : IConfiguracionApi
 
         return new TarifaDto(id, Requerido(request.Nombre), zona.Id, zona.Nombre, request.Modalidad,
             request.PesoMinimoKg, request.PesoMaximoKg, request.VolumenMinimoM3, request.VolumenMaximoM3,
-            request.PrecioBase, request.PrecioPorKgAdicional, activa);
+            request.PrecioBase, request.PrecioPorKgAdicional, activa)
+        {
+            Ajustes = request.Ajustes ?? []
+        };
     }
 
     private static ReglaOperativaConfiguracionDto ARegla(int id, GuardarReglaOperativaRequest r, bool activa) =>

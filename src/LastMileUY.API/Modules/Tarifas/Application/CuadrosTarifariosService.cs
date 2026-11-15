@@ -16,7 +16,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
     public async Task<IReadOnlyList<CuadroTarifarioDto>> ListarAsync(CancellationToken ct = default)
     {
         var cuadros = await db.CuadrosTarifarios.AsNoTracking()
-            .Include(c => c.Tarifas)
+            .Include(c => c.Tarifas).ThenInclude(t => t.Ajustes)
             .OrderByDescending(c => c.Version)
             .ToListAsync(ct);
 
@@ -27,7 +27,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
     public async Task<CuadroTarifarioDto?> ObtenerAsync(int id, CancellationToken ct = default)
     {
         var cuadro = await db.CuadrosTarifarios.AsNoTracking()
-            .Include(c => c.Tarifas)
+            .Include(c => c.Tarifas).ThenInclude(t => t.Ajustes)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
         return cuadro is null ? null : ADto(cuadro, await NombresDeZonasAsync(ct));
@@ -45,7 +45,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
         await using var transaccion = await db.Database.BeginTransactionAsync(ct);
 
         var anterior = await db.CuadrosTarifarios
-            .Include(c => c.Tarifas)
+            .Include(c => c.Tarifas).ThenInclude(t => t.Ajustes)
             .OrderByDescending(c => c.Version)
             .FirstOrDefaultAsync(ct);
 
@@ -76,7 +76,8 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
                     VolumenMinimoM3 = tarifa.VolumenMinimoM3,
                     VolumenMaximoM3 = tarifa.VolumenMaximoM3,
                     PrecioBase = tarifa.PrecioBase,
-                    PrecioPorKgAdicional = tarifa.PrecioPorKgAdicional
+                    PrecioPorKgAdicional = tarifa.PrecioPorKgAdicional,
+                    Ajustes = tarifa.Ajustes.Select(a => new AjusteTarifa { Nombre = a.Nombre, Tipo = a.Tipo, Porcentaje = a.Porcentaje, Activo = a.Activo }).ToList()
                 });
             }
         }
@@ -140,7 +141,7 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
         if (cuadro is null)
             return null;
 
-        var tarifa = await db.Tarifas.FirstOrDefaultAsync(t => t.Id == id && t.CuadroTarifarioId == cuadroId, ct);
+        var tarifa = await db.Tarifas.Include(t => t.Ajustes).FirstOrDefaultAsync(t => t.Id == id && t.CuadroTarifarioId == cuadroId, ct);
 
         if (tarifa is not null)
             ValidarEditable(cuadro);
@@ -174,6 +175,36 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
 
         if (tarifa.VolumenMinimoM3 >= tarifa.VolumenMaximoM3)
             throw new ArgumentException("El volumen mínimo tiene que ser menor que el máximo.");
+
+        if (request.Ajustes is { } ajustes)
+            ReemplazarAjustes(tarifa, ajustes);
+    }
+
+    public const int MaximoAjustes = 5;
+
+    private void ReemplazarAjustes(Tarifa tarifa, IReadOnlyList<AjusteTarifaDto> ajustes)
+    {
+        if (ajustes.Count > MaximoAjustes)
+            throw new ArgumentException($"Una tarifa puede tener hasta {MaximoAjustes} recargos o bonificaciones.");
+
+        var nuevos = ajustes.Select(a =>
+        {
+            var nombre = ConfiguracionComun.Requerido(a.Nombre, "el nombre del recargo o bonificación", 100);
+
+            if (!Enum.TryParse<TipoAjusteTarifa>(a.Tipo, true, out var tipo) || !Enum.IsDefined(tipo))
+                throw new ArgumentException("Cada ajuste es un Recargo o una Bonificacion.");
+
+            if (a.Porcentaje is <= 0 or > 100)
+                throw new ArgumentException($"El porcentaje de \"{nombre}\" va de 0,01 a 100.");
+
+            return new AjusteTarifa { Nombre = nombre, Tipo = tipo, Porcentaje = Math.Round(a.Porcentaje, 2), Activo = true };
+        }).ToList();
+
+        db.Set<AjusteTarifa>().RemoveRange(tarifa.Ajustes);
+        tarifa.Ajustes.Clear();
+
+        foreach (var ajuste in nuevos)
+            tarifa.Ajustes.Add(ajuste);
     }
 
     private Task<Dictionary<int, string>> NombresDeZonasAsync(CancellationToken ct) =>
@@ -227,5 +258,8 @@ public class CuadrosTarifariosService(ApplicationDbContext db, IContextoOperador
             t.VolumenMaximoM3,
             t.PrecioBase,
             t.PrecioPorKgAdicional,
-            t.Activa);
+            t.Activa)
+        {
+            Ajustes = t.Ajustes.Where(a => a.Activo).OrderBy(a => a.Id).Select(a => new AjusteTarifaDto(a.Nombre, a.Tipo.ToString(), a.Porcentaje)).ToList()
+        };
 }

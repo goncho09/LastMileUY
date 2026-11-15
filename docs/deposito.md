@@ -77,6 +77,8 @@ Al confirmar, en una transacción:
 
 **Devoluciones.** Cuando un envío pasa a En devolución (por la rendición, por la política de entrega parcial o a mano) se abre su `Devolucion` con el motivo. Al pasar a Devuelto se cierra con la fecha.
 
+**Entregas que llegan después de la rendición.** Una vez confirmada, la ruta queda Finalizada y la sincronización ya no le acepta operaciones: si el celular manda tarde una entrega de esa ruta, vuelve como **conflicto** ("La ruta está Finalizada: ya no recibe entregas") y queda a la vista en Sincronización del Backoffice para resolverla a mano. Para que no pase en el caso normal, la app no manda la rendición mientras tenga operaciones de esa ruta sin sincronizar, y el depósito ve si el repartidor ya declaró.
+
 **Por qué en dos pasos:** el repartidor es quien sabe qué trae y puede rendir sin señal, pero lo que cambia el estado de los envíos es lo que el depósito recibe de verdad. Así una declaración equivocada no deja un envío en el depósito cuando en realidad se perdió.
 
 ## API
