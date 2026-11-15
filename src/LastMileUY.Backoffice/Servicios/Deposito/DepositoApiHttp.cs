@@ -71,6 +71,29 @@ public sealed class DepositoApiHttp(HttpClient http) : IDepositoApi
         await VerificarAsync(respuesta, ct);
     }
 
+    public async Task<IReadOnlyList<RutaPorRendirDto>> RutasPorRendirAsync(CancellationToken ct = default) =>
+        await http.GetFromJsonAsync<List<RutaPorRendirDto>>($"{Base}/rendiciones", ct) ?? [];
+
+    public async Task<RendicionRutaDto?> RendicionAsync(int rutaId, CancellationToken ct = default)
+    {
+        using var respuesta = await http.GetAsync($"{Base}/rendiciones/{rutaId}", ct);
+
+        if (respuesta.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        respuesta.EnsureSuccessStatusCode();
+        return await respuesta.Content.ReadFromJsonAsync<RendicionRutaDto>(ct);
+    }
+
+    public async Task<RendicionRutaDto> ConfirmarRendicionAsync(int rutaId, ConfirmarRendicionRequest request, CancellationToken ct = default)
+    {
+        using var respuesta = await http.PostAsJsonAsync($"{Base}/rendiciones/{rutaId}", request, ct);
+        await VerificarAsync(respuesta, ct);
+
+        return await respuesta.Content.ReadFromJsonAsync<RendicionRutaDto>(ct)
+            ?? throw new InvalidOperationException("La API no devolvió la rendición.");
+    }
+
     private static async Task VerificarAsync(HttpResponseMessage respuesta, CancellationToken ct)
     {
         switch (respuesta.StatusCode)

@@ -1750,11 +1750,39 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.PrimitiveCollection<List<string>>("BultosDeclarados")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.PrimitiveCollection<List<string>>("BultosRecibidos")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'");
+
                     b.Property<int>("CantidadEntregados")
                         .HasColumnType("integer");
 
                     b.Property<int>("CantidadNoEntregados")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ConfirmadaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfirmadaPor")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<DateTime?>("DeclaradaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("Faltantes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'");
 
                     b.Property<DateTime>("FechaHora")
                         .HasColumnType("timestamp with time zone");
@@ -1763,8 +1791,18 @@ namespace LastMileUY.API.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("ObservacionesRepartidor")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int>("RutaId")
                         .HasColumnType("integer");
+
+                    b.PrimitiveCollection<List<string>>("Sobrantes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("'{}'");
 
                     b.HasKey("Id");
 

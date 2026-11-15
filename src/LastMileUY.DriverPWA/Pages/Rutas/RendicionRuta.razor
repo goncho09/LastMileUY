@@ -1,0 +1,161 @@
+@page "/rutas/{Id:int}/rendicion"
+@using LastMileUY.Contracts.Rutas
+@using LastMileUY.Contracts.Sincronizacion
+@using LastMileUY.DriverPWA.Services
+@inject RutasService RutasService
+@inject SincronizacionService Sincronizacion
+@inject RendicionService Rendiciones
+
+<PageTitle>Rendición</PageTitle>
+
+<div class="min-h-dvh bg-canvas">
+<div class="mx-auto max-w-2xl px-4 pt-4 pb-10">
+    <a href="/rutas/@Id" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-violet-700">← Hoja de ruta</a>
+
+    @if (cargando)
+    {
+        <p class="text-sm text-slate-500">Cargando la hoja de ruta...</p>
+    }
+    else if (ruta is null)
+    {
+        <div class="aviso aviso-error" role="alert">No se encontró la hoja de ruta en el celular. Abrila una vez con conexión.</div>
+    }
+    else
+    {
+        <h1 class="text-lg font-semibold text-slate-900">Rendición al volver al depósito</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            Entregá en el depósito estos bultos. Al rendir, el depósito ve lo que declaraste y lo confirma escaneando.
+        </p>
+
+        @if (aviso is not null)
+        {
+            <div class="aviso @claseAviso mt-4 text-sm" role="status">@aviso</div>
+        }
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="rounded-lg border border-line bg-white px-4 py-3">
+                <div class="text-xs text-slate-500">Entregados</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-900">@entregados</div>
+            </div>
+            <div class="rounded-lg border border-line bg-white px-4 py-3">
+                <div class="text-xs text-slate-500">Bultos que vuelven</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-900">@bultos.Count</div>
+            </div>
+        </div>
+
+        @if (operacionesPendientes > 0)
+        {
+            <div class="aviso aviso-alerta mt-4 text-sm" role="alert">
+                Tenés @operacionesPendientes entrega(s) o intento(s) sin sincronizar. La rendición se envía después de ellas.
+            </div>
+        }
+
+        <div class="mt-4 space-y-2">
+            @if (bultos.Count == 0)
+            {
+                <p class="text-sm text-slate-500">Entregaste todo: no tenés bultos para devolver.</p>
+            }
+
+            @foreach (var (parada, bulto) in bultos)
+            {
+                <div @key="bulto.Id" class="flex items-center justify-between gap-2 rounded-md border border-line bg-white px-3 py-2.5">
+                    <div class="min-w-0">
+                        <div class="font-mono text-[13px] font-medium text-slate-900 [overflow-wrap:anywhere]">@bulto.Codigo</div>
+                        <div class="mt-0.5 text-xs text-slate-500">Parada @parada.Orden · @parada.Destinatario.Nombre @parada.Destinatario.Apellido</div>
+                    </div>
+                    <span class="shrink-0 text-xs font-medium text-amber-700">Devolver</span>
+                </div>
+            }
+        </div>
+
+        <label for="observaciones-rendicion" class="mt-6 block text-sm font-medium text-slate-700">Observaciones</label>
+        <textarea id="observaciones-rendicion" class="campo mt-1" rows="2" maxlength="500" @bind="observaciones"></textarea>
+
+        <button type="button" class="boton boton-principal mt-4" disabled="@enviando" @onclick="RendirAsync">
+            @(enviando ? "Enviando..." : "Rendir la hoja de ruta")
+        </button>
+
+        @if (pendiente)
+        {
+            <p class="mt-2 text-xs text-slate-500">La rendición está guardada en el celular y se envía sola cuando vuelva la conexión.</p>
+        }
+    }
+</div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private RutaDetalleDto? ruta;
+    private List<(ParadaDto Parada, BultoRutaDto Bulto)> bultos = [];
+    private int entregados;
+    private int operacionesPendientes;
+    private string? observaciones;
+    private string? aviso;
+    private string claseAviso = "aviso-ok";
+    private bool cargando = true;
+    private bool enviando;
+    private bool pendiente;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        cargando = true;
+
+        try
+        {
+            ruta = await RutasService.ObtenerRutaAsync(Id);
+
+            if (ruta is not null)
+            {
+                var operaciones = new Dictionary<int, OperacionRequest>();
+
+                foreach (var parada in ruta.Paradas)
+                {
+                    if (await Sincronizacion.ObtenerPendienteAsync(parada.EnvioId) is { } operacion)
+                        operaciones[parada.EnvioId] = operacion;
+                }
+
+                operacionesPendientes = operaciones.Count;
+                bultos = RendicionService.BultosADevolver(ruta, operaciones);
+                entregados = ruta.Paradas.Count(p => operaciones.TryGetValue(p.EnvioId, out var o)
+                    ? o.Tipo == "Entrega"
+                    : p.EstadoEnvio == "Entregado");
+            }
+
+            await Rendiciones.EnviarPendientesAsync();
+            pendiente = await Rendiciones.TienePendienteAsync(Id);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            aviso = ex.Message;
+            claseAviso = "aviso-error";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task RendirAsync()
+    {
+        enviando = true;
+
+        try
+        {
+            var (resultado, mensaje) = await Rendiciones.RendirAsync(Id, bultos.Select(b => b.Bulto.Codigo), observaciones);
+            pendiente = resultado == ResultadoEnvioCarga.Guardada;
+
+            (aviso, claseAviso) = resultado switch
+            {
+                ResultadoEnvioCarga.Enviada => ("Rendición enviada. El depósito la confirma al recibir los bultos.", "aviso-ok"),
+                ResultadoEnvioCarga.Guardada => ("La rendición quedó guardada y se envía sola cuando haya señal y estén sincronizadas tus entregas.", "aviso-info"),
+                _ => (mensaje, "aviso-error")
+            };
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+}

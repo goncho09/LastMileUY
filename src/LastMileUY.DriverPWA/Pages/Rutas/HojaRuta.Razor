@@ -59,6 +59,14 @@
                 </a>
             }
 
+            @if (ruta.Estado is "Despachada" or "EnCurso" or "Finalizada")
+            {
+                <a href="/rutas/@Id/rendicion" class="boton boton-secundario mb-4">
+                    <Icono Nombre="check" Clase="h-4 w-4 text-slate-500" />
+                    Rendir al volver al depósito
+                </a>
+            }
+
             @if (ruta.Estado == "Finalizada")
             {
                 <div class="mb-4 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-violet-900">

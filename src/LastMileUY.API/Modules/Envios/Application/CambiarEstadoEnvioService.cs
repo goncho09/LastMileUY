@@ -59,6 +59,7 @@ public class CambiarEstadoEnvioService(ApplicationDbContext db)
         var envio = await db.Envios
             .Include(e => e.IntentosEntrega)
             .Include(e => e.Bultos)
+            .Include(e => e.Devolucion)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
         if (envio is null)

@@ -3,6 +3,7 @@
 @inject IJSRuntime JS
 @inject SincronizacionService Sincronizacion
 @inject CargaVehiculoService Carga
+@inject RendicionService Rendiciones
 
 @code {
     private IJSObjectReference? moduloConexion;
@@ -29,6 +30,7 @@
         {
             await Sincronizacion.SincronizarPendientesAsync();
             await Carga.EnviarPendientesAsync();
+            await Rendiciones.EnviarPendientesAsync();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
                                        or UnauthorizedAccessException or InvalidOperationException)

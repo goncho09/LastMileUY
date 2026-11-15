@@ -81,6 +81,26 @@ public static class DepositoEndpoints
                     : Results.NotFound()))
             .WithName("QuitarEnvioDeLaCarga");
 
+        grupo.MapGet("/rendiciones", async (RendicionService servicio, CancellationToken ct) =>
+                Results.Ok(await servicio.PorRendirAsync(ct)))
+            .WithName("RutasPorRendir");
+
+        grupo.MapGet("/rendiciones/{rutaId:int}", async (int rutaId, RendicionService servicio, CancellationToken ct) =>
+                await servicio.ObtenerAsync(rutaId, ct) is { } rendicion ? Results.Ok(rendicion) : Results.NotFound())
+            .WithName("ObtenerRendicion");
+
+        grupo.MapPost("/rendiciones/{rutaId:int}", async (
+                int rutaId,
+                ConfirmarRendicionRequest request,
+                RendicionService servicio,
+                ClaimsPrincipal usuario,
+                CancellationToken ct) =>
+            await Ejecutar(async () =>
+                await servicio.ConfirmarAsync(rutaId, request, usuario.FindFirstValue(ClaimTypes.NameIdentifier), ct) is { } rendicion
+                    ? Results.Ok(rendicion)
+                    : Results.NotFound()))
+            .WithName("ConfirmarRendicion");
+
         return app;
     }
 

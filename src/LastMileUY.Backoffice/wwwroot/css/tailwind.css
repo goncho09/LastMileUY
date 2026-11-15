@@ -2205,6 +2205,9 @@
     .sm\:items-center {
       align-items: center;
     }
+    .sm\:items-end {
+      align-items: flex-end;
+    }
     .sm\:items-start {
       align-items: flex-start;
     }
