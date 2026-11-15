@@ -38,7 +38,7 @@ jobs:
             dockerfile: src/LastMileUY.ReceptorAvisos/Dockerfile
 
     steps:
-      - name: Descargar version validada
+      - name: Descargar codigo de main
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
