@@ -34,6 +34,9 @@ builder.Services.AddRazorPages(opciones =>
         "/Sincronizacion", Permisos.PoliticaOperacion);
 
     opciones.Conventions.AuthorizeFolder(
+        "/Reportes", Permisos.PoliticaOperacion);
+
+    opciones.Conventions.AuthorizeFolder(
         "/Deposito", Permisos.PoliticaDeposito);
 
     opciones.Conventions.AuthorizeFolder(
@@ -109,6 +112,7 @@ if (api.GetValue<bool>("UsarDatosDePrueba"))
     builder.Services.AddSingleton<IConfiguracionApi, ConfiguracionApiDePrueba>();
     builder.Services.AddSingleton<IDepositoApi, DepositoApiDePrueba>();
     builder.Services.AddSingleton<IFlotaApi, FlotaApiDePrueba>();
+    builder.Services.AddSingleton<IReportesApi, ReportesApiDePrueba>();
 
 }
 else
@@ -125,6 +129,14 @@ else
         {
             cliente.BaseAddress = urlBase;
             cliente.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
+        .AddHttpMessageHandler<ReenviarCookieApi>();
+
+    builder.Services.AddHttpClient<IReportesApi, ReportesApiHttp>(cliente =>
+        {
+            cliente.BaseAddress = urlBase;
+            cliente.Timeout = TimeSpan.FromSeconds(20);
         })
         .ConfigurePrimaryHttpMessageHandler(SinCookiesCompartidas)
         .AddHttpMessageHandler<ReenviarCookieApi>();

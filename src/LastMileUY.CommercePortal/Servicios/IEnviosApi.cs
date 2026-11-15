@@ -22,3 +22,8 @@ public record ResultadoAlta(EnvioResponse? Envio, string? Error)
 }
 
 public record ResultadoImportacion(LastMileUY.Contracts.Integraciones.ImportarEnviosResponse? Respuesta, string? Error);
+
+public interface ICuentaApi
+{
+    Task<LastMileUY.Contracts.Reportes.ReporteGestionDto?> ObtenerAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default);
+}

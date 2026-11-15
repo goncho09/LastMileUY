@@ -1,0 +1,148 @@
+@page "/cuenta"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.Contracts.Reportes
+
+@inject ICuentaApi CuentaApi
+@inject NavigationManager Navegacion
+@inject ILogger<Cuenta> Logger
+
+<PageTitle>Mi cuenta | LastMileUY</PageTitle>
+
+<div class="space-y-8">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+                Portal de Comercios
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Mi cuenta</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+                Lo que te liquida el operador por los envíos dados de alta en el período, y cómo se cumplieron.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-3">
+            <div class="flex flex-col gap-1.5 text-xs font-medium text-slate-400">
+                <label for="cuenta-desde">Desde</label>
+                <input id="cuenta-desde" type="date" @bind="desde" class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-2.5 text-sm text-white" />
+            </div>
+            <div class="flex flex-col gap-1.5 text-xs font-medium text-slate-400">
+                <label for="cuenta-hasta">Hasta</label>
+                <input id="cuenta-hasta" type="date" @bind="hasta" class="rounded-xl border border-white/10 bg-[#0b1020] px-4 py-2.5 text-sm text-white" />
+            </div>
+            <button type="button" @onclick="CargarAsync" class="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">Ver</button>
+        </div>
+    </div>
+
+    @if (error is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">@error</div>
+    }
+    else if (cargando)
+    {
+        <p class="text-sm text-slate-400" role="status">Cargando...</p>
+    }
+    else if (reporte is not null)
+    {
+        var cuenta = reporte.Liquidacion.FirstOrDefault();
+        var cumplimiento = reporte.PorComercio.FirstOrDefault();
+
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach (var (titulo, valor) in new[]
+            {
+                ("Importe del período", $"$ {(cuenta?.Importe ?? 0).ToString("N2", new System.Globalization.CultureInfo("es-UY"))}"),
+                ("Envíos", (cuenta?.Envios ?? 0).ToString()),
+                ("Entregados", (cuenta?.Entregados ?? 0).ToString()),
+                ("Entregados a tiempo", cumplimiento is null ? "—" : $"{cumplimiento.PorcentajeATiempo:0.#} %")
+            })
+            {
+                <div class="rounded-2xl border border-white/10 bg-[#151927] p-5">
+                    <p class="text-xs font-medium text-slate-400">@titulo</p>
+                    <p class="mt-2 text-2xl font-bold text-white">@valor</p>
+                </div>
+            }
+        </div>
+
+        @if (cuenta is { SinTarifa: > 0 })
+        {
+            <p class="text-sm text-amber-300">@cuenta.SinTarifa envío(s) no tenían tarifa al darse de alta y no suman al importe.</p>
+        }
+
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#151927]">
+            <h2 class="border-b border-white/10 px-6 py-4 text-base font-semibold text-white">Por día</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[420px] text-left text-sm">
+                    <thead class="border-b border-white/10 text-xs font-medium text-slate-500">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Día</th>
+                            <th scope="col" class="px-6 py-3 text-right">Envíos</th>
+                            <th scope="col" class="px-6 py-3 text-right">Entregados</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var dia in reporte.Volumen.Where(v => v.Envios > 0).Reverse())
+                        {
+                            <tr>
+                                <td class="px-6 py-3 text-slate-200">@dia.Dia.ToString("dd/MM/yyyy")</td>
+                                <td class="px-6 py-3 text-right text-slate-300">@dia.Envios</td>
+                                <td class="px-6 py-3 text-right text-slate-300">@dia.Entregados</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (reporte.TotalEnvios == 0)
+            {
+                <p class="px-6 py-8 text-center text-sm text-slate-400">No diste de alta envíos en el período.</p>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private static readonly TimeZoneInfo HoraUruguay = TimeZoneInfo.FindSystemTimeZoneById("America/Montevideo");
+
+    private DateOnly hasta = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, HoraUruguay));
+    private DateOnly desde;
+    private ReporteGestionDto? reporte;
+    private string? error;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        desde = new DateOnly(hasta.Year, hasta.Month, 1);
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        error = null;
+
+        if (hasta < desde)
+        {
+            error = "La fecha final no puede ser anterior a la inicial.";
+            return;
+        }
+
+        cargando = true;
+
+        try
+        {
+            reporte = await CuentaApi.ObtenerAsync(desde, hasta);
+            error = reporte is null ? "No se pudo consultar ese período (como máximo un año)." : null;
+        }
+        catch (SesionVencidaException)
+        {
+            Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo cargar la cuenta del comercio");
+            error = "No se pudo cargar tu cuenta. Probá de nuevo en unos minutos.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}
