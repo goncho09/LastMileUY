@@ -1,4 +1,3 @@
-```
 #requires -Version 5.1
 [CmdletBinding()]
 param(
@@ -307,5 +306,3 @@ catch {
   }
   throw
 }
-
-```
