@@ -108,6 +108,10 @@ genere envíos duplicados. Para eso:
 
 Así el comercio puede corregir las filas rechazadas y volver a mandar el lote entero. Las que ya entraron no se duplican.
 
+### Etiquetas para imprimir
+
+Desde el detalle de un envío en el Portal, **Imprimir etiquetas** abre una etiqueta por bulto con: el operador que lo entrega, el destinatario y su dirección, la zona, el número de bulto ("2 de 3"), el peso, el comercio que lo manda y un **código de barras Code 128 con el código del bulto** (el mismo que escanean el depósito al recibirlo, el depósito o el repartidor al cargar el vehículo, y el depósito en la rendición). Al imprimir solo salen las etiquetas.
+
 ### Importación de un archivo desde el Portal
 
 El comercio también puede importar sin programar nada: en el Portal, **Mis envíos → Importar archivo**, sube un CSV con un envío por fila. Hay una plantilla para descargar.

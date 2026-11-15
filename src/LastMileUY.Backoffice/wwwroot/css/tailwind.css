@@ -961,6 +961,9 @@
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .grid-cols-\[1fr_auto_6rem\] {
+    grid-template-columns: 1fr auto 6rem;
+  }
   .flex-col {
     flex-direction: column;
   }

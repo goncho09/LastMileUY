@@ -65,6 +65,10 @@
                                         <td class="@Estilos.Celda text-slate-300">
                                             @Formato.Pesos(tarifa.PrecioBase)
                                             <span class="block text-xs text-slate-400">+ @Formato.Pesos(tarifa.PrecioPorKgAdicional) por kg adicional</span>
+                                            @foreach (var ajuste in tarifa.Ajustes)
+                                            {
+                                                <span class="block text-xs @(ajuste.Tipo == "Recargo" ? "text-amber-300" : "text-emerald-300")">@(ajuste.Tipo == "Recargo" ? "+" : "−")@ajuste.Porcentaje.ToString("0.##") % @ajuste.Nombre</span>
+                                            }
                                         </td>
                                         @if (cuadro.Editable)
                                         {
@@ -164,6 +168,26 @@
                                     <span asp-validation-for="Formulario.PrecioPorKgAdicional" class="@Estilos.ErrorCampo"></span>
                                 </div>
                             </div>
+
+                            <fieldset class="space-y-3">
+                                <legend class="@Estilos.Etiqueta">Recargos y bonificaciones</legend>
+                                <p class="text-xs text-slate-400">Porcentaje sobre el precio de la tarifa. Dejá el nombre vacío para no usar la fila.</p>
+                                @for (var i = 0; i < Model.Formulario.Ajustes.Count; i++)
+                                {
+                                    <div class="grid grid-cols-[1fr_auto_6rem] gap-2">
+                                        <label for="ajuste-nombre-@i" class="sr-only">Nombre del ajuste @(i + 1)</label>
+                                        <input id="ajuste-nombre-@i" name="Formulario.Ajustes[@i].Nombre" value="@Model.Formulario.Ajustes[i].Nombre" maxlength="100" placeholder="Ej. Combustible" class="@Estilos.Campo" />
+                                        <label for="ajuste-tipo-@i" class="sr-only">Tipo del ajuste @(i + 1)</label>
+                                        <select id="ajuste-tipo-@i" name="Formulario.Ajustes[@i].Tipo" class="@Estilos.Campo">
+                                            <option value="Recargo" selected="@(Model.Formulario.Ajustes[i].Tipo == "Recargo")">Recargo</option>
+                                            <option value="Bonificacion" selected="@(Model.Formulario.Ajustes[i].Tipo == "Bonificacion")">Bonificación</option>
+                                        </select>
+                                        <label for="ajuste-porcentaje-@i" class="sr-only">Porcentaje del ajuste @(i + 1)</label>
+                                        <input id="ajuste-porcentaje-@i" name="Formulario.Ajustes[@i].Porcentaje" value="@Model.Formulario.Ajustes[i].Porcentaje" type="number" min="0.01" max="100" step="0.01" placeholder="%" class="@Estilos.Campo" />
+                                    </div>
+                                    <span asp-validation-for="Formulario.Ajustes[i].Porcentaje" class="@Estilos.ErrorCampo"></span>
+                                }
+                            </fieldset>
 
                             <div class="flex flex-wrap justify-end gap-3">
                                 @if (editando)

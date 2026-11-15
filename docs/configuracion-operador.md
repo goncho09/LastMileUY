@@ -57,6 +57,8 @@ Los precios no se editan en el lugar. Cada cambio es una **versión nueva** con 
 - Cuando ya rige (**Vigente**) o terminó (**Vencido**), queda de solo lectura y la API responde 409. Así, cuando se cobren los envíos, cada uno va a poder usar el cuadro que regía en su fecha.
 - Las fechas se toman en hora de Uruguay: una versión empieza a las 00:00 de ese día.
 
+**Recargos y bonificaciones (req. 3).** Cada tarifa puede tener hasta 5 ajustes, cada uno con su nombre, si es **recargo** o **bonificación**, y un porcentaje (0,01 a 100). Se cargan en el mismo formulario de la tarifa del Backoffice, mientras la versión está Programada, y se copian cuando una versión nueva arranca con las tarifas de la anterior. Al calcular el precio de un envío se suman los recargos y se restan las bonificaciones sobre el precio de la tarifa (`TarificadorEnvios`), y el resultado queda guardado en el envío. En la API viajan en `ajustes` de `GuardarTarifaRequest` y `TarifaDto`; si no se manda `ajustes`, la tarifa conserva los que tenía.
+
 ## API
 
 Todo está bajo `/api/operador` y pide el rol Operador.

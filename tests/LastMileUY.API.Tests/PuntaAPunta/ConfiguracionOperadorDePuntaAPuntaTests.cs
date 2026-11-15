@@ -204,19 +204,27 @@ public class ConfiguracionOperadorDePuntaAPuntaTests(ApiDePuntaAPunta api)
         Assert.True(cuadro.Editable);
 
         using var tarifa = await operador.PostAsJsonAsync($"api/operador/cuadros-tarifarios/{cuadro.Id}/tarifas",
-            new GuardarTarifaRequest("Hasta 5 kg", zona.Id, "Estandar", 0m, 5m, 0m, 0.5m, 250m, 30m));
+            new GuardarTarifaRequest("Hasta 5 kg", zona.Id, "Estandar", 0m, 5m, 0m, 0.5m, 250m, 30m,
+                [new AjusteTarifaDto("Combustible", "Recargo", 10m), new AjusteTarifaDto("Cliente frecuente", "Bonificacion", 5m)]));
         Assert.Equal(HttpStatusCode.Created, tarifa.StatusCode);
 
         using var alReves = await operador.PostAsJsonAsync($"api/operador/cuadros-tarifarios/{cuadro.Id}/tarifas",
             new GuardarTarifaRequest("Mal", zona.Id, "Estandar", 10m, 5m, 0m, 0.5m, 250m, 30m));
         Assert.Equal(HttpStatusCode.BadRequest, alReves.StatusCode);
 
+        using var tipoMalo = await operador.PostAsJsonAsync($"api/operador/cuadros-tarifarios/{cuadro.Id}/tarifas",
+            new GuardarTarifaRequest("Mal", zona.Id, "Estandar", 0m, 5m, 0m, 0.5m, 250m, 30m, [new AjusteTarifaDto("Raro", "Regalo", 10m)]));
+        Assert.Equal(HttpStatusCode.BadRequest, tipoMalo.StatusCode);
+
         using var segundo = await operador.PostAsJsonAsync("api/operador/cuadros-tarifarios", new CrearCuadroTarifarioRequest(manana.AddDays(10), true));
         Assert.Equal(HttpStatusCode.Created, segundo.StatusCode);
         var nuevo = (await segundo.Content.ReadFromJsonAsync<CuadroTarifarioDto>())!;
 
         Assert.Equal(cuadro.Version + 1, nuevo.Version);
-        Assert.Equal("Hasta 5 kg", Assert.Single(nuevo.Tarifas).Nombre);
+        var copiada = Assert.Single(nuevo.Tarifas);
+        Assert.Equal("Hasta 5 kg", copiada.Nombre);
+        Assert.Equal(["Combustible", "Cliente frecuente"], copiada.Ajustes.Select(a => a.Nombre));
+        Assert.Equal("Bonificacion", copiada.Ajustes[1].Tipo);
 
         var anterior = (await operador.GetFromJsonAsync<CuadroTarifarioDto>($"api/operador/cuadros-tarifarios/{cuadro.Id}"))!;
         Assert.Equal(manana.AddDays(10), anterior.VigenciaHasta);

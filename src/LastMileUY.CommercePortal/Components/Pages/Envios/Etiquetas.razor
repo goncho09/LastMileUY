@@ -1,0 +1,118 @@
+@page "/envios/{Id:int}/etiquetas"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.Contracts.Envios
+
+@inject IEnviosApi EnviosApi
+@inject IJSRuntime JS
+@inject NavigationManager Navegacion
+@inject ILogger<Etiquetas> Logger
+
+<PageTitle>Etiquetas | LastMileUY</PageTitle>
+
+<div class="space-y-6">
+    <a href="/envios/@Id" class="inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-violet-300">
+        <span aria-hidden="true">←</span> Volver al envío
+    </a>
+
+    @if (error is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200">@error</div>
+    }
+    else if (envio is null)
+    {
+        <p class="text-sm text-slate-400" role="status">Cargando...</p>
+    }
+    else
+    {
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-white">Etiquetas del envío @envio.CodigoSeguimiento</h1>
+                <p class="mt-1 text-sm text-slate-400">Una por bulto. Pegá cada una en su paquete: el depósito y el repartidor las escanean.</p>
+            </div>
+            <button type="button" @onclick="ImprimirAsync"
+                    class="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-500">Imprimir</button>
+        </div>
+
+        <div class="etiquetas grid gap-4 sm:grid-cols-2">
+            @for (var i = 0; i < envio.Bultos.Count; i++)
+            {
+                var bulto = envio.Bultos[i];
+                <article class="etiqueta rounded-xl border-2 border-black bg-white p-4 text-black">
+                    <div class="flex items-start justify-between gap-2 border-b border-black pb-2">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide">Lo entrega</p>
+                            <p class="text-base font-bold">@(operador ?? "Operador logístico")</p>
+                        </div>
+                        <p class="text-right text-sm font-bold">Bulto @(i + 1) de @envio.Bultos.Count<br/><span class="font-normal">@envio.Modalidad</span></p>
+                    </div>
+
+                    <div class="py-3 text-sm leading-snug">
+                        <p class="text-xs uppercase tracking-wide">Para</p>
+                        <p class="text-lg font-bold">@envio.Destinatario.Nombre @envio.Destinatario.Apellido</p>
+                        <p>@envio.Direccion.Calle @envio.Direccion.Numero@(envio.Direccion.Apartamento is null ? "" : $" apto {envio.Direccion.Apartamento}")</p>
+                        <p>@envio.Direccion.Ciudad, @envio.Direccion.Departamento</p>
+                        @if (envio.Zona is not null)
+                        {
+                            <p class="mt-1 font-semibold">Zona: @envio.Zona</p>
+                        }
+                    </div>
+
+                    <svg data-codigo="@bulto.Codigo" class="w-full" role="img" aria-label="Código de barras @bulto.Codigo"></svg>
+
+                    <div class="mt-2 flex justify-between border-t border-black pt-2 text-xs">
+                        <span>Envío <strong class="font-mono">@envio.CodigoSeguimiento</strong></span>
+                        <span>@bulto.PesoKg.ToString("0.##") kg · Remite @envio.Comercio</span>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState> EstadoAutenticacion { get; set; } = default!;
+
+    private EnvioDetalleDto? envio;
+    private string? operador;
+    private string? error;
+    private bool dibujado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        operador = (await EstadoAutenticacion).User.FindFirst(ClaimsPortal.OperadorNombre)?.Value;
+
+        try
+        {
+            envio = await EnviosApi.ObtenerAsync(Id);
+            error = envio is null ? "No encontramos ese envío. Puede que sea de otro comercio u operador." : null;
+        }
+        catch (SesionVencidaException)
+        {
+            Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo cargar el envío {EnvioId} para sus etiquetas", Id);
+            error = "No se pudo cargar el envío. Probá de nuevo en unos minutos.";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (envio is null || dibujado)
+            return;
+
+        for (var intento = 0; intento < 10 && !dibujado; intento++)
+        {
+            dibujado = await JS.InvokeAsync<bool>("lastMileEtiquetas.dibujar");
+
+            if (!dibujado)
+                await Task.Delay(300);
+        }
+    }
+
+    private async Task ImprimirAsync() => await JS.InvokeVoidAsync("lastMileEtiquetas.imprimir");
+}

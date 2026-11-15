@@ -266,10 +266,8 @@
     private HashSet<int> enviosConfirmados = [];
     private Dictionary<int, HashSet<int>> bultosIdentificadosPorEnvio = [];
 
-    // Por envío, qué quedó guardado de cada bulto en la operación pendiente
     private Dictionary<int, List<string>> resumenPendientes = [];
 
-    // Los motivos (sin conexión, los guardados en el celular), para mostrar su nombre en el resumen
     private List<MotivoNoEntregaDto> motivos = [];
     
     private bool cargando = true;
@@ -291,7 +289,6 @@
             await PrecargarMotivosAsync();
             await ActualizarPendientesAsync();
 
-            // Lo escaneado antes de cerrar la app sigue marcado
             bultosIdentificadosPorEnvio = await BultosIdentificados.LeerAsync(Id);
         }
         catch (Exception)
@@ -323,7 +320,6 @@
         }
         catch (JSException)
         {
-            // Si el navegador no deja guardar, sigue valiendo lo escaneado mientras la app esté abierta
         }
     }
     
@@ -436,12 +432,9 @@
         }
         catch (HttpRequestException)
         {
-            // Si estamos offline, el formulario utilizará
-            // los motivos previamente guardados.
         }
         catch (TaskCanceledException)
         {
-            // No bloqueamos la hoja de ruta.
         }
     }
 
