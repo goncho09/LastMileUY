@@ -795,6 +795,9 @@
   .min-w-\[260px\] {
     min-width: 260px;
   }
+  .min-w-\[640px\] {
+    min-width: 640px;
+  }
   .min-w-\[680px\] {
     min-width: 680px;
   }
@@ -1965,6 +1968,36 @@
   .peer-focus-visible\:outline-\[\#635BFF\]:is(:where(.peer):focus-visible ~ *) {
     outline-color: #635BFF;
   }
+  .file\:mr-4::file-selector-button {
+    margin-right: calc(var(--spacing) * 4);
+  }
+  .file\:rounded-xl::file-selector-button {
+    border-radius: var(--radius-xl);
+  }
+  .file\:border-0::file-selector-button {
+    border-style: var(--tw-border-style);
+    border-width: 0px;
+  }
+  .file\:bg-violet-600::file-selector-button {
+    background-color: var(--color-violet-600);
+  }
+  .file\:px-4::file-selector-button {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+  .file\:py-2\.5::file-selector-button {
+    padding-block: calc(var(--spacing) * 2.5);
+  }
+  .file\:text-sm::file-selector-button {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+  .file\:font-semibold::file-selector-button {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
+  .file\:text-white::file-selector-button {
+    color: var(--color-white);
+  }
   .placeholder\:text-\[\#6B7280\]::placeholder {
     color: #6B7280;
   }
@@ -2103,6 +2136,9 @@
     }
     .hover\:text-white:hover {
       color: var(--color-white);
+    }
+    .hover\:file\:bg-violet-500:hover::file-selector-button {
+      background-color: var(--color-violet-500);
     }
   }
   .focus\:border-\[\#635BFF\]:focus {

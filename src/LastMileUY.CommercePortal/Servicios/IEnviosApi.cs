@@ -12,9 +12,13 @@ public interface IEnviosApi
     Task<EnvioDetalleDto?> ObtenerAsync(int id, CancellationToken ct = default);
 
     Task<OpcionesEntregaDto?> OpcionesEntregaAsync(int direccionId, CancellationToken ct = default);
+    Task<ResultadoImportacion> ImportarAsync(string contenido, string? nombreArchivo, CancellationToken ct = default);
+
 }
 
 public record ResultadoAlta(EnvioResponse? Envio, string? Error)
 {
     public bool Exito => Envio is not null;
 }
+
+public record ResultadoImportacion(LastMileUY.Contracts.Integraciones.ImportarEnviosResponse? Respuesta, string? Error);

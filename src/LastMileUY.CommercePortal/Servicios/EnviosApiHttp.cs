@@ -74,4 +74,26 @@ public class EnviosApiHttp(HttpClient http, SesionActual sesion)
 
         return await respuesta.Content.ReadFromJsonAsync<OpcionesEntregaDto>(ct);
     }
+
+    public async Task<ResultadoImportacion> ImportarAsync(string contenido, string? nombreArchivo, CancellationToken ct = default)
+    {
+        using var pedido = new HttpRequestMessage(HttpMethod.Post, "api/envios/importacion")
+        {
+            Content = JsonContent.Create(new LastMileUY.Contracts.Integraciones.ImportarArchivoRequest(contenido, nombreArchivo))
+        };
+
+        using var respuesta = await EnviarAsync(pedido, ct);
+
+        if (respuesta.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Forbidden)
+        {
+            return new ResultadoImportacion(null, await AutenticacionApiHttp.LeerMensajeAsync(respuesta, ct));
+        }
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return new ResultadoImportacion(
+            await respuesta.Content.ReadFromJsonAsync<LastMileUY.Contracts.Integraciones.ImportarEnviosResponse>(ct)
+                ?? throw new InvalidOperationException("La API no devolvió el resultado de la importación."),
+            null);
+    }
 }

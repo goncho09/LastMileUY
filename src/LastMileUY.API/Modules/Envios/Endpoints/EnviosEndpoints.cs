@@ -2,6 +2,8 @@
 using LastMileUY.API.Infrastructure.Multitenancy;
 using LastMileUY.API.Modules.Envios.Application;
 using LastMileUY.Contracts.Envios;
+using LastMileUY.API.Modules.Integraciones.Application;
+using LastMileUY.Contracts.Integraciones;
 using Microsoft.EntityFrameworkCore;
 
 namespace LastMileUY.API.Modules.Envios.Endpoints;
@@ -134,6 +136,28 @@ public static class EnviosEndpoints
             .RequireAuthorization(politica =>
                 politica.RequireRole("Comercio", "Operador"))
             .WithName("CrearEnvio");
+
+        group.MapPost("/importacion", async (
+                ImportarArchivoRequest request,
+                ImportarArchivoService importar,
+                ClaimsPrincipal usuario,
+                CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return Results.Ok(await importar.ImportarAsync(request, usuario, cancellationToken));
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { mensaje = ex.Message });
+                }
+            })
+            .RequireAuthorization(politica => politica.RequireRole("Comercio"))
+            .WithName("ImportarArchivoDeEnvios");
 
         group.MapPatch("/{id:int}/estado", async (
                 int id,

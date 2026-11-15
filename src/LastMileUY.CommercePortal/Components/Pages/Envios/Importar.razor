@@ -1,0 +1,165 @@
+@page "/envios/importar"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.Contracts.Integraciones
+
+@inject IEnviosApi EnviosApi
+@inject NavigationManager Navegacion
+@inject ILogger<Importar> Logger
+
+<PageTitle>Importar envíos | LastMileUY</PageTitle>
+
+<div class="space-y-8">
+    <div>
+        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+            Portal de Comercios
+        </div>
+        <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Importar envíos</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+            Subí una planilla CSV con un envío por fila. Si volvés a subir el mismo archivo, o una parte, no se repite ningún envío:
+            las referencias que ya existían quedan como están.
+        </p>
+    </div>
+
+    <section class="space-y-4 rounded-2xl border border-white/10 bg-[#151927] p-6">
+        <h2 class="text-base font-semibold text-white">1. Prepará el archivo</h2>
+        <p class="text-sm text-slate-400">
+            Separado por punto y coma o por coma, con la primera fila de títulos. Obligatorias:
+            <span class="font-mono text-xs text-slate-300">@string.Join(", ", ColumnasImportacion.Obligatorias)</span>.
+            Opcionales: email, telefono, apartamento, modalidad (Estandar o Urgente), bultos (cantidad, cada uno con esas medidas) y descripcion.
+            Un destinatario con el mismo email, o con el mismo nombre y teléfono, se reutiliza.
+        </p>
+        <a href="@plantilla" download="plantilla-envios.csv"
+           class="inline-flex items-center rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-violet-500/40 hover:text-white">
+            Descargar plantilla
+        </a>
+    </section>
+
+    <section class="space-y-4 rounded-2xl border border-white/10 bg-[#151927] p-6">
+        <h2 class="text-base font-semibold text-white">2. Subilo</h2>
+        <label for="archivo-envios" class="block text-xs font-medium text-slate-400">Archivo CSV (hasta @ImportarHastaFilas envíos)</label>
+        <InputFile id="archivo-envios" accept=".csv,text/csv" OnChange="AlElegirArchivo"
+                   class="block w-full text-sm text-slate-300 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-violet-500" />
+
+        @if (error is not null)
+        {
+            <div role="alert" class="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">@error</div>
+        }
+
+        @if (importando)
+        {
+            <p class="text-sm text-slate-400" role="status">Importando @nombreArchivo...</p>
+        }
+    </section>
+
+    @if (resultado is not null)
+    {
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#151927]" aria-labelledby="titulo-resultado">
+            <div class="border-b border-white/10 px-6 py-5">
+                <h2 id="titulo-resultado" class="text-base font-semibold text-white">Resultado de @nombreArchivo</h2>
+                <p class="mt-1 text-sm text-slate-400" role="status">
+                    @resultado.Creados creados · @resultado.Existentes ya existían · @resultado.Rechazados con errores
+                </p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left text-sm">
+                    <thead class="border-b border-white/10 text-xs font-medium text-slate-500">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Fila</th>
+                            <th scope="col" class="px-6 py-3">Referencia</th>
+                            <th scope="col" class="px-6 py-3">Resultado</th>
+                            <th scope="col" class="px-6 py-3">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var fila in resultado.Resultados)
+                        {
+                            <tr>
+                                <td class="px-6 py-3 text-slate-400">@fila.Indice</td>
+                                <td class="px-6 py-3 font-mono text-xs text-slate-200">@(fila.ReferenciaExterna ?? "—")</td>
+                                <td class="px-6 py-3">
+                                    <span class="rounded border px-1.5 py-0.5 text-xs @Clase(fila.Resultado)">@Texto(fila.Resultado)</span>
+                                </td>
+                                <td class="px-6 py-3 text-slate-300">
+                                    @if (fila.EnvioId is { } envioId)
+                                    {
+                                        <a href="/envios/@envioId" class="font-mono text-xs text-violet-300 hover:text-violet-200">@fila.CodigoSeguimiento</a>
+                                    }
+                                    else
+                                    {
+                                        @fila.Mensaje
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private const int ImportarHastaFilas = 500;
+    private const long MaximoBytes = 1_000_000;
+
+    private readonly string plantilla = "data:text/csv;charset=utf-8," + Uri.EscapeDataString(ColumnasImportacion.Plantilla);
+
+    private ImportarEnviosResponse? resultado;
+    private string? nombreArchivo;
+    private string? error;
+    private bool importando;
+
+    private async Task AlElegirArchivo(InputFileChangeEventArgs e)
+    {
+        error = null;
+        resultado = null;
+        nombreArchivo = e.File.Name;
+
+        if (e.File.Size > MaximoBytes)
+        {
+            error = "El archivo es demasiado grande (más de 1 MB): partilo en varios.";
+            return;
+        }
+
+        importando = true;
+
+        try
+        {
+            await using var flujo = e.File.OpenReadStream(MaximoBytes);
+            using var lector = new StreamReader(flujo);
+            var contenido = await lector.ReadToEndAsync();
+
+            var (respuesta, mensaje) = await EnviosApi.ImportarAsync(contenido, e.File.Name);
+            resultado = respuesta;
+            error = mensaje;
+        }
+        catch (SesionVencidaException)
+        {
+            Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            Logger.LogError(ex, "No se pudo importar el archivo {Archivo}", e.File.Name);
+            error = "No se pudo importar el archivo. Probá de nuevo en unos minutos.";
+        }
+        finally
+        {
+            importando = false;
+        }
+    }
+
+    private static string Texto(string resultado) => resultado switch
+    {
+        ResultadosImportacion.Creado => "Creado",
+        ResultadosImportacion.Existente => "Ya existía",
+        _ => "Con error"
+    };
+
+    private static string Clase(string resultado) => resultado switch
+    {
+        ResultadosImportacion.Creado => "border-emerald-500/30 text-emerald-300",
+        ResultadosImportacion.Existente => "border-white/10 text-slate-300",
+        _ => "border-red-500/30 text-red-300"
+    };
+}
