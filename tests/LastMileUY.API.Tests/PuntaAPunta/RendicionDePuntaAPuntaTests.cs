@@ -157,5 +157,27 @@ public class RendicionDePuntaAPuntaTests(ApiDePuntaAPunta api)
             Assert.Equal(esperado, Assert.Single(rendicion.Envios).EstadoNuevo);
             Assert.Equal(esperado, await EstadoAsync(operador, envioId));
         }
+
+        var comercio = await api.IniciarSesionAsync(Comercio1, api.IdOperador1);
+        var pendiente = Assert.Single((await comercio.GetFromJsonAsync<List<DevolucionComercioDto>>("api/envios/devoluciones?pendientes=true"))!,
+            d => d.EnvioId == envioId);
+        Assert.Contains("agotaron", pendiente.Motivo);
+        Assert.Null(pendiente.FechaFinalizacion);
+
+        using (var recibida = await comercio.PostAsync($"api/envios/{envioId}/devolucion/recibida", null))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, recibida.StatusCode);
+        }
+
+        using (var otraVez = await comercio.PostAsync($"api/envios/{envioId}/devolucion/recibida", null))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, otraVez.StatusCode);
+        }
+
+        Assert.Equal("Devuelto", await EstadoAsync(operador, envioId));
+        Assert.DoesNotContain((await comercio.GetFromJsonAsync<List<DevolucionComercioDto>>("api/envios/devoluciones?pendientes=true"))!,
+            d => d.EnvioId == envioId);
+        Assert.NotNull(Assert.Single((await comercio.GetFromJsonAsync<List<DevolucionComercioDto>>("api/envios/devoluciones"))!,
+            d => d.EnvioId == envioId).FechaFinalizacion);
     }
 }

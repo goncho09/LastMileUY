@@ -100,6 +100,8 @@ public class ApplicationDbContext : IdentityDbContext<Usuario, Rol, string>
 
     public DbSet<LastMileUY.API.Modules.Seguimiento.Domain.SolicitudReprogramacion> SolicitudesReprogramacion => Set<LastMileUY.API.Modules.Seguimiento.Domain.SolicitudReprogramacion>();
 
+    public DbSet<LastMileUY.API.Modules.Reportes.Domain.IndicadorDiario> IndicadoresDiarios => Set<LastMileUY.API.Modules.Reportes.Domain.IndicadorDiario>();
+
     public DbSet<VerificacionCargaBulto> VerificacionesCargaBulto => Set<VerificacionCargaBulto>();
 
     public DbSet<OperacionSincronizada> OperacionesSincronizadas => Set<OperacionSincronizada>();

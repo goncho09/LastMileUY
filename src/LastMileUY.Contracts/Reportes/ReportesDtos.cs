@@ -39,4 +39,18 @@ public record ReporteGestionDto(
     IReadOnlyList<CumplimientoDto> PorComercio,
     IReadOnlyList<EfectividadRepartidorDto> PorRepartidor,
     IReadOnlyList<MotivoNoEntregaReporteDto> Motivos,
-    IReadOnlyList<LiquidacionComercioDto> Liquidacion);
+    IReadOnlyList<LiquidacionComercioDto> Liquidacion)
+{
+    public IReadOnlyList<IndicadorDiarioDto> Cierres { get; init; } = [];
+}
+
+public record IndicadorDiarioDto(
+    DateOnly Dia,
+    int EnviosCreados,
+    int Entregados,
+    int EntregadosATiempo,
+    int NoEntregados,
+    int IntentosFallidos,
+    decimal Importe,
+    bool Cerrado,
+    DateTime CalculadoEn);

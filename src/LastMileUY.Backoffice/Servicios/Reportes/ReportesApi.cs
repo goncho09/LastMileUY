@@ -54,7 +54,12 @@ public sealed class ReportesApiDePrueba : IReportesApi
             [new("Tienda Sur", 70, 61, 55, 6), new("Libros del Este", 35, 26, 24, 6)],
             [new("Carlos Méndez", 48, 41), new("Lucía Fernández", 39, 30)],
             [new("Destinatario ausente", 9), new("Dirección incorrecta", 4), new("Rechazado por el destinatario", 2)],
-            [new(1, "Libros del Este", 35, 26, 4, 1, 8420.50m), new(2, "Tienda Sur", 70, 61, 3, 0, 15980m)]));
+            [new(1, "Libros del Este", 35, 26, 4, 1, 8420.50m), new(2, "Tienda Sur", 70, 61, 3, 0, 15980m)])
+        {
+            Cierres = dias.AsEnumerable().Reverse().Take(7)
+                .Select((d, i) => new IndicadorDiarioDto(d.Dia, d.Envios, d.Entregados, d.Entregados - 2, d.Envios - d.Entregados, 3, d.Envios * 245m, i > 0, DateTime.UtcNow))
+                .ToList()
+        });
     }
 
     public Task<byte[]> LiquidacionCsvAsync(DateOnly desde, DateOnly hasta, CancellationToken ct = default) =>

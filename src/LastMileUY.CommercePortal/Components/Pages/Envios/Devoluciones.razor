@@ -1,0 +1,158 @@
+@page "/devoluciones"
+@attribute [Authorize]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using LastMileUY.Contracts.Envios
+
+@inject IDevolucionesApi DevolucionesApi
+@inject NavigationManager Navegacion
+@inject ILogger<Devoluciones> Logger
+
+<PageTitle>Devoluciones | LastMileUY</PageTitle>
+
+<div class="space-y-8">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300">
+                Portal de Comercios
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Devoluciones</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+                Los envíos que no se pudieron entregar y vuelven a tu comercio. Cuando te llegue el paquete, confirmá que lo recibiste.
+            </p>
+        </div>
+
+        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" @bind="incluirRecibidas" @bind:after="CargarAsync" class="h-4 w-4 rounded border-white/20 bg-[#0b1020]" />
+            Mostrar también las ya recibidas
+        </label>
+    </div>
+
+    @if (aviso is not null)
+    {
+        <div role="status" class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">@aviso</div>
+    }
+
+    @if (error is not null)
+    {
+        <div role="alert" class="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">@error</div>
+    }
+
+    @if (devoluciones is null)
+    {
+        <p class="text-sm text-slate-400" role="status">Cargando...</p>
+    }
+    else if (devoluciones.Count == 0)
+    {
+        <section class="rounded-2xl border border-white/10 bg-[#151927] px-6 py-12 text-center text-sm text-slate-400">
+            No tenés envíos en devolución.
+        </section>
+    }
+    else
+    {
+        <section class="overflow-hidden rounded-2xl border border-white/10 bg-[#151927]">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[760px] text-left text-sm">
+                    <thead class="border-b border-white/10 text-xs font-medium text-slate-500">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Envío</th>
+                            <th scope="col" class="px-6 py-3">Destinatario</th>
+                            <th scope="col" class="px-6 py-3">Motivo</th>
+                            <th scope="col" class="px-6 py-3">Desde</th>
+                            <th scope="col" class="px-6 py-3"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        @foreach (var d in devoluciones)
+                        {
+                            <tr>
+                                <td class="px-6 py-3">
+                                    <a href="/envios/@d.EnvioId" class="font-mono text-xs font-semibold text-violet-300 hover:text-violet-200">@d.CodigoSeguimiento</a>
+                                    @if (d.ReferenciaExterna is not null)
+                                    {
+                                        <span class="block text-xs text-slate-500">@d.ReferenciaExterna</span>
+                                    }
+                                </td>
+                                <td class="px-6 py-3 text-slate-200">@d.Destinatario</td>
+                                <td class="px-6 py-3 text-slate-400">@d.Motivo</td>
+                                <td class="px-6 py-3 text-slate-400">@d.FechaInicio.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                <td class="px-6 py-3 text-right">
+                                    @if (d.Estado == "EnDevolucion")
+                                    {
+                                        <button type="button" disabled="@(confirmando == d.EnvioId)" @onclick="() => ConfirmarAsync(d)"
+                                                class="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                                                aria-label="Confirmar que recibí el envío @d.CodigoSeguimiento">
+                                            Lo recibí
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-xs text-emerald-300">Recibido @d.FechaFinalizacion?.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private List<DevolucionComercioDto>? devoluciones;
+    private bool incluirRecibidas;
+    private int? confirmando;
+    private string? aviso;
+    private string? error;
+
+    protected override Task OnInitializedAsync() => CargarAsync();
+
+    private async Task CargarAsync()
+    {
+        try
+        {
+            devoluciones = await DevolucionesApi.ListarAsync(!incluirRecibidas);
+        }
+        catch (SesionVencidaException)
+        {
+            Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudieron cargar las devoluciones");
+            error = "No se pudieron cargar las devoluciones. Probá de nuevo en unos minutos.";
+            devoluciones = [];
+        }
+    }
+
+    private async Task ConfirmarAsync(DevolucionComercioDto devolucion)
+    {
+        confirmando = devolucion.EnvioId;
+        aviso = null;
+        error = null;
+
+        try
+        {
+            error = await DevolucionesApi.ConfirmarRecibidaAsync(devolucion.EnvioId);
+
+            if (error is null)
+            {
+                aviso = $"Listo: el envío {devolucion.CodigoSeguimiento} quedó como devuelto.";
+                await CargarAsync();
+            }
+        }
+        catch (SesionVencidaException)
+        {
+            Navegacion.NavigateTo("/login?vencida=true", forceLoad: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "No se pudo confirmar la devolución {EnvioId}", devolucion.EnvioId);
+            error = "No se pudo confirmar. Probá de nuevo en unos minutos.";
+        }
+        finally
+        {
+            confirmando = null;
+        }
+    }
+}

@@ -339,6 +339,7 @@ builder.Services.AddScoped<FabricaContextoOperador>();
 builder.Services.AddScoped<ReprogramacionPublicaService>();
 builder.Services.AddScoped<FlotaService>();
 builder.Services.AddScoped<ReportesService>();
+builder.Services.AddScoped<DevolucionesService>();
 builder.Services.AddScoped<AmbientePruebasService>();
 builder.Services.AddScoped<SimularEnvioService>();
 builder.Services.AddSingleton(TimeProvider.System);

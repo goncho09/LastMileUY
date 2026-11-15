@@ -152,6 +152,55 @@
             </section>
         </div>
 
+        <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-labelledby="titulo-cierres">
+            <div class="border-b border-white/[0.07] px-5 py-4">
+                <h2 id="titulo-cierres" class="text-base font-semibold text-white">Cierre diario</h2>
+                <p class="mt-1 text-xs text-slate-400">Indicadores que el worker recalcula solo cada 15 minutos. El día anterior queda cerrado y el de hoy se va actualizando.</p>
+            </div>
+            @if (reporte.Cierres.Count == 0)
+            {
+                <p class="px-5 py-8 text-center text-sm text-slate-400">Todavía no hay cierres en el período.</p>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[720px] text-left text-sm">
+                        <thead class="border-b border-white/[0.07] text-xs font-medium text-slate-500">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Día</th>
+                                <th scope="col" class="px-4 py-3 text-right">Altas</th>
+                                <th scope="col" class="px-4 py-3 text-right">Entregados</th>
+                                <th scope="col" class="px-4 py-3 text-right">A tiempo</th>
+                                <th scope="col" class="px-4 py-3 text-right">No entregados</th>
+                                <th scope="col" class="px-4 py-3 text-right">Intentos fallidos</th>
+                                <th scope="col" class="px-4 py-3 text-right">Importe</th>
+                                <th scope="col" class="px-4 py-3">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+                            @foreach (var cierre in reporte.Cierres)
+                            {
+                                <tr>
+                                    <td class="px-4 py-3 text-white">@cierre.Dia.ToString("dd/MM/yyyy")</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@cierre.EnviosCreados</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@cierre.Entregados</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@cierre.EntregadosATiempo</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@cierre.NoEntregados</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">@cierre.IntentosFallidos</td>
+                                    <td class="px-4 py-3 text-right text-slate-300">$ @cierre.Importe.ToString("N2", new System.Globalization.CultureInfo("es-UY"))</td>
+                                    <td class="px-4 py-3">
+                                        <span class="rounded border px-1.5 py-0.5 text-xs @(cierre.Cerrado ? "border-emerald-500/30 text-emerald-300" : "border-amber-500/30 text-amber-300")">
+                                            @(cierre.Cerrado ? "Cerrado" : "En curso")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
         <section class="overflow-hidden rounded-2xl border border-white/[0.07] bg-surface" aria-labelledby="titulo-liquidacion">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07] px-5 py-4">
                 <div>

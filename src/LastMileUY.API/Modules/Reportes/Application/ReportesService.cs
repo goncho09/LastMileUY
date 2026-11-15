@@ -64,6 +64,15 @@ public class ReportesService(ApplicationDbContext db)
                 select new MotivoNoEntregaReporteDto(g.Key, g.Count()))
             .ToListAsync(ct);
 
+        var cierres = comercioId is null
+            ? await db.IndicadoresDiarios.AsNoTracking()
+                .Where(i => i.Dia >= desde && i.Dia <= hasta)
+                .OrderByDescending(i => i.Dia)
+                .Select(i => new IndicadorDiarioDto(i.Dia, i.EnviosCreados, i.Entregados, i.EntregadosATiempo,
+                    i.NoEntregados, i.IntentosFallidos, i.Importe, i.Cerrado, i.CalculadoEn))
+                .ToListAsync(ct)
+            : [];
+
         return new ReporteGestionDto(
             desde,
             hasta,
@@ -77,7 +86,10 @@ public class ReportesService(ApplicationDbContext db)
                 .OrderByDescending(r => r.Intentos)
                 .ToList(),
             motivos,
-            Liquidacion(envios));
+            Liquidacion(envios))
+        {
+            Cierres = cierres
+        };
     }
 
     public static bool ATiempo(FilaEnvio envio) =>
