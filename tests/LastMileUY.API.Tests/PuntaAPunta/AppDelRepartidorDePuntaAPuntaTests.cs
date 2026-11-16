@@ -185,7 +185,8 @@ public class AppDelRepartidorDePuntaAPuntaTests(ApiDePuntaAPunta api)
     public async Task Al_celular_no_le_llega_el_email_del_destinatario()
     {
         var (operador, despachador, repartidor) = await SesionesAsync();
-        var (rutaId, _) = await RutasDePuntaAPunta.RutaDespachadaAsync(api, operador, despachador, diasAdelante: 8);
+        var (rutaId, _) = await RutasDePuntaAPunta.RutaDespachadaAsync(
+            api, operador, despachador, diasAdelante: 308);
 
         var enBackoffice = (await despachador.GetFromJsonAsync<RutaDetalleDto>($"api/rutas/{rutaId}"))!;
         Assert.NotNull(Assert.Single(enBackoffice.Paradas).Destinatario.Email);
