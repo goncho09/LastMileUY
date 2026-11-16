@@ -68,7 +68,10 @@ public static class RutasDePuntaAPunta
             EnvioIds = [.. envioIds]
         });
 
-        Assert.Equal(HttpStatusCode.Created, ruta.StatusCode);
+        Assert.True(
+            ruta.StatusCode == HttpStatusCode.Created,
+            $"No se pudo crear la ruta. HTTP {(int)ruta.StatusCode}: " +
+            await ruta.Content.ReadAsStringAsync());
 
         return ((await ruta.Content.ReadFromJsonAsync<RutaDetalleDto>())!.Id, envioIds);
     }
