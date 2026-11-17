@@ -241,7 +241,29 @@ try {
   # No volver a iniciar ni detener servicios aqui.
   Write-Host 'ATENCION: Terraform destroy elimina los recursos administrados por este estado.' -ForegroundColor Red
   Write-Host 'Backup verificado y servicios detenidos. La aplicacion permanece en mantenimiento.' -ForegroundColor Yellow
-  $confirmation=Read-Host 'Escribi DESTRUIR para confirmar (cualquier otra cosa cancela)'
+
+
+  # Confirmación interactiva o desde el workflow privado autorizado.
+  $desdeActions = $env:GITHUB_ACTIONS -eq 'true'
+
+  if ($desdeActions) {
+    $autorizado =
+    $env:GITHUB_EVENT_NAME -ceq 'workflow_dispatch' -and
+            $env:GITHUB_REPOSITORY -ceq 'goncho09/lastmileuy-control' -and
+            $env:GITHUB_ACTOR -ceq 'goncho09' -and
+            $env:LASTMILEUY_CONFIRMACION_DESTROY -ceq 'DESTRUIR'
+
+    if (-not $autorizado) {
+      throw 'Confirmacion automatizada no autorizada. Destroy cancelado.'
+    }
+
+    Write-Host 'Confirmacion recibida desde GitHub Actions.' -ForegroundColor Yellow
+    $confirmation = 'DESTRUIR'
+  }
+  else {
+    $confirmation = Read-Host 'Escribi DESTRUIR para confirmar (cualquier otra cosa cancela)'
+  }
+  
   if ($confirmation -cne 'DESTRUIR') {
     $resumeCommand = 'for n in lastmileuy-rabbitmq lastmileuy-grafana lastmileuy-prometheus lastmileuy-lastmileuy.api-1 lastmileuy-lastmileuy.backoffice-1 lastmileuy-lastmileuy.commerceportal-1 lastmileuy-lastmileuy.driverpwa-1 lastmileuy-lastmileuy.publictracking-1 lastmileuy-lastmileuy.worker-1 lastmileuy-lastmileuy.receptoravisos-1; do docker start "$n" >/dev/null 2>&1 || true; done'
     Invoke-Remote $dest $sshOpts $resumeCommand 'Reanudar servicios tras cancelar'
