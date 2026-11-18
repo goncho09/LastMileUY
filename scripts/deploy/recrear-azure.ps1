@@ -73,6 +73,88 @@ function TF([string[]]$TerraformArgs) {
 function Invoke-Remote([string]$target,[string[]]$sshOptions,[string]$command,[string]$label) {
   Invoke-LmNative -FilePath 'ssh' -Arguments (@($sshOptions) + @($target,$command)) -Label $label -LiveStatus
 }
+
+
+function Actualizar-ClaveSshAzure([string]$ip) {
+  Write-LmDetail "Verificando identidad SSH de la VM en Azure..."
+
+  # La clave se obtiene desde Azure, no desde una conexion SSH sin verificar.
+  $preferenciaAnterior=$ErrorActionPreference
+  try {
+    $ErrorActionPreference='Continue'
+    $salida=@(
+      & az vm run-command invoke `
+        --resource-group lastmileuy-rg `
+        --name lastmileuy-server `
+        --command-id RunShellScript `
+        --scripts 'cat /etc/ssh/ssh_host_ed25519_key.pub' `
+        --query 'value[0].message' `
+        -o tsv 2>&1
+    )
+    $codigo=$LASTEXITCODE
+  } finally {
+    $ErrorActionPreference=$preferenciaAnterior
+  }
+
+  if ($codigo -ne 0) {
+    throw 'No se pudo obtener la clave SSH desde Azure. No se modifico known_hosts.'
+  }
+
+  $claves=[regex]::Matches(
+          ($salida -join "`n"),
+          '(?m)^\s*ssh-ed25519\s+([A-Za-z0-9+/=]+)(?:\s|$)'
+  )
+
+  if ($claves.Count -ne 1) {
+    throw 'Azure no devolvio una unica clave SSH ED25519 valida.'
+  }
+
+  $clave="ssh-ed25519 $($claves[0].Groups[1].Value)"
+
+  # Comprobar que la clave tiene un formato valido antes de guardarla.
+  $temporal=Join-Path $env:TEMP (
+  'lastmileuy-hostkey-' + [guid]::NewGuid().ToString('N') + '.pub'
+  )
+
+  try {
+    [IO.File]::WriteAllText(
+            $temporal,
+            "$clave`n",
+            (New-Object Text.UTF8Encoding($false))
+    )
+
+    $huella=@(& ssh-keygen -lf $temporal -E sha256)
+    if ($LASTEXITCODE -ne 0) {
+      throw 'La clave SSH devuelta por Azure no es valida.'
+    }
+  } finally {
+    Remove-Item -LiteralPath $temporal -Force -ErrorAction SilentlyContinue
+  }
+
+  $sshDir=Join-Path $HOME '.ssh'
+  if (-not (Test-Path -LiteralPath $sshDir)) {
+    New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+  }
+
+  $knownHosts=Join-Path $sshDir 'known_hosts'
+
+  # Eliminar solamente la identidad antigua de esta IP.
+  if (Test-Path -LiteralPath $knownHosts) {
+    & ssh-keygen -R $ip -f $knownHosts | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw 'No se pudo actualizar la entrada SSH anterior.'
+    }
+  }
+
+  # Registrar la clave autenticada mediante Azure.
+  Add-Content -LiteralPath $knownHosts `
+    -Value "$ip $clave" `
+    -Encoding Ascii
+
+  Write-LmDetail "Identidad SSH verificada: $($huella -join ' ')"
+  Write-LmDetail "known_hosts actualizado para $ip"
+}
+
 function Wait-SSH([string]$target,[string[]]$sshOptions) {
   for($i=0;$i -lt 60;$i++) {
     $oldPreference=$ErrorActionPreference
@@ -87,7 +169,7 @@ function Wait-SSH([string]$target,[string[]]$sshOptions) {
   throw "La VM no responde por SSH: $target. Se puede reanudar con el mismo backup."
 }
 
-foreach($cmd in @('terraform','ssh','scp')) {
+foreach($cmd in @('terraform','ssh','scp','ssh-keygen','az')) {
   if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { throw "Falta $cmd" }
 }
 foreach($path in @($tf,$SshKey,$EnvFile,$restore,$backupScript,$installer,$remoteRestore)) {
@@ -177,6 +259,9 @@ if (-not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
   $newIp=(& terraform "-chdir=$tf" output -raw public_ip)
   if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($newIp)) { throw 'Sin IP de VM' }
   $newDest="azureuser@$($newIp.Trim())"
+
+  Actualizar-ClaveSshAzure $newIp.Trim()
+
   $sshOpts=@('-i',$SshKey,'-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','ConnectTimeout=15')
   Write-LmDetail 'Esperando conectividad SSH...'
   Wait-SSH $newDest $sshOpts
@@ -321,6 +406,9 @@ try {
   if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($newIp)) { throw 'No se pudo obtener la nueva IP publica' }
   $newIp=$newIp.Trim()
   $newDest="azureuser@$newIp"
+
+  Actualizar-ClaveSshAzure $newIp
+
   Set-LmStage 5 'Preparando servidor' 'SSH, cloud-init y Docker'
   Write-LmDetail 'Esperando conectividad SSH...'
   Wait-SSH $newDest $sshOpts
