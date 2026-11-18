@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
   [switch]$Destroy,
+  [switch]$Resume,
   [string]$ResumeBackupDir,
   [string]$BackupRoot = (Join-Path $HOME 'LastMileUY-Azure/backups'),
   [string]$SshKey = (Join-Path $HOME 'LastMileUY-Azure/ssh/lastmileuy_azure_nueva'),
@@ -9,6 +10,8 @@ param(
 )
 
 . (Join-Path $PSScriptRoot 'consola-azure.ps1')
+
+if ($Destroy -and $Resume) { throw 'No combinar -Destroy y -Resume.' }
 
 # Validaciones locales previas al despliegue
 if ($Destroy) {
@@ -37,6 +40,7 @@ if (-not (Test-Path -LiteralPath $entry)) { throw "Falta $entry" }
 $params=@{ BackupRoot=$BackupRoot; SshKey=$SshKey; EnvFile=$EnvFile }
 
 if ($Destroy) { $params.Destroy=$true }
+if ($Resume) { $params.Resume=$true }
 
 if ($ResumeBackupDir) { $params.ResumeBackupDir=$ResumeBackupDir }
 

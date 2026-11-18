@@ -145,11 +145,26 @@ done
 # PostgreSQL nuevo: restaurar roles globales y luego el dump conservando ACL/propietarios.
 paso "Iniciando PostgreSQL y Redis..."
 "${BASE[@]}" up -d postgres redis
+# La imagen oficial inicia un PostgreSQL temporal por socket Unix durante initdb.
+# Esperar por TCP evita confundir ese proceso con el servidor definitivo.
+paso "Esperando PostgreSQL definitivo por TCP..."
+POSTGRES_LISTO=false
 for i in $(seq 1 40); do
-  docker exec lastmileuy-postgres pg_isready -U lastmileuy -d lastmileuy >/dev/null 2>&1 && break
+  if docker exec lastmileuy-postgres \
+      pg_isready -q -h 127.0.0.1 -p 5432 -U lastmileuy -d lastmileuy; then
+    POSTGRES_LISTO=true
+    break
+  fi
   sleep 3
 done
-docker exec lastmileuy-postgres pg_isready -U lastmileuy -d lastmileuy
+if [[ "$POSTGRES_LISTO" != true ]]; then
+  echo 'PostgreSQL no quedo disponible por TCP tras 120 segundos.' >&2
+  docker logs --tail 80 lastmileuy-postgres >&2 || true
+  exit 1
+fi
+# Confirmar que la base creada por el entrypoint admite consultas SQL.
+docker exec lastmileuy-postgres \
+  psql -X -v ON_ERROR_STOP=1 -U lastmileuy -d lastmileuy -Atc 'SELECT 1' | grep -qx '1'
 if [[ ! -f "$RUN/postgres.ok" ]]; then
   if started postgres; then echo 'Restauracion PostgreSQL interrumpida: no se reimporta' >&2; exit 1; fi
   COUNT=$(docker exec lastmileuy-postgres psql -U lastmileuy -d lastmileuy -Atc "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
