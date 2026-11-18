@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
   [switch]$Destroy,
+  [switch]$Resume,
   [string]$ResumeBackupDir,
   [string]$BackupRoot = (Join-Path $HOME 'LastMileUY-Azure/backups'),
   [string]$SshKey = (Join-Path $HOME 'LastMileUY-Azure/ssh/lastmileuy_azure_nueva'),
@@ -36,6 +37,20 @@ function Save-Journal([string]$backupPath,[string]$phase) {
   $tmp="$journalPath.tmp"
   [IO.File]::WriteAllText($tmp,($data | ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
   Move-Item -LiteralPath $tmp -Destination $journalPath -Force
+}
+if ($Resume) {
+  if ($Destroy -or -not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
+    throw 'No combinar -Resume con -Destroy ni -ResumeBackupDir.'
+  }
+  if (-not (Test-Path -LiteralPath $journalPath -PathType Leaf)) {
+    throw 'No hay reconstruccion pendiente para reanudar.'
+  }
+  $pendiente=Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+  if ($pendiente.phase -notin @('DESTROY_INICIADO','DESTROY_COMPLETO','VM_RECREADA') -or
+      [string]::IsNullOrWhiteSpace([string]$pendiente.backup)) {
+    throw 'Diario de reconstruccion pendiente invalido.'
+  }
+  $ResumeBackupDir=[string]$pendiente.backup
 }
 if (Test-Path -LiteralPath $journalPath) {
   $journal=Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
@@ -140,8 +155,23 @@ if (-not [string]::IsNullOrWhiteSpace($ResumeBackupDir)) {
     if ($destructive.Count -ne 0) {
       throw 'REANUDACION BLOQUEADA: Terraform quiere destruir o reemplazar recursos. Inspeccionar el plan manualmente.'
     }
-    $answer=Read-Host 'Escribi CONTINUAR para aplicar sin destrucciones y reanudar'
-    if ($answer -cne 'CONTINUAR') { throw 'Reanudacion cancelada' }
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+      $autorizado=(
+        $Resume -and
+        $env:GITHUB_EVENT_NAME -ceq 'workflow_dispatch' -and
+        $env:GITHUB_REPOSITORY -ceq 'goncho09/lastmileuy-control' -and
+        $env:GITHUB_ACTOR -ceq 'goncho09' -and
+        $env:GITHUB_REF -ceq 'refs/heads/main' -and
+        $env:LASTMILEUY_CONFIRMACION_RESUME -ceq 'CONTINUAR'
+      )
+      if (-not $autorizado) {
+        throw 'Reanudacion automatizada no autorizada.'
+      }
+      Write-Host 'Reanudacion autorizada desde GitHub Actions.' -ForegroundColor Yellow
+    } else {
+      $answer=Read-Host 'Escribi CONTINUAR para aplicar sin destrucciones y reanudar'
+      if ($answer -cne 'CONTINUAR') { throw 'Reanudacion cancelada' }
+    }
     TF -TerraformArgs @('apply','-input=false',$resumePlan)
   } finally { Remove-Item -LiteralPath $resumePlan -Force -ErrorAction SilentlyContinue }
   $newIp=(& terraform "-chdir=$tf" output -raw public_ip)
