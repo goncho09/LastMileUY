@@ -51,7 +51,7 @@
         else
         {
             <p class="text-sm font-medium text-slate-400">
-                @rutas.Count rutas disponibles
+                @rutas.Count @(rutas.Count == 1 ? "ruta disponible" : "rutas disponibles")
             </p>
 
             @foreach (var ruta in rutas)
@@ -77,7 +77,7 @@
                     <div class="mt-3 space-y-1.5 text-sm text-slate-300">
                         <p class="flex items-center gap-2"><Icono Nombre="calendario" Clase="h-4 w-4 text-slate-500" /> @ruta.Fecha.ToString("dd/MM/yyyy")</p>
                         <p class="flex items-center gap-2"><Icono Nombre="camion" Clase="h-4 w-4 text-slate-500" /> @ruta.Vehiculo</p>
-                        <p class="flex items-center gap-2"><Icono Nombre="pin" Clase="h-4 w-4 text-slate-500" /> @ruta.CantidadParadas paradas</p>
+                        <p class="flex items-center gap-2"><Icono Nombre="pin" Clase="h-4 w-4 text-slate-500" /> @ruta.CantidadParadas @(ruta.CantidadParadas == 1 ? "parada" : "paradas")</p>
                     </div>
 
                     <button type="button"
