@@ -10,18 +10,6 @@
     --color-canvas: #f6f6f8;
     --color-line: #e4e4e9;
 
-    --color-violet-50: oklch(0.975 0.012 285);
-    --color-violet-100: oklch(0.95 0.024 285);
-    --color-violet-200: oklch(0.89 0.045 285);
-    --color-violet-300: oklch(0.81 0.075 285);
-    --color-violet-400: oklch(0.72 0.105 285);
-    --color-violet-500: oklch(0.62 0.13 285);
-    --color-violet-600: oklch(0.55 0.14 285);
-    --color-violet-700: oklch(0.48 0.13 285);
-    --color-violet-800: oklch(0.4 0.11 285);
-    --color-violet-900: oklch(0.32 0.085 285);
-    --color-violet-950: oklch(0.24 0.06 285);
-
     --radius-lg: 0.5rem;
     --radius-xl: 0.5rem;
     --radius-2xl: 0.625rem;
