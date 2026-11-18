@@ -10,11 +10,11 @@
 
 <div class="min-h-dvh bg-canvas">
 <div class="mx-auto max-w-2xl px-4 pt-4 pb-10">
-    <a href="/rutas/@Id" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-violet-700">← Hoja de ruta</a>
+    <a href="/rutas/@Id" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-violet-300">← Hoja de ruta</a>
 
     @if (cargando)
     {
-        <p class="text-sm text-slate-500">Cargando la hoja de ruta...</p>
+        <p class="text-sm text-slate-400">Cargando la hoja de ruta...</p>
     }
     else if (ruta is null)
     {
@@ -22,8 +22,8 @@
     }
     else
     {
-        <h1 class="text-lg font-semibold text-slate-900">Cargar el vehículo</h1>
-        <p class="mt-1 text-sm text-slate-500">
+        <h1 class="text-lg font-semibold text-white">Cargar el vehículo</h1>
+        <p class="mt-1 text-sm text-slate-400">
             Escaneá cada bulto al subirlo. La app avisa si falta alguno o si subiste uno que no es de esta hoja.
         </p>
 
@@ -32,7 +32,7 @@
             <div class="aviso @claseAviso mt-4 text-sm" role="status">@aviso</div>
         }
 
-        <div class="mt-4 rounded-lg border border-line bg-white p-4">
+        <div class="mt-4 rounded-lg border border-line bg-superficie p-4">
             <div class="flex min-w-0 flex-col gap-2 sm:flex-row">
                 <label for="codigo-carga" class="sr-only">Código del bulto</label>
                 <input id="codigo-carga" type="text" class="campo min-w-0 font-mono sm:flex-1" placeholder="Código del bulto"
@@ -43,7 +43,7 @@
             @if (!camaraActiva)
             {
                 <button type="button" class="boton boton-secundario mt-2" @onclick="AbrirCamara">
-                    <Icono Nombre="escaner" Clase="h-4 w-4 text-slate-500" />
+                    <Icono Nombre="escaner" Clase="h-4 w-4 text-slate-400" />
                     Escanear con cámara
                 </button>
             }
@@ -52,20 +52,20 @@
                 <div class="mt-2 w-full overflow-hidden rounded-md border border-line bg-slate-950 p-1">
                     <div id="@idEscaner" class="w-full overflow-hidden"></div>
                 </div>
-                <button type="button" class="boton mt-2 border border-red-200 bg-white text-red-700" @onclick="CerrarCamaraAsync">Cerrar cámara</button>
+                <button type="button" class="boton mt-2 border border-red-400/30 bg-superficie text-red-300" @onclick="CerrarCamaraAsync">Cerrar cámara</button>
             }
 
             @if (ultimo is not null)
             {
-                <p class="mt-3 text-sm @(ultimoEsSobrante ? "text-amber-700" : "text-emerald-700")" role="status">@ultimo</p>
+                <p class="mt-3 text-sm @(ultimoEsSobrante ? "text-amber-300" : "text-emerald-300")" role="status">@ultimo</p>
             }
 
             <div class="mt-4">
-                <div class="mb-1.5 flex justify-between text-xs font-medium text-slate-500">
+                <div class="mb-1.5 flex justify-between text-xs font-medium text-slate-400">
                     <span>Cargados</span>
                     <span>@cargados de @bultos.Count</span>
                 </div>
-                <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div class="h-1.5 overflow-hidden rounded-full bg-elevada">
                     <div class="h-full rounded-full bg-violet-600 transition-[width]" style="width:@(bultos.Count == 0 ? 0 : cargados * 100 / bultos.Count)%"></div>
                 </div>
             </div>
@@ -79,7 +79,7 @@
             </div>
         }
 
-        <h2 class="mt-6 mb-2 text-sm font-semibold text-slate-900">
+        <h2 class="mt-6 mb-2 text-sm font-semibold text-white">
             @(Faltantes.Count == 0 ? "Están todos los bultos" : $"Faltan {Faltantes.Count}")
         </h2>
 
@@ -87,18 +87,18 @@
             @foreach (var (parada, bulto) in bultos)
             {
                 var cargado = escaneados.Contains(bulto.Codigo.ToUpperInvariant());
-                <div @key="bulto.Id" class="flex items-center justify-between gap-2 rounded-md border px-3 py-2.5 @(cargado ? "border-emerald-200 bg-emerald-50/60" : "border-line bg-white")">
+                <div @key="bulto.Id" class="flex items-center justify-between gap-2 rounded-md border px-3 py-2.5 @(cargado ? "border-emerald-400/30 bg-emerald-500/10" : "border-line bg-superficie")">
                     <div class="min-w-0">
-                        <div class="font-mono text-[13px] font-medium text-slate-900 [overflow-wrap:anywhere]">@bulto.Codigo</div>
-                        <div class="mt-0.5 text-xs text-slate-500">Parada @parada.Orden · @parada.Destinatario.Nombre @parada.Destinatario.Apellido</div>
+                        <div class="font-mono text-[13px] font-medium text-white [overflow-wrap:anywhere]">@bulto.Codigo</div>
+                        <div class="mt-0.5 text-xs text-slate-400">Parada @parada.Orden · @parada.Destinatario.Nombre @parada.Destinatario.Apellido</div>
                     </div>
                     @if (cargado)
                     {
-                        <span class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-700"><Icono Nombre="check" Clase="h-3.5 w-3.5" /> Cargado</span>
+                        <span class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-300"><Icono Nombre="check" Clase="h-3.5 w-3.5" /> Cargado</span>
                     }
                     else
                     {
-                        <span class="shrink-0 text-xs font-medium text-amber-700">Falta</span>
+                        <span class="shrink-0 text-xs font-medium text-amber-300">Falta</span>
                     }
                 </div>
             }
@@ -110,7 +110,7 @@
 
         @if (pendiente)
         {
-            <p class="mt-2 text-xs text-slate-500">La última confirmación está guardada en el celular y se envía sola cuando vuelva la conexión.</p>
+            <p class="mt-2 text-xs text-slate-400">La última confirmación está guardada en el celular y se envía sola cuando vuelva la conexión.</p>
         }
     }
 </div>

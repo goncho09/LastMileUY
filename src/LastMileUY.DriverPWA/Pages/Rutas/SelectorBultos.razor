@@ -3,20 +3,20 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<div class="mt-4 w-full min-w-0 max-w-2xl rounded-lg border border-line bg-white p-3 sm:p-4">
+<div class="mt-4 w-full min-w-0 max-w-2xl rounded-lg border border-line bg-superficie p-3 sm:p-4">
 
     <div class="mb-4 flex min-w-0 items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
-            <h3 class="text-sm font-semibold leading-tight text-slate-900">
+            <h3 class="text-sm font-semibold leading-tight text-white">
                 Identificar bultos
             </h3>
 
-            <p class="mt-0.5 text-xs leading-relaxed text-slate-500">
+            <p class="mt-0.5 text-xs leading-relaxed text-slate-400">
                 Escaneá o ingresá el código de cada bulto.
             </p>
         </div>
 
-        <span class="shrink-0 rounded border border-line px-1.5 py-0.5 text-xs font-medium text-slate-600 tabular-nums">
+        <span class="shrink-0 rounded border border-line px-1.5 py-0.5 text-xs font-medium text-slate-300 tabular-nums">
             @identificados.Count / @Bultos.Count
         </span>
     </div>
@@ -43,7 +43,7 @@
             <button type="button"
                     class="boton boton-secundario"
                     @onclick="AbrirCamara">
-                <Icono Nombre="escaner" Clase="h-4 w-4 text-slate-500" />
+                <Icono Nombre="escaner" Clase="h-4 w-4 text-slate-400" />
                 Escanear con cámara
             </button>
         }
@@ -54,7 +54,7 @@
             </div>
 
             <button type="button"
-                    class="boton border border-red-200 bg-white text-red-700"
+                    class="boton border border-red-400/30 bg-superficie text-red-300"
                     @onclick="CerrarCamara">
                 Cancelar escaneo
             </button>
@@ -78,26 +78,26 @@
             var pendiente = ResultadoPorBulto.PorEntregar(bulto);
 
             <div @key="bulto.Id"
-                 class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2.5 @(identificado ? "border-emerald-200 bg-emerald-50/60" : "border-line bg-white")">
+                 class="flex w-full min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2.5 @(identificado ? "border-emerald-400/30 bg-emerald-500/10" : "border-line bg-superficie")">
 
                 <div class="flex min-w-0 items-center gap-3">
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md @(identificado ? "text-emerald-600" : "text-slate-400")">
+                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md @(identificado ? "text-emerald-400" : "text-slate-500")">
                         <Icono Nombre="paquete" Clase="h-5 w-5" />
                     </div>
 
                     <div class="min-w-0">
-                        <div class="font-mono text-[13px] font-medium text-slate-900 [overflow-wrap:anywhere]">
+                        <div class="font-mono text-[13px] font-medium text-white [overflow-wrap:anywhere]">
                             @bulto.Codigo
                         </div>
 
                         @if (!string.IsNullOrWhiteSpace(bulto.Descripcion))
                         {
-                            <div class="mt-0.5 text-xs text-slate-500">
+                            <div class="mt-0.5 text-xs text-slate-400">
                                 @bulto.Descripcion
                             </div>
                         }
 
-                        <div class="mt-1 text-xs @(pendiente ? "text-amber-700" : "text-slate-500")">
+                        <div class="mt-1 text-xs @(pendiente ? "text-amber-300" : "text-slate-400")">
                             @bulto.Estado
                         </div>
                     </div>
@@ -105,7 +105,7 @@
 
                 @if (identificado)
                 {
-                    <span class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-700">
+                    <span class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-emerald-300">
                         <Icono Nombre="check" Clase="h-3.5 w-3.5" /> Identificado
                     </span>
                 }
@@ -114,12 +114,12 @@
     </div>
 
     <div class="mt-4">
-        <div class="mb-2 flex justify-between text-xs font-medium text-slate-500">
+        <div class="mb-2 flex justify-between text-xs font-medium text-slate-400">
             <span>Progreso de identificación</span>
             <span>@identificados.Count de @Bultos.Count</span>
         </div>
 
-        <div class="h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div class="h-1.5 overflow-hidden rounded-full bg-elevada">
             <div class="h-full rounded-full bg-violet-600 transition-[width]"
                  style="width:@(Bultos.Count == 0 ? 0 : identificados.Count * 100 / Bultos.Count)%">
             </div>

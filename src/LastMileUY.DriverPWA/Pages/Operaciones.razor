@@ -28,33 +28,33 @@
 
         @if (pendientes.Count > 0)
         {
-            <section class="rounded-lg border border-amber-200 bg-amber-50 p-4" aria-labelledby="titulo-pendientes">
-                <h2 id="titulo-pendientes" class="font-semibold text-amber-900">
+            <section class="rounded-lg border border-amber-400/30 bg-amber-500/10 p-4" aria-labelledby="titulo-pendientes">
+                <h2 id="titulo-pendientes" class="font-semibold text-amber-100">
                     Sin enviar (@pendientes.Count)
                 </h2>
                 
                 <button type="button"
                         disabled="@sincronizando"
                         @onclick="SincronizarAsync"
-                        class="mt-3 rounded-md bg-amber-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                        class="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
                     @(sincronizando ? "Sincronizando..." : "Sincronizar pendientes")
                 </button>
                 
-                <p class="mt-1 text-sm text-amber-800">
+                <p class="mt-1 text-sm text-amber-200">
                     Están guardadas en este celular y todavía no llegaron al servidor. No cierres sesión: se perderían.
                 </p>
 
                 <ul class="mt-4 space-y-2">
                     @foreach (var pendiente in pendientes)
                     {
-                        <li class="flex items-center justify-between gap-3 rounded-md border border-amber-100 bg-white px-3 py-2.5" @key="pendiente.IdOperacion">
+                        <li class="flex items-center justify-between gap-3 rounded-md border border-amber-400/20 bg-superficie px-3 py-2.5" @key="pendiente.IdOperacion">
                             <div>
-                                <p class="text-xs font-medium text-amber-700">
+                                <p class="text-xs font-medium text-amber-300">
                                     @(pendiente.Tipo == "Entrega" ? "Entrega" : "Intento fallido") · Ruta #@pendiente.RutaId
                                 </p>
-                                <p class="font-semibold text-slate-900">Envío @pendiente.EnvioId</p>
+                                <p class="font-semibold text-white">Envío @pendiente.EnvioId</p>
                             </div>
-                            <p class="text-xs text-slate-500">
+                            <p class="text-xs text-slate-400">
                                 @pendiente.FechaHoraDispositivo.ToLocalTime().ToString("dd/MM HH:mm")
                             </p>
                         </li>
@@ -75,7 +75,7 @@
             @foreach (var (valor, texto) in Filtros)
             {
                 <button type="button" @key="texto" aria-pressed="@(filtro == valor)"
-                        class="@(filtro == valor ? "rounded-md bg-violet-700 px-3 py-1.5 text-sm font-medium text-white" : "rounded-md border border-line bg-white px-3 py-1.5 text-sm font-medium text-slate-600")"
+                        class="@(filtro == valor ? "rounded-md bg-violet-700 px-3 py-1.5 text-sm font-medium text-white" : "rounded-md border border-line bg-superficie px-3 py-1.5 text-sm font-medium text-slate-300")"
                         @onclick="() => FiltrarAsync(valor)">
                     @texto
                 </button>
@@ -92,7 +92,7 @@
         @if (historialNoDisponible)
         {
             <div role="status"
-                 class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                 class="rounded-lg border border-amber-400/30 bg-amber-500/10 p-4 text-amber-100">
                 <h2 class="font-semibold">Historial no disponible sin conexión</h2>
                 <p class="mt-2 text-sm">
                     Las operaciones pendientes siguen guardadas en este dispositivo.
@@ -102,13 +102,13 @@
         }
         else if (cargando && operaciones.Count == 0)
         {
-            <p class="text-center text-slate-500">Cargando operaciones...</p>
+            <p class="text-center text-slate-400">Cargando operaciones...</p>
         }
         else if (operaciones.Count == 0 && !historialNoDisponible)
         {
-            <div class="rounded-lg border border-line bg-white p-8 text-center">
-                <h2 class="font-semibold text-slate-800">No hay operaciones</h2>
-                <p class="mt-2 text-sm text-slate-500">
+            <div class="rounded-lg border border-line bg-superficie p-8 text-center">
+                <h2 class="font-semibold text-slate-100">No hay operaciones</h2>
+                <p class="mt-2 text-sm text-slate-400">
                     @(filtro is null
                         ? "Las entregas e intentos que registres aparecen acá."
                         : "No tenés operaciones con ese resultado.")
@@ -117,17 +117,17 @@
         }
         else if (operaciones.Count > 0)
         {
-            <p class="text-sm font-medium text-slate-500">@total @(total == 1 ? "operación" : "operaciones")</p>
+            <p class="text-sm font-medium text-slate-400">@total @(total == 1 ? "operación" : "operaciones")</p>
 
             @foreach (var operacion in operaciones)
             {
-                <article class="rounded-lg border border-line bg-white p-4" @key="operacion.IdOperacion">
+                <article class="rounded-lg border border-line bg-superficie p-4" @key="operacion.IdOperacion">
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <p class="text-xs font-medium text-slate-500">
+                            <p class="text-xs font-medium text-slate-400">
                                 @(operacion.Tipo == "Entrega" ? "Entrega" : "Intento fallido") · Ruta #@operacion.RutaId
                             </p>
-                            <h2 class="mt-1 font-semibold text-slate-900">
+                            <h2 class="mt-1 font-semibold text-white">
                                 @(operacion.CodigoSeguimiento ?? $"Envío {operacion.EnvioId}")
                             </h2>
                         </div>
@@ -137,10 +137,10 @@
 
                     @if (operacion.Resultado != "Aplicada")
                     {
-                        <p class="mt-3 text-sm text-slate-700">@operacion.Mensaje</p>
+                        <p class="mt-3 text-sm text-slate-200">@operacion.Mensaje</p>
                     }
 
-                    <p class="mt-3 text-xs text-slate-500">
+                    <p class="mt-3 text-xs text-slate-400">
                         Registrada el @operacion.FechaHoraDispositivo.ToLocalTime().ToString("dd/MM HH:mm")
                     </p>
                 </article>
@@ -374,9 +374,9 @@ private async Task CargarMasAsync(bool reemplazar = false)
 
     private static string Estilo(string resultado) => resultado switch
     {
-        "Aplicada" => "rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700",
-        "Rechazada" => "rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-700",
-        "Conflicto" => "rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700",
-        _ => "rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs font-medium text-slate-700"
+        "Aplicada" => "rounded border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-medium text-emerald-300",
+        "Rechazada" => "rounded border border-red-400/30 bg-red-500/10 px-1.5 py-0.5 text-xs font-medium text-red-300",
+        "Conflicto" => "rounded border border-amber-400/30 bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-300",
+        _ => "rounded border border-line bg-elevada px-1.5 py-0.5 text-xs font-medium text-slate-200"
     };
 }

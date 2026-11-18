@@ -6,9 +6,9 @@
 @inject IJSRuntime JS
 @inject OperacionesConfirmadasService Confirmadas
 
-<div class="mt-4 rounded-lg border border-line bg-slate-50 p-4">
-    <div class="font-semibold text-slate-900">Confirmar entrega</div>
-    <p class="mt-0.5 mb-4 text-sm text-slate-500">
+<div class="mt-4 rounded-lg border border-line bg-elevada p-4">
+    <div class="font-semibold text-white">Confirmar entrega</div>
+    <p class="mt-0.5 mb-4 text-sm text-slate-400">
         @(PideAlgo ? "La regla del operador pide lo marcado como obligatorio." : "La regla del operador no pide evidencia para este envío.")
     </p>
 
@@ -16,7 +16,7 @@
     {
         <fieldset class="mb-4">
             <legend class="etiqueta mb-1">Bultos entregados</legend>
-            <p class="mb-2 text-sm text-slate-500">
+            <p class="mb-2 text-sm text-slate-400">
                 Desmarcá los que no entregaste y elegí por qué.
                 @if (Regla is { PermiteEntregaParcial: false })
                 {
@@ -28,16 +28,16 @@
             {
                 var marca = marcas[bulto.Id];
 
-                <div class="mb-2 rounded-md border border-line bg-white p-2.5" @key="bulto.Id">
+                <div class="mb-2 rounded-md border border-line bg-superficie p-2.5" @key="bulto.Id">
                     <div class="flex items-center gap-2.5">
                         <input id="bulto-@bulto.Id" type="checkbox" class="casilla"
                                checked="@marca.Entregado" disabled="@enviando"
                                @onchange="e => CambiarEntregado(bulto.Id, e)" />
-                        <label class="text-sm font-medium text-slate-800 [overflow-wrap:anywhere]" for="bulto-@bulto.Id">
+                        <label class="text-sm font-medium text-slate-100 [overflow-wrap:anywhere]" for="bulto-@bulto.Id">
                             @bulto.Codigo
                             @if (!string.IsNullOrWhiteSpace(bulto.Descripcion))
                             {
-                                <span class="font-normal text-slate-500"> · @bulto.Descripcion</span>
+                                <span class="font-normal text-slate-400"> · @bulto.Descripcion</span>
                             }
                         </label>
                     </div>
@@ -57,7 +57,7 @@
                         </select>
                         @if (motivosCargados && motivos.Count == 0)
                         {
-                            <div class="mt-1 text-sm text-red-700">No hay motivos disponibles sin conexión.</div>
+                            <div class="mt-1 text-sm text-red-300">No hay motivos disponibles sin conexión.</div>
                         }
                     }
                 </div>
@@ -67,7 +67,7 @@
 
     <label class="etiqueta" for="receptor-@Parada.EnvioId">
         Quién recibe
-        <span class="font-normal text-slate-500">@(Parada.Evidencia.DocumentoReceptor ? "(obligatorio)" : "(opcional)")</span>
+        <span class="font-normal text-slate-400">@(Parada.Evidencia.DocumentoReceptor ? "(obligatorio)" : "(opcional)")</span>
     </label>
     <input id="receptor-@Parada.EnvioId" class="campo"
            maxlength="150" @bind="nombreReceptor" />
@@ -75,7 +75,7 @@
     @if (Parada.Evidencia.DocumentoReceptor)
     {
         <label class="etiqueta mt-4" for="documento-@Parada.EnvioId">
-            Documento de quien recibe <span class="font-normal text-slate-500">(obligatorio)</span>
+            Documento de quien recibe <span class="font-normal text-slate-400">(obligatorio)</span>
         </label>
         <input id="documento-@Parada.EnvioId" class="campo"
                maxlength="50" inputmode="numeric" @bind="documentoReceptor" />
@@ -83,26 +83,26 @@
 
     <div class="mt-4 flex items-end justify-between">
         <span class="etiqueta">
-            Firma <span class="font-normal text-slate-500">@(Parada.Evidencia.Firma ? "(obligatoria)" : "(opcional)")</span>
+            Firma <span class="font-normal text-slate-400">@(Parada.Evidencia.Firma ? "(obligatoria)" : "(opcional)")</span>
         </span>
-        <button type="button" class="mb-1.5 text-sm font-medium text-violet-700"
+        <button type="button" class="mb-1.5 text-sm font-medium text-violet-300"
                 @onclick="LimpiarFirma">Borrar firma</button>
     </div>
     <canvas @ref="lienzoFirma" width="600" height="220" aria-label="Firma de quien recibe"
-            class="h-[150px] w-full touch-none rounded-md border border-dashed border-slate-300 bg-white"></canvas>
+            class="h-[150px] w-full touch-none rounded-md border border-dashed border-line bg-white"></canvas>
 
     <label class="etiqueta mt-4" for="foto-@Parada.EnvioId">
-        Foto <span class="font-normal text-slate-500">@(Parada.Evidencia.Foto ? "(obligatoria)" : "(opcional)")</span>
+        Foto <span class="font-normal text-slate-400">@(Parada.Evidencia.Foto ? "(obligatoria)" : "(opcional)")</span>
     </label>
-    <InputFile id="@($"foto-{Parada.EnvioId}")" class="campo text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-2.5 file:py-1 file:text-sm file:font-medium file:text-slate-700" accept="image/*"
+    <InputFile id="@($"foto-{Parada.EnvioId}")" class="campo text-sm file:mr-3 file:rounded file:border-0 file:bg-elevada file:px-2.5 file:py-1 file:text-sm file:font-medium file:text-slate-200" accept="image/*"
                capture="environment" OnChange="CargarFoto" />
     @if (fotoBase64 is not null)
     {
-        <div class="mt-1 text-sm text-emerald-700">Foto lista para enviar.</div>
+        <div class="mt-1 text-sm text-emerald-300">Foto lista para enviar.</div>
     }
 
     <label class="etiqueta mt-4" for="obs-entrega-@Parada.EnvioId">
-        Observaciones <span class="font-normal text-slate-500">(opcional)</span>
+        Observaciones <span class="font-normal text-slate-400">(opcional)</span>
     </label>
     <textarea id="obs-entrega-@Parada.EnvioId" class="campo"
               rows="2" maxlength="1000" @bind="observaciones"></textarea>
