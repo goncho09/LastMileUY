@@ -26,7 +26,7 @@
 
         @if (cargando)
         {
-            <p class="text-center text-slate-500">
+            <p class="text-center text-slate-400">
                 Cargando rutas...
             </p>
         }
@@ -38,46 +38,46 @@
         }
         else if (rutas.Count == 0)
         {
-            <div class="rounded-lg border border-line bg-white p-8 text-center">
-                <div class="mb-3 flex justify-center text-slate-400"><Icono Nombre="camion" Clase="h-8 w-8" /></div>
-                <h2 class="font-semibold text-slate-800">
+            <div class="rounded-lg border border-line bg-superficie p-8 text-center">
+                <div class="mb-3 flex justify-center text-slate-500"><Icono Nombre="camion" Clase="h-8 w-8" /></div>
+                <h2 class="font-semibold text-slate-100">
                     No tenés rutas asignadas
                 </h2>
-                <p class="mt-2 text-sm text-slate-500">
+                <p class="mt-2 text-sm text-slate-400">
                     Las rutas despachadas aparecerán acá.
                 </p>
             </div>
         }
         else
         {
-            <p class="text-sm font-medium text-slate-500">
+            <p class="text-sm font-medium text-slate-400">
                 @rutas.Count rutas disponibles
             </p>
 
             @foreach (var ruta in rutas)
             {
-                <article class="rounded-lg border border-line bg-white p-4"
+                <article class="rounded-lg border border-line bg-superficie p-4"
                          @key="ruta.Id">
 
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <p class="text-xs font-medium text-slate-500">
+                            <p class="text-xs font-medium text-slate-400">
                                 Ruta #@ruta.Id
                             </p>
-                            <h2 class="mt-0.5 text-base font-semibold text-slate-900">
+                            <h2 class="mt-0.5 text-base font-semibold text-white">
                                 @ruta.Nombre
                             </h2>
                         </div>
 
-                        <span class="rounded border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-xs font-medium text-violet-700">
-                            @ruta.Estado
+                        <span class="rounded border border-violet-400/30 bg-violet-500/15 px-1.5 py-0.5 text-xs font-medium text-violet-300">
+                            @TextoEstadoRuta.De(ruta.Estado)
                         </span>
                     </div>
 
-                    <div class="mt-3 space-y-1.5 text-sm text-slate-600">
-                        <p class="flex items-center gap-2"><Icono Nombre="calendario" Clase="h-4 w-4 text-slate-400" /> @ruta.Fecha.ToString("dd/MM/yyyy")</p>
-                        <p class="flex items-center gap-2"><Icono Nombre="camion" Clase="h-4 w-4 text-slate-400" /> @ruta.Vehiculo</p>
-                        <p class="flex items-center gap-2"><Icono Nombre="pin" Clase="h-4 w-4 text-slate-400" /> @ruta.CantidadParadas paradas</p>
+                    <div class="mt-3 space-y-1.5 text-sm text-slate-300">
+                        <p class="flex items-center gap-2"><Icono Nombre="calendario" Clase="h-4 w-4 text-slate-500" /> @ruta.Fecha.ToString("dd/MM/yyyy")</p>
+                        <p class="flex items-center gap-2"><Icono Nombre="camion" Clase="h-4 w-4 text-slate-500" /> @ruta.Vehiculo</p>
+                        <p class="flex items-center gap-2"><Icono Nombre="pin" Clase="h-4 w-4 text-slate-500" /> @ruta.CantidadParadas paradas</p>
                     </div>
 
                     <button type="button"

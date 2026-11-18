@@ -10,11 +10,11 @@
 
 <div class="min-h-dvh bg-canvas">
 <div class="mx-auto max-w-2xl px-4 pt-4 pb-10">
-    <a href="/rutas/@Id" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-violet-700">← Hoja de ruta</a>
+    <a href="/rutas/@Id" class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-violet-300">← Hoja de ruta</a>
 
     @if (cargando)
     {
-        <p class="text-sm text-slate-500">Cargando la hoja de ruta...</p>
+        <p class="text-sm text-slate-400">Cargando la hoja de ruta...</p>
     }
     else if (ruta is null)
     {
@@ -22,8 +22,8 @@
     }
     else
     {
-        <h1 class="text-lg font-semibold text-slate-900">Rendición al volver al depósito</h1>
-        <p class="mt-1 text-sm text-slate-500">
+        <h1 class="text-lg font-semibold text-white">Rendición al volver al depósito</h1>
+        <p class="mt-1 text-sm text-slate-400">
             Entregá en el depósito estos bultos. Al rendir, el depósito ve lo que declaraste y lo confirma escaneando.
         </p>
 
@@ -33,13 +33,13 @@
         }
 
         <div class="mt-4 grid grid-cols-2 gap-3">
-            <div class="rounded-lg border border-line bg-white px-4 py-3">
-                <div class="text-xs text-slate-500">Entregados</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-900">@entregados</div>
+            <div class="rounded-lg border border-line bg-superficie px-4 py-3">
+                <div class="text-xs text-slate-400">Entregados</div>
+                <div class="mt-1 text-2xl font-semibold text-white">@entregados</div>
             </div>
-            <div class="rounded-lg border border-line bg-white px-4 py-3">
-                <div class="text-xs text-slate-500">Bultos que vuelven</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-900">@bultos.Count</div>
+            <div class="rounded-lg border border-line bg-superficie px-4 py-3">
+                <div class="text-xs text-slate-400">Bultos que vuelven</div>
+                <div class="mt-1 text-2xl font-semibold text-white">@bultos.Count</div>
             </div>
         </div>
 
@@ -53,22 +53,22 @@
         <div class="mt-4 space-y-2">
             @if (bultos.Count == 0)
             {
-                <p class="text-sm text-slate-500">Entregaste todo: no tenés bultos para devolver.</p>
+                <p class="text-sm text-slate-400">Entregaste todo: no tenés bultos para devolver.</p>
             }
 
             @foreach (var (parada, bulto) in bultos)
             {
-                <div @key="bulto.Id" class="flex items-center justify-between gap-2 rounded-md border border-line bg-white px-3 py-2.5">
+                <div @key="bulto.Id" class="flex items-center justify-between gap-2 rounded-md border border-line bg-superficie px-3 py-2.5">
                     <div class="min-w-0">
-                        <div class="font-mono text-[13px] font-medium text-slate-900 [overflow-wrap:anywhere]">@bulto.Codigo</div>
-                        <div class="mt-0.5 text-xs text-slate-500">Parada @parada.Orden · @parada.Destinatario.Nombre @parada.Destinatario.Apellido</div>
+                        <div class="font-mono text-[13px] font-medium text-white [overflow-wrap:anywhere]">@bulto.Codigo</div>
+                        <div class="mt-0.5 text-xs text-slate-400">Parada @parada.Orden · @parada.Destinatario.Nombre @parada.Destinatario.Apellido</div>
                     </div>
-                    <span class="shrink-0 text-xs font-medium text-amber-700">Devolver</span>
+                    <span class="shrink-0 text-xs font-medium text-amber-300">Devolver</span>
                 </div>
             }
         </div>
 
-        <label for="observaciones-rendicion" class="mt-6 block text-sm font-medium text-slate-700">Observaciones</label>
+        <label for="observaciones-rendicion" class="mt-6 block text-sm font-medium text-slate-200">Observaciones</label>
         <textarea id="observaciones-rendicion" class="campo mt-1" rows="2" maxlength="500" @bind="observaciones"></textarea>
 
         <button type="button" class="boton boton-principal mt-4" disabled="@enviando" @onclick="RendirAsync">
@@ -77,7 +77,7 @@
 
         @if (pendiente)
         {
-            <p class="mt-2 text-xs text-slate-500">La rendición está guardada en el celular y se envía sola cuando vuelva la conexión.</p>
+            <p class="mt-2 text-xs text-slate-400">La rendición está guardada en el celular y se envía sola cuando vuelva la conexión.</p>
         }
     }
 </div>

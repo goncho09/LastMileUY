@@ -8,7 +8,7 @@
 <PageTitle>Mi jornada | LastMileUY</PageTitle>
 @if (comprobandoSesion)
 {
-    <div class="p-4 text-center text-sm text-slate-500">
+    <div class="p-4 text-center text-sm text-slate-400">
         Comprobando sesión...
     </div>
 }
@@ -79,23 +79,23 @@ else
                 </div>
             }
 
-            <section class="rounded-lg border border-line bg-white p-5">
+            <section class="rounded-lg border border-line bg-superficie p-5">
 
                 <div class="flex items-start gap-4">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-violet-400/30 bg-violet-500/15 text-violet-300">
                         <Icono Nombre="ruta" Clase="h-5 w-5" />
                     </div>
 
                     <div class="flex-1">
-                        <p class="text-xs font-medium text-slate-500">
+                        <p class="text-xs font-medium text-slate-400">
                             Tu trabajo
                         </p>
 
-                        <h3 class="mt-0.5 text-lg font-semibold text-slate-900">
+                        <h3 class="mt-0.5 text-lg font-semibold text-white">
                             Mis rutas
                         </h3>
 
-                        <p class="mt-1 text-sm leading-relaxed text-slate-500">
+                        <p class="mt-1 text-sm leading-relaxed text-slate-400">
                             Consultá tus recorridos, paradas y entregas asignadas.
                         </p>
                     </div>
@@ -121,71 +121,71 @@ else
 
             <section>
                 <div class="mb-3 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-slate-900">
+                    <h3 class="text-sm font-semibold text-white">
                         Resumen de hoy
                     </h3>
-                    <span class="text-xs font-medium text-slate-500">
+                    <span class="text-xs font-medium text-slate-400">
                         Mi actividad
                     </span>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
 
-                    <div class="rounded-lg border border-line bg-white p-4">
-                        <div class="flex items-center gap-2 text-slate-500">
+                    <div class="rounded-lg border border-line bg-superficie p-4">
+                        <div class="flex items-center gap-2 text-slate-400">
                             <Icono Nombre="paquete" Clase="h-4 w-4" />
                             <p class="text-sm">Asignadas</p>
                         </div>
-                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
+                        <p class="mt-2 text-2xl font-semibold text-white">—</p>
                     </div>
 
-                    <div class="rounded-lg border border-line bg-white p-4">
-                        <div class="flex items-center gap-2 text-slate-500">
-                            <Icono Nombre="check" Clase="h-4 w-4 text-emerald-600" />
+                    <div class="rounded-lg border border-line bg-superficie p-4">
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <Icono Nombre="check" Clase="h-4 w-4 text-emerald-400" />
                             <p class="text-sm">Completadas</p>
                         </div>
-                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
+                        <p class="mt-2 text-2xl font-semibold text-white">—</p>
                     </div>
 
-                    <div class="rounded-lg border border-line bg-white p-4">
-                        <div class="flex items-center gap-2 text-slate-500">
-                            <Icono Nombre="reloj" Clase="h-4 w-4 text-amber-600" />
+                    <div class="rounded-lg border border-line bg-superficie p-4">
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <Icono Nombre="reloj" Clase="h-4 w-4 text-amber-400" />
                             <p class="text-sm">Pendientes</p>
                         </div>
-                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
+                        <p class="mt-2 text-2xl font-semibold text-white">—</p>
                     </div>
 
-                    <div class="rounded-lg border border-line bg-white p-4">
-                        <div class="flex items-center gap-2 text-slate-500">
-                            <Icono Nombre="sync" Clase="h-4 w-4 text-violet-600" />
+                    <div class="rounded-lg border border-line bg-superficie p-4">
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <Icono Nombre="sync" Clase="h-4 w-4 text-violet-300" />
                             <p class="text-sm">Sin sincronizar</p>
                         </div>
-                        <p class="mt-2 text-2xl font-semibold text-slate-900">—</p>
+                        <p class="mt-2 text-2xl font-semibold text-white">—</p>
                     </div>
 
                 </div>
             </section>
         </main>
 
-        <nav class="fixed bottom-0 left-0 right-0 z-20 border-t border-line bg-white px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <nav class="fixed bottom-0 left-0 right-0 z-20 border-t border-line bg-superficie px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 
             <div class="mx-auto flex max-w-md items-center justify-around">
 
-                <div class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-violet-700">
+                <div class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-violet-300">
                     <Icono Nombre="inicio" Clase="h-5 w-5" />
                     <span class="text-xs font-medium">Inicio</span>
                 </div>
 
                 <button type="button"
                         @onclick="IrARutas"
-                        class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-slate-500 transition-colors active:text-violet-700">
+                        class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-slate-400 transition-colors active:text-violet-300">
                     <Icono Nombre="camion" Clase="h-5 w-5" />
                     <span class="text-xs font-medium">Rutas</span>
                 </button>
 
                 <button type="button"
                         @onclick="@(() => Navigation.NavigateTo("/operaciones"))"
-                        class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-slate-500 transition-colors active:text-violet-700">
+                        class="flex min-w-16 flex-col items-center gap-0.5 py-1 text-slate-400 transition-colors active:text-violet-300">
                     <Icono Nombre="sync" Clase="h-5 w-5" />
                     <span class="text-xs font-medium">Operaciones</span>
                 </button>
